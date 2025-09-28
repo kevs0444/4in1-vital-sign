@@ -4,7 +4,7 @@ import React from "react";
 function Login() {
   return (
     <div>
-      <h1>Hello World</h1>
+      <h1>4 in 1 Vital Sign</h1>
     </div>
   );
 }
