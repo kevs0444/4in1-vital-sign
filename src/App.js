@@ -1,8 +1,15 @@
+import React from "react";
+import { BrowserRouter as Router } from "react-router-dom";
+import AppRoutes from "./routes";
+
+// Import Bootstrap CSS
+import "bootstrap/dist/css/bootstrap.min.css";
+
 function App() {
   return (
-    <div>
-      <h1>Hello World</h1>
-    </div>
+    <Router>
+      <AppRoutes />
+    </Router>
   );
 }
 

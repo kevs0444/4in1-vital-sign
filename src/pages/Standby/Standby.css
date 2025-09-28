@@ -1,0 +1,232 @@
+/* ========================
+   Montserrat Variable Font
+======================== */
+@font-face {
+  font-family: 'Montserrat';
+  src: url('../../assets/fonts/Montserrat-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+/* Import FontAwesome */
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css");
+
+/* Main Container */
+.standby-container {
+  position: relative;
+  min-height: 100vh;
+  background: #fefefe;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Floating Gradient Circles */
+.background-circles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.3; /* lighter */
+  animation: floatCircle linear infinite;
+}
+
+.circle1 {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, #ff7f7f, transparent); /* lighter red */
+  top: 10%;
+  left: 15%;
+  animation-duration: 25s;
+}
+
+.circle2 {
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, #ff4d6d, transparent); /* new red tone */
+  top: 50%;
+  left: 75%;
+  animation-duration: 20s;
+}
+
+.circle3 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, #fcb8b8, transparent);
+  top: 75%;
+  left: 30%;
+  animation-duration: 30s;
+}
+
+.circle4 {
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, #ff9999, transparent); /* lighter red variant */
+  top: 25%;
+  left: 50%;
+  animation-duration: 22s;
+}
+
+.circle5 {
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, #ff6b6b, transparent);
+  top: 60%;
+  left: 10%;
+  animation-duration: 28s;
+}
+
+@keyframes floatCircle {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-50px) rotate(180deg);
+  }
+  100% {
+    transform: translateY(0) rotate(360deg);
+  }
+}
+
+/* Main Content */
+.main-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem; /* more spacing between elements */
+}
+
+/* Logo */
+.logo-container {
+  width: 250px; /* larger logo */
+  height: 250px;
+  margin-bottom: 1.5rem;
+  border-radius: 50%; /* make container circular */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(220,53,69,0.2), transparent 70%); /* subtle glow */
+  box-shadow: 0 0 60px rgba(220, 53, 69, 0.6), 0 0 120px rgba(220, 53, 69, 0.4);
+  animation: glow 2s ease-in-out infinite alternate;
+  overflow: hidden; /* ensure everything stays circular */
+}
+
+.logo-image {
+  width: 80%; /* leave some padding for glow */
+  height: 80%;
+  object-fit: contain;
+  border-radius: 50%; /* make image circular */
+}
+
+/* Glowing animation */
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 40px rgba(220, 53, 69, 0.5), 0 0 80px rgba(220, 53, 69, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(220, 53, 69, 0.7), 0 0 120px rgba(220, 53, 69, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 80px rgba(220, 53, 69, 1), 0 0 160px rgba(220, 53, 69, 0.7);
+  }
+}
+
+/* Titles */
+.main-title {
+  font-size: 3rem; /* bigger title */
+  font-weight: 700;
+  color: #dc3545;
+  margin-bottom: 0.5rem;
+}
+.motto {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 2rem;
+}
+
+/* Clock and Date */
+.clock {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+.date {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+/* Start Button */
+.start-button {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  border: none;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 600;
+  padding: 1rem 3rem;
+  border-radius: 50px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 10px 30px rgba(220, 53, 69, 0.4),
+    0 0 0 0 rgba(220, 53, 69, 0.7);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.start-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(220, 53, 69, 0.6),
+    0 0 20px rgba(220, 53, 69, 0.8);
+}
+.start-button:active,
+.start-button.pressed {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(220, 53, 69, 0.8),
+    0 0 30px rgba(220, 53, 69, 1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .logo-container {
+    width: 200px;
+    height: 200px;
+  }
+  .main-title {
+    font-size: 2.5rem;
+  }
+  .motto {
+    font-size: 1.25rem;
+  }
+  .clock {
+    font-size: 2rem;
+  }
+}
+@media (max-width: 480px) {
+  .logo-container {
+    width: 150px;
+    height: 150px;
+  }
+  .main-title {
+    font-size: 2rem;
+  }
+  .motto {
+    font-size: 1rem;
+  }
+  .clock {
+    font-size: 1.5rem;
+  }
+}
