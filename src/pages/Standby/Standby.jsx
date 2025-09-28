@@ -20,8 +20,14 @@ export default function Standby() {
     }, 200);
   };
 
+  // FIXED: show hours, minutes, seconds
   const formatTime = (date) =>
-    date.toLocaleTimeString("en-US", { hour12: true });
+    date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
 
   const formatDate = (date) =>
     date.toLocaleDateString("en-US", {
@@ -33,13 +39,13 @@ export default function Standby() {
 
   return (
     <div className="standby-container">
-      {/* Floating Gradient Circles */}
-      <div className="background-circles">
-        <div className="circle circle1"></div>
-        <div className="circle circle2"></div>
-        <div className="circle circle3"></div>
-        <div className="circle circle4"></div>
-        <div className="circle circle5"></div>
+      {/* Floating Abstract Triangles */}
+      <div className="background-triangles">
+        <div className="triangle triangle1"></div>
+        <div className="triangle triangle2"></div>
+        <div className="triangle triangle3"></div>
+        <div className="triangle triangle4"></div>
+        <div className="triangle triangle5"></div>
       </div>
 
       {/* Main Content */}
