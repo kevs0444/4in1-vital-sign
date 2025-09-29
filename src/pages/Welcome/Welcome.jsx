@@ -38,7 +38,7 @@ export default function Welcome() {
         <div className="welcome-logo">
           <img 
             src={logo} 
-            alt="Pulsey Logo" 
+            alt="VitalSign AI Logo" 
             className="logo-image"
           />
         </div>
@@ -46,11 +46,16 @@ export default function Welcome() {
         {/* Welcome Message */}
         <div className="welcome-message">
           <h1 className="welcome-title">
-            Welcome to Pulsey!
+            Welcome to VitalSign AI!
           </h1>
+          <div className="system-description">
+            <p className="system-tagline">Four-in-One Vital Sign Sensor</p>
+            <p className="system-features">with BMI Calculation using AI and IoT</p>
+            <p className="system-purpose">for Health Risk Prediction</p>
+          </div>
           <div className="welcome-subtitle">
             <p>Before we begin, please provide us with some personal information</p>
-            <p>to ensure accurate monitoring.</p>
+            <p>to ensure accurate monitoring and personalized health insights.</p>
           </div>
         </div>
 

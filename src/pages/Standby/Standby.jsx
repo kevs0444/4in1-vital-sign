@@ -73,7 +73,7 @@ export default function Standby() {
           onTouchStart={() => setIsPressed(true)}
           onTouchEnd={() => setIsPressed(false)}
         >
-          Start Health Check
+          TOUCH THIS TO START
         </button>
       </div>
     </div>
