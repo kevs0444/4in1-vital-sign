@@ -4,6 +4,7 @@ import { Routes, Route } from "react-router-dom";
 // Import pages
 import Standby from "./pages/Standby/Standby.jsx";
 import Login from "./pages/Login/Login.jsx";
+import Welcome from "./pages/Welcome/Welcome.jsx"; // Add this import
 import Sex from "./pages/Sex/Sex.jsx";
 import Age from "./pages/Age/Age.jsx";
 import Bmi from "./pages/Bmi/Bmi.jsx";
@@ -21,6 +22,7 @@ function AppRoutes() {
 
       {/* Flow pages */}
       <Route path="/login" element={<Login />} />
+      <Route path="/welcome" element={<Welcome />} /> {/* Add this route */}
       <Route path="/sex" element={<Sex />} />
       <Route path="/age" element={<Age />} />
       <Route path="/bmi" element={<Bmi />} />

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import logo from "../../assets/logo.png";
+import { useNavigate } from "react-router-dom";
 import "./Standby.css";
 
 export default function Standby() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPressed, setIsPressed] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -15,12 +16,10 @@ export default function Standby() {
     setIsPressed(true);
     setTimeout(() => {
       setIsPressed(false);
-      console.log("Starting health assessment...");
-      // navigation logic here
+      navigate("/login");
     }, 200);
   };
 
-  // FIXED: show hours, minutes, seconds
   const formatTime = (date) =>
     date.toLocaleTimeString("en-US", {
       hour: "2-digit",
@@ -50,10 +49,8 @@ export default function Standby() {
 
       {/* Main Content */}
       <div className="main-content">
-        {/* Logo */}
-        <div className="logo-container">
-          <img src={logo} alt="Logo" className="logo-image" />
-        </div>
+        {/* Logo - Now using background image */}
+        <div className="logo-container"></div>
 
         {/* Title */}
         <h1 className="main-title">Four-in-One Vital Sign Sensor</h1>

@@ -13,14 +13,14 @@
 
 /* Main Container */
 .standby-container {
-  position: relative;
-  min-height: 100vh;
-  background: #fefefe;
-  overflow: hidden;
+  height: 100vh;
+  width: 100%;
   display: flex;
-  align-items: center;
   justify-content: center;
-  font-family: 'Montserrat', sans-serif;
+  align-items: center;
+  position: relative;
+  background: #f5f5f5;
+  overflow: hidden;
 }
 
 /* Floating Abstract Triangles */
@@ -49,7 +49,7 @@
 .triangle1 {
   border-left: 60px solid transparent;
   border-right: 60px solid transparent;
-  border-bottom: 120px solid rgba(255,127,127,0.3); /* large */
+  border-bottom: 120px solid rgba(255,127,127,0.3);
   top: 10%;
   left: 15%;
   animation-duration: 15s;
@@ -58,7 +58,7 @@
 .triangle2 {
   border-left: 40px solid transparent;
   border-right: 40px solid transparent;
-  border-bottom: 80px solid rgba(255,77,109,0.3); /* medium */
+  border-bottom: 80px solid rgba(255,77,109,0.3);
   top: 50%;
   left: 75%;
   animation-duration: 12s;
@@ -67,7 +67,7 @@
 .triangle3 {
   border-left: 30px solid transparent;
   border-right: 30px solid transparent;
-  border-bottom: 60px solid rgba(252,184,184,0.3); /* small */
+  border-bottom: 60px solid rgba(252,184,184,0.3);
   top: 75%;
   left: 30%;
   animation-duration: 18s;
@@ -76,7 +76,7 @@
 .triangle4 {
   border-left: 50px solid transparent;
   border-right: 50px solid transparent;
-  border-bottom: 100px solid rgba(255,153,153,0.3); /* medium-large */
+  border-bottom: 100px solid rgba(255,153,153,0.3);
   top: 25%;
   left: 50%;
   animation-duration: 14s;
@@ -85,7 +85,7 @@
 .triangle5 {
   border-left: 35px solid transparent;
   border-right: 35px solid transparent;
-  border-bottom: 70px solid rgba(255,107,107,0.3); /* medium-small */
+  border-bottom: 70px solid rgba(255,107,107,0.3);
   top: 60%;
   left: 10%;
   animation-duration: 16s;
@@ -93,15 +93,9 @@
 
 /* Float and rotate animation */
 @keyframes floatTriangle {
-  0% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-70px) rotate(180deg); /* more noticeable movement */
-  }
-  100% {
-    transform: translateY(0) rotate(360deg);
-  }
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-70px) rotate(180deg); }
+  100% { transform: translateY(0) rotate(360deg); }
 }
 
 /* Main Content */
@@ -112,45 +106,42 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2.5rem; /* more spacing between elements */
+  gap: 2.5rem;
 }
 
-/* Logo */
+/* Logo Container - USING BACKGROUND IMAGE */
 .logo-container {
-  width: 250px; /* larger logo */
-  height: 250px;
-  margin-bottom: 1.5rem;
-  border-radius: 50%; /* make container circular */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle, rgba(220,53,69,0.2), transparent 70%);
-  box-shadow: 0 0 60px rgba(220, 53, 69, 0.6), 0 0 120px rgba(220, 53, 69, 0.4);
+  width: 800px;
+  height: 800px;
+  max-width: 90vw;
+  max-height: 90vw;
+  margin-bottom: 2rem;
+  border-radius: 50%;
+  background: 
+    radial-gradient(circle, rgba(220,53,69,0.25), transparent 70%),
+    url('../../assets/logo.png') center/85% no-repeat,
+    white; /* White background behind logo */
+  box-shadow: 0 0 80px rgba(220, 53, 69, 0.7), 0 0 160px rgba(220, 53, 69, 0.5);
   animation: glow 2s ease-in-out infinite alternate;
   overflow: hidden;
-}
-
-.logo-image {
-  width: 80%; /* leave some padding for glow */
-  height: 80%;
-  object-fit: contain;
-  border-radius: 50%; /* make image circular */
+  position: relative;
 }
 
 /* Glowing animation */
 @keyframes glow {
-  0% { box-shadow: 0 0 40px rgba(220,53,69,0.5), 0 0 80px rgba(220,53,69,0.3); }
-  50% { box-shadow: 0 0 60px rgba(220,53,69,0.7), 0 0 120px rgba(220,53,69,0.5); }
-  100% { box-shadow: 0 0 80px rgba(220,53,69,1), 0 0 160px rgba(220,53,69,0.7); }
+  0% { box-shadow: 0 0 60px rgba(220,53,69,0.6), 0 0 120px rgba(220,53,69,0.4); }
+  50% { box-shadow: 0 0 100px rgba(220,53,69,0.8), 0 0 200px rgba(220,53,69,0.6); }
+  100% { box-shadow: 0 0 140px rgba(220,53,69,1), 0 0 280px rgba(220,53,69,0.8); }
 }
 
 /* Titles */
 .main-title {
-  font-size: 3rem; /* bigger title */
+  font-size: 3rem;
   font-weight: 700;
   color: #dc3545;
   margin-bottom: 0.5rem;
 }
+
 .motto {
   font-size: 1.5rem;
   font-weight: 500;
@@ -165,6 +156,7 @@
   color: #333;
   margin-bottom: 0.5rem;
 }
+
 .date {
   font-size: 1.2rem;
   color: #666;
@@ -187,11 +179,13 @@
   transition: all 0.3s ease;
   cursor: pointer;
 }
+
 .start-button:hover {
   transform: translateY(-3px);
   box-shadow: 0 15px 40px rgba(220,53,69,0.6),
               0 0 20px rgba(220,53,69,0.8);
 }
+
 .start-button:active,
 .start-button.pressed {
   transform: translateY(-1px);
@@ -200,14 +194,19 @@
 }
 
 /* Responsive */
+@media (max-width: 1200px) {
+  .logo-container { width: 600px; height: 600px; }
+}
+
 @media (max-width: 768px) {
-  .logo-container { width: 200px; height: 200px; }
+  .logo-container { width: 400px; height: 400px; }
   .main-title { font-size: 2.5rem; }
   .motto { font-size: 1.25rem; }
   .clock { font-size: 2rem; }
 }
+
 @media (max-width: 480px) {
-  .logo-container { width: 150px; height: 150px; }
+  .logo-container { width: 250px; height: 250px; }
   .main-title { font-size: 2rem; }
   .motto { font-size: 1rem; }
   .clock { font-size: 1.5rem; }
