@@ -16,7 +16,7 @@ export default function Standby() {
     setIsPressed(true);
     setTimeout(() => {
       setIsPressed(false);
-      navigate("/login");
+      navigate("/welcome");
     }, 200);
   };
 

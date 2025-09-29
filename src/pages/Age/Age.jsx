@@ -52,7 +52,7 @@ export default function Age() {
     const calculatedAge = calculateAge(birthDate);
     
     // Pass data to next page
-    navigate("/vital-signs", {
+    navigate("/sex", {
       state: {
         ...location.state,
         birthDate: birthDate,
@@ -62,7 +62,7 @@ export default function Age() {
   };
 
   const handleBack = () => {
-    navigate("/sex");
+    navigate("/name");
   };
 
   return (
@@ -72,9 +72,9 @@ export default function Age() {
         {/* Progress Bar */}
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{width: '100%'}}></div>
+            <div className="progress-fill" style={{width: '66%'}}></div>
           </div>
-          <span className="progress-step">Step 2 of 2</span>
+          <span className="progress-step">Step 2 of 3</span>
         </div>
 
         {/* Title */}

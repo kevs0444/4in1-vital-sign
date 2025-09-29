@@ -1,0 +1,464 @@
+.weight-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  font-family: var(--font-primary);
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.weight-content {
+  background: #ffffff;
+  border-radius: 2rem;
+  padding: 3rem 2.5rem;
+  width: 100%;
+  max-width: 550px;
+  box-shadow: 0 20px 50px rgba(220, 53, 69, 0.15);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease;
+}
+
+.weight-content.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Progress Bar */
+.progress-container {
+  margin-bottom: 2.5rem;
+  width: 100%;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.progress-step {
+  font-family: var(--font-primary);
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: var(--font-medium);
+}
+
+/* Header */
+.weight-header {
+  margin-bottom: 2.5rem;
+}
+
+.weight-title {
+  font-family: var(--font-primary);
+  font-size: 2.2rem;
+  color: #333;
+  font-weight: var(--font-bold);
+  margin-bottom: 0.8rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.weight-subtitle {
+  font-family: var(--font-primary);
+  font-size: 1.1rem;
+  color: #666;
+  font-weight: var(--font-regular);
+  margin: 0;
+}
+
+/* Weight Display Section */
+.weight-display-section {
+  margin-bottom: 2.5rem;
+}
+
+.weight-icon-container {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.weight-icon {
+  width: 180px; /* Increased from 120px */
+  height: 180px; /* Increased from 120px */
+  object-fit: contain;
+  margin-bottom: 1.5rem;
+}
+
+.scale-platform {
+  width: 200px; /* Increased from 160px */
+  height: 12px; /* Increased from 10px */
+  background: linear-gradient(135deg, #666, #999);
+  border-radius: 6px; /* Increased from 5px */
+  margin: 0 auto;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.scale-platform.measuring {
+  animation: scalePulse 1s ease-in-out infinite;
+}
+
+.scale-indicator {
+  width: 10px; /* Increased from 8px */
+  height: 10px; /* Increased from 8px */
+  background: #dc3545;
+  border-radius: 50%;
+  position: absolute;
+  top: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: all 0.3s ease;
+}
+
+@keyframes scalePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.weight-value-display {
+  margin: 2rem 0; /* Increased from 1.5rem */
+}
+
+.measuring-animation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem; /* Increased from 0.5rem */
+}
+
+.pulse-dot {
+  width: 25px; /* Increased from 20px */
+  height: 25px; /* Increased from 20px */
+  background: #dc3545;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+.measuring-text {
+  font-family: var(--font-primary);
+  font-size: 1.3rem; /* Increased from 1.1rem */
+  color: #666;
+  font-weight: var(--font-medium);
+}
+
+.weight-result, .weight-placeholder {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.8rem; /* Increased from 0.5rem */
+}
+
+.weight-number {
+  font-family: var(--font-primary);
+  font-size: 4.5rem; /* Increased from 3rem */
+  color: #dc3545;
+  font-weight: var(--font-black);
+  line-height: 1;
+}
+
+.weight-placeholder span:first-child {
+  font-family: var(--font-primary);
+  font-size: 4.5rem; /* Increased from 3rem */
+  color: #ccc;
+  font-weight: var(--font-black);
+}
+
+.weight-unit {
+  font-family: var(--font-primary);
+  font-size: 1.8rem; /* Increased from 1.2rem */
+  color: #666;
+  font-weight: var(--font-medium);
+}
+
+/* Measurement Controls */
+.measurement-controls {
+  margin-bottom: 2rem; /* Reduced from 2.5rem */
+}
+
+.measure-button {
+  width: 100%;
+  padding: 1.4rem 2rem; /* Increased padding */
+  border: none;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  font-family: var(--font-primary);
+  font-size: 1.3rem; /* Increased from 1.1rem */
+  font-weight: var(--font-semi-bold);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem; /* Increased from 0.5rem */
+  margin-bottom: 1.5rem;
+}
+
+.measure-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+.measure-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 25px; /* Increased from 20px */
+  height: 25px; /* Increased from 20px */
+  border: 3px solid transparent; /* Increased from 2px */
+  border-top: 3px solid white; /* Increased from 2px */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.measurement-complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.success-text {
+  font-family: var(--font-primary);
+  font-size: 1.3rem; /* Increased from 1.1rem */
+  color: #28a745;
+  font-weight: var(--font-semi-bold);
+}
+
+.retry-button {
+  padding: 0.7rem 1.2rem; /* Increased padding */
+  border: 2px solid #dc3545; /* Increased from 1px */
+  border-radius: 0.6rem; /* Increased from 0.5rem */
+  background: transparent;
+  color: #dc3545;
+  font-family: var(--font-primary);
+  font-size: 1rem; /* Increased from 0.9rem */
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-button:hover {
+  background: #fff5f5;
+}
+
+/* Educational Content - Made Smaller */
+.educational-content {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 0.8rem; /* Reduced from 1rem */
+  padding: 1rem; /* Reduced from 1.5rem */
+  margin-bottom: 2rem; /* Reduced from 2.5rem */
+}
+
+.education-title {
+  font-family: var(--font-primary);
+  font-size: 1rem; /* Reduced from 1.2rem */
+  color: #333;
+  font-weight: var(--font-bold);
+  margin-bottom: 0.8rem; /* Reduced from 1rem */
+  text-align: center;
+}
+
+.education-points {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem; /* Reduced from 1rem */
+}
+
+.education-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem; /* Reduced from 1rem */
+  text-align: left;
+}
+
+.point-icon {
+  font-size: 1.2rem; /* Reduced from 1.5rem */
+  flex-shrink: 0;
+}
+
+.point-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.point-text strong {
+  font-family: var(--font-primary);
+  font-size: 0.9rem; /* Reduced from 1rem */
+  color: #333;
+  font-weight: var(--font-semi-bold);
+  margin-bottom: 0.1rem; /* Reduced from 0.2rem */
+}
+
+.point-text span {
+  font-family: var(--font-primary);
+  font-size: 0.8rem; /* Reduced from 0.9rem */
+  color: #666;
+  font-weight: var(--font-regular);
+  line-height: 1.3; /* Reduced from 1.4 */
+}
+
+/* Action Buttons */
+.weight-actions {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+.back-button {
+  flex: 1;
+  padding: 1.2rem 1.5rem; /* Increased padding */
+  border: 2px solid #dc3545;
+  border-radius: 0.8rem;
+  background: transparent;
+  color: #dc3545;
+  font-family: var(--font-primary);
+  font-size: 1.2rem; /* Increased from 1.1rem */
+  font-weight: var(--font-semi-bold);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  background: #fff5f5;
+  transform: translateY(-1px);
+}
+
+.continue-button {
+  flex: 2;
+  padding: 1.2rem 1.5rem; /* Increased padding */
+  border: none;
+  border-radius: 0.8rem;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  font-family: var(--font-primary);
+  font-size: 1.2rem; /* Increased from 1.1rem */
+  font-weight: var(--font-semi-bold);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.continue-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+.continue-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .weight-container {
+    padding: 1.5rem;
+  }
+  
+  .weight-content {
+    padding: 2.5rem 2rem;
+    max-width: 90%;
+  }
+  
+  .weight-title {
+    font-size: 2rem;
+  }
+  
+  .weight-icon {
+    width: 150px; /* Adjusted for mobile */
+    height: 150px; /* Adjusted for mobile */
+  }
+  
+  .weight-number {
+    font-size: 3.5rem; /* Adjusted for mobile */
+  }
+  
+  .weight-unit {
+    font-size: 1.5rem; /* Adjusted for mobile */
+  }
+  
+  .education-point {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .point-text {
+    align-items: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .weight-container {
+    padding: 1rem;
+  }
+  
+  .weight-content {
+    padding: 2rem 1.5rem;
+    max-width: 100%;
+    border-radius: 1.5rem;
+  }
+  
+  .weight-title {
+    font-size: 1.8rem;
+  }
+  
+  .weight-icon {
+    width: 120px; /* Adjusted for small mobile */
+    height: 120px; /* Adjusted for small mobile */
+  }
+  
+  .weight-number {
+    font-size: 3rem; /* Adjusted for small mobile */
+  }
+  
+  .weight-unit {
+    font-size: 1.3rem; /* Adjusted for small mobile */
+  }
+  
+  .weight-actions {
+    flex-direction: column;
+  }
+  
+  .back-button,
+  .continue-button {
+    flex: none;
+  }
+}

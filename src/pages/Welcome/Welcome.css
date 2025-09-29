@@ -16,7 +16,7 @@
   border-radius: 2rem;
   padding: 4rem 3rem;
   width: 100%;
-  max-width: 650px; /* Increased from 500px to 650px */
+  max-width: 650px;
   box-shadow: 0 25px 60px rgba(220, 53, 69, 0.2);
   text-align: center;
   display: flex;
@@ -39,8 +39,8 @@
 }
 
 .logo-image {
-  width: 140px; /* Increased from 120px */
-  height: 140px; /* Increased from 120px */
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   box-shadow: 0 12px 35px rgba(220, 53, 69, 0.25);
 }
@@ -52,7 +52,7 @@
 
 .welcome-title {
   font-family: var(--font-primary);
-  font-size: 3rem; /* Increased from 2.5rem */
+  font-size: 3rem;
   color: #dc3545;
   font-weight: var(--font-black);
   margin-bottom: 1.5rem;
@@ -70,7 +70,7 @@
 
 .system-tagline {
   font-family: var(--font-primary);
-  font-size: 1.4rem; /* Larger font size */
+  font-size: 1.4rem;
   color: #dc3545;
   font-weight: var(--font-bold);
   margin: 0.5rem 0;
@@ -79,7 +79,7 @@
 
 .system-features {
   font-family: var(--font-primary);
-  font-size: 1.2rem; /* Larger font size */
+  font-size: 1.2rem;
   color: #333;
   font-weight: var(--font-semi-bold);
   margin: 0.5rem 0;
@@ -88,7 +88,7 @@
 
 .system-purpose {
   font-family: var(--font-primary);
-  font-size: 1.3rem; /* Larger font size */
+  font-size: 1.3rem;
   color: #c82333;
   font-weight: var(--font-bold);
   margin: 0.5rem 0;
@@ -97,7 +97,7 @@
 
 .welcome-subtitle {
   font-family: var(--font-primary);
-  font-size: 1.3rem; /* Increased from 1.2rem */
+  font-size: 1.3rem;
   color: #666;
   line-height: 1.6;
 }
@@ -118,17 +118,17 @@
   background: linear-gradient(135deg, #dc3545, #c82333);
   border: none;
   color: white;
-  font-size: 1.4rem; /* Increased from 1.3rem */
+  font-size: 1.4rem;
   font-weight: var(--font-bold);
-  padding: 1.3rem 3.5rem; /* Increased padding */
+  padding: 1.3rem 3.5rem;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
   width: 100%;
-  max-width: 350px; /* Increased from 300px */
+  max-width: 350px;
   box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
   letter-spacing: 0.02em;
-  min-height: 65px; /* Increased height */
+  min-height: 65px;
 }
 
 .continue-button:hover {
@@ -245,9 +245,4 @@
     align-items: flex-start;
     padding-top: 2rem;
   }
-}
-
-/* Global scrollbar removal */
-body {
-  overflow: hidden;
 }

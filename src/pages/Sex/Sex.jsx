@@ -30,7 +30,7 @@ export default function Sex() {
     }
     
     // Pass data to next page
-    navigate("/age", {
+    navigate("/starting", {
       state: {
         ...location.state,
         sex: selectedSex
@@ -39,7 +39,7 @@ export default function Sex() {
   };
 
   const handleBack = () => {
-    navigate("/welcome");
+    navigate("/age");
   };
 
   return (
@@ -49,9 +49,9 @@ export default function Sex() {
         {/* Progress Bar */}
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{width: '50%'}}></div>
+            <div className="progress-fill" style={{width: '100%'}}></div>
           </div>
-          <span className="progress-step">Step 1 of 2</span>
+          <span className="progress-step">Step 3 of 3</span>
         </div>
 
         {/* Title */}
