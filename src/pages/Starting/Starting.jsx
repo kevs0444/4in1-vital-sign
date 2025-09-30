@@ -117,13 +117,6 @@ export default function Starting() {
                 <span>Finger sensor for vital signs (MAX30102)</span>
               </div>
             </div>
-            <div className="instruction-item">
-              <div className="instruction-icon">🩺</div>
-              <div className="instruction-text">
-                <strong>Blood Pressure</strong>
-                <span>Automated blood pressure monitoring</span>
-              </div>
-            </div>
           </div>
         </div>
 
