@@ -3,43 +3,65 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  min-height: 100dvh;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   font-family: var(--font-primary);
-  padding: 2rem;
+  padding: 1rem;
   box-sizing: border-box;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.name-container.keyboard-open {
+  align-items: flex-start;
+  padding-top: 0;
 }
 
 .name-content {
   background: #ffffff;
-  border-radius: 2rem;
-  padding: 3rem 2.5rem;
+  border-radius: 1.5rem;
+  padding: 2rem;
   width: 100%;
-  max-width: 500px;
+  max-width: 450px;
   box-shadow: 0 20px 50px rgba(220, 53, 69, 0.15);
   text-align: center;
   display: flex;
   flex-direction: column;
   opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.6s ease;
+  transition: opacity 0.6s ease;
+  position: relative;
+  margin: auto;
+  transform: none !important;
 }
 
 .name-content.visible {
   opacity: 1;
-  transform: translateY(0);
 }
 
-/* Progress Bar */
+/* Progress Bar - Always visible but adapts to keyboard */
 .progress-container {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
   width: 100%;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+/* Smaller progress bar when keyboard is open */
+.progress-container.keyboard-open {
+  margin-bottom: 1rem;
 }
 
 .progress-bar {
   width: 100%;
-  height: 8px;
+  height: 6px;
   background: #e9ecef;
-  border-radius: 4px;
+  border-radius: 10px;
   overflow: hidden;
   margin-bottom: 0.5rem;
 }
@@ -47,49 +69,70 @@
 .progress-fill {
   height: 100%;
   background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 4px;
+  border-radius: 10px;
   transition: width 0.5s ease;
 }
 
 .progress-step {
-  font-family: var(--font-primary);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #666;
-  font-weight: var(--font-medium);
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
 
-/* Header */
+/* Smaller progress step text when keyboard is open */
+.progress-container.keyboard-open .progress-step {
+  font-size: 0.75rem;
+}
+
 .name-header {
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.name-header.keyboard-open {
+  margin-bottom: 1rem;
 }
 
 .name-title {
-  font-family: var(--font-primary);
-  font-size: 2.2rem;
+  font-size: clamp(1.3rem, 4vw, 1.8rem);
   color: #333;
-  font-weight: var(--font-bold);
+  font-weight: 700;
   margin-bottom: 0.8rem;
-  letter-spacing: -0.02em;
   line-height: 1.2;
+  transition: all 0.3s ease;
+}
+
+.name-header.keyboard-open .name-title {
+  font-size: clamp(1.2rem, 3.5vw, 1.4rem);
+  margin-bottom: 0.3rem;
 }
 
 .name-subtitle {
-  font-family: var(--font-primary);
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
   color: #666;
-  font-weight: var(--font-regular);
   margin: 0;
+  line-height: 1.4;
 }
 
-/* Name Form */
 .name-form {
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
+  flex-shrink: 0;
+}
+
+.name-container.keyboard-open .name-form {
+  margin-bottom: 1rem;
 }
 
 .name-input-group {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.2rem;
+}
+
+.name-container.keyboard-open .name-input-group {
+  gap: 1rem;
 }
 
 .input-container {
@@ -98,169 +141,284 @@
 
 .input-label {
   display: block;
-  font-family: var(--font-primary);
-  font-size: 1rem;
+  font-size: clamp(0.85rem, 2.2vw, 0.95rem);
   color: #333;
-  font-weight: var(--font-semi-bold);
   margin-bottom: 0.5rem;
-  letter-spacing: -0.01em;
+  font-weight: 500;
 }
 
 .name-input {
   width: 100%;
-  padding: 1rem 1.2rem;
-  font-family: var(--font-primary);
-  font-size: 1.1rem;
-  font-weight: var(--font-regular);
-  border: 3px solid #e9ecef;
+  padding: 1rem;
+  border: 2px solid #e9ecef;
   border-radius: 0.8rem;
   outline: none;
-  transition: all 0.3s ease;
-  background: #fff;
+  font-size: 16px;
+  min-height: 52px;
   box-sizing: border-box;
-  letter-spacing: 0.01em;
-  height: 55px;
-}
-
-.name-input:hover {
-  border-color: #dc3545;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(220, 53, 69, 0.15);
+  transition: all 0.3s ease;
+  background: #ffffff;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .name-input:focus {
   border-color: #dc3545;
-  background: linear-gradient(135deg, #fff5f5, #ffe6e6);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.2);
+  background: #fff5f5;
+  box-shadow: 0 6px 18px rgba(220, 53, 69, 0.2);
+  transform: none;
+}
+
+.name-input:hover {
+  border-color: #dc3545;
+  transform: none;
 }
 
 .name-input::placeholder {
-  font-family: var(--font-primary);
-  font-weight: var(--font-light);
-  color: #999;
+  color: #adb5bd;
 }
 
-/* Action Buttons */
 .name-actions {
-  display: flex;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: clamp(0.5rem, 2vw, 0.8rem);
   width: 100%;
+  margin-top: auto;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.name-actions.keyboard-open {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f0f0;
+  background: #ffffff;
+  position: sticky;
+  bottom: 0;
 }
 
 .back-button {
-  flex: 1;
-  padding: 1rem 1.5rem;
+  padding: clamp(0.7rem, 2vw, 0.9rem) clamp(0.5rem, 2vw, 1rem);
   border: 2px solid #dc3545;
   border-radius: 0.8rem;
   background: transparent;
   color: #dc3545;
-  font-family: var(--font-primary);
-  font-size: 1.1rem;
-  font-weight: var(--font-semi-bold);
   cursor: pointer;
+  min-height: 48px;
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
+  font-weight: 600;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .back-button:hover {
   background: #fff5f5;
-  transform: translateY(-1px);
+}
+
+.back-button:active {
+  transform: scale(0.98);
 }
 
 .continue-button {
-  flex: 2;
-  padding: 1rem 1.5rem;
+  padding: clamp(0.7rem, 2vw, 0.9rem) clamp(0.5rem, 2vw, 1rem);
   border: none;
   border-radius: 0.8rem;
   background: linear-gradient(135deg, #dc3545, #c82333);
   color: white;
-  font-family: var(--font-primary);
-  font-size: 1.1rem;
-  font-weight: var(--font-semi-bold);
   cursor: pointer;
+  min-height: 48px;
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
+  font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .continue-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+  box-shadow: 0 6px 16px rgba(220, 53, 69, 0.4);
+}
+
+.continue-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .continue-button:disabled {
   background: #ccc;
   cursor: not-allowed;
-  transform: none;
   box-shadow: none;
+  transform: none;
 }
 
-/* Responsive Design */
+/* Mobile adjustments */
 @media (max-width: 768px) {
   .name-container {
-    padding: 1.5rem;
+    padding: 0.8rem;
+    align-items: center;
   }
-  
+
+  .name-container.keyboard-open {
+    padding: 0.8rem;
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
   .name-content {
-    padding: 2.5rem 2rem;
-    max-width: 90%;
+    padding: 1.5rem 1.2rem;
+    max-width: 100%;
+    border-radius: 1.2rem;
+    margin: 0;
   }
-  
-  .name-title {
-    font-size: 2rem;
+
+  .name-container.keyboard-open .name-content {
+    padding: 1.5rem 1.2rem;
+    margin: 0;
   }
-  
-  .name-subtitle {
-    font-size: 1rem;
+
+  .progress-container {
+    margin-bottom: 1.5rem;
   }
-  
-  .name-input {
-    font-size: 1rem;
-    padding: 0.9rem 1rem;
-    height: 50px;
+
+  .progress-container.keyboard-open {
+    margin-bottom: 1rem;
   }
-  
+
+  .name-input-group {
+    gap: 1rem;
+  }
+
+  .name-actions {
+    gap: 0.7rem;
+  }
+
   .back-button,
   .continue-button {
-    font-size: 1rem;
-    padding: 0.9rem 1.2rem;
+    min-height: 48px;
+  }
+
+  .name-container.keyboard-open .name-content {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0rem));
   }
 }
 
-@media (max-width: 480px) {
+/* Extra small devices */
+@media (max-width: 380px) {
   .name-container {
-    padding: 1rem;
+    padding: 0.5rem;
   }
-  
+
   .name-content {
-    padding: 2rem 1.5rem;
-    max-width: 100%;
-    border-radius: 1.5rem;
+    padding: 1.2rem 1rem;
+    border-radius: 1rem;
   }
-  
-  .name-title {
-    font-size: 1.8rem;
-  }
-  
-  .name-subtitle {
-    font-size: 0.95rem;
-  }
-  
-  .name-input-group {
-    gap: 1.2rem;
-  }
-  
+
   .name-input {
-    padding: 0.8rem 1rem;
-    height: 48px;
-    font-size: 0.95rem;
+    padding: 0.85rem;
+    font-size: 16px;
   }
-  
+
   .name-actions {
-    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .progress-container.keyboard-open {
+    margin-bottom: 0.8rem;
+  }
+}
+
+/* Landscape mode on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .name-container {
+    align-items: flex-start;
+    padding-top: 0.5rem;
+  }
+
+  .name-content {
+    padding: 1rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .progress-container {
+    margin-bottom: 0.8rem;
+  }
+
+  .progress-container.keyboard-open {
+    margin-bottom: 0.5rem;
+  }
+
+  .name-header {
+    margin-bottom: 0.8rem;
+  }
+
+  .name-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .name-form {
+    margin-bottom: 0.8rem;
+  }
+
+  .name-input-group {
+    gap: 0.7rem;
+  }
+
+  .name-input {
+    padding: 0.7rem;
+    min-height: 44px;
+  }
+
+  .back-button,
+  .continue-button {
+    min-height: 44px;
+  }
+}
+
+/* High zoom levels */
+@media (min-width: 769px) {
+  .name-actions {
+    grid-template-columns: minmax(100px, 1fr) minmax(180px, 2fr);
+    max-width: 100%;
+  }
+}
+
+/* Very high zoom or small viewports */
+@media (max-width: 350px) {
+  .name-actions {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
   }
   
   .back-button,
   .continue-button {
-    flex: none;
+    width: 100%;
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  .name-container {
+    min-height: -webkit-fill-available;
+  }
+  
+  .name-input {
+    font-size: 16px;
+  }
+}
+
+/* Safe area support for notches */
+@supports (padding: max(0px)) {
+  .name-container {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }

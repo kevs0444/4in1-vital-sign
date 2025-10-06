@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Name.css";
 
@@ -8,14 +8,66 @@ export default function Name() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [isVisible, setIsVisible] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const formRef = useRef(null);
+  const firstNameInputRef = useRef(null);
+  const lastNameInputRef = useRef(null);
+  const initialHeight = useRef(window.innerHeight);
 
   useEffect(() => {
-    // Animation trigger
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
+    const timer = setTimeout(() => setIsVisible(true), 100);
+    initialHeight.current = window.innerHeight;
 
-    return () => clearTimeout(timer);
+    const handleResize = () => {
+      const currentHeight = window.visualViewport?.height || window.innerHeight;
+      const heightDiff = initialHeight.current - currentHeight;
+      
+      // Keyboard is considered open if viewport shrinks by more than 150px
+      const isKeyboard = heightDiff > 150;
+      setIsKeyboardOpen(isKeyboard);
+
+      if (isKeyboard && document.activeElement) {
+        console.log("Keyboard opened, current height:", currentHeight);
+      }
+    };
+
+    const handleFocusIn = (e) => {
+      if (["text", "email", "tel"].includes(e.target.type)) {
+        setTimeout(() => {
+          setIsKeyboardOpen(true);
+        }, 100);
+      }
+    };
+
+    const handleFocusOut = () => {
+      setTimeout(() => {
+        const currentHeight = window.visualViewport?.height || window.innerHeight;
+        const heightDiff = initialHeight.current - currentHeight;
+        if (heightDiff <= 150) {
+          setIsKeyboardOpen(false);
+        }
+      }, 150);
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleResize);
+    } else {
+      window.addEventListener("resize", handleResize);
+    }
+    
+    window.addEventListener("focusin", handleFocusIn);
+    window.addEventListener("focusout", handleFocusOut);
+
+    return () => {
+      clearTimeout(timer);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleResize);
+      } else {
+        window.removeEventListener("resize", handleResize);
+      }
+      window.removeEventListener("focusin", handleFocusIn);
+      window.removeEventListener("focusout", handleFocusOut);
+    };
   }, []);
 
   const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
@@ -25,84 +77,93 @@ export default function Name() {
 
   const handleContinue = () => {
     if (!firstName.trim() || !lastName.trim()) {
-        alert("Please enter both first name and last name");
-        return;
+      alert("Please enter both first name and last name");
+      return;
     }
-    
-    // Pass data to next page
-    navigate("/age", {
-        state: {
-        ...location.state,
-        firstName: firstName.trim(),
-        lastName: lastName.trim()
-        }
-    });
-    };
 
-  const handleBack = () => {
-    navigate("/welcome");
+    navigate("/age", {
+      state: { ...location.state, firstName: firstName.trim(), lastName: lastName.trim() },
+    });
+  };
+
+  const handleBack = () => navigate("/welcome");
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleContinue();
+    }
   };
 
   return (
-    <div className="name-container">
-      <div className={`name-content ${isVisible ? 'visible' : ''}`}>
-        
-        {/* Progress Bar */}
-        <div className="progress-container">
+    <div className={`name-container ${isKeyboardOpen ? "keyboard-open" : ""}`}>
+      <div ref={formRef} className={`name-content ${isVisible ? "visible" : ""}`}>
+        {/* Progress Bar - ALWAYS VISIBLE but smaller when keyboard is open */}
+        <div className={`progress-container ${isKeyboardOpen ? "keyboard-open" : ""}`}>
           <div className="progress-bar">
-            <div className="progress-fill" style={{width: '33%'}}></div>
+            <div className="progress-fill" style={{ width: "33%" }}></div>
           </div>
           <span className="progress-step">Step 1 of 3</span>
         </div>
 
-        {/* Title */}
-        <div className="name-header">
-          <h1 className="name-title">What's your name?</h1>
-          <p className="name-subtitle">Enter your full name for personalized health tracking</p>
+        <div className={`name-header ${isKeyboardOpen ? "keyboard-open" : ""}`}>
+          <h1 className="name-title">
+            {isKeyboardOpen ? "Enter Your Name" : "What's your name?"}
+          </h1>
+          {!isKeyboardOpen && (
+            <p className="name-subtitle">
+              Enter your full name for personalized health tracking
+            </p>
+          )}
         </div>
 
-        {/* Name Inputs */}
         <div className="name-form">
           <div className="name-input-group">
             <div className="input-container">
-              <label htmlFor="firstName" className="input-label">First Name</label>
+              <label htmlFor="firstName" className="input-label">
+                First Name
+              </label>
               <input
+                ref={firstNameInputRef}
                 type="text"
                 id="firstName"
                 className="name-input"
                 placeholder="Juan"
                 value={firstName}
                 onChange={handleFirstNameChange}
+                onKeyPress={handleKeyPress}
                 required
-                autoFocus
+                inputMode="text"
+                autoComplete="given-name"
               />
             </div>
 
             <div className="input-container">
-              <label htmlFor="lastName" className="input-label">Last Name</label>
+              <label htmlFor="lastName" className="input-label">
+                Last Name
+              </label>
               <input
+                ref={lastNameInputRef}
                 type="text"
                 id="lastName"
                 className="name-input"
                 placeholder="Dela Cruz"
                 value={lastName}
                 onChange={handleLastNameChange}
+                onKeyPress={handleKeyPress}
                 required
+                inputMode="text"
+                autoComplete="family-name"
               />
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="name-actions">
-          <button 
-            className="back-button"
-            onClick={handleBack}
-          >
+        <div className={`name-actions ${isKeyboardOpen ? "keyboard-open" : ""}`}>
+          <button className="back-button" onClick={handleBack}>
             Back
           </button>
-          
-          <button 
+          <button
             className="continue-button"
             onClick={handleContinue}
             disabled={!firstName.trim() || !lastName.trim()}

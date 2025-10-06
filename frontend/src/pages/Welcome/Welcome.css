@@ -1,3 +1,11 @@
+/* Prevent scrolling globally */
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
 .welcome-container {
   display: flex;
   justify-content: center;
@@ -7,7 +15,8 @@
   padding: 2rem;
   box-sizing: border-box;
   min-height: 100vh;
-  overflow-y: auto;
+  /* REMOVED: overflow-y: auto; */
+  overflow: hidden; /* ADDED: Prevent any scrolling */
   letter-spacing: -0.01em;
 }
 
@@ -26,6 +35,8 @@
   transform: translateY(20px);
   transition: all 0.6s ease;
   flex-shrink: 0;
+  /* ADDED: Ensure no overflow */
+  overflow: hidden;
 }
 
 .welcome-content.visible {
@@ -48,6 +59,8 @@
 .welcome-message {
   margin-bottom: 3rem;
   width: 100%;
+  /* ADDED: Prevent text overflow */
+  overflow-wrap: break-word;
 }
 
 .welcome-title {
@@ -244,5 +257,10 @@
   .welcome-container {
     align-items: flex-start;
     padding-top: 2rem;
+  }
+  
+  /* ADDED: Prevent scrolling on smaller heights */
+  .welcome-content {
+    max-height: 95vh;
   }
 }
