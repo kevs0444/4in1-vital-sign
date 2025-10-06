@@ -1,0 +1,10 @@
+:root {
+  --font-primary: 'Outfit', sans-serif;
+  --font-secondary: 'Outfit', sans-serif; /* Same for consistency */
+  /* ... other variables */
+}
+
+body {
+  font-family: var(--font-primary);
+  /* ... */
+}
