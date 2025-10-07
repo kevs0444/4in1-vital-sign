@@ -86,7 +86,6 @@ html, body {
   padding: 1rem;
 }
 
-/* FIXED: Centering the main content */
 .welcome-content {
   background: #ffffff;
   border-radius: var(--border-radius-lg);
@@ -98,15 +97,15 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* Added this */
+  justify-content: center;
   gap: 1.5rem;
-  margin: 0 auto; /* Ensure horizontal centering */
+  margin: 0 auto;
 }
 
-/* Logo Section - 5% smaller */
+/* Logo Section */
 .welcome-logo {
   position: relative;
-  margin: 0 auto; /* Center the logo */
+  margin: 0 auto;
   width: min(450px, 60vw);
   aspect-ratio: 1;
 }
@@ -123,7 +122,7 @@ html, body {
   box-shadow: var(--shadow-soft);
   border: 2px solid rgba(220, 38, 38, 0.1);
   overflow: hidden;
-  margin: 0 auto; /* Center the logo circle */
+  margin: 0 auto;
 }
 
 .juan-logo {
@@ -134,15 +133,15 @@ html, body {
   filter: brightness(1.05) contrast(1.05);
 }
 
-/* Title Section - 5% smaller */
+/* Title Section */
 .welcome-message {
-  margin: 0 auto; /* Center the message */
+  margin: 0 auto;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  width: 100%; /* Ensure it takes full width */
-  max-width: 100%; /* Prevent overflow */
+  width: 100%;
+  max-width: 100%;
 }
 
 .main-title {
@@ -152,7 +151,7 @@ html, body {
   letter-spacing: -0.02em;
   line-height: 1.1;
   margin: 0;
-  text-align: center; /* Ensure text alignment */
+  text-align: center;
 }
 
 .juan-red {
@@ -168,7 +167,7 @@ html, body {
   line-height: 1.2;
   margin: 0;
   opacity: 0.9;
-  text-align: center; /* Ensure text alignment */
+  text-align: center;
 }
 
 .motto {
@@ -179,7 +178,7 @@ html, body {
   opacity: 0.8;
   line-height: 1.3;
   margin: 0;
-  text-align: center; /* Ensure text alignment */
+  text-align: center;
 }
 
 .welcome-subtitle {
@@ -189,29 +188,48 @@ html, body {
   opacity: 0.8;
   line-height: 1.5;
   margin-top: 0.8rem;
-  text-align: center; /* Ensure text alignment */
+  text-align: center;
 }
 
 .welcome-subtitle p {
   margin: 0.4rem 0;
-  text-align: center; /* Ensure text alignment */
+  text-align: center;
 }
 
-/* Terms Section */
+/* Action Section - NEW: Container for terms and button */
+.action-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Terms Section - UPDATED: Centered alignment */
 .terms-section {
-  margin: 0 auto; /* Center the terms section */
+  margin: 0;
   padding: 0;
   width: 100%;
   max-width: 400px;
   display: flex;
-  justify-content: center; /* Center the checkbox */
+  justify-content: center;
+  align-items: center;
+}
+
+.terms-checkbox .form-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
 }
 
 .terms-checkbox .form-check-input {
   width: 1.4em;
   height: 1.4em;
   margin-right: 0.7rem;
-  margin-top: 0.2rem;
+  margin-top: 0;
+  flex-shrink: 0;
 }
 
 .terms-checkbox .form-check-input:checked {
@@ -223,6 +241,9 @@ html, body {
   font-size: 1.35rem;
   color: var(--text-color);
   font-weight: 400;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .terms-link {
@@ -235,6 +256,7 @@ html, body {
   padding: 0.25rem 0.45rem;
   margin: -0.25rem -0.45rem;
   border-radius: 4px;
+  white-space: nowrap;
 }
 
 .terms-link:hover {
@@ -242,7 +264,14 @@ html, body {
   background-color: rgba(220, 38, 38, 0.05);
 }
 
-/* Continue Button - 5% smaller */
+/* Button Section - NEW: Container for button alignment */
+.button-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* Continue Button - UPDATED: Better alignment */
 .continue-button {
   position: relative;
   padding: 1.8rem 4.5rem !important;
@@ -259,10 +288,8 @@ html, body {
   overflow: hidden;
   color: white !important;
   letter-spacing: 0.02em;
-  margin-top: 0.8rem;
-  display: block; /* Ensure button is block level */
-  margin-left: auto; /* Center the button */
-  margin-right: auto; /* Center the button */
+  display: block;
+  margin: 0 auto;
 }
 
 .continue-button:hover:not(:disabled) {
@@ -277,7 +304,7 @@ html, body {
   transform: none !important;
 }
 
-/* Terms Modal - 5% smaller */
+/* Terms Modal */
 .terms-modal .modal-content {
   border-radius: var(--border-radius-lg);
   border: none;
@@ -393,12 +420,12 @@ html, body {
     padding: 2rem 1.5rem;
     max-width: 95%;
     gap: 1.2rem;
-    margin: 0 auto; /* Ensure centering on mobile */
+    margin: 0 auto;
   }
   
   .welcome-logo {
     width: min(360px, 65vw);
-    margin: 0 auto; /* Center logo on mobile */
+    margin: 0 auto;
   }
   
   .main-title {
@@ -430,8 +457,6 @@ html, body {
     min-width: 342px;
     padding: 1.6rem 3.6rem !important;
     font-size: 1.71rem !important;
-    margin-left: auto; /* Center button on mobile */
-    margin-right: auto; /* Center button on mobile */
   }
   
   .terms-scroll {

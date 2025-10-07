@@ -28,7 +28,7 @@ export default function Welcome() {
   return (
     <Container fluid className="welcome-container d-flex align-items-center justify-content-center min-vh-100">
       <Row className="justify-content-center w-100">
-        <Col xs={12} md={10} lg={8} xl={7} className="text-center"> {/* Wider container */}
+        <Col xs={12} md={10} lg={8} xl={7} className="text-center">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -63,45 +63,49 @@ export default function Welcome() {
               </div>
             </div>
 
-            {/* Terms and Conditions */}
-            <div className="terms-section mb-3">
-              <Form.Group controlId="termsCheckbox" className="d-flex justify-content-center">
-                <Form.Check
-                  type="checkbox"
-                  label={
-                    <span className="ms-2">
-                      I agree to the{" "}
-                      <Button 
-                        variant="link" 
-                        className="terms-link p-0 ms-1" 
-                        onClick={handleShowTerms}
-                      >
-                        Terms and Conditions
-                      </Button>
-                    </span>
-                  }
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="terms-checkbox"
-                />
-              </Form.Group>
-            </div>
+            {/* Terms and Conditions & Button Container */}
+            <div className="action-section">
+              {/* Terms and Conditions */}
+              <div className="terms-section mb-4">
+                <Form.Group controlId="termsCheckbox" className="d-flex justify-content-center align-items-center">
+                  <Form.Check
+                    type="checkbox"
+                    label={
+                      <span className="ms-2">
+                        I agree to the{" "}
+                        <Button 
+                          variant="link" 
+                          className="terms-link p-0 ms-1" 
+                          onClick={handleShowTerms}
+                        >
+                          Terms and Conditions
+                        </Button>
+                      </span>
+                    }
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="terms-checkbox"
+                  />
+                </Form.Group>
+              </div>
 
-            {/* Action Button */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-            >
-              <Button
-                className="continue-button"
-                onClick={handleContinue}
-                disabled={!acceptedTerms}
-                size="lg"
+              {/* Action Button */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+                className="button-section"
               >
-                OK, Let's Start
-              </Button>
-            </motion.div>
+                <Button
+                  className="continue-button"
+                  onClick={handleContinue}
+                  disabled={!acceptedTerms}
+                  size="lg"
+                >
+                  OK, Let's Start
+                </Button>
+              </motion.div>
+            </div>
           </motion.div>
         </Col>
       </Row>
