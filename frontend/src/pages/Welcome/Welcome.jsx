@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Container, Row, Col, Button, Modal, Form } from "react-bootstrap";
 import { motion } from "framer-motion";
 import "./Welcome.css";
-import logo from "../../assets/images/juan.png";
+import logo from "../../assets/images/welcome.png";
 
 export default function Welcome() {
   const navigate = useNavigate();
