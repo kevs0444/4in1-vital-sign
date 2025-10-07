@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from "../../assets/images/juan.png";
+import { Container, Row, Col, Button } from 'react-bootstrap';
+import { motion } from 'framer-motion';
+import { Circle, CheckCircle, Error } from '@mui/icons-material';
+import logo from '../../assets/images/juan.png';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './Standby.css';
 
 export default function Standby() {
@@ -11,29 +15,29 @@ export default function Standby() {
 
   // Backend status check
   useEffect(() => {
-    const checkBackendStatus = async () => {
+    let timeoutId;
+
+    const checkBackendStatus = async (retryCount = 0) => {
       try {
         const response = await fetch('http://127.0.0.1:5000/api/status', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
-        
-        if (response.ok) {
-          setBackendStatus('connected');
-        } else {
-          setBackendStatus('error');
-        }
+
+        setBackendStatus(response.ok ? 'connected' : 'error');
       } catch (error) {
         setBackendStatus('error');
       }
+
+      const delay = backendStatus === 'error' ? Math.min(1000 * 2 ** retryCount, 8000) : 30000;
+      timeoutId = setTimeout(() => checkBackendStatus(retryCount + 1), delay);
     };
 
     checkBackendStatus();
-    const interval = setInterval(checkBackendStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearTimeout(timeoutId);
+  }, [backendStatus]);
 
-  // Update clock
+  // Update clock every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -43,7 +47,7 @@ export default function Standby() {
     setIsPressed(true);
     setTimeout(() => {
       setIsPressed(false);
-      navigate("/welcome");
+      navigate('/welcome');
     }, 200);
   };
 
@@ -63,113 +67,98 @@ export default function Standby() {
       day: 'numeric',
     });
 
-  const getStatusColor = () => {
-    if (backendStatus === 'connected') return '#10b981';
-    if (backendStatus === 'error') return '#ef4444';
-    return '#f59e0b';
+  const getStatusIcon = () => {
+    switch (backendStatus) {
+      case 'connected':
+        return <CheckCircle className="status-icon connected" />;
+      case 'error':
+        return <Error className="status-icon error" />;
+      default:
+        return <Circle className="status-icon checking" />;
+    }
   };
 
   const getStatusText = () => {
-    if (backendStatus === 'connected') return 'System Ready';
-    if (backendStatus === 'error') return 'System Error';
-    return 'Initializing...';
+    switch (backendStatus) {
+      case 'connected':
+        return 'Ready';
+      case 'error':
+        return 'Connecting...';
+      default:
+        return 'Checking...';
+    }
   };
 
   return (
-    <div className="standby-container">
-      {/* Animated Background Grid */}
-      <div className="background-grid"></div>
-
-      {/* Floating Orbs - Light Theme */}
-      <div className="floating-orb orb-1"></div>
-      <div className="floating-orb orb-2"></div>
-      <div className="floating-orb orb-3"></div>
-
-      {/* Status Indicator */}
-      <div className="status-indicator">
-        <div 
-          className="status-dot" 
-          style={{ background: getStatusColor() }}
-        ></div>
-        <span className="status-text">{getStatusText()}</span>
-      </div>
-
-      {/* Main Content Container */}
-      <div className="main-content">
-        
-        {/* Logo/Icon Section */}
-        <div className="logo-section">
-          {/* Outer Ring */}
-          <div className="logo-outer-ring"></div>
-          
-          {/* Main Circle */}
-          <div className="logo-main-circle">
-            {/* Rotating Border */}
-            <div className="logo-rotating-border"></div>
-            
-            {/* Juan Logo */}
-            <div className="logo-image-container">
-              <img 
-                src={logo} 
-                alt="Four-in-Juan Logo" 
-                className="juan-logo"
-              />
-              <div className="logo-glow"></div>
-            </div>
-          </div>
+    <Container fluid className="standby-container">
+      <motion.div
+        className="backend-status"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className={`status-indicator ${backendStatus}`}>
+          {getStatusIcon()}
+          <span className="status-text">{getStatusText()}</span>
         </div>
+      </motion.div>
 
-        {/* Title Section */}
-        <div className="title-section">
-          <h1 className="main-title">Four-in-Juan</h1>
-          <h2 className="subtitle">Vital Sign Sensor</h2>
-          <p className="description">
-            BMI Calculation using AI & IoT for Health Risk Prediction
-          </p>
-        </div>
-
-        {/* Vital Signs Icons */}
-        <div className="vital-signs-icons">
-          {[
-            { icon: '❤️', color: '#dc2626', bg: '#fef2f2', delay: '0s' },
-            { icon: '📊', color: '#dc2626', bg: '#fef2f2', delay: '0.2s' },
-            { icon: '🌡️', color: '#dc2626', bg: '#fef2f2', delay: '0.4s' },
-            { icon: '💨', color: '#dc2626', bg: '#fef2f2', delay: '0.6s' }
-          ].map((item, i) => (
-            <div key={i} className="vital-icon-container">
-              <div 
-                className="vital-icon"
-                style={{ 
-                  color: item.color,
-                  background: item.bg,
-                  animationDelay: item.delay
-                }}
-              >
-                {item.icon}
+      <Row className="justify-content-center align-items-center h-100">
+        <Col xs={12} className="text-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* Logo Section */}
+            <div className="logo-section">
+              <div className="logo-main-circle">
+                <img src={logo} alt="4 in Juan Logo" className="juan-logo" />
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* Time Display */}
-        <div className="time-display">
-          <div className="current-time">{formatTime(currentTime)}</div>
-          <div className="current-date">{formatDate(currentTime)}</div>
-        </div>
+            {/* Title Section */}
+            <div className="title-section">
+              <h1 className="main-title">
+                4 in <span className="juan-red">Juan</span> Vital Kiosk
+              </h1>
+              <p className="motto">
+                Making health accessible to every<span className="juan-red">Juan</span>
+              </p>
+            </div>
 
-        {/* Start Button */}
-        <button
-          onClick={handleStartPress}
-          onTouchStart={() => setIsPressed(true)}
-          onTouchEnd={() => setIsPressed(false)}
-          className={`start-button ${isPressed ? 'pressed' : ''}`}
-        >
-          <div className="button-glow"></div>
-          <span className="button-content">
-            ❤️ TOUCH TO START ❤️
-          </span>
-        </button>
-      </div>
-    </div>
+            {/* Time Display */}
+            <div className="time-display">
+              <div className="current-time">
+                {formatTime(currentTime)}
+              </div>
+              <div className="current-date">
+                {formatDate(currentTime)}
+              </div>
+            </div>
+
+            {/* Start Button */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+            >
+              <Button
+                onClick={handleStartPress}
+                onTouchStart={() => setIsPressed(true)}
+                onTouchEnd={() => setIsPressed(false)}
+                className={`start-button ${isPressed ? 'pressed' : ''}`}
+                size="lg"
+                disabled={backendStatus !== 'connected'}
+              >
+                <span className="button-content">
+                  Touch Screen to Start
+                </span>
+              </Button>
+            </motion.div>
+          </motion.div>
+        </Col>
+      </Row>
+    </Container>
   );
 }
