@@ -10,11 +10,11 @@ export default function Name() {
   const [lastName, setLastName] = useState("");
   const [activeInput, setActiveInput] = useState("first");
   const [isVisible, setIsVisible] = useState(false);
-  const [isCaps, setIsCaps] = useState(false); // ✅ Caps toggle
+  const [isShift, setIsShift] = useState(false); // ✅ Temporary shift (not capslock)
   const firstNameInputRef = useRef(null);
   const lastNameInputRef = useRef(null);
 
-  // Fade-in animation and auto-focus
+  // Fade-in animation and autofocus
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     setTimeout(() => {
@@ -37,28 +37,35 @@ export default function Name() {
     });
   };
 
-  // ✅ Simulates normal typing with Caps Lock toggle
+  // ✅ Shift works for one key only, first letter always uppercase
   const handleKeyboardPress = (key) => {
     if (key === "↑") {
-      setIsCaps((prev) => !prev); // toggle caps lock on/off
+      setIsShift(true); // activate Shift for next character
       return;
     }
 
-    const applyCase = (char) =>
-      isCaps ? char.toUpperCase() : char.toLowerCase();
+    const applyFormatting = (prev, char) => {
+      let nextChar = isShift ? char.toUpperCase() : char.toLowerCase();
+      setIsShift(false); // Shift works only once
 
-    if (activeInput === "first") {
-      if (key === "Del") setFirstName((prev) => prev.slice(0, -1));
-      else if (key === "Space") setFirstName((prev) => prev + " ");
-      else setFirstName((prev) => prev + applyCase(key));
+      const newText = prev + nextChar;
+      // Always capitalize the first letter of the whole text
+      return newText.charAt(0).toUpperCase() + newText.slice(1);
+    };
+
+    if (key === "Del") {
+      if (activeInput === "first") setFirstName((prev) => prev.slice(0, -1));
+      else setLastName((prev) => prev.slice(0, -1));
+    } else if (key === "Space") {
+      if (activeInput === "first") setFirstName((prev) => prev + " ");
+      else setLastName((prev) => prev + " ");
     } else {
-      if (key === "Del") setLastName((prev) => prev.slice(0, -1));
-      else if (key === "Space") setLastName((prev) => prev + " ");
-      else setLastName((prev) => prev + applyCase(key));
+      if (activeInput === "first")
+        setFirstName((prev) => applyFormatting(prev, key));
+      else setLastName((prev) => applyFormatting(prev, key));
     }
   };
 
-  // ✅ Keyboard layout
   const keyboardKeys = [
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
@@ -133,7 +140,7 @@ export default function Name() {
               </div>
             </div>
 
-            {/* Continue */}
+            {/* Continue Button */}
             <button
               className={`name-continue-btn ${
                 !firstName.trim() || !lastName.trim() ? "disabled" : ""
@@ -160,7 +167,7 @@ export default function Name() {
                     : key === "Space"
                     ? "space-key"
                     : key === "↑"
-                    ? `caps-key ${isCaps ? "active" : ""}`
+                    ? `shift-key ${isShift ? "active" : ""}`
                     : ""
                 }`}
                 onClick={() => handleKeyboardPress(key)}
