@@ -14,29 +14,19 @@ export default function Name() {
   const formRef = useRef(null);
   const firstNameInputRef = useRef(null);
   const lastNameInputRef = useRef(null);
-  const initialHeight = useRef(window.innerHeight);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
-    initialHeight.current = window.innerHeight;
-
-    const handleResize = () => {
-      const currentHeight = window.visualViewport?.height || window.innerHeight;
-    };
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", handleResize);
-    } else {
-      window.addEventListener("resize", handleResize);
-    }
+    
+    // Auto-focus on first name input
+    setTimeout(() => {
+      if (firstNameInputRef.current) {
+        firstNameInputRef.current.focus();
+      }
+    }, 500);
 
     return () => {
       clearTimeout(timer);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", handleResize);
-      } else {
-        window.removeEventListener("resize", handleResize);
-      }
     };
   }, []);
 
@@ -84,7 +74,7 @@ export default function Name() {
               <span className="progress-step">Step 1 of 3</span>
             </div>
 
-            {/* Image Section */}
+            {/* Image Section - Made larger */}
             <div className="name-image" role="img" aria-label="Name Page Illustration">
               <img
                 src={nameImage}
@@ -97,7 +87,7 @@ export default function Name() {
             <div className="name-header">
               <h1 className="name-title">What's your name?</h1>
               <p className="name-subtitle" id="name-subtitle">
-                Enter your full name for personalized health tracking
+                First things first - tell us your name!
               </p>
             </div>
 
@@ -182,6 +172,7 @@ export default function Name() {
           </motion.div>
         </Col>
       </Row>
+      {/* 5% space between container and keyboard */}
       <div className="keyboard-space" aria-hidden="true"></div>
     </Container>
   );
