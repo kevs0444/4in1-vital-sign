@@ -1,27 +1,51 @@
+:root {
+  /* Color Palette - Red Theme */
+  --primary-red: #dc2626;
+  --primary-red-dark: #b91c1c;
+  --primary-red-light: #fef2f2;
+  --text-dark: #0a0908;
+  --text-gray: #4b5563;
+  --text-light: #6b7280;
+  --border-light: #e5e7eb;
+  --border-red: #fecaca;
+  --background-white: #ffffff;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-red: 0 4px 12px rgba(220, 38, 38, 0.15);
+  --shadow-large: 0 20px 40px rgba(220, 38, 38, 0.1);
+  --border-radius: 12px;
+  --border-radius-lg: 20px;
+}
+
+/* Full page layout */
 .age-container {
+  height: 100vh;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #fef2f2 0%, #ffffff 50%, #fef2f2 100%);
+  padding: 1rem;
+}
+
+/* Centered container like Name.jsx */
+.content-area {
+  flex: 1;
+  display: flex;
   align-items: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  font-family: var(--font-primary);
-  padding: 2rem;
-  box-sizing: border-box;
+  justify-content: center;
 }
 
 .age-content {
-  background: #ffffff;
-  border-radius: 2rem;
-  padding: 3rem 2.5rem;
   width: 100%;
-  max-width: 500px;
-  box-shadow: 0 20px 50px rgba(220, 53, 69, 0.15);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
+  max-width: 640px;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 3rem 2.5rem;
+  box-shadow: 0 20px 40px rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.08);
   opacity: 0;
   transform: translateY(20px);
-  transition: all 0.6s ease;
+  transition: all 0.5s ease;
 }
 
 .age-content.visible {
@@ -29,284 +53,213 @@
   transform: translateY(0);
 }
 
-/* Progress Bar */
-.progress-container {
-  margin-bottom: 2.5rem;
-  width: 100%;
+/* Progress */
+.progress-section {
+  text-align: center;
+  margin-bottom: 2rem;
 }
 
 .progress-bar {
+  height: 10px;
   width: 100%;
-  height: 8px;
-  background: #e9ecef;
-  border-radius: 4px;
+  border-radius: 6px;
+  background: #f3f4f6;
   overflow: hidden;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 4px;
-  transition: width 0.5s ease;
+  background: linear-gradient(90deg, #dc2626, #b91c1c);
+  border-radius: 6px;
 }
 
 .progress-step {
-  font-family: var(--font-primary);
-  font-size: 0.9rem;
-  color: #666;
-  font-weight: var(--font-medium);
+  font-size: 0.95rem;
+  color: #6b7280;
 }
 
-/* Header */
-.age-header {
-  margin-bottom: 3rem;
+/* Logo */
+.image-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
 }
 
-.age-title {
-  font-family: var(--font-primary);
-  font-size: 2.2rem;
-  color: #333;
-  font-weight: var(--font-bold);
-  margin-bottom: 0.8rem;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+.age-logo {
+  width: 200px;
+  height: auto;
 }
 
-.age-subtitle {
-  font-family: var(--font-primary);
-  font-size: 1.1rem;
-  color: #666;
-  font-weight: var(--font-regular);
-  margin: 0;
-}
-
-/* Date Selection */
-.date-selection {
-  margin-bottom: 3rem;
-}
-
-.date-input-container {
+/* Text headers */
+.header-section {
+  text-align: center;
   margin-bottom: 2rem;
 }
 
-.date-label {
-  display: block;
-  font-family: var(--font-primary);
-  font-size: 1.1rem;
-  color: #333;
-  font-weight: var(--font-semi-bold);
-  margin-bottom: 1rem;
-  text-align: center;
+.main-title {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #0a0908;
+  margin-bottom: 0.5rem;
 }
 
-.date-input {
-  width: 100%;
-  max-width: 280px;
-  padding: 1rem 1.5rem;
-  font-family: var(--font-primary);
-  font-size: 1.1rem;
-  font-weight: var(--font-regular);
-  border: 3px solid #e9ecef;
-  border-radius: 1rem;
-  outline: none;
-  transition: all 0.3s ease;
-  background: #fff;
-  box-sizing: border-box;
-  text-align: center;
-  cursor: pointer;
+.subtitle {
+  color: #4b5563;
+  font-size: 1.15rem;
 }
 
-.date-input:hover {
-  border-color: #dc3545;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(220, 53, 69, 0.15);
-}
-
-.date-input:focus {
-  border-color: #dc3545;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.2);
-  background: linear-gradient(135deg, #fff5f5, #ffe6e6);
-}
-
-/* Age Display */
-.age-display {
-  animation: fadeInUp 0.5s ease;
-}
-
-.age-bubble {
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
-  padding: 1.5rem 2rem;
-  border-radius: 1.5rem;
-  display: inline-flex;
+/* Input group (centered and matched with Name.jsx size) */
+.input-group {
+  display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
-  transform: translateY(0);
-  transition: all 0.3s ease;
+  justify-content: center;
+  margin-bottom: 2.5rem;
+  text-align: center;
 }
 
-.age-bubble:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 35px rgba(220, 53, 69, 0.4);
+.input-label {
+  font-size: 1.2rem;
+  color: #0a0908;
+  margin-bottom: 0.75rem;
+  text-align: center;
 }
 
-.age-text {
-  font-family: var(--font-primary);
-  font-size: 1rem;
-  font-weight: var(--font-medium);
-  opacity: 0.9;
-}
-
-.age-number {
-  font-family: var(--font-primary);
+/* Same width and length as Name.jsx input box */
+.age-display {
+  width: 320px;
+  height: 100px;
   font-size: 3rem;
-  font-weight: var(--font-black);
-  line-height: 1;
-}
-
-.age-years {
-  font-family: var(--font-primary);
-  font-size: 1rem;
-  font-weight: var(--font-medium);
-  opacity: 0.9;
-}
-
-/* Action Buttons */
-.age-actions {
+  font-weight: 700;
+  border-radius: 18px;
+  border: 2px solid #e5e7eb;
+  background: #fff;
+  color: #111827;
+  text-align: center;
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.5rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Age Textbox Styling */
+.age-display {
+  width: 320px;
+  height: 100px;
+  font-size: 3rem;
+  font-weight: 700;
+  border-radius: 18px;
+  border: 2px solid var(--border-light);
+  background: var(--background-white);
+  color: var(--text-dark);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+/* Highlight when filled or focused */
+.age-display.filled {
+  border-color: var(--primary-red);
+  box-shadow: var(--shadow-red);
+}
+
+.age-display:hover {
+  border-color: var(--primary-red);
+}
+
+/* Placeholder style */
+.placeholder-text {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Continue Button */
+.continue-btn {
   width: 100%;
-}
-
-.back-button {
-  flex: 1;
-  padding: 1rem 1.5rem;
-  border: 2px solid #dc3545;
-  border-radius: 0.8rem;
-  background: transparent;
-  color: #dc3545;
-  font-family: var(--font-primary);
-  font-size: 1.1rem;
-  font-weight: var(--font-semi-bold);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.back-button:hover {
-  background: #fff5f5;
-  transform: translateY(-1px);
-}
-
-.continue-button {
-  flex: 2;
-  padding: 1rem 1.5rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 600;
   border: none;
-  border-radius: 0.8rem;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
-  font-family: var(--font-primary);
-  font-size: 1.1rem;
-  font-weight: var(--font-semi-bold);
+  border-radius: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
 }
 
-.continue-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
-}
-
-.continue-button:disabled {
-  background: #ccc;
+.continue-btn.disabled {
+  background: #d1d5db;
+  color: #9ca3af;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
 }
 
-/* Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.continue-btn:not(.disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.3);
 }
 
-/* Responsive Design */
+/* Numpad */
+.numpad-section {
+  background: #ffffff;
+  padding: 1.2rem 1.5rem 1.5rem;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -6px 20px rgba(220, 38, 38, 0.08);
+}
+
+.numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.numpad-btn {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.8rem;
+  font-weight: 600;
+  padding: 1rem 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.numpad-btn:hover {
+  background: #fecaca;
+}
+
+.numpad-btn.clear,
+.numpad-btn.delete {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.numpad-btn:active {
+  transform: scale(0.96);
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-  .age-container {
-    padding: 1.5rem;
-  }
-  
   .age-content {
-    padding: 2.5rem 2rem;
-    max-width: 90%;
+    padding: 2rem;
   }
-  
-  .age-title {
+  .main-title {
     font-size: 2rem;
   }
-  
-  .age-subtitle {
+  .subtitle {
     font-size: 1rem;
   }
-  
-  .date-input {
-    max-width: 250px;
-    padding: 0.9rem 1.2rem;
-    font-size: 1rem;
+  .age-display {
+    width: 260px;
+    height: 85px;
+    font-size: 2.8rem;
   }
-  
-  .age-number {
-    font-size: 2.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .age-container {
-    padding: 1rem;
-  }
-  
-  .age-content {
-    padding: 2rem 1.5rem;
-    max-width: 100%;
-    border-radius: 1.5rem;
-  }
-  
-  .age-title {
-    font-size: 1.8rem;
-  }
-  
-  .age-subtitle {
-    font-size: 0.95rem;
-  }
-  
-  .date-input {
-    max-width: 100%;
-  }
-  
-  .age-bubble {
-    padding: 1.2rem 1.5rem;
-  }
-  
-  .age-number {
-    font-size: 2.2rem;
-  }
-  
-  .age-actions {
-    flex-direction: column;
-  }
-  
-  .back-button,
-  .continue-button {
-    flex: none;
+  .numpad-btn {
+    font-size: 1.6rem;
   }
 }

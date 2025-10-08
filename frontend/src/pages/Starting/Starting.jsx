@@ -15,7 +15,6 @@ export default function Starting() {
   });
 
   useEffect(() => {
-    // Get user data from location state
     if (location.state) {
       setUserData({
         firstName: location.state.firstName || "",
@@ -24,21 +23,12 @@ export default function Starting() {
         sex: location.state.sex || ""
       });
     }
-    
-    // Animation trigger
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
-
+    const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
   }, [location.state]);
 
   const handleStartMeasurements = () => {
-    navigate("/weight");
-  };
-
-  const handleBack = () => {
-    navigate("/sex");
+    navigate("/weight", { state: userData });
   };
 
   const getSexDisplay = (sex) => {
@@ -120,15 +110,8 @@ export default function Starting() {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Start Button */}
         <div className="starting-actions">
-          <button 
-            className="back-button"
-            onClick={handleBack}
-          >
-            Back
-          </button>
-          
           <button 
             className="start-button"
             onClick={handleStartMeasurements}

@@ -8,26 +8,20 @@ export default function Name() {
   const location = useLocation();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [activeInput, setActiveInput] = useState("first");
   const [isVisible, setIsVisible] = useState(false);
+  const [isCaps, setIsCaps] = useState(false); // ✅ Caps toggle
   const firstNameInputRef = useRef(null);
+  const lastNameInputRef = useRef(null);
 
+  // Fade-in animation and auto-focus
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
-    
-    // Auto-focus on first name input
     setTimeout(() => {
-      if (firstNameInputRef.current) {
-        firstNameInputRef.current.focus();
-      }
+      if (firstNameInputRef.current) firstNameInputRef.current.focus();
     }, 500);
-
     return () => clearTimeout(timer);
   }, []);
-
-  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
-
-  const handleFirstNameChange = (e) => setFirstName(capitalize(e.target.value));
-  const handleLastNameChange = (e) => setLastName(capitalize(e.target.value));
 
   const handleContinue = () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -35,80 +29,115 @@ export default function Name() {
       return;
     }
     navigate("/age", {
-      state: { ...location.state, firstName: firstName.trim(), lastName: lastName.trim() },
+      state: {
+        ...location.state,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      },
     });
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleContinue();
+  // ✅ Simulates normal typing with Caps Lock toggle
+  const handleKeyboardPress = (key) => {
+    if (key === "↑") {
+      setIsCaps((prev) => !prev); // toggle caps lock on/off
+      return;
+    }
+
+    const applyCase = (char) =>
+      isCaps ? char.toUpperCase() : char.toLowerCase();
+
+    if (activeInput === "first") {
+      if (key === "Del") setFirstName((prev) => prev.slice(0, -1));
+      else if (key === "Space") setFirstName((prev) => prev + " ");
+      else setFirstName((prev) => prev + applyCase(key));
+    } else {
+      if (key === "Del") setLastName((prev) => prev.slice(0, -1));
+      else if (key === "Space") setLastName((prev) => prev + " ");
+      else setLastName((prev) => prev + applyCase(key));
     }
   };
 
+  // ✅ Keyboard layout
+  const keyboardKeys = [
+    ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+    ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+    ["↑", "Z", "X", "C", "V", "B", "N", "M", "Del"],
+    ["Space"],
+  ];
+
   return (
     <div className="name-container">
-      <div className="content-area">
-        <div className={`name-content ${isVisible ? 'visible' : ''}`}>
+      <div className="name-content-area">
+        <div className={`name-content ${isVisible ? "visible" : ""}`}>
           {/* Progress Bar */}
-          <div className="progress-section">
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: "33%" }}></div>
+          <div className="name-progress-section">
+            <div className="name-progress-bar">
+              <div className="name-progress-fill" style={{ width: "33%" }}></div>
             </div>
-            <span className="progress-step">Step 1 of 3</span>
+            <span className="name-progress-step">Step 1 of 3</span>
           </div>
 
-          {/* Image Section with Logo */}
-          <div className="image-section">
-            <img
-              src={nameImage}
-              alt="Name Page Illustration"
-              className="name-logo"
-            />
+          {/* Image */}
+          <div className="name-image-section">
+            <img src={nameImage} alt="Name Page" className="name-logo" />
           </div>
 
-          {/* Header Section */}
-          <div className="header-section">
-            <h1 className="main-title">What's your name?</h1>
-            <p className="subtitle">Great to have you here! Let's start with your name</p>
+          {/* Header */}
+          <div className="name-header-section">
+            <h1 className="name-main-title">What's your name?</h1>
+            <p className="name-subtitle">
+              Great to have you here! Let's start with your name
+            </p>
           </div>
 
-          {/* Form Section */}
-          <div className="form-section">
-            <div className="input-group">
-              <div className="input-field">
-                <label htmlFor="firstName" className="input-label">First Name</label>
+          {/* Form */}
+          <div className="name-form-section">
+            <div className="name-input-group">
+              {/* First Name */}
+              <div className="name-input-field">
+                <label htmlFor="firstName" className="name-input-label">
+                  First Name
+                </label>
                 <input
                   ref={firstNameInputRef}
                   id="firstName"
                   type="text"
-                  className="text-input"
+                  className={`name-text-input ${
+                    activeInput === "first" ? "active" : ""
+                  }`}
                   placeholder="Juan"
                   value={firstName}
-                  onChange={handleFirstNameChange}
-                  onKeyPress={handleKeyPress}
-                  autoComplete="given-name"
+                  onFocus={() => setActiveInput("first")}
+                  readOnly
                 />
               </div>
 
-              <div className="input-field">
-                <label htmlFor="lastName" className="input-label">Last Name</label>
+              {/* Last Name */}
+              <div className="name-input-field">
+                <label htmlFor="lastName" className="name-input-label">
+                  Last Name
+                </label>
                 <input
+                  ref={lastNameInputRef}
                   id="lastName"
                   type="text"
-                  className="text-input"
+                  className={`name-text-input ${
+                    activeInput === "last" ? "active" : ""
+                  }`}
                   placeholder="Dela Cruz"
                   value={lastName}
-                  onChange={handleLastNameChange}
-                  onKeyPress={handleKeyPress}
-                  autoComplete="family-name"
+                  onFocus={() => setActiveInput("last")}
+                  readOnly
                 />
               </div>
             </div>
 
-            {/* Continue Button */}
+            {/* Continue */}
             <button
-              className={`continue-btn ${!firstName.trim() || !lastName.trim() ? 'disabled' : ''}`}
+              className={`name-continue-btn ${
+                !firstName.trim() || !lastName.trim() ? "disabled" : ""
+              }`}
               onClick={handleContinue}
               disabled={!firstName.trim() || !lastName.trim()}
             >
@@ -117,9 +146,31 @@ export default function Name() {
           </div>
         </div>
       </div>
-      
-      {/* 30% Keyboard Space */}
-      <div className="keyboard-space"></div>
+
+      {/* ✅ Custom Keyboard */}
+      <div className="custom-keyboard">
+        {keyboardKeys.map((row, rowIndex) => (
+          <div key={rowIndex} className="keyboard-row">
+            {row.map((key) => (
+              <button
+                key={key}
+                className={`keyboard-key ${
+                  key === "Del"
+                    ? "delete-key"
+                    : key === "Space"
+                    ? "space-key"
+                    : key === "↑"
+                    ? `caps-key ${isCaps ? "active" : ""}`
+                    : ""
+                }`}
+                onClick={() => handleKeyboardPress(key)}
+              >
+                {key === "Space" ? "Space" : key}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

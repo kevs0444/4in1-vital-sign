@@ -45,7 +45,7 @@ body {
 }
 
 /* Content Area - 70% of screen */
-.content-area {
+.name-content-area {
   height: 70vh;
   height: 70dvh;
   display: flex;
@@ -68,12 +68,12 @@ body {
   transform: translateY(20px);
   transition: all 0.5s ease;
   height: auto;
-  max-height: none; /* Remove max-height restriction */
-  overflow-y: visible; /* No scrolling */
+  max-height: none;
+  overflow-y: visible;
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Distribute space evenly */
-  gap: 0; /* Remove gap, use margins instead */
+  justify-content: space-between;
+  gap: 0;
 }
 
 .name-content.visible {
@@ -82,7 +82,7 @@ body {
 }
 
 /* Keyboard Space - 30% of screen */
-.keyboard-space {
+.name-keyboard-space {
   height: 30vh;
   height: 30dvh;
   width: 100%;
@@ -90,23 +90,23 @@ body {
   background: transparent;
 }
 
-/* Progress Section - Larger with more space */
-.progress-section {
+/* Progress Section */
+.name-progress-section {
   text-align: center;
   margin-bottom: 2.5rem;
   flex-shrink: 0;
 }
 
-.progress-bar {
+.name-progress-bar {
   width: 100%;
-  height: 10px; /* Thicker progress bar */
+  height: 10px;
   background: var(--border-light);
   border-radius: 5px;
   overflow: hidden;
   margin-bottom: 1rem;
 }
 
-.progress-fill {
+.name-progress-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--primary-red), var(--primary-red-dark));
   border-radius: 5px;
@@ -114,14 +114,14 @@ body {
   position: relative;
 }
 
-.progress-step {
-  font-size: 1.1rem; /* Larger text */
+.name-progress-step {
+  font-size: 1.1rem;
   color: var(--text-light);
   font-weight: 500;
 }
 
-/* Image Section with Logo - Larger with more space */
-.image-section {
+/* Image Section with Logo */
+.name-image-section {
   display: flex;
   justify-content: center;
   margin-bottom: 2rem;
@@ -129,130 +129,132 @@ body {
 }
 
 .name-logo {
-  width: 200px; /* Much larger logo */
+  width: 200px;
   height: auto;
   object-fit: contain;
 }
 
-/* Header Section - Larger with more space */
-.header-section {
+/* Header Section */
+.name-header-section {
   text-align: center;
-  margin-bottom: 3rem; /* More space below header */
+  margin-bottom: 3rem;
   flex-shrink: 0;
 }
 
-.main-title {
-  font-size: 2.5rem; /* Much larger title */
+.name-main-title {
+  font-size: 2.5rem;
   font-weight: 700;
   color: var(--text-dark);
   line-height: 1.2;
-  margin-bottom: 1rem; /* More space below title */
+  margin-bottom: 1rem;
   letter-spacing: -0.02em;
 }
 
-.subtitle {
-  font-size: 1.4rem; /* Much larger subtitle */
+.name-subtitle {
+  font-size: 1.4rem;
   color: var(--text-gray);
   line-height: 1.5;
   font-weight: 400;
 }
 
-/* Form Section - Takes remaining space */
-.form-section {
+/* Form Section */
+.name-form-section {
   width: 100%;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 0; /* Allow shrinking */
+  min-height: 0;
 }
 
-.input-group {
+.name-input-group {
   display: flex;
   flex-direction: column;
-  gap: 2rem; /* More spacing between inputs */
+  gap: 2rem;
   margin-bottom: 2.5rem;
   flex: 1;
   justify-content: center;
 }
 
-.input-field {
+.name-input-field {
   width: 100%;
 }
 
-.input-label {
+/* Left-aligned Input Labels */
+.name-input-label {
   display: block;
-  font-size: 1.3rem; /* Much larger labels */
+  font-size: 1.3rem;
   font-weight: 600;
   color: var(--text-dark);
-  margin-bottom: 1rem; /* More space below labels */
+  margin-bottom: 1rem;
   text-align: left;
+  padding-left: 0.5rem;
 }
 
-/* Much Larger Text Inputs */
-.text-input {
+/* Text Inputs */
+.name-text-input {
   width: 100%;
-  padding: 1.25rem 1.5rem; /* More padding */
-  border: 2px solid #e5e7eb;
+  padding: 1.25rem 1.5rem;
+  border: 2px solid var(--border-light);
   border-radius: var(--border-radius);
-  font-size: 1.3rem; /* Much larger font */
+  font-size: 1.3rem;
   background: var(--background-white);
   transition: all 0.3s ease;
   outline: none;
   color: var(--text-dark);
-  min-height: 70px; /* Much taller inputs */
+  min-height: 70px;
   line-height: 1.5;
   -webkit-appearance: none;
-  -moz-appearance: none;
+  -moz-appearance: textfield;
   appearance: none;
 }
 
 /* Focus state */
-.text-input:focus {
+.name-text-input:focus {
   border-color: var(--primary-red);
   background: var(--primary-red-light);
   box-shadow: var(--shadow-red);
   transform: translateY(-1px);
 }
 
-.text-input:hover {
+.name-text-input:hover {
   border-color: var(--primary-red);
 }
 
-.text-input::placeholder {
+.name-text-input::placeholder {
   color: var(--text-light);
-  font-size: 1.3rem; /* Larger placeholder */
+  font-size: 1.3rem;
 }
 
-/* Much Larger Continue Button */
-.continue-btn {
+/* Continue Button */
+.name-continue-btn {
   width: 100%;
   padding: 1.25rem 2rem;
   background: linear-gradient(135deg, var(--primary-red), var(--primary-red-dark));
   color: white;
   border: none;
   border-radius: var(--border-radius);
-  font-size: 1.3rem; /* Much larger font */
+  font-size: 1.3rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: var(--shadow-red);
-  min-height: 70px; /* Same height as inputs */
+  min-height: 70px;
   line-height: 1.5;
   flex-shrink: 0;
 }
 
-.continue-btn:not(.disabled):hover {
+.name-continue-btn:not(.disabled):hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(220, 38, 38, 0.35);
   background: linear-gradient(135deg, var(--primary-red-dark), #991b1b);
 }
 
-.continue-btn:not(.disabled):active {
+.name-continue-btn:not(.disabled):active {
   transform: translateY(0);
 }
 
-.continue-btn.disabled {
+.name-continue-btn.disabled {
   background: #d1d5db;
   color: #9ca3af;
   cursor: not-allowed;
@@ -262,7 +264,7 @@ body {
 
 /* Responsive Design for Mobile */
 @media (max-width: 768px) {
-  .content-area {
+  .name-content-area {
     padding: 0.75rem;
     height: 70vh;
     height: 70dvh;
@@ -273,11 +275,11 @@ body {
     padding: 2rem;
   }
 
-  .main-title {
+  .name-main-title {
     font-size: 2rem;
   }
 
-  .subtitle {
+  .name-subtitle {
     font-size: 1.1rem;
   }
 
@@ -285,33 +287,28 @@ body {
     width: 160px;
   }
 
-  .input-label {
+  .name-input-label {
     font-size: 1.1rem;
   }
 
-  .text-input {
+  .name-text-input {
     padding: 1rem 1.25rem;
     font-size: 1.1rem;
     min-height: 60px;
   }
 
-  .text-input::placeholder {
+  .name-text-input::placeholder {
     font-size: 1.1rem;
   }
 
-  .continue-btn {
+  .name-continue-btn {
     padding: 1rem 1.75rem;
     font-size: 1.1rem;
     min-height: 60px;
   }
 
-  .progress-step {
+  .name-progress-step {
     font-size: 1rem;
-  }
-
-  .keyboard-space {
-    height: 30vh;
-    height: 30dvh;
   }
 }
 
@@ -320,11 +317,11 @@ body {
     padding: 1.5rem;
   }
 
-  .main-title {
+  .name-main-title {
     font-size: 1.8rem;
   }
 
-  .subtitle {
+  .name-subtitle {
     font-size: 1rem;
   }
 
@@ -332,44 +329,45 @@ body {
     width: 140px;
   }
 
-  .input-group {
+  .name-input-group {
     gap: 1.5rem;
     margin-bottom: 2rem;
   }
 
-  .input-label {
+  .name-input-label {
     font-size: 1rem;
     margin-bottom: 0.75rem;
+    padding-left: 0.25rem;
   }
 
-  .text-input {
+  .name-text-input {
     padding: 0.9rem 1.125rem;
     font-size: 1rem;
     min-height: 55px;
   }
 
-  .text-input::placeholder {
+  .name-text-input::placeholder {
     font-size: 1rem;
   }
 
-  .continue-btn {
+  .name-continue-btn {
     padding: 0.9rem 1.5rem;
     font-size: 1rem;
     min-height: 55px;
   }
 
-  .progress-section {
+  .name-progress-section {
     margin-bottom: 2rem;
   }
 
-  .header-section {
+  .name-header-section {
     margin-bottom: 2rem;
   }
 }
 
-/* Landscape mode adjustments - Prevent keyboard overlap */
+/* Landscape mode adjustments */
 @media (max-height: 700px) and (orientation: landscape) {
-  .content-area {
+  .name-content-area {
     height: 70vh;
     height: 70dvh;
   }
@@ -378,7 +376,7 @@ body {
     padding: 1.5rem;
   }
 
-  .image-section {
+  .name-image-section {
     margin-bottom: 1rem;
   }
 
@@ -386,99 +384,58 @@ body {
     width: 120px;
   }
 
-  .header-section {
+  .name-header-section {
     margin-bottom: 1.5rem;
   }
 
-  .main-title {
+  .name-main-title {
     font-size: 1.6rem;
     margin-bottom: 0.5rem;
   }
 
-  .subtitle {
+  .name-subtitle {
     font-size: 0.9rem;
   }
 
-  .input-group {
+  .name-input-group {
     gap: 1rem;
     margin-bottom: 1.5rem;
   }
 
-  .input-label {
+  .name-input-label {
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
+    padding-left: 0.25rem;
   }
 
-  .text-input {
+  .name-text-input {
     padding: 0.8rem 1rem;
     font-size: 0.9rem;
     min-height: 50px;
   }
 
-  .text-input::placeholder {
+  .name-text-input::placeholder {
     font-size: 0.9rem;
   }
 
-  .continue-btn {
+  .name-continue-btn {
     padding: 0.8rem 1rem;
     font-size: 0.9rem;
     min-height: 50px;
   }
 
-  .progress-section {
+  .name-progress-section {
     margin-bottom: 1.5rem;
-  }
-
-  .keyboard-space {
-    height: 30vh;
-    height: 30dvh;
-  }
-}
-
-/* Very small height devices */
-@media (max-height: 600px) {
-  .name-content {
-    padding: 1rem;
-  }
-
-  .progress-section {
-    margin-bottom: 1rem;
-  }
-
-  .image-section {
-    margin-bottom: 0.75rem;
-  }
-
-  .name-logo {
-    width: 100px;
-  }
-
-  .header-section {
-    margin-bottom: 1rem;
-  }
-
-  .main-title {
-    font-size: 1.4rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .subtitle {
-    font-size: 0.8rem;
-  }
-
-  .input-group {
-    gap: 0.75rem;
-    margin-bottom: 1rem;
   }
 }
 
 /* Clean focus styles - No double borders */
-.text-input:focus-visible {
+.name-text-input:focus-visible {
   outline: none;
   border-color: var(--primary-red);
 }
 
-.continue-btn:focus-visible {
+.name-continue-btn:focus-visible {
   outline: 2px solid var(--primary-red);
   outline-offset: 2px;
 }
@@ -489,17 +446,17 @@ body {
     height: -webkit-fill-available;
   }
   
-  .content-area {
+  .name-content-area {
     height: 70vh;
   }
   
-  .keyboard-space {
+  .name-keyboard-space {
     height: 30vh;
   }
   
-  .text-input {
+  .name-text-input {
     -webkit-appearance: none;
-    -moz-appearance: none;
+    -moz-appearance: textfield;
     appearance: none;
     border-radius: var(--border-radius);
   }
@@ -507,19 +464,19 @@ body {
 
 /* Safe area support for notches */
 @supports (padding: max(0px)) {
-  .content-area {
+  .name-content-area {
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
     padding-top: max(1rem, env(safe-area-inset-top));
   }
   
-  .keyboard-space {
+  .name-keyboard-space {
     height: max(30vh, env(safe-area-inset-bottom));
   }
 }
 
 /* Remove any inner shadows and ensure single borders */
-.text-input {
+.name-text-input {
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
@@ -528,6 +485,100 @@ body {
 }
 
 /* Ensure no outline creates double border effect */
-.text-input:focus {
+.name-text-input:focus {
   outline: none !important;
 }
+
+/* ===================== */
+/* 🔠 CUSTOM QWERTY KEYBOARD - MATCH AGE THEME */
+/* ===================== */
+.custom-keyboard {
+  width: 100%;
+  height: 30vh;
+  background: #f9fafb; /* soft neutral background (same as Age.jsx keypad) */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-top: 2px solid #e5e7eb; /* subtle divider line */
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.keyboard-row {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.keyboard-key {
+  background: #f3f4f6; /* soft light gray like Age keypad */
+  border: none;
+  border-radius: 12px;
+  padding: 1rem 1.4rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #111827; /* dark neutral text */
+  cursor: pointer;
+  min-width: 60px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.15s ease-in-out;
+  text-transform: uppercase;
+}
+
+.keyboard-key:hover {
+  background: #fee2e2;
+  transform: translateY(-2px);
+}
+
+.keyboard-key:active {
+  background: #fee2e2;
+  transform: translateY(0);
+}
+
+/* 🔠 CAPS LOCK KEY */
+.caps-key.active {
+  background: #fee2e2; /* blue highlight for active CAPS */
+  color: white;
+}
+
+/* 🔠 DELETE KEY */
+.delete-key {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.delete-key:hover {
+  background: #fca5a5;
+}
+
+.delete-key:active {
+  background: #ef4444;
+  color: white;
+}
+
+/* 🔠 SPACEBAR KEY STYLE */
+.space-key {
+  flex: 1;
+  min-width: 250px;
+  background: #f3f4f6;
+  border-radius: 12px;
+  padding: 1rem 3rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.15s ease-in-out;
+}
+
+.space-key:hover {
+  background: #fee2e2;
+  transform: translateY(-2px);
+}
+
+.space-key:active {
+  background: #fee2e2;
+  transform: translateY(0);
+}
+
