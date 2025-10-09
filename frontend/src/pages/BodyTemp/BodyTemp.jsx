@@ -38,10 +38,25 @@ export default function BodyTemp() {
       return;
     }
 
+    const tempValue = parseFloat(temperature);
+    const tempStatus = getTemperatureStatus(tempValue);
+
+    console.log("📤 BodyTemp Sending Data to Max30102:", {
+      ...location.state,
+      temperature: tempValue,
+      temperatureStatus: tempStatus.text,
+      temperatureStatusClass: tempStatus.class,
+      timestamp: new Date().toISOString()
+    });
+
+    // Navigate to Max30102 page with all collected data including temperature
     navigate("/max30102", {
       state: {
-        ...location.state,
-        temperature: parseFloat(temperature),
+        ...location.state, // Preserve previous data (personal info, etc.)
+        temperature: tempValue,
+        temperatureStatus: tempStatus.text,
+        temperatureStatusClass: tempStatus.class,
+        timestamp: new Date().toISOString()
       },
     });
   };
@@ -52,8 +67,7 @@ export default function BodyTemp() {
     setIsMeasuring(false);
   };
 
-  const getTemperatureStatus = () => {
-    const temp = parseFloat(temperature);
+  const getTemperatureStatus = (temp = parseFloat(temperature)) => {
     if (temp < 36.1) return { text: "Low Temperature", class: "temperature-low" };
     if (temp > 37.5) return { text: "Fever Detected", class: "temperature-fever" };
     return { text: "Normal Temperature", class: "temperature-normal" };

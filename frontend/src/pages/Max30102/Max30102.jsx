@@ -85,13 +85,28 @@ export default function Max30102() {
       return;
     }
     
-    navigate("/saving", {
-      state: {
-        ...location.state,
-        heartRate: parseInt(measurements.heartRate),
-        spo2: parseFloat(measurements.spo2),
-        respiratoryRate: parseInt(measurements.respiratoryRate)
-      }
+    // Create complete data object with all measurements
+    const completeData = {
+      // Personal information from previous steps
+      ...location.state,
+      
+      // Max30102 measurements
+      heartRate: measurements.heartRate ? parseInt(measurements.heartRate) : null,
+      spo2: measurements.spo2 ? parseFloat(measurements.spo2) : null,
+      respiratoryRate: measurements.respiratoryRate ? parseInt(measurements.respiratoryRate) : null,
+      
+      // Additional metadata
+      max30102Complete: true,
+      measurementTimestamp: new Date().toISOString(),
+      
+      // Ensure temperature data is preserved (handle both property names)
+      temperature: location.state?.temperature || location.state?.bodyTemp || null,
+      bodyTemp: location.state?.bodyTemp || location.state?.temperature || null
+    };
+    
+    // Navigate to Result.jsx with ALL collected data
+    navigate("/result", {
+      state: completeData
     });
   };
 
@@ -319,7 +334,7 @@ export default function Max30102() {
             onClick={handleContinue}
             disabled={!measurementComplete}
           >
-            Save Data
+            View AI Results
           </button>
         </div>
       </div>

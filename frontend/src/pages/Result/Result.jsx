@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import AILoading from "../AILoading/AILoading";
 import "./Result.css";
 
 export default function Result() {
@@ -15,14 +16,14 @@ export default function Result() {
 
   useEffect(() => {
     if (location.state) {
-      console.log("Location state:", location.state); // Debug log
+      console.log("📍 Location state received:", location.state);
       setUserData(location.state);
       
       // Simulate AI analysis with delay
       setTimeout(() => {
         analyzeHealthData(location.state);
         setIsAnalyzing(false);
-      }, 2000);
+      }, 3000);
     }
     
     const timer = setTimeout(() => {
@@ -35,16 +36,11 @@ export default function Result() {
   const analyzeHealthData = (data) => {
     let riskScore = 0;
     const calculatedSuggestions = [];
-    const calculatedPreventions = []
-
-    // Simulate AI thinking process with realistic analysis
-    console.log("🤖 AI Analysis Started...");
-    console.log("📊 Processing vital signs data...");
+    const calculatedPreventions = [];
 
     // BMI Analysis
     const bmi = calculateBMI(data);
     if (bmi) {
-      console.log(`📈 Analyzing BMI: ${bmi}`);
       if (bmi < 18.5) {
         riskScore += 15;
         calculatedSuggestions.push("Consider nutritional counseling for healthy weight gain");
@@ -61,13 +57,13 @@ export default function Result() {
     }
 
     // Body Temperature Analysis
-    if (data.bodyTemp) {
-      console.log(`🌡️ Analyzing Temperature: ${data.bodyTemp}°C`);
-      if (data.bodyTemp < 36.0) {
+    const temperature = data.temperature || data.bodyTemp;
+    if (temperature) {
+      if (temperature < 36.0) {
         riskScore += 20;
         calculatedSuggestions.push("Low body temperature detected - monitor for hypothermia symptoms");
         calculatedPreventions.push("Keep warm and monitor temperature regularly");
-      } else if (data.bodyTemp > 37.5) {
+      } else if (temperature > 37.5) {
         riskScore += 25;
         calculatedSuggestions.push("Elevated temperature detected - monitor for fever symptoms");
         calculatedPreventions.push("Stay hydrated and rest adequately");
@@ -76,7 +72,6 @@ export default function Result() {
 
     // Heart Rate Analysis
     if (data.heartRate) {
-      console.log(`💓 Analyzing Heart Rate: ${data.heartRate} BPM`);
       if (data.heartRate < 60) {
         riskScore += 25;
         calculatedSuggestions.push("Low heart rate detected - consider cardiology consultation if symptomatic");
@@ -90,7 +85,6 @@ export default function Result() {
 
     // Blood Oxygen Analysis
     if (data.spo2) {
-      console.log(`🫁 Analyzing Blood Oxygen: ${data.spo2}%`);
       if (data.spo2 < 95 && data.spo2 >= 92) {
         riskScore += 35;
         calculatedSuggestions.push("Mildly low oxygen saturation - monitor during physical activity");
@@ -104,7 +98,6 @@ export default function Result() {
 
     // Respiratory Rate Analysis
     if (data.respiratoryRate) {
-      console.log(`🌬️ Analyzing Respiratory Rate: ${data.respiratoryRate}/min`);
       if (data.respiratoryRate < 12) {
         riskScore += 20;
         calculatedSuggestions.push("Low respiratory rate detected - monitor for breathing difficulties");
@@ -116,8 +109,7 @@ export default function Result() {
       }
     }
 
-    // Age and Demographic Factors (Simulated AI Learning)
-    console.log(`👤 Analyzing demographic factors: Age ${data.age}, ${data.sex}`);
+    // Age and Demographic Factors
     if (data.age > 50) {
       riskScore += 10;
       calculatedSuggestions.push("Regular health screenings recommended for age group");
@@ -137,16 +129,15 @@ export default function Result() {
       calculatedPreventions.push("Coordinate care with primary healthcare provider");
     }
 
-    // Cap risk score and add some random variation to simulate AI uncertainty
+    // Cap risk score and add some random variation
     riskScore = Math.min(riskScore, 100);
-    const aiConfidenceVariation = Math.random() * 10 - 5; // ±5% variation
+    const aiConfidenceVariation = Math.random() * 10 - 5;
     riskScore = Math.max(0, Math.min(100, riskScore + aiConfidenceVariation));
 
-    // Determine risk category with AI-style classification
+    // Determine risk category
     let category = "";
     if (riskScore < 20) {
       category = "Low Risk";
-      // Ensure some suggestions even for low risk
       if (calculatedSuggestions.length === 0) {
         calculatedSuggestions.push("Maintain current healthy lifestyle habits");
         calculatedPreventions.push("Continue regular health monitoring and preventive care");
@@ -158,8 +149,6 @@ export default function Result() {
     } else {
       category = "Critical Risk";
     }
-
-    console.log(`🎯 AI Assessment Complete: ${riskScore}% Risk - ${category}`);
 
     setRiskLevel(Math.round(riskScore));
     setRiskCategory(category);
@@ -173,11 +162,11 @@ export default function Result() {
     return (data.weight / (heightInMeters * heightInMeters)).toFixed(1);
   };
 
-  const getRiskColor = (level) => {
-    if (level < 20) return "#4CAF50"; // Green
-    if (level < 50) return "#FF9800"; // Orange
-    if (level < 75) return "#F44336"; // Red
-    return "#D32F2F"; // Dark Red
+  const getRiskGradient = (level) => {
+    if (level < 20) return "linear-gradient(135deg, #10b981 0%, #34d399 100%)";
+    if (level < 50) return "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)";
+    if (level < 75) return "linear-gradient(135deg, #ef4444 0%, #f87171 100%)";
+    return "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)";
   };
 
   const getDoctorRecommendation = () => {
@@ -195,7 +184,6 @@ export default function Result() {
   const getImprovementTips = () => {
     const tips = [];
     
-    // AI-generated improvement strategies based on risk factors
     const bmi = calculateBMI(userData);
     if (bmi >= 25) {
       tips.push("Aim for 150 minutes of moderate-intensity exercise weekly");
@@ -215,21 +203,21 @@ export default function Result() {
       tips.push("Consider indoor air quality assessment if symptoms persist");
     }
     
-    // General wellness tips from AI knowledge base
+    // General wellness tips
     tips.push("Maintain consistent sleep schedule of 7-9 hours nightly");
     tips.push("Stay hydrated with 2-3 liters of water daily based on activity level");
     tips.push("Incorporate stress-reduction activities like walking or yoga");
     tips.push("Schedule regular health screenings based on age and risk factors");
     
-    return tips.slice(0, 6); // Return top 6 most relevant tips
+    return tips.slice(0, 6);
+  };
+
+  const getTemperatureValue = () => {
+    return userData.temperature || userData.bodyTemp || 'N/A';
   };
 
   const handleNewMeasurement = () => {
     navigate("/");
-  };
-
-  const handleViewHistory = () => {
-    navigate("/history");
   };
 
   return (
@@ -245,34 +233,16 @@ export default function Result() {
         </div>
 
         {/* AI Analysis Loading */}
-        {isAnalyzing && (
-          <div className="ai-analysis-loading">
-            <div className="ai-loader">
-              <div className="ai-brain">🧠</div>
-              <div className="loading-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-            <div className="analysis-text">
-              <h3>AI Analysis in Progress</h3>
-              <p>Our AI engine is analyzing your vital signs and health data...</p>
-              <div className="analysis-steps">
-                <div className="step">✓ Data Validation</div>
-                <div className="step">✓ Pattern Recognition</div>
-                <div className="step active">Risk Assessment</div>
-                <div className="step">Generating Recommendations</div>
-              </div>
-            </div>
-          </div>
-        )}
+        {isAnalyzing && <AILoading />}
 
         {!isAnalyzing && (
           <>
             {/* Patient Summary */}
             <div className="patient-summary">
-              <h2>Patient Information</h2>
+              <div className="summary-header">
+                <h2>Patient Information</h2>
+                <div className="summary-avatar">👤</div>
+              </div>
               <div className="summary-grid">
                 <div className="summary-item">
                   <span className="label">Name:</span>
@@ -290,21 +260,33 @@ export default function Result() {
                     {userData.sex === 'male' ? 'Male' : userData.sex === 'female' ? 'Female' : 'N/A'}
                   </span>
                 </div>
+                <div className="summary-item">
+                  <span className="label">Weight:</span>
+                  <span className="value">{userData.weight || 'N/A'} kg</span>
+                </div>
+                <div className="summary-item">
+                  <span className="label">Height:</span>
+                  <span className="value">{userData.height || 'N/A'} cm</span>
+                </div>
+                <div className="summary-item">
+                  <span className="label">BMI:</span>
+                  <span className="value">{calculateBMI(userData) || 'N/A'}</span>
+                </div>
               </div>
             </div>
 
-            {/* Risk Assessment */}
-            <div className="risk-assessment">
+            {/* Comprehensive Risk Score */}
+            <div className="risk-assessment" style={{background: getRiskGradient(riskLevel)}}>
               <div className="ai-badge">
                 <span className="ai-icon">🤖</span>
                 AI-Powered Assessment
               </div>
-              <h2>Health Risk Analysis</h2>
+              <h2>Comprehensive Risk Score</h2>
               <div className="risk-meter">
-                <div className="risk-score" style={{ color: getRiskColor(riskLevel) }}>
+                <div className="risk-score" style={{ color: 'white' }}>
                   {riskLevel}%
                 </div>
-                <div className="risk-category" style={{ color: getRiskColor(riskLevel) }}>
+                <div className="risk-category" style={{ color: 'white' }}>
                   {riskCategory}
                 </div>
                 <div className="risk-bar">
@@ -312,7 +294,7 @@ export default function Result() {
                     className="risk-progress" 
                     style={{ 
                       width: `${riskLevel}%`,
-                      backgroundColor: getRiskColor(riskLevel)
+                      backgroundColor: 'rgba(255,255,255,0.3)'
                     }}
                   ></div>
                 </div>
@@ -325,57 +307,55 @@ export default function Result() {
               </div>
             </div>
 
-            {/* Vital Signs Overview */}
-            <div className="vitals-overview">
-              <h2>Vital Signs Analysis</h2>
-              <div className="vitals-grid">
-                <div className="vital-card">
-                  <div className="vital-icon">⚖️</div>
-                  <div className="vital-info">
-                    <h3>BMI</h3>
-                    <span className="vital-value">{calculateBMI(userData) || 'N/A'}</span>
-                    <span className="vital-unit">kg/m²</span>
-                  </div>
+            {/* Health Category Classification */}
+            <div className="category-section">
+              <h2>Health Category Classification</h2>
+              <div className="category-cards">
+                <div className="category-card">
+                  <div className="category-icon">🌡️</div>
+                  <h3>Temperature</h3>
+                  <span className="category-status">
+                    {getTemperatureValue() === 'N/A' ? 'Not Measured' : 
+                     parseFloat(getTemperatureValue()) > 37.5 ? 'Elevated' :
+                     parseFloat(getTemperatureValue()) < 36.0 ? 'Low' : 'Normal'}
+                  </span>
                 </div>
-                <div className="vital-card">
-                  <div className="vital-icon">🌡️</div>
-                  <div className="vital-info">
-                    <h3>Temperature</h3>
-                    <span className="vital-value">{userData.bodyTemp || 'N/A'}</span>
-                    <span className="vital-unit">°C</span>
-                  </div>
+                <div className="category-card">
+                  <div className="category-icon">💓</div>
+                  <h3>Heart Rate</h3>
+                  <span className="category-status">
+                    {!userData.heartRate ? 'Not Measured' :
+                     userData.heartRate > 100 ? 'High' :
+                     userData.heartRate < 60 ? 'Low' : 'Normal'}
+                  </span>
                 </div>
-                <div className="vital-card">
-                  <div className="vital-icon">💓</div>
-                  <div className="vital-info">
-                    <h3>Heart Rate</h3>
-                    <span className="vital-value">{userData.heartRate || 'N/A'}</span>
-                    <span className="vital-unit">BPM</span>
-                  </div>
+                <div className="category-card">
+                  <div className="category-icon">🫁</div>
+                  <h3>Blood Oxygen</h3>
+                  <span className="category-status">
+                    {!userData.spo2 ? 'Not Measured' :
+                     userData.spo2 < 95 ? 'Low' : 'Normal'}
+                  </span>
                 </div>
-                <div className="vital-card">
-                  <div className="vital-icon">🫁</div>
-                  <div className="vital-info">
-                    <h3>Blood Oxygen</h3>
-                    <span className="vital-value">{userData.spo2 || 'N/A'}</span>
-                    <span className="vital-unit">%</span>
-                  </div>
-                </div>
-                <div className="vital-card">
-                  <div className="vital-icon">🌬️</div>
-                  <div className="vital-info">
-                    <h3>Respiratory Rate</h3>
-                    <span className="vital-value">{userData.respiratoryRate || 'N/A'}</span>
-                    <span className="vital-unit">/min</span>
-                  </div>
+                <div className="category-card">
+                  <div className="category-icon">🌬️</div>
+                  <h3>Respiratory Rate</h3>
+                  <span className="category-status">
+                    {!userData.respiratoryRate ? 'Not Measured' :
+                     userData.respiratoryRate > 20 ? 'High' :
+                     userData.respiratoryRate < 12 ? 'Low' : 'Normal'}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* AI Recommendations */}
+            {/* Medical Action Recommendations */}
             <div className="recommendations-section">
               <div className="recommendation-column">
-                <h3>🩺 AI Medical Insights</h3>
+                <div className="recommendation-header">
+                  <div className="recommendation-icon">🩺</div>
+                  <h3>Medical Action Recommendations</h3>
+                </div>
                 <div className="suggestions-list">
                   {suggestions.length > 0 ? (
                     suggestions.map((suggestion, index) => (
@@ -394,7 +374,10 @@ export default function Result() {
               </div>
 
               <div className="recommendation-column">
-                <h3>🛡️ Preventive Strategies</h3>
+                <div className="recommendation-header">
+                  <div className="recommendation-icon">🛡️</div>
+                  <h3>Preventive Strategy Plans</h3>
+                </div>
                 <div className="suggestions-list">
                   {preventions.map((prevention, index) => (
                     <div key={index} className="suggestion-item">
@@ -406,20 +389,26 @@ export default function Result() {
               </div>
             </div>
 
-            {/* Doctor Recommendation */}
+            {/* Healthcare Provider Guidance */}
             <div className="doctor-recommendation">
-              <h3>👨‍⚕️ AI Care Recommendation</h3>
+              <div className="recommendation-header">
+                <div className="recommendation-icon">👨‍⚕️</div>
+                <h3>Healthcare Provider Guidance</h3>
+              </div>
               <div className="recommendation-card">
-                <div className="recommendation-icon">🏥</div>
+                <div className="recommendation-icon-large">🏥</div>
                 <div className="recommendation-text">
                   {getDoctorRecommendation()}
                 </div>
               </div>
             </div>
 
-            {/* Improvement Tips */}
+            {/* Wellness Improvement Tips */}
             <div className="improvement-tips">
-              <h3>💪 AI-Generated Wellness Plan</h3>
+              <div className="recommendation-header">
+                <div className="recommendation-icon">💪</div>
+                <h3>Wellness Improvement Tips</h3>
+              </div>
               <div className="tips-grid">
                 {getImprovementTips().map((tip, index) => (
                   <div key={index} className="tip-card">
@@ -437,12 +426,6 @@ export default function Result() {
                 onClick={handleNewMeasurement}
               >
                 Take New Measurement
-              </button>
-              <button 
-                className="view-history-btn"
-                onClick={handleViewHistory}
-              >
-                View History
               </button>
             </div>
 
