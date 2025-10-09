@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BodyTemp.css";
-import tempIcon from "../../assets/icons/temp-icon.png"; // You'll add this icon
+import bodyTempIcon from "../../assets/icons/temp-icon.png";
 
 export default function BodyTemp() {
   const navigate = useNavigate();
@@ -12,22 +12,20 @@ export default function BodyTemp() {
   const [measurementComplete, setMeasurementComplete] = useState(false);
 
   useEffect(() => {
-    // Animation trigger
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 100);
-
     return () => clearTimeout(timer);
   }, []);
 
   const simulateTemperatureMeasurement = () => {
     if (isMeasuring) return;
-    
+
     setIsMeasuring(true);
-    
-    // Simulate measurement process
+
     setTimeout(() => {
-      const randomTemp = (Math.random() * 2 + 36.5).toFixed(1); // Random temp between 36.5-38.5°C
+      // Normal range: 36.1°C - 37.2°C, fever: >37.5°C
+      const randomTemp = (Math.random() * 2 + 36.0).toFixed(1);
       setTemperature(randomTemp);
       setIsMeasuring(false);
       setMeasurementComplete(true);
@@ -36,21 +34,16 @@ export default function BodyTemp() {
 
   const handleContinue = () => {
     if (!temperature) {
-      alert("Please measure your body temperature first");
+      alert("Please measure your temperature first");
       return;
     }
-    
-    // Pass data to next page
+
     navigate("/max30102", {
       state: {
         ...location.state,
-        bodyTemp: parseFloat(temperature)
-      }
+        temperature: parseFloat(temperature),
+      },
     });
-  };
-
-  const handleBack = () => {
-    navigate("/height");
   };
 
   const handleRetry = () => {
@@ -59,77 +52,78 @@ export default function BodyTemp() {
     setIsMeasuring(false);
   };
 
-  // Convert Celsius to Fahrenheit
-  const celsiusToFahrenheit = (celsius) => {
-    return ((celsius * 9/5) + 32).toFixed(1);
+  const getTemperatureStatus = () => {
+    const temp = parseFloat(temperature);
+    if (temp < 36.1) return { text: "Low Temperature", class: "temperature-low" };
+    if (temp > 37.5) return { text: "Fever Detected", class: "temperature-fever" };
+    return { text: "Normal Temperature", class: "temperature-normal" };
   };
 
-  const fahrenheitTemp = temperature ? celsiusToFahrenheit(parseFloat(temperature)) : "0.0";
+  const status = measurementComplete ? getTemperatureStatus() : null;
 
   return (
     <div className="bodytemp-container">
-      <div className={`bodytemp-content ${isVisible ? 'visible' : ''}`}>
-        
+      <div
+        className={`bodytemp-content ${isVisible ? "visible" : ""} ${
+          measurementComplete ? "result-mode" : ""
+        }`}
+      >
         {/* Progress Bar */}
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{width: '75%'}}></div>
+            <div className="progress-fill" style={{ width: "75%" }}></div>
           </div>
           <span className="progress-step">Step 3 of 4 - Vital Signs</span>
         </div>
 
-        {/* Title */}
+        {/* Header */}
         <div className="bodytemp-header">
           <h1 className="bodytemp-title">Body Temperature</h1>
-          <p className="bodytemp-subtitle">Non-contact temperature scanning</p>
+          <p className="bodytemp-subtitle">
+            Place the sensor on your forehead for accurate reading
+          </p>
         </div>
 
-        {/* Temperature Icon and Display */}
+        {/* Display Section - Takes 50% of content */}
         <div className="bodytemp-display-section">
-          <div className="bodytemp-icon-container">
-            <img 
-              src={tempIcon} 
-              alt="Temperature Measurement" 
-              className="bodytemp-icon"
-            />
-            <div className={`temp-scanner ${isMeasuring ? 'scanning' : ''}`}>
-              <div className="scanner-beam"></div>
-            </div>
-          </div>
-
-          {/* Temperature Value Display */}
-          <div className="bodytemp-value-display">
-            {isMeasuring ? (
-              <div className="measuring-animation">
-                <div className="pulse-dot"></div>
-                <span className="measuring-text">Scanning Temperature...</span>
+          <div className="bodytemp-visual-area">
+            <div className="bodytemp-icon-container">
+              <img src={bodyTempIcon} alt="Temperature" className="bodytemp-icon" />
+              <div className={`thermometer-indicator ${isMeasuring ? "active" : ""}`}>
+                <div className="indicator-dot"></div>
               </div>
-            ) : measurementComplete ? (
-              <div className="bodytemp-results">
-                {/* Celsius Display */}
-                <div className="bodytemp-result primary">
+            </div>
+
+            <div className="bodytemp-value-display">
+              {isMeasuring ? (
+                <div className="measuring-animation">
+                  <div className="pulse-dot"></div>
+                  <span className="measuring-text">Measuring...</span>
+                </div>
+              ) : measurementComplete ? (
+                <div className="bodytemp-result">
                   <span className="bodytemp-number">{temperature}</span>
                   <span className="bodytemp-unit">°C</span>
+                  {status && (
+                    <div className={`temperature-status ${status.class}`}>
+                      {status.text}
+                    </div>
+                  )}
                 </div>
-                {/* Fahrenheit Display */}
-                <div className="bodytemp-result secondary">
-                  <span className="bodytemp-number">{fahrenheitTemp}</span>
-                  <span className="bodytemp-unit">°F</span>
+              ) : (
+                <div className="bodytemp-placeholder">
+                  <span className="bodytemp-number">--.-</span>
+                  <span className="bodytemp-unit">°C</span>
                 </div>
-              </div>
-            ) : (
-              <div className="bodytemp-placeholder">
-                <span>--.-</span>
-                <span className="bodytemp-unit">°C</span>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Measurement Controls */}
+        {/* Controls - Large Start Button */}
         <div className="measurement-controls">
           {!measurementComplete ? (
-            <button 
+            <button
               className="measure-button"
               onClick={simulateTemperatureMeasurement}
               disabled={isMeasuring}
@@ -137,82 +131,61 @@ export default function BodyTemp() {
               {isMeasuring ? (
                 <>
                   <div className="spinner"></div>
-                  Scanning...
+                  Measuring...
                 </>
               ) : (
-                'Start Temperature Scan'
+                <>
+                  <div className="button-icon">🌡️</div>
+                  Start Temperature Measurement
+                </>
               )}
             </button>
           ) : (
             <div className="measurement-complete">
               <span className="success-text">✓ Measurement Complete</span>
-              <button 
-                className="retry-button"
-                onClick={handleRetry}
-              >
-                Scan Again
+              <button className="retry-button" onClick={handleRetry}>
+                Measure Again
               </button>
             </div>
           )}
         </div>
 
-        {/* Temperature Status Indicator */}
-        {measurementComplete && (
-          <div className="temperature-status">
-            <div className={`status-indicator ${parseFloat(temperature) >= 37.5 ? 'fever' : 'normal'}`}>
-              <span className="status-icon">
-                {parseFloat(temperature) >= 37.5 ? '🤒' : '😊'}
-              </span>
-              <span className="status-text">
-                {parseFloat(temperature) >= 37.5 ? 'Elevated Temperature' : 'Normal Temperature'}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Educational Content */}
+        {/* Educational Section */}
         <div className="educational-content">
           <h3 className="education-title">Why Temperature Matters</h3>
           <div className="education-points">
-            <div className="education-point">
-              <span className="point-icon">🌡️</span>
-              <div className="point-text">
-                <strong>Health Indicator</strong>
-                <span>Body temperature is a key indicator of overall health status</span>
+            <div className="education-card">
+              <div className="card-icon">🌡️</div>
+              <div className="card-content">
+                <h4>Health Indicator</h4>
+                <p>Body temperature reflects overall health status and can detect infections.</p>
               </div>
             </div>
-            <div className="education-point">
-              <span className="point-icon">🦠</span>
-              <div className="point-text">
-                <strong>Infection Detection</strong>
-                <span>Elevated temperature can indicate infection or inflammation</span>
+            <div className="education-card">
+              <div className="card-icon">🦠</div>
+              <div className="card-content">
+                <h4>Infection Detection</h4>
+                <p>Fever is often the first sign of infection or inflammation.</p>
               </div>
             </div>
-            <div className="education-point">
-              <span className="point-icon">💊</span>
-              <div className="point-text">
-                <strong>Treatment Monitoring</strong>
-                <span>Helps track recovery and response to treatment</span>
+            <div className="education-card">
+              <div className="card-icon">⚕️</div>
+              <div className="card-content">
+                <h4>Medical Assessment</h4>
+                <p>Helps healthcare providers diagnose and monitor conditions.</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="bodytemp-actions">
-          <button 
-            className="back-button"
-            onClick={handleBack}
-          >
-            Back
-          </button>
-          
-          <button 
+        {/* Continue Button */}
+        <div className="continue-button-container">
+          <button
             className="continue-button"
             onClick={handleContinue}
             disabled={!measurementComplete}
           >
-            Continue to Heart Rate
+            Continue to Pulse Oximeter
           </button>
         </div>
       </div>

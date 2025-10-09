@@ -152,7 +152,7 @@ export default function Standby() {
                 disabled={backendStatus !== 'connected'}
               >
                 <span className="button-content">
-                  Touch Screen to Start
+                  Touch this to Start
                 </span>
               </Button>
             </motion.div>

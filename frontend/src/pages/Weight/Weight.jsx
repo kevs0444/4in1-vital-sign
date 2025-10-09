@@ -74,34 +74,36 @@ export default function Weight() {
           </p>
         </div>
 
-        {/* Display Section */}
+        {/* Display Section - Now takes 50% of content */}
         <div className="weight-display-section">
-          <div className="weight-icon-container">
-            <img src={weightIcon} alt="Weight" className="weight-icon" />
-            <div className="scale-platform"></div>
-          </div>
+          <div className="weight-visual-area">
+            <div className="weight-icon-container">
+              <img src={weightIcon} alt="Weight" className="weight-icon" />
+              <div className="scale-platform"></div>
+            </div>
 
-          <div className="weight-value-display">
-            {isMeasuring ? (
-              <div className="measuring-animation">
-                <div className="pulse-dot"></div>
-                <span className="measuring-text">Measuring...</span>
-              </div>
-            ) : measurementComplete ? (
-              <div className="weight-result">
-                <span className="weight-number">{weight}</span>
-                <span className="weight-unit">kg</span>
-              </div>
-            ) : (
-              <div className="weight-placeholder">
-                <span className="weight-number">--.--</span>
-                <span className="weight-unit">kg</span>
-              </div>
-            )}
+            <div className="weight-value-display">
+              {isMeasuring ? (
+                <div className="measuring-animation">
+                  <div className="pulse-dot"></div>
+                  <span className="measuring-text">Measuring...</span>
+                </div>
+              ) : measurementComplete ? (
+                <div className="weight-result">
+                  <span className="weight-number">{weight}</span>
+                  <span className="weight-unit">kg</span>
+                </div>
+              ) : (
+                <div className="weight-placeholder">
+                  <span className="weight-number">--.--</span>
+                  <span className="weight-unit">kg</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Controls */}
+        {/* Controls - Large Start Button */}
         <div className="measurement-controls">
           {!measurementComplete ? (
             <button
@@ -115,7 +117,10 @@ export default function Weight() {
                   Measuring...
                 </>
               ) : (
-                "Start Weight Measurement"
+                <>
+                  <div className="button-icon">⚖️</div>
+                  Start Weight Measurement
+                </>
               )}
             </button>
           ) : (
@@ -132,25 +137,25 @@ export default function Weight() {
         <div className="educational-content">
           <h3 className="education-title">Why Weight Matters</h3>
           <div className="education-points">
-            <div className="education-point">
-              <span className="point-icon">⚖️</span>
-              <div className="point-text">
-                <strong>BMI Calculation</strong>
-                <span>Used with height to determine healthy weight range.</span>
+            <div className="education-card">
+              <div className="card-icon">⚖️</div>
+              <div className="card-content">
+                <h4>BMI Calculation</h4>
+                <p>Used with height to determine healthy weight range and body mass index for health assessment.</p>
               </div>
             </div>
-            <div className="education-point">
-              <span className="point-icon">❤️</span>
-              <div className="point-text">
-                <strong>Heart Health</strong>
-                <span>Maintaining proper weight reduces heart risk.</span>
+            <div className="education-card">
+              <div className="card-icon">❤️</div>
+              <div className="card-content">
+                <h4>Heart Health</h4>
+                <p>Maintaining proper weight reduces cardiovascular risks and promotes heart health.</p>
               </div>
             </div>
-            <div className="education-point">
-              <span className="point-icon">📊</span>
-              <div className="point-text">
-                <strong>Health Tracking</strong>
-                <span>Helps monitor fitness and detect changes.</span>
+            <div className="education-card">
+              <div className="card-icon">📊</div>
+              <div className="card-content">
+                <h4>Health Tracking</h4>
+                <p>Helps monitor fitness progress and detect significant health changes over time.</p>
               </div>
             </div>
           </div>

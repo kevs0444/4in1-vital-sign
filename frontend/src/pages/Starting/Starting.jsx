@@ -103,8 +103,8 @@ export default function Starting() {
             <div className="instruction-item">
               <div className="instruction-icon">❤️</div>
               <div className="instruction-text">
-                <strong>Heart Rate & Oxygen</strong>
-                <span>Finger sensor for vital signs (MAX30102)</span>
+                <strong>Pulse Oximeter</strong>
+                <span>Finger sensor for Heart Rate, spO2 and Respiratory Rate</span>
               </div>
             </div>
           </div>

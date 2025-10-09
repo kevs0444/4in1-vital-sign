@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Max30102.css";
-import heartRateIcon from "../../assets/icons/heart-rate-icon.png"; // You'll add these icons
+import heartRateIcon from "../../assets/icons/heart-rate-icon.png";
 import spo2Icon from "../../assets/icons/spo2-icon.png";
 import respiratoryIcon from "../../assets/icons/respiratory-icon.png";
 
@@ -19,11 +19,9 @@ export default function Max30102() {
   });
 
   useEffect(() => {
-    // Animation trigger
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 100);
-
     return () => clearTimeout(timer);
   }, []);
 
@@ -33,11 +31,10 @@ export default function Max30102() {
     setIsMeasuring(true);
     setMeasurementComplete(false);
     
-    // Simulate sequential measurements
     const measurementSequence = [
-      { type: "heartRate", duration: 3000, label: "Heart Rate" },
-      { type: "spo2", duration: 2000, label: "Blood Oxygen" },
-      { type: "respiratoryRate", duration: 2500, label: "Respiratory Rate" }
+      { type: "heartRate", duration: 2000, label: "Heart Rate" },
+      { type: "spo2", duration: 1500, label: "Blood Oxygen" },
+      { type: "respiratoryRate", duration: 1800, label: "Respiratory Rate" }
     ];
     
     let currentIndex = 0;
@@ -54,17 +51,16 @@ export default function Max30102() {
       setCurrentMeasurement(current.label);
       
       setTimeout(() => {
-        // Generate realistic measurements
         let newValue;
         switch (current.type) {
           case "heartRate":
-            newValue = Math.floor(Math.random() * 60 + 60); // 60-120 BPM
+            newValue = Math.floor(Math.random() * 60 + 60);
             break;
           case "spo2":
-            newValue = (Math.random() * 5 + 95).toFixed(1); // 95-100%
+            newValue = (Math.random() * 5 + 95).toFixed(1);
             break;
           case "respiratoryRate":
-            newValue = Math.floor(Math.random() * 10 + 12); // 12-22 breaths/min
+            newValue = Math.floor(Math.random() * 10 + 12);
             break;
           default:
             newValue = "";
@@ -89,7 +85,6 @@ export default function Max30102() {
       return;
     }
     
-    // Pass data to next page - Skip Blood Pressure, go directly to Saving
     navigate("/saving", {
       state: {
         ...location.state,
@@ -98,10 +93,6 @@ export default function Max30102() {
         respiratoryRate: parseInt(measurements.respiratoryRate)
       }
     });
-  };
-
-  const handleBack = () => {
-    navigate("/bodytemp");
   };
 
   const handleRetry = () => {
@@ -166,15 +157,15 @@ export default function Max30102() {
           <span className="progress-step">Step 4 of 4 - Vital Signs</span>
         </div>
 
-        {/* Title */}
+        {/* Header */}
         <div className="max30102-header">
-          <h1 className="max30102-title">MAX30102 Sensor</h1>
+          <h1 className="max30102-title">Pulse Oximeter</h1>
           <p className="max30102-subtitle">Place finger on sensor for heart rate, SpO2, and respiratory rate</p>
         </div>
 
-        {/* Sensor Display */}
+        {/* Display Section */}
         <div className="sensor-display-section">
-          <div className="sensor-visualization">
+          <div className="sensor-visual-area">
             <div className={`finger-sensor ${isMeasuring ? 'active' : ''}`}>
               <div className="sensor-light"></div>
               <div className="finger-placeholder">👆</div>
@@ -187,15 +178,15 @@ export default function Max30102() {
             )}
           </div>
 
-          {/* Measurements Display */}
+          {/* Measurements Grid - 3 cards in a row */}
           <div className="measurements-grid">
             {/* Heart Rate */}
-            <div className={`measurement-card ${getStatusColor('heartRate', measurements.heartRate)}`}>
+            <div className="measurement-card">
               <div className="measurement-icon">
-                <img src={heartRateIcon} alt="Heart Rate" />
+                <img src={heartRateIcon} alt="Heart Rate" className="measurement-image" />
               </div>
               <div className="measurement-info">
-                <h3>Heart Rate</h3>
+                <h3 className="measurement-title">Heart Rate</h3>
                 <div className="measurement-value">
                   {measurements.heartRate ? (
                     <>
@@ -206,19 +197,19 @@ export default function Max30102() {
                     <span className="placeholder">--</span>
                   )}
                 </div>
-                <span className="measurement-status">
+                <span className={`measurement-status ${getStatusColor('heartRate', measurements.heartRate)}`}>
                   {getStatusText('heartRate', measurements.heartRate)}
                 </span>
               </div>
             </div>
 
             {/* SpO2 */}
-            <div className={`measurement-card ${getStatusColor('spo2', measurements.spo2)}`}>
+            <div className="measurement-card">
               <div className="measurement-icon">
-                <img src={spo2Icon} alt="Blood Oxygen" />
+                <img src={spo2Icon} alt="Blood Oxygen" className="measurement-image" />
               </div>
               <div className="measurement-info">
-                <h3>Blood Oxygen</h3>
+                <h3 className="measurement-title">Blood Oxygen</h3>
                 <div className="measurement-value">
                   {measurements.spo2 ? (
                     <>
@@ -229,19 +220,19 @@ export default function Max30102() {
                     <span className="placeholder">--.-</span>
                   )}
                 </div>
-                <span className="measurement-status">
+                <span className={`measurement-status ${getStatusColor('spo2', measurements.spo2)}`}>
                   {getStatusText('spo2', measurements.spo2)}
                 </span>
               </div>
             </div>
 
             {/* Respiratory Rate */}
-            <div className={`measurement-card ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
+            <div className="measurement-card">
               <div className="measurement-icon">
-                <img src={respiratoryIcon} alt="Respiratory Rate" />
+                <img src={respiratoryIcon} alt="Respiratory Rate" className="measurement-image" />
               </div>
               <div className="measurement-info">
-                <h3>Respiratory Rate</h3>
+                <h3 className="measurement-title">Respiratory Rate</h3>
                 <div className="measurement-value">
                   {measurements.respiratoryRate ? (
                     <>
@@ -252,7 +243,7 @@ export default function Max30102() {
                     <span className="placeholder">--</span>
                   )}
                 </div>
-                <span className="measurement-status">
+                <span className={`measurement-status ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
                   {getStatusText('respiratoryRate', measurements.respiratoryRate)}
                 </span>
               </div>
@@ -274,7 +265,10 @@ export default function Max30102() {
                   Measuring {currentMeasurement}...
                 </>
               ) : (
-                'Start MAX30102 Measurement'
+                <>
+                  <div className="button-icon">❤️</div>
+                  Start Measurement
+                </>
               )}
             </button>
           ) : (
@@ -292,47 +286,40 @@ export default function Max30102() {
 
         {/* Educational Content */}
         <div className="educational-content">
-          <h3 className="education-title">About MAX30102 Sensor</h3>
+          <h3 className="education-title">About Pulse Oximeter</h3>
           <div className="education-points">
-            <div className="education-point">
-              <span className="point-icon">❤️</span>
-              <div className="point-text">
-                <strong>Heart Rate Monitoring</strong>
-                <span>Measures beats per minute for cardiovascular health</span>
+            <div className="education-card">
+              <div className="card-icon">❤️</div>
+              <div className="card-content">
+                <h4>Heart Rate Monitoring</h4>
+                <p>Measures beats per minute for cardiovascular health</p>
               </div>
             </div>
-            <div className="education-point">
-              <span className="point-icon">🩸</span>
-              <div className="point-text">
-                <strong>Blood Oxygen (SpO2)</strong>
-                <span>Measures oxygen saturation in your blood</span>
+            <div className="education-card">
+              <div className="card-icon">🩸</div>
+              <div className="card-content">
+                <h4>Blood Oxygen (SpO2)</h4>
+                <p>Measures oxygen saturation in your blood</p>
               </div>
             </div>
-            <div className="education-point">
-              <span className="point-icon">🌬️</span>
-              <div className="point-text">
-                <strong>Respiratory Rate</strong>
-                <span>Tracks breathing rate per minute</span>
+            <div className="education-card">
+              <div className="card-icon">🌬️</div>
+              <div className="card-content">
+                <h4>Respiratory Rate</h4>
+                <p>Tracks breathing rate per minute</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="max30102-actions">
-          <button 
-            className="back-button"
-            onClick={handleBack}
-          >
-            Back
-          </button>
-          
+        {/* Continue Button */}
+        <div className="continue-button-container">
           <button 
             className="continue-button"
             onClick={handleContinue}
             disabled={!measurementComplete}
           >
-            Continue to Save Data
+            Save Data
           </button>
         </div>
       </div>

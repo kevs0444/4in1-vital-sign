@@ -16,6 +16,14 @@ export default function Height() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Function to convert cm to feet and inches
+  const convertToFeetInches = (cm) => {
+    const totalInches = cm / 2.54;
+    const feet = Math.floor(totalInches / 12);
+    const inches = Math.round(totalInches % 12);
+    return `${feet}'${inches}"`;
+  };
+
   const simulateHeightMeasurement = () => {
     if (isMeasuring) return;
 
@@ -35,7 +43,7 @@ export default function Height() {
       return;
     }
 
-    navigate("/temperature", {
+    navigate("/bodytemp", {
       state: {
         ...location.state,
         height: parseFloat(height),
@@ -72,36 +80,42 @@ export default function Height() {
           </p>
         </div>
 
-        {/* Display Section */}
+        {/* Display Section - 50% of content */}
         <div className="height-display-section">
-          <div className="height-icon-container">
-            <img src={heightIcon} alt="Height" className="height-icon" />
-            <div className={`sensor-indicator ${isMeasuring ? "active" : ""}`}>
-              <div className="indicator-dot"></div>
+          <div className="height-visual-area">
+            <div className="height-icon-container">
+              <img src={heightIcon} alt="Height" className="height-icon" />
+              <div className={`sensor-indicator ${isMeasuring ? "active" : ""}`}>
+                <div className="indicator-dot"></div>
+              </div>
             </div>
-          </div>
 
-          <div className="height-value-display">
-            {isMeasuring ? (
-              <div className="measuring-animation">
-                <div className="pulse-dot"></div>
-                <span className="measuring-text">Measuring...</span>
-              </div>
-            ) : measurementComplete ? (
-              <div className="height-result">
-                <span className="height-number">{height}</span>
-                <span className="height-unit">cm</span>
-              </div>
-            ) : (
-              <div className="height-placeholder">
-                <span className="height-number">--.--</span>
-                <span className="height-unit">cm</span>
-              </div>
-            )}
+            <div className="height-value-display">
+              {isMeasuring ? (
+                <div className="measuring-animation">
+                  <div className="pulse-dot"></div>
+                  <span className="measuring-text">Measuring...</span>
+                </div>
+              ) : measurementComplete ? (
+                <div className="height-result">
+                  <span className="height-number">{height}</span>
+                  <span className="height-unit">cm</span>
+                  <div className="height-conversion">
+                    {convertToFeetInches(height)}
+                  </div>
+                </div>
+              ) : (
+                <div className="height-placeholder">
+                  <span className="height-number">--.--</span>
+                  <span className="height-unit">cm</span>
+                  <div className="height-conversion">--'--"</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Controls */}
+        {/* Controls - Large Start Button */}
         <div className="measurement-controls">
           {!measurementComplete ? (
             <button
@@ -115,7 +129,10 @@ export default function Height() {
                   Measuring...
                 </>
               ) : (
-                "Start Height Measurement"
+                <>
+                  <div className="button-icon">📏</div>
+                  Start Height Measurement
+                </>
               )}
             </button>
           ) : (
@@ -132,25 +149,25 @@ export default function Height() {
         <div className="educational-content">
           <h3 className="education-title">Why Height Matters</h3>
           <div className="education-points">
-            <div className="education-point">
-              <span className="point-icon">📏</span>
-              <div className="point-text">
-                <strong>BMI Calculation</strong>
-                <span>Used with weight to determine body mass index.</span>
+            <div className="education-card">
+              <div className="card-icon">📏</div>
+              <div className="card-content">
+                <h4>BMI Calculation</h4>
+                <p>Used with weight to determine body mass index and assess healthy weight ranges.</p>
               </div>
             </div>
-            <div className="education-point">
-              <span className="point-icon">🩺</span>
-              <div className="point-text">
-                <strong>Health Screening</strong>
-                <span>Helps track growth and physical development.</span>
+            <div className="education-card">
+              <div className="card-icon">🩺</div>
+              <div className="card-content">
+                <h4>Health Screening</h4>
+                <p>Helps track growth patterns and identify potential developmental concerns.</p>
               </div>
             </div>
-            <div className="education-point">
-              <span className="point-icon">📈</span>
-              <div className="point-text">
-                <strong>Data Consistency</strong>
-                <span>Essential for precise medical data analysis.</span>
+            <div className="education-card">
+              <div className="card-icon">📈</div>
+              <div className="card-content">
+                <h4>Data Consistency</h4>
+                <p>Essential for accurate medical assessments and long-term health monitoring.</p>
               </div>
             </div>
           </div>
