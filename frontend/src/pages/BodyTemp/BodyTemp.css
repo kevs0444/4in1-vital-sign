@@ -1,32 +1,45 @@
+/* GLOBAL RESET - Prevent result.css conflicts */
+.bodytemp-container * {
+  box-sizing: border-box;
+}
+
 .bodytemp-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
+  height: 100%;
   width: 100vw;
   background: #ffffff;
   font-family: var(--font-primary);
-  overflow: hidden;
-  padding: 15px;
+  overflow: hidden !important;
+  padding: 10px;
   margin: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .bodytemp-content {
   background: white;
-  border-radius: 20px;
-  width: 94vw;
-  height: 94vh;
-  max-width: 700px;
-  max-height: 1200px;
-  padding: 25px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 650px;
+  height: auto;
+  min-height: 90vh;
+  max-height: 95vh;
+  padding: 20px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   text-align: center;
   transition: all 0.8s ease;
   transform: translateY(0);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden !important;
   border: 1px solid #e0e0e0;
+  position: relative;
 }
 
 .bodytemp-content.visible {
@@ -35,99 +48,102 @@
 }
 
 .bodytemp-content.result-mode {
-  transform: translateY(-2%);
+  transform: translateY(-1%);
   background: white;
   box-shadow: 0 15px 40px rgba(220, 53, 69, 0.2);
   border: 1px solid #ffebee;
 }
 
-/* Progress bar */
+/* Progress bar - More compact */
 .progress-container {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   flex-shrink: 0;
 }
 
 .progress-bar {
   width: 100%;
-  height: 8px;
+  height: 6px;
   background: #f0f0f0;
-  border-radius: 4px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 4px;
+  border-radius: 3px;
   transition: width 1s ease;
 }
 
 .progress-step {
-  font-size: 12px;
+  font-size: 11px;
   color: #555;
   display: block;
-  margin-top: 5px;
+  margin-top: 4px;
   text-align: right;
 }
 
-/* Header */
+/* Header - More compact */
 .bodytemp-header {
   text-align: center;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   flex-shrink: 0;
 }
 
 .bodytemp-title {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   color: #333;
   font-weight: 700;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
+  line-height: 1.2;
 }
 
 .bodytemp-subtitle {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #666;
   line-height: 1.3;
+  padding: 0 10px;
 }
 
-/* Display */
+/* Display - Optimized for 768x1366 */
 .bodytemp-display-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 15px 0;
-  flex: 0.7;
+  margin: 12px 0;
+  flex: 1;
   justify-content: center;
   transition: all 0.6s ease;
-  min-height: 160px;
+  min-height: 140px;
+  padding: 8px 0;
 }
 
 .bodytemp-content.result-mode .bodytemp-display-section {
-  transform: scale(1.05) translateY(-5px);
+  transform: scale(1.02) translateY(-3px);
 }
 
 .bodytemp-icon-container {
   position: relative;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 .bodytemp-icon {
-  width: 110px;
-  height: 110px;
+  width: 90px;
+  height: 90px;
   object-fit: contain;
   transition: transform 0.6s ease;
 }
 
 .bodytemp-content.result-mode .bodytemp-icon {
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 .thermometer-indicator {
-  width: 130px;
-  height: 8px;
+  width: 110px;
+  height: 6px;
   background: #e0e0e0;
-  border-radius: 4px;
-  margin: 6px auto;
+  border-radius: 3px;
+  margin: 5px auto;
   position: relative;
 }
 
@@ -145,8 +161,8 @@
 }
 
 .indicator-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   background: #dc3545;
   border-radius: 50%;
   position: absolute;
@@ -154,34 +170,35 @@
   top: 0;
 }
 
-/* Value Display */
+/* Value Display - Optimized */
 .bodytemp-value-display {
   text-align: center;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .bodytemp-result,
 .bodytemp-placeholder {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: 800;
   color: #333;
-  margin-right: 4px;
+  margin-right: 3px;
+  line-height: 1;
 }
 
 .bodytemp-content.result-mode .bodytemp-result {
   color: #dc3545;
-  transform: scale(1.05);
+  transform: scale(1.03);
 }
 
 .bodytemp-unit {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   color: #777;
 }
 
 /* Buttons - Enhanced with red theme and glow effects */
 .measurement-controls {
   flex-shrink: 0;
-  margin: 10px 0;
+  margin: 12px 0;
 }
 
 .measure-button,
@@ -190,22 +207,22 @@
   width: 100%;
   background: linear-gradient(135deg, #dc3545, #c82333);
   color: white;
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 600;
   border: none;
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 12px;
+  padding: 16px 14px;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-height: 44px;
+  min-height: 55px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
   animation: redGlow 2s ease-in-out infinite alternate;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .measure-button:hover,
@@ -219,7 +236,7 @@
 .retry-button:active,
 .continue-button:active {
   transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(220, 53, 69, 0.4);
+  box-shadow: 0 3px 10px rgba(220, 53, 69, 0.4);
 }
 
 .measure-button:disabled,
@@ -234,23 +251,23 @@
 /* Glow Animations */
 @keyframes redGlow {
   from {
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3),
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3),
                 0 0 5px rgba(220, 53, 69, 0.2);
   }
   to {
-    box-shadow: 0 6px 15px rgba(220, 53, 69, 0.4),
-                0 0 10px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 6px 18px rgba(220, 53, 69, 0.4),
+                0 0 8px rgba(220, 53, 69, 0.3);
   }
 }
 
 @keyframes redStrongGlow {
   from {
-    box-shadow: 0 6px 15px rgba(220, 53, 69, 0.4),
-                0 0 10px rgba(220, 53, 69, 0.4);
+    box-shadow: 0 6px 18px rgba(220, 53, 69, 0.4),
+                0 0 8px rgba(220, 53, 69, 0.4);
   }
   to {
-    box-shadow: 0 8px 18px rgba(220, 53, 69, 0.5),
-                0 0 12px rgba(220, 53, 69, 0.5);
+    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.5),
+                0 0 10px rgba(220, 53, 69, 0.5);
   }
 }
 
@@ -309,28 +326,29 @@
 .measuring-text {
   color: #666;
   font-size: 0.9rem;
+  font-weight: 600;
 }
 
-/* Educational Section */
+/* Educational Section - Updated to card style */
 .educational-content {
-  background: #f8f9fa;
-  border-radius: 10px;
-  padding: 12px;
-  margin: 10px 0;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 8px 0;
   transition: opacity 0.5s ease;
   flex-shrink: 0;
-  flex: 0.8;
-  border: 1px solid #e9ecef;
+  flex: 0.9;
+  border: 2px solid #e9ecef;
 }
 
 .bodytemp-content.result-mode .educational-content {
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .education-title {
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
   color: #333;
   text-align: center;
 }
@@ -338,72 +356,85 @@
 .education-points {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
 }
 
-.education-point {
-  background: white;
-  border-radius: 8px;
-  padding: 10px;
+.education-card {
   display: flex;
   align-items: flex-start;
-  text-align: left;
-  border: 1px solid #e9ecef;
+  gap: 12px;
+  padding: 14px;
+  background: white;
+  border-radius: 10px;
+  border: 2px solid transparent;
   transition: all 0.3s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
 }
 
-.education-point:hover {
+.education-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
   border-color: #dc3545;
-  transform: translateY(-1px);
 }
 
-.point-icon {
-  font-size: 1rem;
-  margin-right: 8px;
-  min-width: 18px;
-  margin-top: 1px;
-}
-
-.point-text {
+.card-icon {
+  font-size: 1.5rem;
+  min-width: 40px;
+  height: 40px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  border-radius: 10px;
+  flex-shrink: 0;
+  color: white;
+}
+
+.card-content {
   flex: 1;
+  text-align: left;
 }
 
-.point-text strong {
+.card-content h4 {
   color: #333;
-  margin-bottom: 2px;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  line-height: 1.2;
 }
 
-.point-text span {
+.card-content p {
   color: #666;
-  font-size: 0.7rem;
-  line-height: 1.2;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  margin: 0;
 }
 
 .success-text {
   color: #dc3545;
   font-weight: 600;
-  margin-bottom: 6px;
-  font-size: 0.9rem;
+  margin-bottom: 12px;
+  font-size: 1rem;
   text-align: center;
 }
 
 .retry-button {
-  border: 1px solid #dc3545;
+  border: 2px solid #dc3545;
   background: transparent;
   color: #dc3545;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.9rem;
   font-weight: 600;
-  min-height: 30px;
+  min-height: 40px;
   animation: none;
 }
 
 .retry-button:hover {
   background: #fff0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(220, 53, 69, 0.3);
 }
 
 .bodytemp-placeholder {
@@ -417,8 +448,8 @@
 }
 
 .spinner {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border: 2px solid transparent;
   border-top: 2px solid white;
   border-radius: 50%;
@@ -436,15 +467,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  padding: 8px;
 }
 
 .temperature-status {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   margin-top: 4px;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
 }
 
 .temperature-normal {
@@ -460,4 +492,94 @@
 .temperature-low {
   background: #fff3cd;
   color: #856404;
+}
+
+/* 768x1366 specific optimization */
+@media (max-width: 768px) and (max-height: 1366px) {
+  .bodytemp-container {
+    padding: 8px;
+  }
+  
+  .bodytemp-content {
+    padding: 18px;
+    max-width: 100%;
+    min-height: 88vh;
+    max-height: 92vh;
+    border-radius: 14px;
+  }
+  
+  .bodytemp-title {
+    font-size: 1.5rem;
+  }
+  
+  .bodytemp-subtitle {
+    font-size: 0.8rem;
+  }
+  
+  .bodytemp-icon {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .thermometer-indicator {
+    width: 100px;
+  }
+  
+  .bodytemp-result,
+  .bodytemp-placeholder {
+    font-size: 2rem;
+  }
+  
+  .bodytemp-unit {
+    font-size: 1.1rem;
+  }
+  
+  .measure-button,
+  .retry-button,
+  .continue-button {
+    padding: 14px 12px;
+    font-size: 1rem;
+    min-height: 50px;
+  }
+  
+  .educational-content {
+    padding: 14px;
+  }
+  
+  .education-card {
+    padding: 12px;
+  }
+  
+  .card-icon {
+    min-width: 35px;
+    height: 35px;
+    font-size: 1.3rem;
+  }
+}
+
+/* Small mobile optimization */
+@media (max-width: 480px) {
+  .bodytemp-container {
+    padding: 5px;
+  }
+  
+  .bodytemp-content {
+    padding: 15px;
+    min-height: 85vh;
+    max-height: 90vh;
+  }
+  
+  .bodytemp-title {
+    font-size: 1.4rem;
+  }
+  
+  .bodytemp-icon {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .bodytemp-result,
+  .bodytemp-placeholder {
+    font-size: 1.8rem;
+  }
 }
