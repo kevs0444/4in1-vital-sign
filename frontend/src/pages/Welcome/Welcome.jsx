@@ -65,28 +65,27 @@ export default function Welcome() {
 
             {/* Terms and Conditions & Button Container */}
             <div className="action-section">
-              {/* Terms and Conditions */}
+              {/* Terms and Conditions - FIXED ALIGNMENT */}
               <div className="terms-section mb-4">
-                <Form.Group controlId="termsCheckbox" className="d-flex justify-content-center align-items-center">
-                  <Form.Check
+                <div className="terms-checkbox">
+                  <input
                     type="checkbox"
-                    label={
-                      <span className="ms-2">
-                        I agree to the{" "}
-                        <Button 
-                          variant="link" 
-                          className="terms-link p-0 ms-1" 
-                          onClick={handleShowTerms}
-                        >
-                          Terms and Conditions
-                        </Button>
-                      </span>
-                    }
+                    id="termsCheckbox"
+                    className="terms-checkbox-input"
                     checked={acceptedTerms}
                     onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="terms-checkbox"
                   />
-                </Form.Group>
+                  <label htmlFor="termsCheckbox" className="terms-checkbox-label">
+                    I agree to the{" "}
+                    <Button 
+                      variant="link" 
+                      className="terms-link" 
+                      onClick={handleShowTerms}
+                    >
+                      Terms and Conditions
+                    </Button>
+                  </label>
+                </div>
               </div>
 
               {/* Action Button */}
@@ -132,9 +131,16 @@ export default function Welcome() {
             <h5>2. Health Information Collection</h5>
             <p className="text-justify">This kiosk collects the following health information:</p>
             <ul>
-              <li className="text-justify">Personal identification (name, age, sex)</li>
-              <li className="text-justify">Vital signs (weight, height, body temperature)</li>
-              <li className="text-justify">Health measurements (heart rate, blood pressure, oxygen levels)</li>
+              <li className="text-justify">Personal identification (name, age)</li>
+              <li className="text-justify">4 Vital Signs:
+                <ul>
+                  <li className="text-justify">Body Temperature</li>
+                  <li className="text-justify">Heart Rate (BPM)</li>
+                  <li className="text-justify">Blood Oxygen (SpO2%)</li>
+                  <li className="text-justify">Respiratory Rate</li>
+                </ul>
+              </li>
+              <li className="text-justify">Additional measurements (weight, height)</li>
               <li className="text-justify">BMI calculation and health risk assessment</li>
             </ul>
 
