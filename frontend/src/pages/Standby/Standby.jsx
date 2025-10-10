@@ -70,18 +70,18 @@ export default function Standby() {
   const getStatusIcon = () => {
     switch (backendStatus) {
       case 'connected':
-        return <CheckCircle className="status-icon connected" />;
+        return <CheckCircle className="standby-status-icon connected" />;
       case 'error':
-        return <Error className="status-icon error" />;
+        return <Error className="standby-status-icon error" />;
       default:
-        return <Circle className="status-icon checking" />;
+        return <Circle className="standby-status-icon checking" />;
     }
   };
 
   const getStatusText = () => {
     switch (backendStatus) {
       case 'connected':
-        return 'Ready';
+        return ''; // Empty string when connected
       case 'error':
         return 'Connecting...';
       default:
@@ -91,15 +91,16 @@ export default function Standby() {
 
   return (
     <Container fluid className="standby-container">
+      {/* Backend Status - Simplified when connected */}
       <motion.div
-        className="backend-status"
+        className="standby-backend-status"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <div className={`status-indicator ${backendStatus}`}>
+        <div className={`standby-status-indicator ${backendStatus}`}>
           {getStatusIcon()}
-          <span className="status-text">{getStatusText()}</span>
+          {getStatusText() && <span className="standby-status-text">{getStatusText()}</span>}
         </div>
       </motion.div>
 
@@ -110,52 +111,55 @@ export default function Standby() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            {/* Logo Section */}
-            <div className="logo-section">
-              <div className="logo-main-circle">
-                <img src={logo} alt="4 in Juan Logo" className="juan-logo" />
+            {/* Main Content Container */}
+            <div className="standby-main-content-container">
+              {/* Logo Section */}
+              <div className="standby-logo-section">
+                <div className="standby-logo-main-circle">
+                  <img src={logo} alt="4 in Juan Logo" className="standby-juan-logo" />
+                </div>
               </div>
-            </div>
 
-            {/* Title Section */}
-            <div className="title-section">
-              <h1 className="main-title">
-                4 in <span className="juan-red">Juan</span> Vital Kiosk
-              </h1>
-              <p className="motto">
-                Making health accessible to every<span className="juan-red">Juan</span>
-              </p>
-            </div>
-
-            {/* Time Display */}
-            <div className="time-display">
-              <div className="current-time">
-                {formatTime(currentTime)}
+              {/* Title Section */}
+              <div className="standby-title-section">
+                <h1 className="standby-main-title">
+                  4 in <span className="standby-juan-red">Juan</span> Vital Kiosk
+                </h1>
+                <p className="standby-motto">
+                  Making health accessible to every<span className="standby-juan-red">Juan</span>
+                </p>
               </div>
-              <div className="current-date">
-                {formatDate(currentTime)}
-              </div>
-            </div>
 
-            {/* Start Button */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-            >
-              <Button
-                onClick={handleStartPress}
-                onTouchStart={() => setIsPressed(true)}
-                onTouchEnd={() => setIsPressed(false)}
-                className={`start-button ${isPressed ? 'pressed' : ''}`}
-                size="lg"
-                disabled={backendStatus !== 'connected'}
+              {/* Time Display */}
+              <div className="standby-time-display">
+                <div className="standby-current-time">
+                  {formatTime(currentTime)}
+                </div>
+                <div className="standby-current-date">
+                  {formatDate(currentTime)}
+                </div>
+              </div>
+
+              {/* Start Button */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
               >
-                <span className="button-content">
-                  Touch this to Start
-                </span>
-              </Button>
-            </motion.div>
+                <Button
+                  onClick={handleStartPress}
+                  onTouchStart={() => setIsPressed(true)}
+                  onTouchEnd={() => setIsPressed(false)}
+                  className={`standby-start-button ${isPressed ? 'pressed' : ''}`}
+                  size="lg"
+                  disabled={backendStatus !== 'connected'}
+                >
+                  <span className="standby-button-content">
+                    Touch this to Start
+                  </span>
+                </Button>
+              </motion.div>
+            </div>
           </motion.div>
         </Col>
       </Row>

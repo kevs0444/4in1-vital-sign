@@ -54,6 +54,8 @@
   --shadow-soft: 0 2px 8px rgba(10, 9, 8, 0.08);
   --shadow-medium: 0 4px 12px rgba(10, 9, 8, 0.12);
   --shadow-red: 0 4px 12px rgba(220, 38, 38, 0.2);
+  --shadow-large: 0 8px 25px rgba(220, 38, 38, 0.15);
+  --shadow-elegant: 0 4px 20px rgba(0, 0, 0, 0.08);
   
   /* Border Radius */
   --border-radius: 12px;
@@ -86,18 +88,30 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3rem 2rem;
+  padding: 2rem 1rem;
+}
+
+/* Main Content Container - Self-contained */
+.standby-main-content-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  padding: 0 2rem;
 }
 
 /* Backend Status */
-.backend-status {
+.standby-backend-status {
   position: absolute;
   top: 2rem;
   right: 2rem;
   z-index: 1000;
 }
 
-.status-indicator {
+.standby-status-indicator {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -107,153 +121,232 @@ html, body {
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-soft);
   border: 1px solid rgba(34, 51, 59, 0.1);
+  transition: all 0.3s ease;
 }
 
-.status-icon {
+/* Simplified status when connected */
+.standby-status-indicator.connected {
+  padding: 1rem;
+  gap: 0;
+}
+
+.standby-status-icon {
   font-size: 2rem !important;
 }
 
-.status-icon.connected {
+.standby-status-icon.connected {
   color: var(--success-color);
 }
 
-.status-icon.error {
+.standby-status-icon.error {
   color: var(--error-color);
 }
 
-.status-icon.checking {
+.standby-status-icon.checking {
   color: var(--warning-color);
 }
 
-.status-text {
+.standby-status-text {
   font-size: 1.1rem;
   font-weight: 500;
   color: var(--subtitle-color);
+  transition: opacity 0.3s ease;
 }
 
-/* Logo Section */
-.logo-section {
+/* Hide text when connected */
+.standby-status-indicator.connected .standby-status-text {
+  display: none;
+}
+
+/* UPDATED: Modern & Formal Logo Section */
+.standby-logo-section {
   position: relative;
-  margin: 0 auto 4rem auto;
-  width: min(500px, 65vw);
+  margin: 0 auto 3.2rem auto;
+  width: min(480px, 60vw); /* Slightly smaller for more formality */
   aspect-ratio: 1;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.logo-main-circle {
+.standby-logo-section:hover {
+  transform: scale(1.02);
+}
+
+.standby-logo-section:active {
+  transform: scale(0.99);
+}
+
+.standby-logo-main-circle {
   position: relative;
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: white;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-soft);
-  border: 2px solid rgba(34, 51, 59, 0.1);
+  box-shadow: 
+    var(--shadow-elegant),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  border: 2px solid rgba(220, 38, 38, 0.08);
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-.juan-logo {
+.standby-logo-main-circle:hover {
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.12),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  border-color: rgba(220, 38, 38, 0.15);
+}
+
+.standby-logo-main-circle:active {
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.1),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.standby-juan-logo {
   width: 85%;
   height: 85%;
   object-fit: cover;
   border-radius: 50%;
+  filter: brightness(1.02) contrast(1.02);
+  transition: all 0.3s ease;
+}
+
+.standby-logo-main-circle:hover .standby-juan-logo {
   filter: brightness(1.05) contrast(1.05);
 }
 
-/* Title Section */
-.title-section {
-  margin-bottom: 3.5rem;
-  padding: 0 1rem;
+/* Subtle glow effect for professional appearance */
+.standby-logo-main-circle::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, 
+    rgba(220, 38, 38, 0.1) 0%, 
+    rgba(255, 255, 255, 0) 50%, 
+    rgba(220, 38, 38, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
 }
 
-/* UPDATED: Main Title - 20% Larger */
-.main-title {
+.standby-logo-main-circle:hover::before {
+  opacity: 1;
+}
+
+/* UPDATED: Title Section - 20% smaller */
+.standby-title-section {
+  margin-bottom: 2.4rem;
+  padding: 0;
+  width: 100%;
+  max-width: none;
+}
+
+/* UPDATED: Main Title - 10% smaller (from 7.2rem to 6.48rem) */
+.standby-main-title {
   color: var(--main-title-color);
-  font-size: 4.8rem; /* Increased from 4rem to 4.8rem (20% increase) */
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  margin-bottom: 1.5rem;
+  font-size: 6.48rem; /* 10% smaller than 7.2rem */
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 1.2rem;
+  text-align: center;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  width: 100%;
 }
 
-.juan-red {
+.standby-juan-red {
   color: var(--red-accent);
-  font-weight: 700;
+  font-weight: 800;
+  text-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
 }
 
-.motto {
+/* UPDATED: Motto - 10% smaller (from 3.2rem to 2.88rem) */
+.standby-motto {
   color: var(--text-color);
-  font-size: 2rem;
-  font-weight: 400;
+  font-size: 2.88rem; /* 10% smaller than 3.2rem */
+  font-weight: 500;
   font-style: italic;
   opacity: 0.9;
-  line-height: 1.4;
+  line-height: 1.2;
   letter-spacing: -0.01em;
+  text-align: center;
+  white-space: nowrap;
+  width: 100%;
 }
 
-/* Time Display */
-.time-display {
-  margin-bottom: 3.5rem;
-  padding: 0 1rem;
+/* UPDATED: Time Display - 20% smaller */
+.standby-time-display {
+  margin-bottom: 3.2rem;
+  padding: 0;
+  width: 100%;
 }
 
-.current-time {
+.standby-current-time {
   color: var(--main-title-color);
-  font-size: 3.2rem;
+  font-size: 2.8rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   line-height: 1.1;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.6rem;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  opacity: 0.9;
 }
 
-.current-date {
+.standby-current-date {
   color: var(--text-color);
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 400;
   opacity: 0.8;
   line-height: 1.3;
 }
 
-/* Start Button */
-.start-button {
+/* UPDATED: Start Button - 20% smaller */
+.standby-start-button {
   position: relative;
-  padding: 2rem 5rem !important;
+  padding: 2.4rem 5.6rem !important;
   border-radius: var(--border-radius-lg) !important;
-  font-size: 2.2rem !important;
-  font-weight: 600 !important;
+  font-size: 2.56rem !important;
+  font-weight: 700 !important;
   background: var(--red-500) !important;
   border: none !important;
   box-shadow: var(--shadow-red) !important;
   transition: all 0.2s ease !important;
-  min-height: 120px;
-  min-width: 450px;
+  min-height: 128px;
+  min-width: 480px;
   touch-action: manipulation;
   overflow: hidden;
   color: white !important;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
-.start-button:hover:not(:disabled) {
+.standby-start-button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(220, 38, 38, 0.35) !important;
   background: var(--red-600) !important;
 }
 
-.start-button:disabled {
+.standby-start-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
 }
 
-.start-button.pressed {
+.standby-start-button.pressed {
   transform: scale(0.96) !important;
   box-shadow: none !important;
   background: var(--red-700) !important;
 }
 
-.button-content {
+.standby-button-content {
   position: relative;
   z-index: 10;
 }
@@ -261,94 +354,138 @@ html, body {
 /* Responsive Design */
 @media (max-width: 768px) {
   .standby-container {
-    padding: 2.5rem 1.5rem;
+    padding: 1.5rem 1rem;
   }
   
-  .backend-status {
+  .standby-main-content-container {
+    padding: 0 1rem;
+  }
+  
+  .standby-backend-status {
     top: 1.5rem;
     right: 1.5rem;
   }
   
-  .status-indicator {
+  .standby-status-indicator {
     padding: 0.8rem 1.2rem;
   }
   
-  .status-icon {
-    font-size: 1.8rem !important;
+  .standby-status-indicator.connected {
+    padding: 0.8rem;
   }
   
-  .status-text {
-    font-size: 1rem;
+  .standby-status-icon {
+    font-size: 1.6rem !important;
   }
   
-  .logo-section {
-    width: min(400px, 75vw);
-    margin-bottom: 3rem;
+  .standby-status-text {
+    font-size: 0.88rem;
   }
   
-  .title-section {
-    margin-bottom: 3rem;
+  /* UPDATED: Responsive Logo - More formal sizing */
+  .standby-logo-section {
+    width: min(360px, 75vw);
+    margin-bottom: 2.4rem;
   }
   
-  /* UPDATED: Responsive Main Title - 20% Larger */
-  .main-title {
-    font-size: 3.84rem; /* Increased from 3.2rem to 3.84rem (20% increase) */
+  .standby-title-section {
+    margin-bottom: 2rem;
   }
   
-  .motto {
-    font-size: 1.6rem;
+  /* UPDATED: Responsive Main Title - 10% smaller (from 4.8rem to 4.32rem) */
+  .standby-main-title {
+    font-size: 4.32rem !important; /* 10% smaller than 4.8rem */
+    font-weight: 800;
+    white-space: normal;
+    line-height: 1.1;
+    margin-bottom: 0.8rem;
   }
   
-  .time-display {
-    margin-bottom: 3rem;
+  /* UPDATED: Responsive Motto - 10% smaller (from 2.24rem to 2.016rem) */
+  .standby-motto {
+    font-size: 2.016rem !important; /* 10% smaller than 2.24rem */
+    font-weight: 500;
+    white-space: normal;
+    line-height: 1.2;
   }
   
-  .current-time {
-    font-size: 2.6rem;
+  .standby-time-display {
+    margin-bottom: 2.4rem;
   }
   
-  .current-date {
-    font-size: 1.4rem;
+  /* UPDATED: Responsive Time Display - 20% smaller */
+  .standby-current-time {
+    font-size: 2.24rem;
+    font-weight: 600;
+    margin-bottom: 0.48rem;
   }
   
-  .start-button {
-    min-height: 100px;
-    min-width: 380px;
-    padding: 1.8rem 4rem !important;
-    font-size: 1.9rem !important;
+  .standby-current-date {
+    font-size: 1.28rem;
+    opacity: 0.8;
+  }
+  
+  /* UPDATED: Responsive Start Button - 20% smaller */
+  .standby-start-button {
+    min-height: 96px;
+    min-width: 360px;
+    padding: 1.76rem 4rem !important;
+    font-size: 2rem !important;
   }
 }
 
 /* Extra large screens */
 @media (min-width: 1400px) {
-  .logo-section {
-    width: min(550px, 55vw);
-    margin-bottom: 4.5rem;
+  .standby-container {
+    padding: 3rem 2rem;
   }
   
-  /* UPDATED: Extra Large Main Title - 20% Larger */
-  .main-title {
-    font-size: 5.4rem; /* Increased from 4.5rem to 5.4rem (20% increase) */
+  .standby-main-content-container {
+    padding: 0 3rem;
   }
   
-  .motto {
-    font-size: 2.2rem;
-  }
-  
-  .time-display {
+  /* UPDATED: Extra Large Logo - Formal sizing */
+  .standby-logo-section {
+    width: min(520px, 55vw);
     margin-bottom: 4rem;
   }
   
-  .start-button {
-    min-height: 130px;
-    min-width: 500px;
-    font-size: 2.4rem !important;
-    padding: 2.2rem 5.5rem !important;
+  /* UPDATED: Extra Large Main Title - 10% smaller (from 9.6rem to 8.64rem) */
+  .standby-main-title {
+    font-size: 8.64rem !important; /* 10% smaller than 9.6rem */
+    margin-bottom: 1.6rem;
+  }
+  
+  /* UPDATED: Extra Large Motto - 10% smaller (from 4rem to 3.6rem) */
+  .standby-motto {
+    font-size: 3.6rem !important; /* 10% smaller than 4rem */
+  }
+  
+  .standby-time-display {
+    margin-bottom: 4rem;
+  }
+  
+  /* UPDATED: Extra Large Time Display - 20% smaller */
+  .standby-current-time {
+    font-size: 3.2rem;
+    font-weight: 600;
+  }
+  
+  .standby-current-date {
+    font-size: 1.76rem;
+  }
+  
+  /* UPDATED: Extra Large Start Button - 20% smaller */
+  .standby-start-button {
+    min-height: 144px;
+    min-width: 560px;
+    font-size: 2.8rem !important;
+    padding: 2.8rem 6.4rem !important;
   }
 }
 
 /* Prevent text selection on touch devices */
-.start-button {
+.standby-start-button {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -360,4 +497,20 @@ html, body {
 .standby-container {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* UPDATED: Modern fade-in animation for logo */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.standby-logo-section {
+  animation: fadeInUp 0.8s ease-out;
 }

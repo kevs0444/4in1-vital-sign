@@ -121,16 +121,17 @@
   background: #fff;
 }
 
+/* Only border changes - no background changes */
 .sex-option:hover {
   border-color: var(--primary-red);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-red);
+  box-shadow: 0 0 0 2px var(--primary-red), 0 4px 12px rgba(220, 38, 38, 0.15);
 }
 
 .sex-option.selected {
   border-color: var(--primary-red);
-  box-shadow: var(--shadow-red);
-  background: #fff5f5;
+  box-shadow: 0 0 0 3px var(--primary-red), 0 6px 18px rgba(220, 38, 38, 0.25);
+  transform: translateY(-2px);
 }
 
 .sex-icon {

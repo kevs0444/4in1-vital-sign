@@ -46,6 +46,9 @@ export default function Age() {
     setAge("");
   };
 
+  // Calculate digit count for styling
+  const digitCount = age.length;
+
   return (
     <div className="age-container">
       <div className="content-area">
@@ -75,11 +78,18 @@ export default function Age() {
           <div className="form-section">
             <div className="input-group">
               <label className="input-label">Your Age</label>
-              <div
-                className={`age-display ${age ? "filled" : ""}`}
-                onClick={() => {}}
-              >
-                {age ? age : <span className="placeholder-text">21</span>}
+              <div className="age-display-container">
+                <div
+                  className={`age-display ${age ? "filled" : ""} ${digitCount === 2 ? "max-digits" : ""}`}
+                  data-digits={digitCount}
+                  onClick={() => {}}
+                >
+                  {age ? (
+                    <span className="age-digits">{age}</span>
+                  ) : (
+                    <span className="placeholder-text">21</span>
+                  )}
+                </div>
               </div>
             </div>
 

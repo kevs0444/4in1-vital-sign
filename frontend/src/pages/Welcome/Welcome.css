@@ -90,7 +90,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 2rem; /* Increased from 1rem */
 }
 
 /* UPDATED: Subtle Background Pattern */
@@ -107,19 +107,20 @@ html, body {
   z-index: 1;
 }
 
+/* UPDATED: Much wider main container */
 .welcome-content {
   background: #ffffff;
   border-radius: var(--border-radius-lg);
-  padding: 2.5rem 2rem;
+  padding: 3.5rem 3rem; /* Increased padding */
   width: 100%;
-  max-width: 750px;
+  max-width: 1000px; /* Significantly increased from 750px */
   box-shadow: var(--shadow-large);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 2rem; /* Increased from 1.5rem */
   margin: 0 auto;
   position: relative;
   z-index: 3;
@@ -130,7 +131,7 @@ html, body {
 .welcome-logo {
   position: relative;
   margin: 0 auto;
-  width: min(450px, 60vw);
+  width: min(500px, 65vw); /* Increased from 450px */
   aspect-ratio: 1;
   z-index: 4;
 }
@@ -170,16 +171,17 @@ html, body {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 1rem; /* Increased from 0.8rem */
   width: 100%;
   max-width: 100%;
   position: relative;
   z-index: 4;
 }
 
+/* UPDATED: Main title 10% larger than other text */
 .main-title {
   color: var(--main-title-color);
-  font-size: 3.6rem;
+  font-size: 4rem; /* Increased from 3.6rem (approx 10% larger) */
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -214,19 +216,25 @@ html, body {
   text-align: center;
 }
 
+/* NEW: Keep "every Juan" together on the same line */
+.juan-nowrap {
+  white-space: nowrap;
+  display: inline-block;
+}
+
 .welcome-subtitle {
   color: var(--text-color);
   font-size: 1.35rem;
   font-weight: 400;
   opacity: 0.8;
   line-height: 1.5;
-  margin-top: 0.8rem;
+  margin-top: 1rem; /* Increased from 0.8rem */
   text-align: center;
   position: relative;
 }
 
 .welcome-subtitle p {
-  margin: 0.4rem 0;
+  margin: 0.6rem 0; /* Increased from 0.4rem */
   text-align: center;
 }
 
@@ -236,7 +244,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem; /* Increased from 1rem */
   position: relative;
   z-index: 4;
 }
@@ -345,16 +353,16 @@ html, body {
 /* Continue Button - UPDATED: Better alignment */
 .continue-button {
   position: relative;
-  padding: 1.8rem 4.5rem !important;
+  padding: 2rem 5rem !important; /* Increased from 1.8rem 4.5rem */
   border-radius: var(--border-radius-lg) !important;
-  font-size: 2rem !important;
+  font-size: 2.2rem !important; /* Increased from 2rem */
   font-weight: 600 !important;
   background: var(--red-500) !important;
   border: none !important;
   box-shadow: var(--shadow-red) !important;
   transition: all 0.2s ease !important;
-  min-height: 108px;
-  min-width: 405px;
+  min-height: 120px; /* Increased from 108px */
+  min-width: 450px; /* Increased from 405px */
   touch-action: manipulation;
   overflow: hidden;
   color: white !important;
@@ -487,23 +495,23 @@ html, body {
 /* Responsive Design for 768x1366 */
 @media (max-width: 768px) and (orientation: portrait) {
   .welcome-container {
-    padding: 0.5rem;
+    padding: 1rem; /* Increased from 0.5rem */
   }
   
   .welcome-content {
-    padding: 2rem 1.5rem;
+    padding: 2.5rem 2rem; /* Increased from 2rem 1.5rem */
     max-width: 95%;
-    gap: 1.2rem;
+    gap: 1.5rem; /* Increased from 1.2rem */
     margin: 0 auto;
   }
   
   .welcome-logo {
-    width: min(360px, 65vw);
+    width: min(400px, 70vw); /* Increased from 360px, 65vw */
     margin: 0 auto;
   }
   
   .main-title {
-    font-size: 2.88rem;
+    font-size: 3.2rem; /* Increased from 2.88rem */
   }
   
   .subtitle {
@@ -511,9 +519,29 @@ html, body {
   }
   
   .motto {
-    font-size: 1.44rem;
+    color: var(--text-color);
+    font-size: 1.8rem;
+    font-weight: 400;
+    font-style: italic;
+    opacity: 0.8;
+    line-height: 1.3;
+    margin: 0;
+    text-align: center;
   }
-  
+
+  /* NEW: everyJuan as one word with Juan in red */
+  .every-juan {
+    white-space: nowrap;
+    display: inline-block;
+  }
+
+  .every-juan .juan-red {
+    color: var(--red-accent);
+    font-weight: 700;
+    margin-left: 0;
+    padding-left: 0;
+  }
+    
   .welcome-subtitle {
     font-size: 1.17rem;
   }
@@ -527,10 +555,10 @@ html, body {
   }
   
   .continue-button {
-    min-height: 90px;
-    min-width: 342px;
-    padding: 1.6rem 3.6rem !important;
-    font-size: 1.71rem !important;
+    min-height: 100px; /* Increased from 90px */
+    min-width: 380px; /* Increased from 342px */
+    padding: 1.8rem 4rem !important; /* Increased from 1.6rem 3.6rem */
+    font-size: 1.9rem !important; /* Increased from 1.71rem */
   }
   
   .terms-scroll {

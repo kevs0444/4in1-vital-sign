@@ -46,16 +46,16 @@ export default function Welcome() {
               </div>
             </div>
 
-            {/* Welcome Message */}
+            {/* Welcome Message - UPDATED: Title matches Standby page */}
             <div className="welcome-message mb-3">
               <h1 className="main-title mb-2">
-                Welcome to <span className="juan-red">4 in Juan</span>
+                4 in <span className="juan-red">Juan</span> Vital Kiosk
               </h1>
-              <h2 className="subtitle mb-2">
-                Vital Kiosk
-              </h2>
               <p className="motto mb-3">
-                Making health accessible to every <span className="juan-red">Juan</span>
+                Making health accessible to{" "}
+                <span className="every-juan">
+                  every<span className="juan-red">Juan</span>
+                </span>
               </p>
               <div className="welcome-subtitle text-muted">
                 <p className="mb-1">Before we begin, please provide us with some personal information</p>

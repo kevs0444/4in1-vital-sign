@@ -29,15 +29,22 @@ export default function Result() {
   };
 
   useEffect(() => {
+    console.log("📍 Location state received in Result:", location.state);
+    
     if (location.state) {
-      console.log("📍 Location state received:", location.state);
+      console.log("✅ Setting user data in Result:", location.state);
       setUserData(location.state);
       
       // Simulate AI analysis with delay
       setTimeout(() => {
+        console.log("🔍 Starting analysis with data:", location.state);
         analyzeHealthData(location.state);
         setIsAnalyzing(false);
       }, 3000);
+    } else {
+      console.error("❌ No data received in Result page!");
+      // If no data, show error state
+      setIsAnalyzing(false);
     }
     
     const timer = setTimeout(() => {
@@ -61,12 +68,14 @@ export default function Result() {
   }, [isAnalyzing, riskLevel]);
 
   const analyzeHealthData = (data) => {
+    console.log("🔍 Analyzing health data:", data);
     let riskScore = 0;
     const calculatedSuggestions = [];
     const calculatedPreventions = [];
 
     // BMI Analysis
     const bmi = calculateBMI(data);
+    console.log("📊 BMI calculated:", bmi);
     if (bmi) {
       if (bmi < 18.5) {
         riskScore += 15;
@@ -85,64 +94,80 @@ export default function Result() {
 
     // Body Temperature Analysis
     const temperature = data.temperature || data.bodyTemp;
-    if (temperature) {
-      if (temperature < 36.0) {
-        riskScore += 20;
-        calculatedSuggestions.push("Low body temperature detected - monitor for hypothermia symptoms");
-        calculatedPreventions.push("Keep warm and monitor temperature regularly");
-      } else if (temperature > 37.5) {
-        riskScore += 25;
-        calculatedSuggestions.push("Elevated temperature detected - monitor for fever symptoms");
-        calculatedPreventions.push("Stay hydrated and rest adequately");
+    console.log("🌡️ Temperature:", temperature);
+    if (temperature && temperature !== 'N/A') {
+      const tempNum = parseFloat(temperature);
+      if (!isNaN(tempNum)) {
+        if (tempNum < 36.0) {
+          riskScore += 20;
+          calculatedSuggestions.push("Low body temperature detected - monitor for hypothermia symptoms");
+          calculatedPreventions.push("Keep warm and monitor temperature regularly");
+        } else if (tempNum > 37.5) {
+          riskScore += 25;
+          calculatedSuggestions.push("Elevated temperature detected - monitor for fever symptoms");
+          calculatedPreventions.push("Stay hydrated and rest adequately");
+        }
       }
     }
 
     // Heart Rate Analysis
-    if (data.heartRate) {
-      if (data.heartRate < 60) {
-        riskScore += 25;
-        calculatedSuggestions.push("Low heart rate detected - consider cardiology consultation if symptomatic");
-        calculatedPreventions.push("Monitor for dizziness or fatigue during activities");
-      } else if (data.heartRate > 100) {
-        riskScore += 30;
-        calculatedSuggestions.push("Elevated heart rate detected - assess stress and activity levels");
-        calculatedPreventions.push("Practice relaxation techniques and limit stimulants");
+    if (data.heartRate && data.heartRate !== 'N/A') {
+      console.log("💓 Heart Rate:", data.heartRate);
+      const hrNum = parseFloat(data.heartRate);
+      if (!isNaN(hrNum)) {
+        if (hrNum < 60) {
+          riskScore += 25;
+          calculatedSuggestions.push("Low heart rate detected - consider cardiology consultation if symptomatic");
+          calculatedPreventions.push("Monitor for dizziness or fatigue during activities");
+        } else if (hrNum > 100) {
+          riskScore += 30;
+          calculatedSuggestions.push("Elevated heart rate detected - assess stress and activity levels");
+          calculatedPreventions.push("Practice relaxation techniques and limit stimulants");
+        }
       }
     }
 
     // Blood Oxygen Analysis
-    if (data.spo2) {
-      if (data.spo2 < 95 && data.spo2 >= 92) {
-        riskScore += 35;
-        calculatedSuggestions.push("Mildly low oxygen saturation - monitor during physical activity");
-        calculatedPreventions.push("Practice deep breathing exercises regularly");
-      } else if (data.spo2 < 92) {
-        riskScore += 60;
-        calculatedSuggestions.push("Significantly low oxygen level - urgent medical evaluation recommended");
-        calculatedPreventions.push("Avoid strenuous activities and seek immediate care if symptoms worsen");
+    if (data.spo2 && data.spo2 !== 'N/A') {
+      console.log("🫁 SPO2:", data.spo2);
+      const spo2Num = parseFloat(data.spo2);
+      if (!isNaN(spo2Num)) {
+        if (spo2Num < 95 && spo2Num >= 92) {
+          riskScore += 35;
+          calculatedSuggestions.push("Mildly low oxygen saturation - monitor during physical activity");
+          calculatedPreventions.push("Practice deep breathing exercises regularly");
+        } else if (spo2Num < 92) {
+          riskScore += 60;
+          calculatedSuggestions.push("Significantly low oxygen level - urgent medical evaluation recommended");
+          calculatedPreventions.push("Avoid strenuous activities and seek immediate care if symptoms worsen");
+        }
       }
     }
 
     // Respiratory Rate Analysis
-    if (data.respiratoryRate) {
-      if (data.respiratoryRate < 12) {
-        riskScore += 20;
-        calculatedSuggestions.push("Low respiratory rate detected - monitor for breathing difficulties");
-        calculatedPreventions.push("Practice paced breathing exercises");
-      } else if (data.respiratoryRate > 20) {
-        riskScore += 25;
-        calculatedSuggestions.push("Elevated respiratory rate - assess for anxiety or respiratory issues");
-        calculatedPreventions.push("Focus on slow, deep breathing techniques");
+    if (data.respiratoryRate && data.respiratoryRate !== 'N/A') {
+      console.log("🌬️ Respiratory Rate:", data.respiratoryRate);
+      const rrNum = parseFloat(data.respiratoryRate);
+      if (!isNaN(rrNum)) {
+        if (rrNum < 12) {
+          riskScore += 20;
+          calculatedSuggestions.push("Low respiratory rate detected - monitor for breathing difficulties");
+          calculatedPreventions.push("Practice paced breathing exercises");
+        } else if (rrNum > 20) {
+          riskScore += 25;
+          calculatedSuggestions.push("Elevated respiratory rate - assess for anxiety or respiratory issues");
+          calculatedPreventions.push("Focus on slow, deep breathing techniques");
+        }
       }
     }
 
     // Age and Demographic Factors
-    if (data.age > 50) {
+    if (data.age && data.age > 50) {
       riskScore += 10;
       calculatedSuggestions.push("Regular health screenings recommended for age group");
       calculatedPreventions.push("Maintain active lifestyle and balanced nutrition");
     }
-    if (data.age > 65) {
+    if (data.age && data.age > 65) {
       riskScore += 15;
       calculatedSuggestions.push("Comprehensive geriatric assessment may be beneficial");
       calculatedPreventions.push("Focus on fall prevention and mobility maintenance");
@@ -177,6 +202,9 @@ export default function Result() {
       category = "Critical Risk";
     }
 
+    console.log("🎯 Final Risk Score:", Math.round(riskScore));
+    console.log("📋 Suggestions:", calculatedSuggestions);
+    
     setRiskLevel(Math.round(riskScore));
     setRiskCategory(category);
     setSuggestions(calculatedSuggestions);
@@ -184,9 +212,10 @@ export default function Result() {
   };
 
   const calculateBMI = (data) => {
-    if (!data.weight || !data.height) return null;
+    if (!data.weight || !data.height || data.weight === 'N/A' || data.height === 'N/A') return null;
     const heightInMeters = data.height / 100;
-    return (data.weight / (heightInMeters * heightInMeters)).toFixed(1);
+    const bmi = (data.weight / (heightInMeters * heightInMeters)).toFixed(1);
+    return parseFloat(bmi);
   };
 
   const getRiskGradient = (level) => {
@@ -220,29 +249,37 @@ export default function Result() {
 
   const getTemperatureStatus = (temp) => {
     if (!temp || temp === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
-    if (temp < 36.0) return { status: 'Low', color: '#3b82f6', range: '< 36.0°C' };
-    if (temp > 37.5) return { status: 'Elevated', color: '#ef4444', range: '> 37.5°C' };
+    const tempNum = parseFloat(temp);
+    if (isNaN(tempNum)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
+    if (tempNum < 36.0) return { status: 'Low', color: '#3b82f6', range: '< 36.0°C' };
+    if (tempNum > 37.5) return { status: 'Elevated', color: '#ef4444', range: '> 37.5°C' };
     return { status: 'Normal', color: '#10b981', range: '36.0 - 37.5°C' };
   };
 
   const getHeartRateStatus = (hr) => {
-    if (!hr) return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
-    if (hr < 60) return { status: 'Low', color: '#3b82f6', range: '< 60 BPM' };
-    if (hr > 100) return { status: 'High', color: '#ef4444', range: '> 100 BPM' };
+    if (!hr || hr === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
+    const hrNum = parseFloat(hr);
+    if (isNaN(hrNum)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
+    if (hrNum < 60) return { status: 'Low', color: '#3b82f6', range: '< 60 BPM' };
+    if (hrNum > 100) return { status: 'High', color: '#ef4444', range: '> 100 BPM' };
     return { status: 'Normal', color: '#10b981', range: '60 - 100 BPM' };
   };
 
   const getSPO2Status = (spo2) => {
-    if (!spo2) return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
-    if (spo2 < 92) return { status: 'Critical', color: '#dc2626', range: '< 92%' };
-    if (spo2 < 95) return { status: 'Low', color: '#f59e0b', range: '92 - 94%' };
+    if (!spo2 || spo2 === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
+    const spo2Num = parseFloat(spo2);
+    if (isNaN(spo2Num)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
+    if (spo2Num < 92) return { status: 'Critical', color: '#dc2626', range: '< 92%' };
+    if (spo2Num < 95) return { status: 'Low', color: '#f59e0b', range: '92 - 94%' };
     return { status: 'Normal', color: '#10b981', range: '≥ 95%' };
   };
 
   const getRespiratoryStatus = (rr) => {
-    if (!rr) return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
-    if (rr < 12) return { status: 'Low', color: '#3b82f6', range: '< 12 BPM' };
-    if (rr > 20) return { status: 'High', color: '#ef4444', range: '> 20 BPM' };
+    if (!rr || rr === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
+    const rrNum = parseFloat(rr);
+    if (isNaN(rrNum)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
+    if (rrNum < 12) return { status: 'Low', color: '#3b82f6', range: '< 12 BPM' };
+    if (rrNum > 20) return { status: 'High', color: '#ef4444', range: '> 20 BPM' };
     return { status: 'Normal', color: '#10b981', range: '12 - 20 BPM' };
   };
 
@@ -294,6 +331,7 @@ export default function Result() {
   };
 
   const handleSaveResults = () => {
+    console.log("💾 Saving results and navigating to Saving page...");
     navigate("/saving", { state: { 
       userData, 
       riskLevel, 
@@ -311,7 +349,7 @@ export default function Result() {
   };
 
   const bmiData = getBMICategory(calculateBMI(userData));
-  const tempData = getTemperatureStatus(parseFloat(getTemperatureValue()));
+  const tempData = getTemperatureStatus(getTemperatureValue());
   const hrData = getHeartRateStatus(userData.heartRate);
   const spo2Data = getSPO2Status(userData.spo2);
   const respData = getRespiratoryStatus(userData.respiratoryRate);
@@ -616,7 +654,7 @@ export default function Result() {
               </div>
             </div>
 
-            {/* Save Button */}
+            {/* Save Button - This stays visible until user clicks it */}
             <div className="result-actions">
               <button 
                 className="save-results-btn"

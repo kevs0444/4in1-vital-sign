@@ -126,32 +126,14 @@
   text-align: center;
 }
 
-/* Same width and length as Name.jsx input box */
+/* UPDATED: Optimized 2-digit Age Display without digit counter */
 .age-display {
-  width: 320px;
-  height: 100px;
-  font-size: 3rem;
-  font-weight: 700;
-  border-radius: 18px;
-  border: 2px solid #e5e7eb;
-  background: #fff;
-  color: #111827;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 0.5rem;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-}
-
-/* Age Textbox Styling */
-.age-display {
-  width: 320px;
-  height: 100px;
-  font-size: 3rem;
-  font-weight: 700;
-  border-radius: 18px;
-  border: 2px solid var(--border-light);
+  width: 140px; /* Optimized for 2 digits */
+  height: 140px; /* Square for perfect symmetry */
+  font-size: 4rem; /* Larger font for better visibility */
+  font-weight: 800; /* Bolder for emphasis */
+  border-radius: 8px;
+  border: 4px solid var(--border-light); /* Thicker border */
   background: var(--background-white);
   color: var(--text-dark);
   text-align: center;
@@ -159,24 +141,64 @@
   align-items: center;
   justify-content: center;
   margin-top: 0.5rem;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease;
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.1),
+    inset 0 2px 4px rgba(255, 255, 255, 0.9);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  letter-spacing: 2px;
 }
 
-/* Highlight when filled or focused */
+/* Enhanced visual feedback for 2-digit input */
 .age-display.filled {
-  border-color: var(--primary-red);
-  box-shadow: var(--shadow-red);
+  border: 4px solid var(--primary-red);
+  background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%);
+  box-shadow: 
+    0 10px 25px rgba(220, 38, 38, 0.2),
+    inset 0 2px 4px rgba(255, 255, 255, 0.9);
+  transform: translateY(-3px);
 }
 
+/* Single digit styling - center perfectly */
+.age-display:not(.filled) .placeholder-text {
+  font-size: 3.5rem;
+  font-weight: 600;
+}
+
+/* Two digit styling - ensure proper spacing */
+.age-display.filled[data-digits="2"] {
+  letter-spacing: 4px; /* More space for two digits */
+}
+
+/* Hover effects */
 .age-display:hover {
   border-color: var(--primary-red);
+  box-shadow: 
+    0 8px 20px rgba(220, 38, 38, 0.15),
+    inset 0 2px 4px rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
 }
 
-/* Placeholder style */
+/* Focus state for accessibility */
+.age-display:focus {
+  outline: none;
+  border-color: var(--primary-red);
+  box-shadow: 
+    0 0 0 6px rgba(220, 38, 38, 0.1),
+    0 10px 25px rgba(220, 38, 38, 0.2),
+    inset 0 2px 4px rgba(255, 255, 255, 0.9);
+}
+
+/* Enhanced placeholder for 2-digit input */
 .placeholder-text {
   color: #9ca3af;
   font-style: italic;
+  font-weight: 500;
+  opacity: 0.6;
+  font-size: 3.5rem;
+  font-family: 'Outfit', sans-serif;
 }
 
 /* Continue Button */
@@ -188,20 +210,28 @@
   font-size: 1.3rem;
   font-weight: 600;
   border: none;
-  border-radius: 14px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
 }
 
 .continue-btn.disabled {
   background: #d1d5db;
   color: #9ca3af;
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none !important;
 }
 
 .continue-btn:not(.disabled):hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(220, 38, 38, 0.3);
+}
+
+.continue-btn:not(.disabled):active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
 }
 
 /* Numpad */
@@ -210,6 +240,7 @@
   padding: 1.2rem 1.5rem 1.5rem;
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -6px 20px rgba(220, 38, 38, 0.08);
+  border-top: 3px solid rgba(220, 38, 38, 0.05);
 }
 
 .numpad-grid {
@@ -219,28 +250,47 @@
 }
 
 .numpad-btn {
-  background: #f3f4f6;
+  background: #f8fafc;
   border: none;
-  border-radius: 14px;
+  border-radius: 8px;
   font-size: 1.8rem;
   font-weight: 600;
   padding: 1rem 0;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.05),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  border: 2px solid transparent;
 }
 
 .numpad-btn:hover {
-  background: #fecaca;
+  background: #fef2f2;
+  border-color: rgba(220, 38, 38, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 4px 12px rgba(220, 38, 38, 0.1),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .numpad-btn.clear,
 .numpad-btn.delete {
-  background: #fee2e2;
+  background: #fef2f2;
   color: #b91c1c;
+  border: 2px solid rgba(220, 38, 38, 0.2);
+}
+
+.numpad-btn.clear:hover,
+.numpad-btn.delete:hover {
+  background: #fee2e2;
+  border-color: rgba(220, 38, 38, 0.4);
 }
 
 .numpad-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 /* Responsive */
@@ -255,11 +305,65 @@
     font-size: 1rem;
   }
   .age-display {
-    width: 260px;
-    height: 85px;
-    font-size: 2.8rem;
+    width: 120px; /* Slightly smaller on mobile */
+    height: 120px;
+    font-size: 3.5rem;
+    border-radius: 8px;
+  }
+  .placeholder-text {
+    font-size: 3rem;
   }
   .numpad-btn {
     font-size: 1.6rem;
+    border-radius: 8px;
   }
+  .continue-btn {
+    border-radius: 8px;
+  }
+}
+
+/* Animation for age display when filled */
+@keyframes digitPop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes borderPulse {
+  0% {
+    border-color: var(--border-light);
+  }
+  50% {
+    border-color: var(--primary-red);
+  }
+  100% {
+    border-color: var(--primary-red);
+  }
+}
+
+.age-display.filled {
+  animation: borderPulse 0.5s ease-out;
+}
+
+/* Add pop animation when digits are entered */
+.age-display.filled .age-digits {
+  animation: digitPop 0.3s ease-out;
+}
+
+/* Visual feedback for max digits */
+.age-display.max-digits {
+  border-color: var(--primary-red-dark);
+  background: linear-gradient(135deg, #ffffff 0%, #ffe6e6 100%);
+}
+
+/* Age display container for better centering */
+.age-display-container {
+  position: relative;
+  display: inline-block;
 }
