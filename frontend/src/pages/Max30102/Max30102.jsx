@@ -104,8 +104,9 @@ export default function Max30102() {
       bodyTemp: location.state?.bodyTemp || location.state?.temperature || null
     };
     
-    // Navigate to Result.jsx with ALL collected data
-    navigate("/result", {
+    // FIX: Navigate to AILoading first, then it will auto-navigate to Result
+    console.log("🧠 Navigating to AI Loading with data:", completeData);
+    navigate("/ai-loading", {
       state: completeData
     });
   };

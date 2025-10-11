@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import AILoading from "../AILoading/AILoading";
 import "./Result.css";
 
 export default function Result() {
@@ -12,7 +11,7 @@ export default function Result() {
   const [suggestions, setSuggestions] = useState([]);
   const [preventions, setPreventions] = useState([]);
   const [isVisible, setIsVisible] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false); // Changed to false since AILoading is separate
   const [expandedSections, setExpandedSections] = useState({
     recommendations: false,
     prevention: false,
@@ -35,28 +34,25 @@ export default function Result() {
       console.log("✅ Setting user data in Result:", location.state);
       setUserData(location.state);
       
-      // Simulate AI analysis with delay
-      setTimeout(() => {
-        console.log("🔍 Starting analysis with data:", location.state);
-        analyzeHealthData(location.state);
-        setIsAnalyzing(false);
-      }, 3000);
+      // Start analysis immediately since AILoading already happened
+      console.log("🔍 Starting analysis with data:", location.state);
+      analyzeHealthData(location.state);
+      
+      const timer = setTimeout(() => {
+        setIsVisible(true);
+      }, 100);
+
+      return () => clearTimeout(timer);
     } else {
       console.error("❌ No data received in Result page!");
-      // If no data, show error state
-      setIsAnalyzing(false);
+      // If no data, redirect back
+      navigate("/max30102");
     }
-    
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [location.state]);
+  }, [location.state, navigate]);
 
   // Effect to update HTML class for scrollbar colors
   useEffect(() => {
-    if (!isAnalyzing) {
+    if (riskLevel > 0) {
       const riskClass = getRiskClass(riskLevel);
       document.documentElement.classList.add(riskClass);
     }
@@ -65,7 +61,7 @@ export default function Result() {
     return () => {
       document.documentElement.classList.remove('low-risk', 'moderate-risk', 'high-risk', 'critical-risk');
     };
-  }, [isAnalyzing, riskLevel]);
+  }, [riskLevel]);
 
   const analyzeHealthData = (data) => {
     console.log("🔍 Analyzing health data:", data);
@@ -373,308 +369,302 @@ export default function Result() {
           </p>
         </div>
 
-        {/* AI Analysis Loading */}
-        {isAnalyzing && <AILoading />}
-
-        {!isAnalyzing && (
-          <>
-            {/* AI Result Score */}
-            <div className="risk-score-section">
-              <div className="risk-score-card" style={{background: getRiskGradient(riskLevel)}}>
-                <div className="risk-score-main">
-                  <div className="risk-number">{riskLevel}%</div>
-                  <div className="risk-category">{riskCategory}</div>
-                </div>
-                <div className="risk-meter">
-                  <div className="risk-bar">
-                    <div 
-                      className="risk-progress" 
-                      style={{ 
-                        width: `${riskLevel}%`,
-                        backgroundColor: 'rgba(255,255,255,0.9)'
-                      }}
-                    ></div>
-                  </div>
-                  <div className="risk-labels">
-                    <span>0%</span>
-                    <span>25%</span>
-                    <span>50%</span>
-                    <span>75%</span>
-                    <span>100%</span>
-                  </div>
-                </div>
+        {/* AI Result Score */}
+        <div className="risk-score-section">
+          <div className="risk-score-card" style={{background: getRiskGradient(riskLevel)}}>
+            <div className="risk-score-main">
+              <div className="risk-number">{riskLevel}%</div>
+              <div className="risk-category">{riskCategory}</div>
+            </div>
+            <div className="risk-meter">
+              <div className="risk-bar">
+                <div 
+                  className="risk-progress" 
+                  style={{ 
+                    width: `${riskLevel}%`,
+                    backgroundColor: 'rgba(255,255,255,0.9)'
+                  }}
+                ></div>
               </div>
-
-              {/* Risk Ranges Subtitle - Organized Layout */}
-              <div className="risk-ranges-subtitle">
-                <h3>Risk Level Interpretation</h3>
-                <div className="risk-ranges-mini">
-                  {/* Low Risk */}
-                  <div className="risk-range-mini-card low-risk">
-                    <div className="mini-risk-header">
-                      <div className="mini-risk-color"></div>
-                      <span className="mini-risk-label">Low Risk</span>
-                    </div>
-                    <span className="mini-risk-value">0-19%</span>
-                  </div>
-                  
-                  {/* Moderate Risk */}
-                  <div className="risk-range-mini-card moderate-risk">
-                    <div className="mini-risk-header">
-                      <div className="mini-risk-color"></div>
-                      <span className="mini-risk-label">Moderate Risk</span>
-                    </div>
-                    <span className="mini-risk-value">20-49%</span>
-                  </div>
-                  
-                  {/* High Risk */}
-                  <div className="risk-range-mini-card high-risk">
-                    <div className="mini-risk-header">
-                      <div className="mini-risk-color"></div>
-                      <span className="mini-risk-label">High Risk</span>
-                    </div>
-                    <span className="mini-risk-value">50-74%</span>
-                  </div>
-                  
-                  {/* Critical Risk */}
-                  <div className="risk-range-mini-card critical-risk">
-                    <div className="mini-risk-header">
-                      <div className="mini-risk-color"></div>
-                      <span className="mini-risk-label">Critical Risk</span>
-                    </div>
-                    <span className="mini-risk-value">75-100%</span>
-                  </div>
-                </div>
+              <div className="risk-labels">
+                <span>0%</span>
+                <span>25%</span>
+                <span>50%</span>
+                <span>75%</span>
+                <span>100%</span>
               </div>
             </div>
+          </div>
 
-            {/* Personal Information with BMI */}
-            <div className="personal-info-section">
-              <h2 className="section-title">Personal Information</h2>
-              <div className="personal-info-card">
-                <div className="personal-info-left">
-                  <div className="user-avatar">👤</div>
-                  <div className="user-details">
-                    <h3 className="user-name">
-                      {userData.firstName || 'N/A'} {userData.lastName || 'N/A'}
-                    </h3>
-                    <div className="user-meta">
-                      <span className="user-age">{userData.age || 'N/A'} years old</span>
-                      <span className="user-sex">{userData.sex === 'male' ? 'Male' : userData.sex === 'female' ? 'Female' : 'N/A'}</span>
-                    </div>
-                  </div>
+          {/* Risk Ranges Subtitle - Organized Layout */}
+          <div className="risk-ranges-subtitle">
+            <h3>Risk Level Interpretation</h3>
+            <div className="risk-ranges-mini">
+              {/* Low Risk */}
+              <div className="risk-range-mini-card low-risk">
+                <div className="mini-risk-header">
+                  <div className="mini-risk-color"></div>
+                  <span className="mini-risk-label">Low Risk</span>
                 </div>
-                <div className="personal-info-right">
-                  <div className="bmi-display">
-                    <div className="bmi-header">
-                      <div className="bmi-icon">⚖️</div>
-                      <h4>Body Mass Index</h4>
-                    </div>
-                    <div className="bmi-value">{calculateBMI(userData) || 'N/A'}</div>
-                    <div className="bmi-status" style={{ color: bmiData.color }}>
-                      {bmiData.status}
-                    </div>
-                    <div className="bmi-range">Healthy Range: 18.5 - 24.9</div>
-                  </div>
-                </div>
+                <span className="mini-risk-value">0-19%</span>
               </div>
-            </div>
-
-            {/* Health Assessment - Main 4 Vital Signs */}
-            <div className="health-assessment-section">
-              <h2 className="section-title">4 Vital Signs Assessment</h2>
-              <div className="vital-signs-grid">
-                <div className="vital-sign-card">
-                  <div className="vital-sign-header">
-                    <div className="vital-sign-icon">🌡️</div>
-                    <h3>Body Temperature</h3>
-                  </div>
-                  <div className="vital-sign-value">{getTemperatureValue()}°C</div>
-                  <div className="vital-sign-status" style={{ color: tempData.color }}>
-                    {tempData.status}
-                  </div>
-                  <div className="vital-sign-range">Normal: 36.0 - 37.5°C</div>
-                </div>
-
-                <div className="vital-sign-card">
-                  <div className="vital-sign-header">
-                    <div className="vital-sign-icon">💓</div>
-                    <h3>Heart Rate</h3>
-                  </div>
-                  <div className="vital-sign-value">{userData.heartRate || 'N/A'} BPM</div>
-                  <div className="vital-sign-status" style={{ color: hrData.color }}>
-                    {hrData.status}
-                  </div>
-                  <div className="vital-sign-range">Normal: 60 - 100 BPM</div>
-                </div>
-
-                <div className="vital-sign-card">
-                  <div className="vital-sign-header">
-                    <div className="vital-sign-icon">🫁</div>
-                    <h3>Oxygen Level</h3>
-                  </div>
-                  <div className="vital-sign-value">{userData.spo2 || 'N/A'}%</div>
-                  <div className="vital-sign-status" style={{ color: spo2Data.color }}>
-                    {spo2Data.status}
-                  </div>
-                  <div className="vital-sign-range">Normal: ≥ 95%</div>
-                </div>
-
-                <div className="vital-sign-card">
-                  <div className="vital-sign-header">
-                    <div className="vital-sign-icon">🌬️</div>
-                    <h3>Respiratory Rate</h3>
-                  </div>
-                  <div className="vital-sign-value">{userData.respiratoryRate || 'N/A'} BPM</div>
-                  <div className="vital-sign-status" style={{ color: respData.color }}>
-                    {respData.status}
-                  </div>
-                  <div className="vital-sign-range">Normal: 12 - 20 BPM</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Sub Features - Collapsible Sections */}
-            <div className="sub-features-section">
-              <h2 className="section-title">AI Recommendations & Guidance</h2>
               
-              {/* Medical Action Recommendations */}
-              <div className={`sub-feature-card ${expandedSections.recommendations ? 'expanded' : ''}`}>
-                <div 
-                  className="sub-feature-header"
-                  onClick={() => toggleSection('recommendations')}
-                >
-                  <div className="sub-feature-title">
-                    <span className="sub-feature-icon">🩺</span>
-                    Medical Action Recommendations
-                  </div>
-                  <div className="sub-feature-toggle">
-                    {expandedSections.recommendations ? '−' : '+'}
-                  </div>
+              {/* Moderate Risk */}
+              <div className="risk-range-mini-card moderate-risk">
+                <div className="mini-risk-header">
+                  <div className="mini-risk-color"></div>
+                  <span className="mini-risk-label">Moderate Risk</span>
                 </div>
-                {expandedSections.recommendations && (
-                  <div className="sub-feature-content">
-                    <div className="recommendations-list">
-                      {suggestions.map((suggestion, index) => (
-                        <div key={index} className="recommendation-item">
-                          <div className="rec-number">{index + 1}</div>
-                          <div className="rec-text">{suggestion}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <span className="mini-risk-value">20-49%</span>
               </div>
-
-              {/* Preventive Strategy Plans */}
-              <div className={`sub-feature-card ${expandedSections.prevention ? 'expanded' : ''}`}>
-                <div 
-                  className="sub-feature-header"
-                  onClick={() => toggleSection('prevention')}
-                >
-                  <div className="sub-feature-title">
-                    <span className="sub-feature-icon">🛡️</span>
-                    Preventive Strategy Plans
-                  </div>
-                  <div className="sub-feature-toggle">
-                    {expandedSections.prevention ? '−' : '+'}
-                  </div>
+              
+              {/* High Risk */}
+              <div className="risk-range-mini-card high-risk">
+                <div className="mini-risk-header">
+                  <div className="mini-risk-color"></div>
+                  <span className="mini-risk-label">High Risk</span>
                 </div>
-                {expandedSections.prevention && (
-                  <div className="sub-feature-content">
-                    <div className="prevention-list">
-                      {preventions.map((prevention, index) => (
-                        <div key={index} className="prevention-item">
-                          <div className="prev-icon">🛡️</div>
-                          <div className="prev-text">{prevention}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <span className="mini-risk-value">50-74%</span>
               </div>
-
-              {/* Wellness Improvement Tips */}
-              <div className={`sub-feature-card ${expandedSections.wellness ? 'expanded' : ''}`}>
-                <div 
-                  className="sub-feature-header"
-                  onClick={() => toggleSection('wellness')}
-                >
-                  <div className="sub-feature-title">
-                    <span className="sub-feature-icon">💪</span>
-                    Wellness Improvement Tips
-                  </div>
-                  <div className="sub-feature-toggle">
-                    {expandedSections.wellness ? '−' : '+'}
-                  </div>
+              
+              {/* Critical Risk */}
+              <div className="risk-range-mini-card critical-risk">
+                <div className="mini-risk-header">
+                  <div className="mini-risk-color"></div>
+                  <span className="mini-risk-label">Critical Risk</span>
                 </div>
-                {expandedSections.wellness && (
-                  <div className="sub-feature-content">
-                    <div className="wellness-list">
-                      {getImprovementTips().map((tip, index) => (
-                        <div key={index} className="wellness-item">
-                          <div className="wellness-number">{index + 1}</div>
-                          <div className="wellness-text">{tip}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Healthcare Provider Guidance */}
-              <div className={`sub-feature-card ${expandedSections.guidance ? 'expanded' : ''}`}>
-                <div 
-                  className="sub-feature-header"
-                  onClick={() => toggleSection('guidance')}
-                >
-                  <div className="sub-feature-title">
-                    <span className="sub-feature-icon">👨‍⚕️</span>
-                    Healthcare Provider Guidance
-                  </div>
-                  <div className="sub-feature-toggle">
-                    {expandedSections.guidance ? '−' : '+'}
-                  </div>
-                </div>
-                {expandedSections.guidance && (
-                  <div className="sub-feature-content">
-                    <div className="guidance-content">
-                      <div className="guidance-card">
-                        <div className="guidance-icon">🏥</div>
-                        <div className="guidance-text">
-                          {getDoctorRecommendation()}
-                        </div>
-                        <div className="guidance-urgency" style={{ color: getRiskColor(riskLevel) }}>
-                          {riskLevel >= 75 ? 'HIGH URGENCY' : riskLevel >= 50 ? 'MODERATE URGENCY' : 'ROUTINE CARE'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <span className="mini-risk-value">75-100%</span>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Save Button - This stays visible until user clicks it */}
-            <div className="result-actions">
-              <button 
-                className="save-results-btn"
-                onClick={handleSaveResults}
-              >
-                💾 Save Results & Continue
-              </button>
-            </div>
-
-            {/* AI Disclaimer */}
-            <div className="disclaimer">
-              <div className="disclaimer-icon">⚠️</div>
-              <div className="disclaimer-text">
-                <strong>AI Analysis Disclaimer:</strong> This assessment is generated by our AI engine based on provided vital signs. 
-                It is for informational purposes only and should not replace professional medical advice, diagnosis, or treatment. 
-                Always consult qualified healthcare providers for medical concerns.
+        {/* Personal Information with BMI */}
+        <div className="personal-info-section">
+          <h2 className="section-title">Personal Information</h2>
+          <div className="personal-info-card">
+            <div className="personal-info-left">
+              <div className="user-avatar">👤</div>
+              <div className="user-details">
+                <h3 className="user-name">
+                  {userData.firstName || 'N/A'} {userData.lastName || 'N/A'}
+                </h3>
+                <div className="user-meta">
+                  <span className="user-age">{userData.age || 'N/A'} years old</span>
+                  <span className="user-sex">{userData.sex === 'male' ? 'Male' : userData.sex === 'female' ? 'Female' : 'N/A'}</span>
+                </div>
               </div>
             </div>
-          </>
-        )}
+            <div className="personal-info-right">
+              <div className="bmi-display">
+                <div className="bmi-header">
+                  <div className="bmi-icon">⚖️</div>
+                  <h4>Body Mass Index</h4>
+                </div>
+                <div className="bmi-value">{calculateBMI(userData) || 'N/A'}</div>
+                <div className="bmi-status" style={{ color: bmiData.color }}>
+                  {bmiData.status}
+                </div>
+                <div className="bmi-range">Healthy Range: 18.5 - 24.9</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Health Assessment - Main 4 Vital Signs */}
+        <div className="health-assessment-section">
+          <h2 className="section-title">4 Vital Signs Assessment</h2>
+          <div className="vital-signs-grid">
+            <div className="vital-sign-card">
+              <div className="vital-sign-header">
+                <div className="vital-sign-icon">🌡️</div>
+                <h3>Body Temperature</h3>
+              </div>
+              <div className="vital-sign-value">{getTemperatureValue()}°C</div>
+              <div className="vital-sign-status" style={{ color: tempData.color }}>
+                {tempData.status}
+              </div>
+              <div className="vital-sign-range">Normal: 36.0 - 37.5°C</div>
+            </div>
+
+            <div className="vital-sign-card">
+              <div className="vital-sign-header">
+                <div className="vital-sign-icon">💓</div>
+                <h3>Heart Rate</h3>
+              </div>
+              <div className="vital-sign-value">{userData.heartRate || 'N/A'} BPM</div>
+              <div className="vital-sign-status" style={{ color: hrData.color }}>
+                {hrData.status}
+              </div>
+              <div className="vital-sign-range">Normal: 60 - 100 BPM</div>
+            </div>
+
+            <div className="vital-sign-card">
+              <div className="vital-sign-header">
+                <div className="vital-sign-icon">🫁</div>
+                <h3>Oxygen Level</h3>
+              </div>
+              <div className="vital-sign-value">{userData.spo2 || 'N/A'}%</div>
+              <div className="vital-sign-status" style={{ color: spo2Data.color }}>
+                {spo2Data.status}
+              </div>
+              <div className="vital-sign-range">Normal: ≥ 95%</div>
+            </div>
+
+            <div className="vital-sign-card">
+              <div className="vital-sign-header">
+                <div className="vital-sign-icon">🌬️</div>
+                <h3>Respiratory Rate</h3>
+              </div>
+              <div className="vital-sign-value">{userData.respiratoryRate || 'N/A'} BPM</div>
+              <div className="vital-sign-status" style={{ color: respData.color }}>
+                {respData.status}
+              </div>
+              <div className="vital-sign-range">Normal: 12 - 20 BPM</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sub Features - Collapsible Sections */}
+        <div className="sub-features-section">
+          <h2 className="section-title">AI Recommendations & Guidance</h2>
+          
+          {/* Medical Action Recommendations */}
+          <div className={`sub-feature-card ${expandedSections.recommendations ? 'expanded' : ''}`}>
+            <div 
+              className="sub-feature-header"
+              onClick={() => toggleSection('recommendations')}
+            >
+              <div className="sub-feature-title">
+                <span className="sub-feature-icon">🩺</span>
+                Medical Action Recommendations
+              </div>
+              <div className="sub-feature-toggle">
+                {expandedSections.recommendations ? '−' : '+'}
+              </div>
+            </div>
+            {expandedSections.recommendations && (
+              <div className="sub-feature-content">
+                <div className="recommendations-list">
+                  {suggestions.map((suggestion, index) => (
+                    <div key={index} className="recommendation-item">
+                      <div className="rec-number">{index + 1}</div>
+                      <div className="rec-text">{suggestion}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Preventive Strategy Plans */}
+          <div className={`sub-feature-card ${expandedSections.prevention ? 'expanded' : ''}`}>
+            <div 
+              className="sub-feature-header"
+              onClick={() => toggleSection('prevention')}
+            >
+              <div className="sub-feature-title">
+                <span className="sub-feature-icon">🛡️</span>
+                Preventive Strategy Plans
+              </div>
+              <div className="sub-feature-toggle">
+                {expandedSections.prevention ? '−' : '+'}
+              </div>
+            </div>
+            {expandedSections.prevention && (
+              <div className="sub-feature-content">
+                <div className="prevention-list">
+                  {preventions.map((prevention, index) => (
+                    <div key={index} className="prevention-item">
+                      <div className="prev-icon">🛡️</div>
+                      <div className="prev-text">{prevention}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Wellness Improvement Tips */}
+          <div className={`sub-feature-card ${expandedSections.wellness ? 'expanded' : ''}`}>
+            <div 
+              className="sub-feature-header"
+              onClick={() => toggleSection('wellness')}
+            >
+              <div className="sub-feature-title">
+                <span className="sub-feature-icon">💪</span>
+                Wellness Improvement Tips
+              </div>
+              <div className="sub-feature-toggle">
+                {expandedSections.wellness ? '−' : '+'}
+              </div>
+            </div>
+            {expandedSections.wellness && (
+              <div className="sub-feature-content">
+                <div className="wellness-list">
+                  {getImprovementTips().map((tip, index) => (
+                    <div key={index} className="wellness-item">
+                      <div className="wellness-number">{index + 1}</div>
+                      <div className="wellness-text">{tip}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Healthcare Provider Guidance */}
+          <div className={`sub-feature-card ${expandedSections.guidance ? 'expanded' : ''}`}>
+            <div 
+              className="sub-feature-header"
+              onClick={() => toggleSection('guidance')}
+            >
+              <div className="sub-feature-title">
+                <span className="sub-feature-icon">👨‍⚕️</span>
+                Healthcare Provider Guidance
+              </div>
+              <div className="sub-feature-toggle">
+                {expandedSections.guidance ? '−' : '+'}
+              </div>
+            </div>
+            {expandedSections.guidance && (
+              <div className="sub-feature-content">
+                <div className="guidance-content">
+                  <div className="guidance-card">
+                    <div className="guidance-icon">🏥</div>
+                    <div className="guidance-text">
+                      {getDoctorRecommendation()}
+                    </div>
+                    <div className="guidance-urgency" style={{ color: getRiskColor(riskLevel) }}>
+                      {riskLevel >= 75 ? 'HIGH URGENCY' : riskLevel >= 50 ? 'MODERATE URGENCY' : 'ROUTINE CARE'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Save Button - Larger and More Emphasized */}
+        <div className="result-actions">
+          <button 
+            className="save-results-btn"
+            onClick={handleSaveResults}
+          >
+            <span className="button-icon">💾</span>
+            Save Results & Continue
+          </button>
+        </div>
+
+        {/* AI Disclaimer */}
+        <div className="disclaimer">
+          <div className="disclaimer-icon">⚠️</div>
+          <div className="disclaimer-text">
+            <strong>AI Analysis Disclaimer:</strong> This assessment is generated by our AI engine based on provided vital signs. 
+            It is for informational purposes only and should not replace professional medical advice, diagnosis, or treatment. 
+            Always consult qualified healthcare providers for medical concerns.
+          </div>
+        </div>
       </div>
     </div>
   );

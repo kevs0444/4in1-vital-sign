@@ -17,6 +17,7 @@ import Saving from "./pages/Saving/Saving.jsx";
 import Share from "./pages/Share/Share.jsx";
 import Result from "./pages/Result/Result.jsx";
 import Dashboard from "./pages/Dashboard/Dashboard.jsx";
+import AILoading from "./pages/AILoading/AILoading.jsx"; // ADD THIS IMPORT
 
 function AppRoutes() {
   return (
@@ -28,13 +29,14 @@ function AppRoutes() {
       <Route path="/welcome" element={<Welcome />} />
       <Route path="/name" element={<Name />} />
       <Route path="/sex" element={<Sex />} />
-      <Route path="/age" element={<Age />} />   {/* Birthday merged here */}
+      <Route path="/age" element={<Age />} /> 
       <Route path="/starting" element={<Starting />} />
       <Route path="/weight" element={<Weight />} />
       <Route path="/height" element={<Height />} />
       <Route path="/bodytemp" element={<BodyTemp />} />
       <Route path="/max30102" element={<Max30102 />} />
       <Route path="/bloodpressure" element={<BloodPressure />} />
+      <Route path="/ai-loading" element={<AILoading />} /> 
       <Route path="/saving" element={<Saving />} />
       <Route path="/share" element={<Share />} />
       <Route path="/result" element={<Result />} />

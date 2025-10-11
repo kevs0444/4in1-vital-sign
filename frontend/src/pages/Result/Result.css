@@ -662,7 +662,10 @@
   line-height: 1.2;
 }
 
-/* Action Button */
+/* ========================= */
+/* LARGER ACTION BUTTONS - SAME WIDTH AS CARDS */
+/* ========================= */
+
 .result-actions {
   display: flex;
   justify-content: center;
@@ -671,30 +674,67 @@
 }
 
 .save-results-btn {
-  padding: 16px 30px;
+  padding: 22px 40px;
   border: none;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 16px;
+  font-size: 1.3rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-  background: #dc2626;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #dc2626, #ef4444);
   color: white;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   line-height: 1.2;
-  width: 100%;
-  max-width: 300px;
+  width: 100%; /* Changed to 100% to match card width */
   justify-content: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.save-results-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
 }
 
 .save-results-btn:hover {
-  background: #b91c1c;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.2);
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(220, 38, 38, 0.3);
 }
+
+.save-results-btn:hover::before {
+  left: 100%;
+}
+
+.save-results-btn:active {
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.25);
+}
+
+/* Button Icon Animation */
+.save-results-btn .button-icon {
+  font-size: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+.save-results-btn:hover .button-icon {
+  transform: scale(1.2) rotate(5deg);
+}
+
+/* ========================= */
+/* END LARGER BUTTONS */
+/* ========================= */
 
 /* Disclaimer */
 .disclaimer {
@@ -792,9 +832,12 @@
     padding: 15px;
   }
   
+  /* Mobile Button Adjustments */
   .save-results-btn {
-    padding: 14px 25px;
-    font-size: 0.95rem;
+    padding: 20px 30px;
+    font-size: 1.2rem;
+    border-radius: 14px;
+    width: 100%; /* Maintain full width on mobile */
   }
 }
 
