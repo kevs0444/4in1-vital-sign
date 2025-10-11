@@ -2,7 +2,13 @@ from app import create_app
 
 app = create_app()
 
-if __name__ == "__main__":
-    # Run Flask on all interfaces (0.0.0.0) so it can be accessed from other devices
-    # Port 5000, debug mode enabled for development
-    app.run(host="0.0.0.0", port=5000, debug=True)
+if __name__ == '__main__':
+    print("🚀 Starting MediScan Flask Server...")
+    print("📍 Server running on: http://localhost:5000")
+    print("🔧 Body Temperature API ready for testing!")
+    print("📡 Endpoints:")
+    print("   - http://localhost:5000/api/status")
+    print("   - http://localhost:5000/api/sensor/temp/start")
+    print("   - http://localhost:5000/api/sensor/temp/data")
+    
+    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -6,6 +6,7 @@ import { Circle, CheckCircle, Error } from '@mui/icons-material';
 import logo from '../../assets/images/juan.png';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Standby.css';
+import { checkBackendStatus } from '../../utils/api'; // Import the function
 
 export default function Standby() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -13,36 +14,27 @@ export default function Standby() {
   const [backendStatus, setBackendStatus] = useState('checking');
   const navigate = useNavigate();
 
-  // Backend status check
+  // Backend status check - UPDATED
   useEffect(() => {
     let timeoutId;
 
-    const checkBackendStatus = async (retryCount = 0) => {
+    const checkStatus = async (retryCount = 0) => {
       try {
-        const response = await fetch('http://127.0.0.1:5000/api/status', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        setBackendStatus(response.ok ? 'connected' : 'error');
+        const data = await checkBackendStatus();
+        setBackendStatus(data.status === 'connected' ? 'connected' : 'error');
       } catch (error) {
         setBackendStatus('error');
       }
 
       const delay = backendStatus === 'error' ? Math.min(1000 * 2 ** retryCount, 8000) : 30000;
-      timeoutId = setTimeout(() => checkBackendStatus(retryCount + 1), delay);
+      timeoutId = setTimeout(() => checkStatus(retryCount + 1), delay);
     };
 
-    checkBackendStatus();
+    checkStatus();
     return () => clearTimeout(timeoutId);
   }, [backendStatus]);
 
-  // Update clock every second
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
+  // Rest of the component remains the same...
   const handleStartPress = () => {
     setIsPressed(true);
     setTimeout(() => {
