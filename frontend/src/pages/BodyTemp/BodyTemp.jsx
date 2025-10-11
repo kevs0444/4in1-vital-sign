@@ -1,8 +1,9 @@
+// In BodyTemp.jsx - Fix the import
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BodyTemp.css";
 import bodyTempIcon from "../../assets/icons/temp-icon.png";
-import { sensorAPI } from "../../utils/api";
+import { sensorAPI, checkBackendStatus } from "../../utils/api"; // ✅ Add checkBackendStatus here
 
 export default function BodyTemp() {
   const navigate = useNavigate();
@@ -13,8 +14,9 @@ export default function BodyTemp() {
   const [measurementComplete, setMeasurementComplete] = useState(false);
   const [sensorStatus, setSensorStatus] = useState("checking");
   const [errorMessage, setErrorMessage] = useState("");
-  const [userDetectionStatus, setUserDetectionStatus] = useState(""); // "no_user", "no_contact", "measuring"
+  const [userDetectionStatus, setUserDetectionStatus] = useState("");
   const [currentTempReading, setCurrentTempReading] = useState("");
+  const [debugInfo, setDebugInfo] = useState("");
   
   const measurementInterval = useRef(null);
 
@@ -34,21 +36,56 @@ export default function BodyTemp() {
     };
   }, []);
 
+  // In BodyTemp.jsx - Update the checkSensorConnection function
+
   const checkSensorConnection = async () => {
     try {
       setSensorStatus("checking");
       setErrorMessage("");
+      setDebugInfo("Checking sensor connection...");
       
-      const result = await sensorAPI.testConnection();
-      if (result.status === 'connected') {
-        setSensorStatus("connected");
+      // First check if backend is connected
+      const backendStatus = await checkBackendStatus();
+      setDebugInfo(`Backend check: ${JSON.stringify(backendStatus)}`);
+      
+      if (backendStatus.status === 'connected') {
+        // Backend is running, now check sensor status
+        try {
+          const sensorStatus = await sensorAPI.getStatus();
+          setDebugInfo(`Sensor status: ${JSON.stringify(sensorStatus)}`);
+          
+          if (sensorStatus.connected || sensorStatus.simulation_mode) {
+            setSensorStatus("connected");
+            setErrorMessage("");
+            
+            // Test temperature sensor specifically
+            try {
+              const tempStatus = await sensorAPI.getTemperatureStatus();
+              setDebugInfo(prev => prev + ` | Temp status: ${JSON.stringify(tempStatus)}`);
+            } catch (tempError) {
+              console.log("Temperature status check failed:", tempError);
+              setDebugInfo(prev => prev + ` | Temp check failed: ${tempError.message}`);
+            }
+          } else {
+            setSensorStatus("error");
+            setErrorMessage("Sensors not connected. Using simulation mode.");
+            setDebugInfo(prev => prev + " | Sensors not connected, enabling simulation");
+          }
+        } catch (sensorError) {
+          console.log("Sensor status check failed, using simulation:", sensorError);
+          setSensorStatus("connected"); // Still mark as connected for simulation
+          setErrorMessage("Using simulation mode - Real sensors not available");
+          setDebugInfo(prev => prev + ` | Sensor check failed: ${sensorError.message}`);
+        }
       } else {
         setSensorStatus("error");
-        setErrorMessage("Temperature sensor not detected. Please check connection.");
+        setErrorMessage("Backend not connected. Please check if Flask server is running.");
+        setDebugInfo(`Backend error: ${backendStatus.message}`);
       }
     } catch (error) {
       setSensorStatus("error");
-      setErrorMessage("Failed to connect to temperature sensor. Please ensure device is connected properly.");
+      setErrorMessage("Connection error. Using simulation mode.");
+      setDebugInfo(`Connection error: ${error.message}`);
       console.error("Sensor connection error:", error);
     }
   };
@@ -66,25 +103,24 @@ export default function BodyTemp() {
     setUserDetectionStatus("");
     setCurrentTempReading("");
     setTemperature("");
+    setDebugInfo("Starting temperature measurement...");
 
     try {
       // Start measurement on backend
       const startResult = await sensorAPI.startTemperature();
+      setDebugInfo(prev => prev + ` | Start result: ${JSON.stringify(startResult)}`);
       
       if (startResult.error) {
         throw new Error(startResult.error);
       }
 
-      // Handle initial detection status
-      if (startResult.status === 'no_user' || startResult.status === 'no_contact') {
-        setUserDetectionStatus(startResult.status);
-        setErrorMessage(startResult.message);
-      }
-
       // Start polling for measurement status
+      let measurementTime = 0;
       measurementInterval.current = setInterval(async () => {
+        measurementTime += 1;
         try {
           const status = await sensorAPI.getTemperatureStatus();
+          setDebugInfo(prev => `Time: ${measurementTime}s | Status: ${JSON.stringify(status)}`);
           
           if (status.status === 'completed' && status.temperature) {
             // Measurement completed successfully
@@ -94,6 +130,7 @@ export default function BodyTemp() {
             setUserDetectionStatus("");
             setErrorMessage("");
             clearInterval(measurementInterval.current);
+            setDebugInfo("Measurement completed successfully");
           } else if (status.status === 'no_user' || status.status === 'no_contact') {
             // No user detected or poor contact
             setUserDetectionStatus(status.status);
@@ -104,9 +141,20 @@ export default function BodyTemp() {
             setCurrentTempReading(status.temperature.toFixed(1));
             setUserDetectionStatus("");
             setErrorMessage("");
+          } else if (status.status === 'starting') {
+            // Measurement starting
+            setCurrentTempReading("");
+            setUserDetectionStatus("");
+            setErrorMessage("Initializing sensor...");
+          } else if (status.status === 'error') {
+            // Error occurred
+            setErrorMessage(status.message);
+            setIsMeasuring(false);
+            clearInterval(measurementInterval.current);
           }
         } catch (error) {
           console.error("Error checking measurement status:", error);
+          setDebugInfo(prev => prev + ` | Poll error: ${error.message}`);
         }
       }, 1000);
 
@@ -115,14 +163,16 @@ export default function BodyTemp() {
         if (isMeasuring && !measurementComplete) {
           stopMeasurement();
           setErrorMessage("Measurement timeout. Please try again.");
+          setDebugInfo("Measurement timeout after 30 seconds");
         }
       }, 30000);
 
     } catch (error) {
       console.error("Error starting measurement:", error);
       setSensorStatus("error");
-      setErrorMessage("Failed to start measurement. Please check sensor connection.");
+      setErrorMessage("Failed to start measurement: " + error.message);
       setIsMeasuring(false);
+      setDebugInfo(`Start error: ${error.message}`);
     }
   };
 
@@ -134,6 +184,7 @@ export default function BodyTemp() {
         measurementInterval.current = null;
       }
       setIsMeasuring(false);
+      setDebugInfo("Measurement stopped");
     } catch (error) {
       console.error("Error stopping measurement:", error);
     }
@@ -165,6 +216,7 @@ export default function BodyTemp() {
     setErrorMessage("");
     setUserDetectionStatus("");
     setCurrentTempReading("");
+    setDebugInfo("Measurement reset");
     
     if (measurementInterval.current) {
       clearInterval(measurementInterval.current);
@@ -222,6 +274,24 @@ export default function BodyTemp() {
               {sensorStatus === "checking" && "🔍 Checking Sensor..."}
               {sensorStatus === "error" && "❌ Sensor Not Connected"}
             </span>
+            {sensorStatus === "error" && (
+              <button 
+                className="retry-connection" 
+                onClick={checkSensorConnection}
+                style={{
+                  marginLeft: '10px',
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  background: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Retry
+              </button>
+            )}
           </div>
         </div>
 
@@ -279,9 +349,6 @@ export default function BodyTemp() {
           <div className="error-message">
             <span className="error-icon">⚠️</span>
             {errorMessage}
-            <button className="retry-connection" onClick={checkSensorConnection}>
-              Retry Connection
-            </button>
           </div>
         )}
 
@@ -303,6 +370,11 @@ export default function BodyTemp() {
             </div>
           </div>
         )}
+
+        {/* Debug Information - Remove in production */}
+        <div className="debug-info">
+          <strong>Debug Info:</strong> {debugInfo}
+        </div>
 
         {/* Controls */}
         <div className="measurement-controls">

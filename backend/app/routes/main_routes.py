@@ -4,16 +4,12 @@ main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/hello')
 def hello():
-    return jsonify({"message": "Hello from Flask!", "status": "connected"})
+    return jsonify({"message": "Hello from Flask!", "status": "success"})
 
 @main_bp.route('/status')
 def status():
-    return jsonify({
-        "status": "connected", 
-        "service": "MediScan Backend",
-        "version": "1.0.0"
-    })
+    return jsonify({"status": "running", "service": "Health Monitoring System"})
 
 @main_bp.route('/health')
-def health_check():
+def health():
     return jsonify({"status": "healthy"})

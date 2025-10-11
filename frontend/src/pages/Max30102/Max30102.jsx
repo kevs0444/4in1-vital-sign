@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+// In Max30102.jsx - Fix the import
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Max30102.css";
 import heartRateIcon from "../../assets/icons/heart-rate-icon.png";
 import spo2Icon from "../../assets/icons/spo2-icon.png";
 import respiratoryIcon from "../../assets/icons/respiratory-icon.png";
+import { sensorAPI, createMax30102Poller, interpretMax30102Status } from "../../utils/api"; // ✅ All exports now available
 
 export default function Max30102() {
   const navigate = useNavigate();
@@ -12,71 +14,172 @@ export default function Max30102() {
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurementComplete, setMeasurementComplete] = useState(false);
   const [currentMeasurement, setCurrentMeasurement] = useState("");
+  const [fingerStatus, setFingerStatus] = useState("waiting"); // waiting, detected, removed
+  const [progressSeconds, setProgressSeconds] = useState(60);
+  const [connectionStatus, setConnectionStatus] = useState("disconnected");
+  
   const [measurements, setMeasurements] = useState({
     heartRate: "",
     spo2: "",
     respiratoryRate: ""
   });
 
+  const pollerRef = useRef(null);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 100);
-    return () => clearTimeout(timer);
+
+    // Initialize sensor connection
+    initializeSensorConnection();
+
+    return () => {
+      clearTimeout(timer);
+      stopMeasurement();
+      if (pollerRef.current) {
+        pollerRef.current.stopPolling();
+      }
+    };
   }, []);
 
-  const simulateMax30102Measurement = () => {
+  const initializeSensorConnection = async () => {
+    try {
+      setConnectionStatus("connecting");
+      
+      // Test backend connection first
+      const status = await sensorAPI.getStatus();
+      console.log("🔌 Sensor status:", status);
+      
+      if (status.connected) {
+        setConnectionStatus("connected");
+      } else {
+        // Try to connect
+        const connectResult = await sensorAPI.connect();
+        if (connectResult.connected) {
+          setConnectionStatus("connected");
+        } else {
+          setConnectionStatus("disconnected");
+          console.error("Failed to connect to sensors:", connectResult.error);
+        }
+      }
+    } catch (error) {
+      setConnectionStatus("error");
+      console.error("Error initializing sensor connection:", error);
+    }
+  };
+
+  const startMax30102Measurement = async () => {
     if (isMeasuring) return;
     
-    setIsMeasuring(true);
-    setMeasurementComplete(false);
-    
-    const measurementSequence = [
-      { type: "heartRate", duration: 2000, label: "Heart Rate" },
-      { type: "spo2", duration: 1500, label: "Blood Oxygen" },
-      { type: "respiratoryRate", duration: 1800, label: "Respiratory Rate" }
-    ];
-    
-    let currentIndex = 0;
-    
-    const performNextMeasurement = () => {
-      if (currentIndex >= measurementSequence.length) {
+    try {
+      setIsMeasuring(true);
+      setMeasurementComplete(false);
+      setFingerStatus("waiting");
+      setProgressSeconds(60);
+      
+      // Start the measurement on Arduino
+      const result = await sensorAPI.startMax30102();
+      
+      if (result.error) {
+        console.error("Failed to start MAX30102 measurement:", result.error);
+        alert("Failed to start measurement. Please check sensor connection.");
         setIsMeasuring(false);
-        setMeasurementComplete(true);
-        setCurrentMeasurement("");
         return;
       }
       
-      const current = measurementSequence[currentIndex];
-      setCurrentMeasurement(current.label);
+      console.log("✅ MAX30102 measurement started:", result);
       
-      setTimeout(() => {
-        let newValue;
-        switch (current.type) {
-          case "heartRate":
-            newValue = Math.floor(Math.random() * 60 + 60);
-            break;
-          case "spo2":
-            newValue = (Math.random() * 5 + 95).toFixed(1);
-            break;
-          case "respiratoryRate":
-            newValue = Math.floor(Math.random() * 10 + 12);
-            break;
-          default:
-            newValue = "";
-        }
-        
-        setMeasurements(prev => ({
-          ...prev,
-          [current.type]: newValue
-        }));
-        
-        currentIndex++;
-        performNextMeasurement();
-      }, current.duration);
-    };
+      // Start polling for updates
+      startPolling();
+      
+    } catch (error) {
+      console.error("Error starting MAX30102 measurement:", error);
+      setIsMeasuring(false);
+      alert("Error starting measurement. Please try again.");
+    }
+  };
+
+  const startPolling = () => {
+    if (pollerRef.current) {
+      pollerRef.current.stopPolling();
+    }
+
+    const poller = createMax30102Poller(
+      // onUpdate callback
+      (statusData) => {
+        console.log("📊 MAX30102 Status Update:", statusData);
+        handleStatusUpdate(statusData);
+      },
+      // onError callback
+      (error) => {
+        console.error("❌ Polling error:", error);
+        setConnectionStatus("error");
+      },
+      1000 // Poll every second
+    );
+
+    pollerRef.current = poller;
+    poller.startPolling();
+  };
+
+  const handleStatusUpdate = (statusData) => {
+    const interpreted = interpretMax30102Status(statusData);
     
-    performNextMeasurement();
+    // Update measurements
+    setMeasurements({
+      heartRate: interpreted.heartRate.display,
+      spo2: interpreted.spo2.display,
+      respiratoryRate: interpreted.respiratoryRate.display
+    });
+
+    // Update finger status and sensor visual
+    setFingerStatus(interpreted.fingerStatus);
+    
+    // Update progress
+    setProgressSeconds(interpreted.progress);
+    
+    // Update measurement state
+    setIsMeasuring(interpreted.isMeasuring);
+    
+    // Check if measurement is complete
+    if (interpreted.isComplete && !measurementComplete) {
+      setMeasurementComplete(true);
+      setIsMeasuring(false);
+      
+      // Stop polling when complete
+      if (pollerRef.current) {
+        pollerRef.current.stopPolling();
+      }
+      
+      console.log("🎯 MAX30102 Measurement Complete!");
+    }
+
+    // Update current measurement label based on progress
+    if (interpreted.isMeasuring) {
+      if (interpreted.progress > 40) {
+        setCurrentMeasurement("Initializing...");
+      } else if (interpreted.progress > 20) {
+        setCurrentMeasurement("Measuring Heart Rate");
+      } else if (interpreted.progress > 10) {
+        setCurrentMeasurement("Measuring Blood Oxygen");
+      } else {
+        setCurrentMeasurement("Calculating Respiratory Rate");
+      }
+    }
+  };
+
+  const stopMeasurement = async () => {
+    try {
+      await sensorAPI.stopMeasurement();
+    } catch (error) {
+      console.error("Error stopping measurement:", error);
+    } finally {
+      setIsMeasuring(false);
+      if (pollerRef.current) {
+        pollerRef.current.stopPolling();
+      }
+    }
   };
 
   const handleContinue = () => {
@@ -90,21 +193,23 @@ export default function Max30102() {
       // Personal information from previous steps
       ...location.state,
       
-      // Max30102 measurements
-      heartRate: measurements.heartRate ? parseInt(measurements.heartRate) : null,
-      spo2: measurements.spo2 ? parseFloat(measurements.spo2) : null,
-      respiratoryRate: measurements.respiratoryRate ? parseInt(measurements.respiratoryRate) : null,
+      // Max30102 measurements - convert strings back to numbers
+      heartRate: measurements.heartRate && measurements.heartRate !== '--' ? 
+                 parseInt(measurements.heartRate) : null,
+      spo2: measurements.spo2 && measurements.spo2 !== '--.-' ? 
+            parseFloat(measurements.spo2) : null,
+      respiratoryRate: measurements.respiratoryRate && measurements.respiratoryRate !== '--' ? 
+                      parseInt(measurements.respiratoryRate) : null,
       
       // Additional metadata
       max30102Complete: true,
       measurementTimestamp: new Date().toISOString(),
       
-      // Ensure temperature data is preserved (handle both property names)
+      // Ensure temperature data is preserved
       temperature: location.state?.temperature || location.state?.bodyTemp || null,
       bodyTemp: location.state?.bodyTemp || location.state?.temperature || null
     };
     
-    // FIX: Navigate to AILoading first, then it will auto-navigate to Result
     console.log("🧠 Navigating to AI Loading with data:", completeData);
     navigate("/ai-loading", {
       state: completeData
@@ -120,10 +225,15 @@ export default function Max30102() {
     setMeasurementComplete(false);
     setIsMeasuring(false);
     setCurrentMeasurement("");
+    setFingerStatus("waiting");
+    setProgressSeconds(60);
+    
+    // Stop any ongoing measurement
+    stopMeasurement();
   };
 
   const getStatusColor = (type, value) => {
-    if (!value) return "default";
+    if (!value || value === '--' || value === '--.-') return "default";
     
     const numValue = parseFloat(value);
     
@@ -145,7 +255,7 @@ export default function Max30102() {
   };
 
   const getStatusText = (type, value) => {
-    if (!value) return "Not measured";
+    if (!value || value === '--' || value === '--.-') return "Not measured";
     
     const status = getStatusColor(type, value);
     
@@ -161,6 +271,19 @@ export default function Max30102() {
     }
   };
 
+  const getFingerStatusMessage = () => {
+    switch (fingerStatus) {
+      case "detected":
+        return "✅ Finger detected - Measuring...";
+      case "waiting":
+        return "👆 Place finger on sensor";
+      case "removed":
+        return "❌ Finger removed - Please place finger back";
+      default:
+        return "👆 Place finger on sensor";
+    }
+  };
+
   return (
     <div className="max30102-container">
       <div className={`max30102-content ${isVisible ? 'visible' : ''}`}>
@@ -168,28 +291,42 @@ export default function Max30102() {
         {/* Progress Bar */}
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{width: '100%'}}></div>
+            <div 
+              className="progress-fill" 
+              style={{width: `${((60 - progressSeconds) / 60) * 100}%`}}
+            ></div>
           </div>
-          <span className="progress-step">Step 4 of 4 - Vital Signs</span>
+          <span className="progress-step">
+            Step 4 of 4 - Vital Signs | 
+            {connectionStatus === "connected" ? " ✅ Connected" : " ❌ Disconnected"} |
+            Time: {progressSeconds}s
+          </span>
         </div>
 
         {/* Header */}
         <div className="max30102-header">
           <h1 className="max30102-title">Pulse Oximeter</h1>
-          <p className="max30102-subtitle">Place finger on sensor for heart rate, SpO2, and respiratory rate</p>
+          <p className="max30102-subtitle">
+            {isMeasuring ? getFingerStatusMessage() : "Place finger on sensor for heart rate, SpO2, and respiratory rate"}
+          </p>
         </div>
 
         {/* Display Section */}
         <div className="sensor-display-section">
           <div className="sensor-visual-area">
-            <div className={`finger-sensor ${isMeasuring ? 'active' : ''}`}>
+            <div className={`finger-sensor ${fingerStatus === "detected" ? 'active' : ''}`}>
               <div className="sensor-light"></div>
               <div className="finger-placeholder">👆</div>
             </div>
             {isMeasuring && (
               <div className="measuring-progress">
                 <div className="pulse-wave"></div>
-                <span className="current-measurement">{currentMeasurement}</span>
+                <span className="current-measurement">
+                  {currentMeasurement || "Initializing..."}
+                </span>
+                <span className="progress-text">
+                  {progressSeconds > 0 ? `${progressSeconds}s remaining` : "Complete!"}
+                </span>
               </div>
             )}
           </div>
@@ -272,18 +409,18 @@ export default function Max30102() {
           {!measurementComplete ? (
             <button 
               className="measure-button"
-              onClick={simulateMax30102Measurement}
-              disabled={isMeasuring}
+              onClick={startMax30102Measurement}
+              disabled={isMeasuring || connectionStatus !== "connected"}
             >
               {isMeasuring ? (
                 <>
                   <div className="spinner"></div>
-                  Measuring {currentMeasurement}...
+                  Measuring... ({progressSeconds}s)
                 </>
               ) : (
                 <>
                   <div className="button-icon">❤️</div>
-                  Start Measurement
+                  {connectionStatus === "connected" ? "Start Measurement" : "Connecting..."}
                 </>
               )}
             </button>
@@ -299,6 +436,23 @@ export default function Max30102() {
             </div>
           )}
         </div>
+
+        {/* Connection Status */}
+        {connectionStatus !== "connected" && (
+          <div className="connection-status">
+            <p className={`status-message ${connectionStatus}`}>
+              {connectionStatus === "disconnected" && "❌ Sensor disconnected - Please check connection"}
+              {connectionStatus === "error" && "❌ Connection error - Please try again"}
+              {connectionStatus === "connecting" && "🔌 Connecting to sensors..."}
+            </p>
+            <button 
+              className="retry-button"
+              onClick={initializeSensorConnection}
+            >
+              Retry Connection
+            </button>
+          </div>
+        )}
 
         {/* Educational Content */}
         <div className="educational-content">

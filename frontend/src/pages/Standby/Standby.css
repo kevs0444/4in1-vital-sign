@@ -514,3 +514,45 @@ html, body {
 .standby-logo-section {
   animation: fadeInUp 0.8s ease-out;
 }
+
+/* Add to Standby.css */
+.standby-status-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.standby-status-indicator.connected {
+  color: #28a745;
+  border: 1px solid #28a745;
+}
+
+.standby-status-indicator.checking {
+  color: #ffc107;
+  border: 1px solid #ffc107;
+}
+
+.standby-status-indicator.error {
+  color: #dc3545;
+  border: 1px solid #dc3545;
+}
+
+.standby-status-icon {
+  font-size: 18px !important;
+}
+
+.standby-status-text {
+  font-weight: 600;
+}
+
+.standby-start-button.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
