@@ -15,6 +15,10 @@ unsigned long measurementStartTime = 0;
 
 // MLX90614 Variables
 float finalTemperature = 0;
+bool mlxInitialized = false;
+bool max30102Initialized = false;
+unsigned long stableStartTime = 0;
+bool tempMeasuring = false;
 
 // MAX30102 Variables
 const unsigned long MAX_MEASUREMENT_TIME = 60000; // 60 seconds
@@ -42,23 +46,32 @@ void setup() {
   
   Serial.println("Initializing sensors for testing...");
   
-  // Initialize MLX90614 (Temperature)
+  // Initialize MLX90614 (Temperature) - I2C Address 0x5A
+  Serial.print("Initializing MLX90614... ");
   if (mlx.begin()) {
+    mlxInitialized = true;
     Serial.println("✅ MLX90614 Temperature Sensor OK");
   } else {
     Serial.println("❌ MLX90614 Temperature Sensor FAILED");
   }
   
-  // Initialize MAX30102
+  // Initialize MAX30102 - I2C Address 0x57
   Serial.print("Initializing MAX30102... ");
   if (particleSensor.begin(Wire, I2C_SPEED_FAST)) {
     particleSensor.setup();
     particleSensor.setPulseAmplitudeRed(0x0A);
     particleSensor.setPulseAmplitudeGreen(0);
+    max30102Initialized = true;
     Serial.println("✅ MAX30102 Pulse Oximeter OK");
   } else {
     Serial.println("❌ MAX30102 Pulse Oximeter FAILED");
   }
+  
+  // Report initialization status
+  Serial.print("📊 INITIALIZATION_SUMMARY - MLX90614:");
+  Serial.print(mlxInitialized ? "OK" : "FAILED");
+  Serial.print(":MAX30102:");
+  Serial.println(max30102Initialized ? "OK" : "FAILED");
   
   Serial.println("READY_FOR_TESTING");
   Serial.println("COMMANDS: START_TEMP, START_MAX, STOP_MEASUREMENT, GET_STATUS");
@@ -99,6 +112,9 @@ void handleCommand(String command) {
   else if (command == "TEST_CONNECTION") {
     Serial.println("💚 CONNECTION_TEST_OK");
   }
+  else if (command == "SCAN_I2C") {
+    scanI2CDevices();
+  }
   else {
     Serial.print("❌ UNKNOWN_COMMAND: ");
     Serial.println(command);
@@ -107,45 +123,65 @@ void handleCommand(String command) {
 
 // ==================== MLX90614 TEMPERATURE PHASE ====================
 void startTempMeasurement() {
+  // ONLY check if MLX90614 is initialized - ignore MAX30102 status
+  if (!mlxInitialized) {
+    Serial.println("❌ TEMP_SENSOR_NOT_READY - MLX90614 not initialized");
+    return;
+  }
+  
   currentSensor = "TEMP";
   measurementActive = true;
   measurementStartTime = millis();
   finalTemperature = 0;
+  tempMeasuring = false;
+  stableStartTime = 0;
   
   Serial.println("🌡️ TEMP_MEASUREMENT_STARTED");
   Serial.println("📝 Place sensor on forehead for accurate reading...");
 }
 
 void readTemperature() {
-  float ambientTemp = mlx.readAmbientTempC();
+  // ONLY check if MLX90614 is initialized
+  if (!mlxInitialized) {
+    Serial.println("❌ TEMP_SENSOR_ERROR - MLX90614 not available");
+    stopMeasurement();
+    return;
+  }
+  
+  // Read temperature directly
   float objectTemp = mlx.readObjectTempC();
   float bodyTemp = objectTemp + 1.9; // Calibration offset
   
+  // Check for valid reading (not NaN)
+  if (isnan(objectTemp)) {
+    Serial.println("❌ TEMP_READING_ERROR - Invalid sensor reading");
+    return;
+  }
+  
   // Send raw data for debugging
-  Serial.print("📊 TEMP_RAW - Ambient:");
-  Serial.print(ambientTemp);
-  Serial.print("C, Object:");
+  Serial.print("📊 TEMP_RAW - Object:");
   Serial.print(objectTemp);
   Serial.print("C, Calibrated:");
   Serial.print(bodyTemp);
   Serial.println("C");
   
-  // Enhanced detection logic
-  bool humanDetected = (bodyTemp >= 35.0 && bodyTemp <= 38.0);
-  bool sensorContact = (objectTemp > ambientTemp + 2.0);
-  
-  if (humanDetected && sensorContact) {
-    Serial.print("👤 HUMAN_DETECTED - Temp:");
-    Serial.print(bodyTemp, 1);
-    Serial.println("C");
+  // SIMPLIFIED DETECTION LOGIC
+  // Detect if body temperature is in human range (35°C to 38°C)
+  if (bodyTemp >= 35.0 && bodyTemp <= 38.0) {
+    if (!tempMeasuring) {
+      // Start 5-second timer
+      tempMeasuring = true;
+      stableStartTime = millis();
+      Serial.println("👤 HUMAN_DETECTED - Starting measurement...");
+    }
     
     // Send intermediate data
     Serial.print("📈 TEMP_DATA:");
     Serial.print(bodyTemp, 1);
     Serial.println(":C");
     
-    // Wait 5 seconds for stable reading, then send final
-    if (millis() - measurementStartTime >= 5000) {
+    // After 5 seconds, show final temperature
+    if (millis() - stableStartTime >= 5000) {
       finalTemperature = bodyTemp;
       Serial.print("✅ TEMP_FINAL:");
       Serial.print(finalTemperature, 1);
@@ -154,18 +190,18 @@ void readTemperature() {
       stopMeasurement();
     }
   } else {
-    if (!sensorContact) {
-      Serial.println("❌ TEMP_NO_CONTACT - Ensure sensor is touching forehead");
-    } else if (!humanDetected) {
-      Serial.println("❌ TEMP_OUT_OF_RANGE - Check sensor placement");
+    // No human detected
+    if (tempMeasuring) {
+      Serial.println("❌ TEMP_DROPPED - Temperature out of range, restarting...");
+      tempMeasuring = false;
+      stableStartTime = 0;
+    } else {
+      Serial.println("🚫 NO_USER_DETECTED - Waiting for human contact...");
     }
     
-    // Send no user detected status
-    Serial.println("🚫 NO_USER_DETECTED");
-    
-    // If no contact for 10 seconds, auto-stop
-    if (millis() - measurementStartTime > 10000) {
-      Serial.println("🕒 TEMP_TIMEOUT - No human detected");
+    // If no contact for 15 seconds, auto-stop
+    if (millis() - measurementStartTime > 15000) {
+      Serial.println("🕒 TEMP_TIMEOUT - No human detected for 15 seconds");
       stopMeasurement();
     }
   }
@@ -173,6 +209,12 @@ void readTemperature() {
 
 // ==================== MAX30102 VITAL SIGNS PHASE ====================
 void startMaxMeasurement() {
+  // ONLY check if MAX30102 is initialized - ignore MLX90614 status
+  if (!max30102Initialized) {
+    Serial.println("❌ MAX30102_SENSOR_NOT_READY - MAX30102 not initialized");
+    return;
+  }
+  
   currentSensor = "MAX";
   measurementActive = true;
   measurementStartTime = millis();
@@ -198,6 +240,13 @@ void startMaxMeasurement() {
 }
 
 void readMax30102() {
+  // ONLY check if MAX30102 is initialized
+  if (!max30102Initialized) {
+    Serial.println("❌ MAX30102_SENSOR_ERROR - MAX30102 not available");
+    stopMeasurement();
+    return;
+  }
+  
   long irValue = particleSensor.getIR();
   unsigned long currentTime = millis();
   unsigned long elapsedTime = currentTime - measurementStartTime;
@@ -403,6 +452,7 @@ void readCurrentSensor() {
 void stopMeasurement() {
   measurementActive = false;
   fingerDetected = false;
+  tempMeasuring = false;
   currentSensor = "NONE";
   Serial.println("🛑 MEASUREMENT_STOPPED");
 }
@@ -419,5 +469,44 @@ void sendStatus() {
   Serial.print(":FINAL_SPO2:");
   Serial.print(maxSpO2, 1);
   Serial.print(":FINAL_RR:");
-  Serial.println(maxRespiratoryRate, 1);
+  Serial.print(maxRespiratoryRate, 1);
+  Serial.print(":MLX_INIT:");
+  Serial.print(mlxInitialized ? "OK" : "FAILED");
+  Serial.print(":MAX_INIT:");
+  Serial.println(max30102Initialized ? "OK" : "FAILED");
+}
+
+// I2C Scanner to detect connected devices
+void scanI2CDevices() {
+  Serial.println("🔍 Scanning I2C bus...");
+  byte error, address;
+  int nDevices = 0;
+  
+  for(address = 1; address < 127; address++ ) {
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+    
+    if (error == 0) {
+      Serial.print("✅ I2C device found at address 0x");
+      if (address < 16) Serial.print("0");
+      Serial.print(address, HEX);
+      
+      // Identify common sensor addresses
+      if (address == 0x5A) Serial.print(" (MLX90614 Temperature)");
+      else if (address == 0x57) Serial.print(" (MAX30102 Pulse Oximeter)");
+      else if (address == 0x68) Serial.print(" (MPU6050 Accelerometer)");
+      else if (address == 0x76 || address == 0x77) Serial.print(" (BME280 Environmental)");
+      
+      Serial.println();
+      nDevices++;
+    }
+  }
+  
+  if (nDevices == 0) {
+    Serial.println("❌ No I2C devices found");
+  } else {
+    Serial.print("📊 Found ");
+    Serial.print(nDevices);
+    Serial.println(" I2C device(s)");
+  }
 }

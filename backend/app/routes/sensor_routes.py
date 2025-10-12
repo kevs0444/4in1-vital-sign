@@ -3,8 +3,8 @@ from app.sensors.sensor_manager import SensorManager
 import time
 import random
 
-# Initialize sensor manager with simulation mode enabled
-sensor_manager = SensorManager(port='COM3', force_simulation=True)
+# Initialize sensor manager - NO FORCE SIMULATION
+sensor_manager = SensorManager(port='COM3', force_simulation=False)
 
 sensor_bp = Blueprint('sensor', __name__)
 
@@ -41,7 +41,7 @@ def get_sensor_status():
         return jsonify({
             "error": f"Failed to get sensor status: {str(e)}",
             "connected": False,
-            "simulation_mode": True
+            "simulation_mode": False
         })
 
 @sensor_bp.route('/test', methods=['POST'])

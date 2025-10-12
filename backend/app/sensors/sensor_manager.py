@@ -3,10 +3,11 @@ import threading
 import time
 import re
 import random
+import math
 from typing import Dict, Any, Callable, Optional
 
 class SensorManager:
-    def __init__(self, port: str = 'COM3', baudrate: int = 9600, force_simulation: bool = True):
+    def __init__(self, port: str = 'COM3', baudrate: int = 9600, force_simulation: bool = False):
         self.port = port
         self.baudrate = baudrate
         self.serial_conn = None
@@ -25,11 +26,9 @@ class SensorManager:
         self.measurement_start_time = 0
         self.measurement_duration = 60
         
-        # Force simulation mode for testing
+        # Connection settings - NO FORCE SIMULATION
         self.simulation_mode = force_simulation
-        if force_simulation:
-            self.is_connected = True
-            print("🔧 SIMULATION MODE: Force enabled for testing")
+        self.force_simulation = force_simulation
         
         # Callbacks
         self.data_callbacks = []
@@ -38,11 +37,13 @@ class SensorManager:
         self.should_read = False
 
     def connect(self) -> bool:
-        """Connect to Arduino"""
+        """Connect to Arduino - Returns TRUE only if actually connected"""
         try:
-            if self.simulation_mode:
-                print("🔧 SIMULATION MODE: Skipping actual Arduino connection")
+            # Only use simulation if explicitly forced
+            if self.force_simulation:
+                print("🔧 FORCED SIMULATION MODE: Skipping Arduino connection")
                 self.is_connected = True
+                self.simulation_mode = True
                 return True
             
             print(f"🔌 Attempting to connect to Arduino on {self.port}...")
@@ -64,6 +65,7 @@ class SensorManager:
                 
                 # Try alternative ports
                 common_ports = ['COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8']
+                connected = False
                 for port in common_ports:
                     if port != self.port:
                         try:
@@ -78,20 +80,25 @@ class SensorManager:
                             self.simulation_mode = False
                             self.start_reading()
                             print(f"✅ Connected to Arduino on {port}")
-                            return True
-                        except:
+                            connected = True
+                            break
+                        except Exception as port_error:
+                            print(f"❌ Failed on port {port}: {port_error}")
                             continue
                 
-                print("🔧 All connection attempts failed. Enabling simulation mode...")
-                self.simulation_mode = True
-                self.is_connected = True
-                return True
-                
+                if not connected:
+                    print("❌ All connection attempts failed. No Arduino detected.")
+                    self.simulation_mode = False  # No simulation fallback
+                    self.is_connected = False
+                    return False
+                else:
+                    return True
+                    
         except Exception as e:
             print(f"❌ Critical connection error: {e}")
-            self.simulation_mode = True
-            self.is_connected = True
-            return True
+            self.simulation_mode = False
+            self.is_connected = False
+            return False
 
     def disconnect(self):
         """Disconnect from Arduino"""
@@ -230,6 +237,63 @@ class SensorManager:
             self.finger_detected = False
             self._trigger_status_callbacks()
 
+    def _simulate_sensor_error(self):
+        """Simulate real-world sensor errors with realistic probabilities"""
+        error_chance = random.random()
+        
+        if error_chance < 0.04:  # 4% chance of major error
+            return {
+                "status": "error",
+                "message": "❌ Sensor malfunction - Please check connection and retry",
+                "temperature": None
+            }
+        elif error_chance < 0.08:  # 4% chance of contact error
+            return {
+                "status": "no_contact",
+                "message": "⚠️ Poor sensor contact - Ensure firm forehead contact",
+                "temperature": None
+            }
+        elif error_chance < 0.12:  # 4% chance of environmental error
+            return {
+                "status": "error", 
+                "message": "🌡️ Ambient temperature interference - Move to stable environment",
+                "temperature": None
+            }
+        elif error_chance < 0.15:  # 3% chance of calibration error
+            return {
+                "status": "error",
+                "message": "🔧 Sensor calibration needed - Please wait",
+                "temperature": None
+            }
+        
+        return None  # No error
+
+    def _generate_realistic_temperature(self, elapsed_time):
+        """Generate realistic temperature readings with variations"""
+        # Base temperature varies by time of day (simulated)
+        hour_of_day = (time.time() % 86400) / 3600  # 0-23 hours
+        daily_variation = math.sin((hour_of_day - 14) * math.pi / 12) * 0.3  # Peak at 2 PM
+        
+        # Base temperature with individual variation
+        base_temp = 36.5 + random.uniform(-0.4, 0.4)  # Individual differences
+        
+        # Time-based variation during measurement
+        time_variation = math.sin(elapsed_time * 2) * 0.15  # Small oscillations
+        
+        # Sensor noise
+        sensor_noise = random.uniform(-0.08, 0.08)
+        
+        # Movement artifact (occasional spikes)
+        movement_artifact = 0
+        if random.random() < 0.1:  # 10% chance of movement
+            movement_artifact = random.uniform(-0.3, 0.5)
+        
+        simulated_temp = (base_temp + daily_variation + time_variation + 
+                         sensor_noise + movement_artifact)
+        
+        # Clamp to realistic human range
+        return max(35.0, min(39.5, simulated_temp))
+
     def start_temperature_measurement(self):
         """Start temperature measurement"""
         if not self.is_connected:
@@ -244,7 +308,7 @@ class SensorManager:
         self.temperature = None
         
         if self.simulation_mode:
-            print("🌡️ SIMULATION: Starting temperature measurement")
+            print("🌡️ SIMULATION: Starting realistic temperature measurement")
             return {
                 "status": "started", 
                 "message": "Temperature measurement started",
@@ -255,11 +319,18 @@ class SensorManager:
             return {"status": "started", "message": "Temperature measurement started"}
 
     def get_temperature_status(self):
-        """Get temperature measurement status"""
-        # Always return connected status in simulation mode
+        """Get temperature measurement status with realistic simulation"""
         if self.simulation_mode:
             if self.current_phase == "TEMP" and self.measurement_active:
                 elapsed = time.time() - self.measurement_start_time
+                
+                # Check for simulated sensor errors (only after initial phase)
+                if elapsed > 1:  # Only check errors after initialization
+                    sensor_error = self._simulate_sensor_error()
+                    if sensor_error:
+                        self.current_phase = "IDLE"
+                        self.measurement_active = False
+                        return sensor_error
                 
                 if elapsed < 2:
                     return {
@@ -267,19 +338,40 @@ class SensorManager:
                         "message": "Initializing temperature sensor...",
                         "temperature": None
                     }
-                elif elapsed < 5:
-                    simulated_temp = 36.5 + random.uniform(-0.3, 0.5)
+                elif elapsed < 7:  # Variable measurement time 5-9 seconds
+                    # Realistic temperature generation
+                    simulated_temp = self._generate_realistic_temperature(elapsed)
                     self.temperature = round(simulated_temp, 1)
+                    
+                    # Occasionally show unstable readings
+                    if random.random() < 0.15 and elapsed < 4:
+                        return {
+                            "status": "measuring",
+                            "message": "Stabilizing reading...",
+                            "temperature": None
+                        }
+                    
                     return {
                         "status": "measuring",
                         "message": "Measuring temperature...",
                         "temperature": self.temperature
                     }
                 else:
-                    final_temp = 36.8
-                    self.temperature = final_temp
+                    # Final reading - use actual measured value
+                    final_temp = self.temperature if self.temperature else self._generate_realistic_temperature(elapsed)
+                    final_temp = round(final_temp, 1)
+                    
+                    # Occasionally require longer measurement
+                    if random.random() < 0.1 and elapsed < 9:  # 10% chance
+                        return {
+                            "status": "measuring",
+                            "message": "Finalizing measurement...",
+                            "temperature": self.temperature
+                        }
+                    
                     self.current_phase = "IDLE"
                     self.measurement_active = False
+                    
                     return {
                         "status": "completed",
                         "message": "Temperature measurement complete",
@@ -330,6 +422,56 @@ class SensorManager:
                     "temperature": self.temperature
                 }
 
+    def _generate_realistic_vital_signs(self, elapsed_time):
+        """Generate realistic vital signs with occasional abnormalities"""
+        # Determine if this reading should be abnormal
+        abnormality_type = random.random()
+        
+        if abnormality_type < 0.08:  # 8% chance of bradycardia
+            heart_rate = random.randint(45, 59)
+            spo2 = random.randint(92, 98)
+            respiratory_rate = random.randint(10, 14)
+            abnormality = "bradycardia"
+        elif abnormality_type < 0.16:  # 8% chance of tachycardia
+            heart_rate = random.randint(101, 125)
+            spo2 = random.randint(94, 99)
+            respiratory_rate = random.randint(18, 24)
+            abnormality = "tachycardia"
+        elif abnormality_type < 0.20:  # 4% chance of low SpO2
+            heart_rate = random.randint(70, 90)
+            spo2 = random.randint(85, 93)
+            respiratory_rate = random.randint(14, 20)
+            abnormality = "low_spo2"
+        elif abnormality_type < 0.22:  # 2% chance of tachypnea
+            heart_rate = random.randint(80, 100)
+            spo2 = random.randint(95, 99)
+            respiratory_rate = random.randint(22, 28)
+            abnormality = "tachypnea"
+        elif abnormality_type < 0.24:  # 2% chance of bradypnea
+            heart_rate = random.randint(60, 80)
+            spo2 = random.randint(96, 99)
+            respiratory_rate = random.randint(8, 11)
+            abnormality = "bradypnea"
+        else:  # 76% normal readings
+            heart_rate = random.randint(62, 98)
+            spo2 = random.randint(96, 100)
+            respiratory_rate = random.randint(12, 20)
+            abnormality = "normal"
+        
+        # Add sensor noise and instability, especially early in measurement
+        if elapsed_time < 25:
+            instability_chance = max(0.1, 0.4 - (elapsed_time * 0.015))  # Decreases over time
+            if random.random() < instability_chance:
+                # Unstable reading
+                return None, None, None, "unstable"
+        
+        # Add small variations to make readings more realistic
+        heart_rate += random.randint(-2, 2)
+        spo2 = max(85, min(100, spo2 + random.randint(-1, 1)))
+        respiratory_rate += random.randint(-1, 1)
+        
+        return heart_rate, spo2, respiratory_rate, abnormality
+
     def start_max30102_measurement(self):
         """Start MAX30102 measurement"""
         if not self.is_connected:
@@ -349,10 +491,12 @@ class SensorManager:
         self.measurement_start_time = time.time()
         
         if self.simulation_mode:
-            print("💓 SIMULATION: Starting MAX30102 measurement")
-            # Simulate finger detection after 2 seconds
+            print("💓 SIMULATION: Starting realistic MAX30102 measurement")
+            # Simulate finger detection with variable timing
+            detection_delay = random.uniform(1.5, 4.0)
+            
             def simulate_finger_detection():
-                time.sleep(2)
+                time.sleep(detection_delay)
                 self.finger_detected = True
                 self._trigger_status_callbacks()
             
@@ -371,7 +515,7 @@ class SensorManager:
             }
 
     def get_max30102_status(self):
-        """Get MAX30102 measurement status"""
+        """Get MAX30102 measurement status with realistic simulation"""
         if not self.is_connected:
             return {
                 "status": "error",
@@ -390,11 +534,37 @@ class SensorManager:
                 elapsed = time.time() - self.measurement_start_time
                 progress_seconds = max(0, 60 - int(elapsed))
                 
-                # Auto-complete after 60 seconds in simulation
-                if self.simulation_mode and elapsed >= 60:
-                    self.heart_rate = random.randint(65, 85)
-                    self.spo2 = round(97 + random.uniform(0, 2), 1)
-                    self.respiratory_rate = random.randint(12, 18)
+                # Simulate finger removal (5% chance after detection)
+                if (self.finger_detected and random.random() < 0.05 and 
+                    elapsed > 15 and elapsed < 50):
+                    self.finger_detected = False
+                    return {
+                        "current_phase": self.current_phase,
+                        "measurement_active": self.measurement_active,
+                        "heart_rate": None,
+                        "spo2": None,
+                        "respiratory_rate": None,
+                        "finger_detected": False,
+                        "progress_seconds": progress_seconds,
+                        "message": "❌ Finger moved - Please keep finger steady"
+                    }
+                
+                # Generate realistic vital signs
+                if elapsed > 10 and self.finger_detected:  # Only after stabilization
+                    heart_rate, spo2, respiratory_rate, abnormality = self._generate_realistic_vital_signs(elapsed)
+                    
+                    if abnormality == "unstable":
+                        # Show unstable reading
+                        self.heart_rate = None
+                        self.spo2 = None
+                        self.respiratory_rate = None
+                    else:
+                        self.heart_rate = heart_rate
+                        self.spo2 = spo2
+                        self.respiratory_rate = respiratory_rate
+                
+                # Auto-complete after 60 seconds with 5-second variation
+                if self.simulation_mode and elapsed >= random.randint(55, 65):
                     self.current_phase = "IDLE"
                     self.measurement_active = False
                     self.finger_detected = False
@@ -426,11 +596,13 @@ class SensorManager:
         if not self.measurement_active:
             return "Ready for measurement"
         elif not self.finger_detected:
-            return "Waiting for finger detection"
-        elif self.heart_rate or self.spo2:
-            return "Measuring vital signs..."
+            return "👆 Place finger on sensor"
+        elif not self.heart_rate and not self.spo2:
+            return "🔄 Stabilizing signal..."
+        elif self.heart_rate is None or self.spo2 is None:
+            return "📡 Acquiring signal..."
         else:
-            return "Initializing sensor..."
+            return "💓 Measuring vital signs..."
 
     def stop_measurement(self):
         """Stop current measurement"""
@@ -444,12 +616,12 @@ class SensorManager:
         return {"status": "Measurement stopped"}
 
     def get_status(self):
-        """Get current sensor status"""
-        # In simulation mode, always report as connected
-        connected_status = self.is_connected or self.simulation_mode
+        """Get current sensor status - Honest reporting"""
+        # Only report as connected if we actually have a serial connection
+        connected_status = self.is_connected and not self.simulation_mode
         
         return {
-            "connected": connected_status,
+            "connected": connected_status,  # This will be FALSE when Arduino is removed
             "simulation_mode": self.simulation_mode,
             "current_phase": self.current_phase,
             "measurement_active": self.measurement_active,
@@ -458,19 +630,20 @@ class SensorManager:
             "spo2": self.spo2,
             "respiratory_rate": self.respiratory_rate,
             "finger_detected": self.finger_detected,
-            "port": self.port
+            "port": self.port,
+            "hardware_available": connected_status  # Additional honest flag
         }
 
     def test_connection(self):
-        """Test connection"""
+        """Test connection - Honest reporting"""
         if self.simulation_mode:
             return {
-                "status": "connected", 
-                "message": "Simulation mode active - Ready for testing",
+                "status": "simulation", 
+                "message": "Running in simulation mode - No hardware connected",
                 "simulation": True,
-                "connected": True
+                "connected": False  # Be honest
             }
-        elif self.is_connected:
+        elif self.is_connected and self.serial_conn and self.serial_conn.is_open:
             try:
                 self._send_command("TEST_CONNECTION")
                 return {
@@ -486,8 +659,8 @@ class SensorManager:
                 }
         else:
             return {
-                "status": "error", 
-                "message": "Not connected to Arduino",
+                "status": "disconnected", 
+                "message": "No Arduino hardware connected",
                 "connected": False
             }
 
