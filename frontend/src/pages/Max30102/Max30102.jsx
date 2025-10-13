@@ -17,7 +17,6 @@ export default function Max30102() {
   const [progressSeconds, setProgressSeconds] = useState(60);
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [errorMessage, setErrorMessage] = useState("");
-  const [debugInfo, setDebugInfo] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   
   const [measurements, setMeasurements] = useState({
@@ -49,11 +48,9 @@ export default function Max30102() {
   const initializeSensorConnection = async () => {
     try {
       setConnectionStatus("connecting");
-      setDebugInfo("Initializing sensor connection...");
       
       // Test backend connection first
       const status = await sensorAPI.getStatus();
-      setDebugInfo(`Backend: ${status.connected ? 'Connected' : 'Disconnected'}`);
       
       if (status.connected || status.simulation_mode) {
         setConnectionStatus("connected");
@@ -67,13 +64,11 @@ export default function Max30102() {
         } else {
           setConnectionStatus("error");
           setErrorMessage("Failed to connect to sensors. Using simulation mode.");
-          setDebugInfo("Sensor connection failed, using simulation");
         }
       }
     } catch (error) {
       setConnectionStatus("error");
       setErrorMessage("Connection error. Using simulation mode.");
-      setDebugInfo(`Connection error: ${error.message}`);
       console.error("Error initializing sensor connection:", error);
     }
   };
@@ -97,7 +92,6 @@ export default function Max30102() {
       
       // Start the measurement on Arduino
       const result = await sensorAPI.startMax30102();
-      setDebugInfo(`Start: ${result.status} - ${result.message}`);
       
       if (result.error) {
         throw new Error(result.error);
@@ -151,7 +145,6 @@ export default function Max30102() {
       (error) => {
         console.error("❌ Polling error:", error);
         consecutiveErrors++;
-        setDebugInfo(`Poll error: ${error.message}`);
         
         if (consecutiveErrors >= maxConsecutiveErrors) {
           setConnectionStatus("error");
@@ -190,7 +183,7 @@ export default function Max30102() {
     // Update finger status and sensor visual
     setFingerStatus(interpreted.fingerStatus);
     
-    // Update progress
+    // Update progress seconds from sensor data (for time display only)
     setProgressSeconds(interpreted.progress);
     
     // Update measurement state
@@ -238,7 +231,6 @@ export default function Max30102() {
       }
       
       console.log("🎯 MAX30102 Measurement Complete!");
-      setDebugInfo("✅ All measurements completed successfully");
     }
   };
 
@@ -319,7 +311,6 @@ export default function Max30102() {
     setProgressSeconds(60);
     setErrorMessage("");
     setRetryCount(0);
-    setDebugInfo("Measurement reset");
     
     // Stop any ongoing measurement
     stopMeasurement();
@@ -400,18 +391,18 @@ export default function Max30102() {
     <div className="max30102-container">
       <div className={`max30102-content ${isVisible ? 'visible' : ''}`}>
         
-        {/* Progress Bar */}
+        {/* Progress Bar - Always full since we're on the last page */}
         <div className="progress-container">
           <div className="progress-bar">
             <div 
               className="progress-fill" 
-              style={{width: `${((60 - progressSeconds) / 60) * 100}%`}}
+              style={{width: `100%`}} // Always full width
             ></div>
           </div>
           <span className="progress-step">
             Step 4 of 4 - Vital Signs | 
             {connectionStatus === "connected" ? " ✅ Connected" : " ❌ Disconnected"} |
-            Time: {progressSeconds}s
+            {isMeasuring ? ` Time: ${progressSeconds}s` : " Ready to Measure"}
             {retryCount > 0 && ` | Retry: ${retryCount}/${maxRetries}`}
           </span>
         </div>
@@ -576,20 +567,9 @@ export default function Max30102() {
                 >
                   Measure Again
                 </button>
-                <button 
-                  className="view-details-button"
-                  onClick={() => setDebugInfo("Details viewed")}
-                >
-                  View Details
-                </button>
               </div>
             </div>
           )}
-        </div>
-
-        {/* Debug Information */}
-        <div className="debug-info">
-          <strong>Debug:</strong> {debugInfo}
         </div>
 
         {/* Educational Content */}

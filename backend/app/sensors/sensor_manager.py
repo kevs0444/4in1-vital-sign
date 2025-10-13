@@ -143,16 +143,16 @@ class SensorManager:
             self._trigger_status_callbacks()
             
         elif "TEMP_DATA:" in data:
-            # Format: "TEMP_DATA:36.5:C"
-            match = re.search(r'TEMP_DATA:([\d.]+):C', data)
+            # Format: "TEMP_DATA:36.5:Normal"
+            match = re.search(r'TEMP_DATA:([\d.]+):', data)
             if match:
                 temp = float(match.group(1))
                 self.temperature = temp
                 self._trigger_data_callbacks('temperature', temp)
                 
         elif "TEMP_FINAL:" in data:
-            # Format: "TEMP_FINAL:36.5:C"
-            match = re.search(r'TEMP_FINAL:([\d.]+):C', data)
+            # Format: "TEMP_FINAL:36.5:Normal"
+            match = re.search(r'TEMP_FINAL:([\d.]+):', data)
             if match:
                 self.temperature = float(match.group(1))
                 self.current_phase = "IDLE"
@@ -160,8 +160,8 @@ class SensorManager:
                 self._trigger_data_callbacks('temperature_final', self.temperature)
                 self._trigger_status_callbacks()
                 
-        # MAX30102 measurement patterns
-        elif "MAX30102_MEASUREMENT_STARTED" in data:
+        # MAX30102 measurement patterns - UPDATED
+        elif "HR_MEASUREMENT_STARTED" in data:
             self.current_phase = "MAX"
             self.measurement_active = True
             self.measurement_start_time = time.time()
@@ -182,50 +182,47 @@ class SensorManager:
             self._trigger_data_callbacks('finger_status', 'waiting')
             self._trigger_status_callbacks()
                 
-        elif "MAX_DATA" in data:
-            # Format: "MAX_DATA - HR:72:BPM:SPO2:98:PERCENT"
-            hr_match = re.search(r'HR:(\d+):BPM', data)
-            spo2_match = re.search(r'SPO2:(\d+):PERCENT', data)
-            
-            if hr_match:
-                hr = int(hr_match.group(1))
-                self.heart_rate = hr
-                self._trigger_data_callbacks('heart_rate', hr)
-            if spo2_match:
-                spo2 = int(spo2_match.group(1))
-                self.spo2 = spo2
-                self._trigger_data_callbacks('spo2', spo2)
+        elif "HR_DATA:" in data:
+            # Format: "HR_DATA:72:98:16"
+            match = re.search(r'HR_DATA:(\d+):(\d+):(\d+)', data)
+            if match:
+                hr = int(match.group(1))
+                spo2 = int(match.group(2))
+                rr = int(match.group(3))
                 
-        elif "MAX_PROGRESS:" in data:
-            # Format: "MAX_PROGRESS:45:SECONDS"
-            match = re.search(r'MAX_PROGRESS:(\d+):SECONDS', data)
+                self.heart_rate = hr
+                self.spo2 = spo2
+                self.respiratory_rate = rr
+                
+                self._trigger_data_callbacks('heart_rate', hr)
+                self._trigger_data_callbacks('spo2', spo2)
+                self._trigger_data_callbacks('respiratory_rate', rr)
+                
+        elif "HR_PROGRESS:" in data:
+            # Format: "HR_PROGRESS:45"
+            match = re.search(r'HR_PROGRESS:(\d+)', data)
             if match:
                 seconds = int(match.group(1))
                 self._trigger_data_callbacks('progress', seconds)
                 
-        elif "MAX_FINAL" in data:
-            # Format: "MAX_FINAL - HR:72.0:BPM:SPO2:98.0:PERCENT:RR:16.0:BPM"
-            hr_match = re.search(r'HR:([\d.]+):BPM', data)
-            spo2_match = re.search(r'SPO2:([\d.]+):PERCENT', data)
-            rr_match = re.search(r'RR:([\d.]+):BPM', data)
-            
-            if hr_match:
-                self.heart_rate = float(hr_match.group(1))
-            if spo2_match:
-                self.spo2 = float(spo2_match.group(1))
-            if rr_match:
-                self.respiratory_rate = float(rr_match.group(1))
+        elif "HR_FINAL:" in data:
+            # Format: "HR_FINAL:72.0:65-85:98.0:96-100:16:50"
+            match = re.search(r'HR_FINAL:([\d.]+):([\d-]+):([\d.]+):([\d-]+):(\d+):(\d+)', data)
+            if match:
+                self.heart_rate = float(match.group(1))
+                self.spo2 = float(match.group(3))
+                self.respiratory_rate = int(match.group(5))
                 
-            self.current_phase = "IDLE"
-            self.measurement_active = False
-            self.finger_detected = False
-            self._trigger_data_callbacks('max_final', {
-                'heart_rate': self.heart_rate,
-                'spo2': self.spo2,
-                'respiratory_rate': self.respiratory_rate
-            })
-            self._trigger_status_callbacks()
-            
+                self.current_phase = "IDLE"
+                self.measurement_active = False
+                self.finger_detected = False
+                self._trigger_data_callbacks('max_final', {
+                    'heart_rate': self.heart_rate,
+                    'spo2': self.spo2,
+                    'respiratory_rate': self.respiratory_rate
+                })
+                self._trigger_status_callbacks()
+                
         # Status and error patterns
         elif "HUMAN_DETECTED" in data:
             self._trigger_data_callbacks('contact_status', 'detected')
@@ -236,6 +233,10 @@ class SensorManager:
             self.measurement_active = False
             self.finger_detected = False
             self._trigger_status_callbacks()
+        elif "TEMP_READING_ERROR" in data:
+            self._trigger_data_callbacks('error', 'temperature_sensor_error')
+        elif "RESETTING_TEMP_SENSOR" in data:
+            self._trigger_data_callbacks('info', 'resetting_temperature_sensor')
 
     def _simulate_sensor_error(self):
         """Simulate real-world sensor errors with realistic probabilities"""
@@ -508,7 +509,8 @@ class SensorManager:
                 "simulation": True
             }
         else:
-            self._send_command("START_MAX")
+            # FIX: Send the correct command that Arduino expects
+            self._send_command("START_HR")
             return {
                 "status": "started",
                 "message": "MAX30102 measurement started"
@@ -607,7 +609,7 @@ class SensorManager:
     def stop_measurement(self):
         """Stop current measurement"""
         if self.is_connected and not self.simulation_mode:
-            self._send_command("STOP_MEASUREMENT")
+            self._send_command("STOP")
         
         self.current_phase = "IDLE"
         self.measurement_active = False

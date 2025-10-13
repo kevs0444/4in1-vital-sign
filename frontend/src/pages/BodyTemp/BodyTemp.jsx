@@ -15,7 +15,6 @@ export default function BodyTemp() {
   const [errorMessage, setErrorMessage] = useState("");
   const [userDetectionStatus, setUserDetectionStatus] = useState("");
   const [currentTempReading, setCurrentTempReading] = useState("");
-  const [debugInfo, setDebugInfo] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   
   const measurementInterval = useRef(null);
@@ -41,17 +40,14 @@ export default function BodyTemp() {
     try {
       setSensorStatus("checking");
       setErrorMessage("");
-      setDebugInfo("Checking sensor connection...");
       
       // First check if backend is connected
       const backendStatus = await checkBackendStatus();
-      setDebugInfo(`Backend: ${backendStatus.status}`);
       
       if (backendStatus.status === 'connected') {
         // Backend is running, now check sensor status
         try {
           const sensorStatus = await sensorAPI.getStatus();
-          setDebugInfo(`Sensors: ${sensorStatus.connected ? 'Connected' : 'Disconnected'}`);
           
           if (sensorStatus.connected || sensorStatus.simulation_mode) {
             setSensorStatus("connected");
@@ -60,31 +56,26 @@ export default function BodyTemp() {
             
             // Test temperature sensor specifically
             try {
-              const tempStatus = await sensorAPI.getTemperatureStatus();
-              setDebugInfo(prev => prev + ` | Temp: ${tempStatus.status}`);
+              await sensorAPI.getTemperatureStatus();
             } catch (tempError) {
               console.log("Temperature status check failed:", tempError);
             }
           } else {
             setSensorStatus("error");
             setErrorMessage("Sensors not connected. Please check hardware.");
-            setDebugInfo(prev => prev + " | Sensors not connected");
           }
         } catch (sensorError) {
           console.log("Sensor status check failed:", sensorError);
           setSensorStatus("connected"); // Still mark as connected for simulation
           setErrorMessage("Using simulation mode - Real sensors not available");
-          setDebugInfo(prev => prev + ` | Sensor check failed: ${sensorError.message}`);
         }
       } else {
         setSensorStatus("error");
         setErrorMessage("Backend not connected. Please check if Flask server is running.");
-        setDebugInfo(`Backend error: ${backendStatus.message}`);
       }
     } catch (error) {
       setSensorStatus("error");
       setErrorMessage("Connection error. Please check backend connection.");
-      setDebugInfo(`Connection error: ${error.message}`);
       console.error("Sensor connection error:", error);
     }
   };
@@ -102,12 +93,10 @@ export default function BodyTemp() {
     setUserDetectionStatus("");
     setCurrentTempReading("");
     setTemperature("");
-    setDebugInfo("Starting temperature measurement...");
 
     try {
       // Start measurement on backend
       const startResult = await sensorAPI.startTemperature();
-      setDebugInfo(`Start: ${startResult.status} - ${startResult.message}`);
       
       if (startResult.error) {
         throw new Error(startResult.error);
@@ -122,7 +111,6 @@ export default function BodyTemp() {
         measurementTime += 1;
         try {
           const status = await sensorAPI.getTemperatureStatus();
-          setDebugInfo(`Time: ${measurementTime}s | Status: ${status.status} | Temp: ${status.temperature || 'N/A'}`);
           
           if (status.status === 'completed' && status.temperature) {
             // Measurement completed successfully
@@ -133,7 +121,6 @@ export default function BodyTemp() {
             setErrorMessage("");
             setRetryCount(0);
             clearInterval(measurementInterval.current);
-            setDebugInfo("✅ Measurement completed successfully");
           } 
           else if (status.status === 'error' || status.status === 'no_contact') {
             // Handle errors
@@ -171,7 +158,6 @@ export default function BodyTemp() {
         } catch (error) {
           console.error("Error checking measurement status:", error);
           consecutiveErrors++;
-          setDebugInfo(`Poll error: ${error.message}`);
           
           if (consecutiveErrors >= maxConsecutiveErrors) {
             setErrorMessage("Connection lost during measurement");
@@ -193,7 +179,6 @@ export default function BodyTemp() {
           } else {
             stopMeasurement();
             setErrorMessage("Measurement timeout - Maximum retries reached");
-            setDebugInfo("❌ Measurement failed after maximum retries");
           }
         }
       }, 30000);
@@ -203,7 +188,6 @@ export default function BodyTemp() {
       setSensorStatus("error");
       setErrorMessage(`Failed to start measurement: ${error.message}`);
       setIsMeasuring(false);
-      setDebugInfo(`Start error: ${error.message}`);
     }
   };
 
@@ -215,7 +199,6 @@ export default function BodyTemp() {
         measurementInterval.current = null;
       }
       setIsMeasuring(false);
-      setDebugInfo("Measurement stopped");
     } catch (error) {
       console.error("Error stopping measurement:", error);
     }
@@ -253,7 +236,6 @@ export default function BodyTemp() {
     setUserDetectionStatus("");
     setCurrentTempReading("");
     setRetryCount(0);
-    setDebugInfo("Measurement reset");
     
     if (measurementInterval.current) {
       clearInterval(measurementInterval.current);
@@ -295,143 +277,122 @@ export default function BodyTemp() {
 
   const status = measurementComplete ? getTemperatureStatus() : null;
 
+  const getSensorStatusMessage = () => {
+    if (isMeasuring) {
+      if (userDetectionStatus) {
+        return getDetectionMessage();
+      } else if (currentTempReading) {
+        return `Measuring... Current: ${currentTempReading}°C`;
+      } else {
+        return "Initializing temperature sensor...";
+      }
+    }
+    return "Place sensor on forehead for accurate reading";
+  };
+
   return (
     <div className="bodytemp-container">
-      <div
-        className={`bodytemp-content ${isVisible ? "visible" : ""} ${
-          measurementComplete ? "result-mode" : ""
-        }`}
-      >
-        {/* Progress Bar */}
+      <div className={`bodytemp-content ${isVisible ? 'visible' : ''}`}>
+        
+        {/* Progress Bar - 3/4 progress */}
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{ width: "75%" }}></div>
+            <div 
+              className="progress-fill" 
+              style={{width: `75%`}}
+            ></div>
           </div>
-          <span className="progress-step">Step 3 of 4 - Vital Signs</span>
+          <span className="progress-step">
+            Step 3 of 4 - Vital Signs | 
+            {sensorStatus === "connected" ? " ✅ Connected" : " ❌ Disconnected"}
+            {retryCount > 0 && ` | Retry: ${retryCount}/${maxRetries}`}
+          </span>
         </div>
 
         {/* Header */}
         <div className="bodytemp-header">
-          <h1 className="bodytemp-title">Body Temperature Measurement</h1>
+          <h1 className="bodytemp-title">Body Temperature</h1>
           <p className="bodytemp-subtitle">
-            Place the sensor on your forehead for accurate reading
+            {isMeasuring ? getSensorStatusMessage() : "Place sensor on forehead for accurate temperature measurement"}
           </p>
           
-          {/* Sensor Status Indicator */}
-          <div className={`sensor-status ${sensorStatus}`}>
-            <div className="status-indicator"></div>
-            <span className="status-text">
-              {sensorStatus === "connected" && "✅ Sensor Connected"}
-              {sensorStatus === "checking" && "🔍 Checking Sensor..."}
-              {sensorStatus === "error" && "❌ Sensor Not Connected"}
-            </span>
-            {sensorStatus === "error" && (
-              <button 
-                className="retry-connection" 
-                onClick={checkSensorConnection}
-              >
+          {/* Connection Status */}
+          {sensorStatus !== "connected" && (
+            <div className="connection-status-error">
+              <span className="error-icon">⚠️</span>
+              {sensorStatus === "error" && "Sensor connection issue - Using simulation mode"}
+              {sensorStatus === "checking" && "Connecting to sensors..."}
+              <button className="retry-connection" onClick={checkSensorConnection}>
                 Retry Connection
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Display Section */}
-        <div className="bodytemp-display-section">
-          <div className="bodytemp-visual-area">
-            <div className="bodytemp-icon-container">
-              <img src={bodyTempIcon} alt="Temperature" className="bodytemp-icon" />
-              <div className={`sensor-glow ${isMeasuring ? "measuring" : ""}`}></div>
-            </div>
-
-            <div className="bodytemp-value-display">
-              {isMeasuring ? (
-                <div className="measuring-animation">
-                  <div className="pulse-dot"></div>
-                  {userDetectionStatus ? (
-                    <div className="detection-warning">
-                      <span className="warning-icon">
-                        {userDetectionStatus === "no_user" ? "❌" : "⚠️"}
-                      </span>
-                      <span className="warning-text">{getDetectionMessage()}</span>
-                    </div>
-                  ) : (
+        {/* Display Section - Only Temperature Card */}
+        <div className="sensor-display-section">
+          
+          {/* Single Centered Temperature Card */}
+          <div className="temperature-card-container">
+            <div className="measurement-card temperature-card">
+              <div className="measurement-icon">
+                <img src={bodyTempIcon} alt="Body Temperature" className="measurement-image" />
+              </div>
+              <div className="measurement-info">
+                <h3 className="measurement-title">Body Temperature</h3>
+                <div className="measurement-value">
+                  {temperature ? (
                     <>
-                      <span className="measuring-text">Measuring Temperature...</span>
-                      {currentTempReading && (
-                        <div className="live-reading">
-                          Current: {currentTempReading}°C
-                        </div>
-                      )}
-                      <span className="measurement-tip">Keep sensor steady on forehead</span>
-                      {retryCount > 0 && (
-                        <span className="retry-count">Retry {retryCount}/{maxRetries}</span>
-                      )}
+                      <span className="value">{temperature}</span>
+                      <span className="unit">°C</span>
                     </>
+                  ) : (
+                    <span className="placeholder">--.-</span>
                   )}
                 </div>
-              ) : measurementComplete ? (
-                <div className="bodytemp-result">
-                  <span className="bodytemp-number">{temperature}</span>
-                  <span className="bodytemp-unit">°C</span>
-                  {status && (
-                    <div className={`temperature-status ${status.class}`}>
-                      {status.text}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="bodytemp-placeholder">
-                  <span className="bodytemp-number">--.-</span>
-                  <span className="bodytemp-unit">°C</span>
-                </div>
-              )}
+                <span className={`measurement-status ${status?.class.replace('temperature-', '') || 'default'}`}>
+                  {status?.text || "Not measured"}
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* Measurement Progress */}
+          {isMeasuring && (
+            <div className="measuring-progress">
+              <div className="pulse-wave"></div>
+              <span className="current-measurement">
+                {userDetectionStatus ? "Adjust Sensor Position" : "Measuring Temperature"}
+              </span>
+              {currentTempReading && (
+                <span className="progress-text">
+                  Current: {currentTempReading}°C
+                </span>
+              )}
+              {retryCount > 0 && (
+                <span className="retry-indicator">Retry {retryCount}/{maxRetries}</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Error Message Display */}
-        {errorMessage && !userDetectionStatus && (
+        {errorMessage && (
           <div className="error-message">
             <span className="error-icon">⚠️</span>
             {errorMessage}
             {retryCount < maxRetries && (
               <button className="retry-button-small" onClick={handleForceRetry}>
-                Force Retry
+                Retry Measurement
               </button>
             )}
           </div>
         )}
 
-        {/* User Detection Warning */}
-        {userDetectionStatus && (
-          <div className={`user-detection-warning ${userDetectionStatus}`}>
-            <span className="warning-icon">
-              {userDetectionStatus === "no_user" ? "❌" : "⚠️"}
-            </span>
-            <span className="warning-text">{getDetectionMessage()}</span>
-            <div className="detection-tips">
-              <strong>Tips for better measurement:</strong>
-              <ul>
-                <li>Ensure sensor is clean and unobstructed</li>
-                <li>Place sensor firmly on forehead</li>
-                <li>Stay still during measurement</li>
-                <li>Remove hats or head coverings</li>
-                <li>Avoid direct sunlight or drafts</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {/* Debug Information - Remove in production */}
-        <div className="debug-info">
-          <strong>Debug:</strong> {debugInfo}
-        </div>
-
-        {/* Controls */}
+        {/* Measurement Controls */}
         <div className="measurement-controls">
           {!measurementComplete ? (
-            <button
+            <button 
               className="measure-button"
               onClick={startRealMeasurement}
               disabled={isMeasuring || (sensorStatus === "error" && retryCount >= maxRetries)}
@@ -439,33 +400,62 @@ export default function BodyTemp() {
               {isMeasuring ? (
                 <>
                   <div className="spinner"></div>
-                  Measuring... {retryCount > 0 && `(Retry ${retryCount}/${maxRetries})`}
+                  Measuring Temperature...
+                  {retryCount > 0 && ` - Retry ${retryCount}/${maxRetries}`}
                 </>
               ) : (
                 <>
                   <div className="button-icon">🌡️</div>
-                  {sensorStatus === "error" ? "Check Connection First" : "Start Temperature Measurement"}
+                  {sensorStatus === "connected" ? "Start Measurement" : "Check Connection First"}
                 </>
               )}
             </button>
           ) : (
             <div className="measurement-complete">
-              <span className="success-text">✓ Measurement Complete</span>
+              <span className="success-text">✓ Temperature Measurement Complete</span>
               <div className="complete-actions">
-                <button className="retry-button" onClick={handleRetry}>
+                <button 
+                  className="retry-button"
+                  onClick={handleRetry}
+                >
                   Measure Again
-                </button>
-                <button className="view-details-button" onClick={() => setDebugInfo(prev => prev + " | Details viewed")}>
-                  View Details
                 </button>
               </div>
             </div>
           )}
         </div>
 
+        {/* Educational Content */}
+        <div className="educational-content">
+          <h3 className="education-title">About Temperature Measurement</h3>
+          <div className="education-points">
+            <div className="education-card">
+              <div className="card-icon">🌡️</div>
+              <div className="card-content">
+                <h4>Normal Range</h4>
+                <p>Healthy body temperature typically ranges from 36.1°C to 37.5°C</p>
+              </div>
+            </div>
+            <div className="education-card">
+              <div className="card-icon">⚠️</div>
+              <div className="card-content">
+                <h4>Fever Detection</h4>
+                <p>Temperatures above 37.5°C may indicate fever and require attention</p>
+              </div>
+            </div>
+            <div className="education-card">
+              <div className="card-icon">📋</div>
+              <div className="card-content">
+                <h4>Accurate Reading</h4>
+                <p>Ensure proper sensor contact with forehead for reliable measurements</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Continue Button */}
         <div className="continue-button-container">
-          <button
+          <button 
             className="continue-button"
             onClick={handleContinue}
             disabled={!measurementComplete}
