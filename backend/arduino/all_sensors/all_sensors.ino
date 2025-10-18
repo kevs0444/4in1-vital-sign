@@ -12,8 +12,8 @@ MAX30105 particleSensor;
 enum SystemPhase { BODY_TEMP_PHASE, HEART_RATE_PHASE, IDLE_PHASE };
 SystemPhase currentPhase = IDLE_PHASE;
 
-// Body Temperature Variables
-unsigned long stableStartTime = 0;
+// Body Temperature Variables - SIMPLIFIED
+unsigned long measurementStartTime = 0;
 bool measuringTemp = false;
 float finalBodyTemp = 0.0;
 String tempCategory = "";
@@ -22,7 +22,7 @@ String tempCategory = "";
 bool measurementActive = false;
 bool fingerDetected = false;
 unsigned long lastSecondTime = 0;
-unsigned long measurementStartTime = 0;
+unsigned long hrMeasurementStartTime = 0;
 unsigned long cycleStartTime = 0;
 int secondsRunning = 0;
 int cycleSeconds = 0;
@@ -45,7 +45,6 @@ bool mlxInitialized = false;
 bool max30102Initialized = false;
 
 // Error handling variables
-unsigned long lastReadTime = 0;
 int errorCount = 0;
 
 void setup() {
@@ -61,28 +60,28 @@ void setup() {
 
 void initializeSensors() {
   // Initialize MLX90614 (Temperature) - I2C Address 0x5A
-  Serial.print("🔄 INITIALIZING MLX90614... ");
+  Serial.print("INITIALIZING MLX90614... ");
   if (mlx.begin()) {
     mlxInitialized = true;
-    Serial.println("✅ OK");
+    Serial.println("OK");
   } else {
-    Serial.println("❌ FAILED");
+    Serial.println("FAILED");
   }
   
   // Initialize MAX30102 - I2C Address 0x57
-  Serial.print("🔄 INITIALIZING MAX30102... ");
+  Serial.print("INITIALIZING MAX30102... ");
   if (particleSensor.begin(Wire, I2C_SPEED_FAST)) {
     particleSensor.setup();
     particleSensor.setPulseAmplitudeRed(0x0A);
     particleSensor.setPulseAmplitudeGreen(0);
     max30102Initialized = true;
-    Serial.println("✅ OK");
+    Serial.println("OK");
   } else {
-    Serial.println("❌ FAILED");
+    Serial.println("FAILED");
   }
   
   // Report initialization status
-  Serial.print("📊 INIT_SUMMARY:MLX90614:");
+  Serial.print("INIT_SUMMARY:MLX90614:");
   Serial.print(mlxInitialized ? "OK" : "FAILED");
   Serial.print(":MAX30102:");
   Serial.println(max30102Initialized ? "OK" : "FAILED");
@@ -111,11 +110,11 @@ void loop() {
     }
   }
   
-  delay(100);
+  delay(500); // Reduced sampling for simplicity
 }
 
 void handleCommand(String command) {
-  Serial.print("🔧 COMMAND_RECEIVED:");
+  Serial.print("COMMAND_RECEIVED:");
   Serial.println(command);
   
   if (command == "START_TEMP") {
@@ -134,34 +133,34 @@ void handleCommand(String command) {
     scanI2CDevices();
   }
   else if (command == "TEST_CONNECTION") {
-    Serial.println("💚 CONNECTION_TEST_OK");
+    Serial.println("CONNECTION_TEST_OK");
   }
   else {
-    Serial.print("❌ UNKNOWN_COMMAND:");
+    Serial.print("UNKNOWN_COMMAND:");
     Serial.println(command);
   }
 }
 
 void startBodyTemperatureMeasurement() {
   if (!mlxInitialized) {
-    Serial.println("❌ TEMP_SENSOR_NOT_READY");
+    Serial.println("TEMP_SENSOR_NOT_READY");
     return;
   }
   
   currentPhase = BODY_TEMP_PHASE;
   measurementActive = true;
-  measuringTemp = false;
-  stableStartTime = 0;
+  measuringTemp = true;
+  measurementStartTime = millis();
   finalBodyTemp = 0.0;
   errorCount = 0;
   
-  Serial.println("🌡️ TEMP_MEASUREMENT_STARTED");
-  Serial.println("📝 Place sensor near forehead for measurement");
+  Serial.println("TEMP_MEASUREMENT_STARTED");
+  Serial.println("MEASURING_TEMPERATURE");
 }
 
 void startHeartRateMeasurement() {
   if (!max30102Initialized) {
-    Serial.println("❌ HR_SENSOR_NOT_READY");
+    Serial.println("HR_SENSOR_NOT_READY");
     return;
   }
   
@@ -170,7 +169,7 @@ void startHeartRateMeasurement() {
   fingerDetected = false;
   readingCount = 0;
   cycleNumber = 1;
-  measurementStartTime = millis();
+  hrMeasurementStartTime = millis();
   cycleStartTime = millis();
   
   // Initialize arrays
@@ -179,103 +178,71 @@ void startHeartRateMeasurement() {
     spo2Readings[i] = 0;
   }
   
-  Serial.println("💓 HR_MEASUREMENT_STARTED");
-  Serial.println("📝 Place finger on sensor for 60 seconds");
-  Serial.println("🚫 WAITING_FOR_FINGER");
+  Serial.println("HR_MEASUREMENT_STARTED");
+  Serial.println("WAITING_FOR_FINGER");
 }
 
 void runBodyTemperaturePhase() {
-  static unsigned long lastReadTime = 0;
+  if (!measuringTemp) return;
   
-  // Only read every 500ms to avoid overwhelming the sensor
-  if (millis() - lastReadTime < 500) {
-    return;
-  }
-  lastReadTime = millis();
+  unsigned long currentTime = millis();
+  unsigned long elapsedTime = currentTime - measurementStartTime;
   
-  float bodyTemp = mlx.readObjectTempC() + 1.5; // Calibration offset
-  
-  // Check for valid reading with better error handling
-  if (isnan(bodyTemp) || bodyTemp < 20.0 || bodyTemp > 50.0) {
-    errorCount++;
-    Serial.println("❌ TEMP_READING_ERROR");
+  // Read temperature every 500ms
+  if (currentTime % 500 == 0) {
+    float bodyTemp = mlx.readObjectTempC() + 1.5; // Calibration offset
     
-    // Reset sensor after multiple errors
-    if (errorCount > 10) {
-      Serial.println("🔄 RESETTING_TEMP_SENSOR");
-      mlx.begin(); // Reinitialize sensor
-      errorCount = 0;
-    }
-    return;
-  }
-  
-  errorCount = 0; // Reset error count on successful reading
-  
-  // Send raw temperature data
-  Serial.print("📊 TEMP_RAW:");
-  Serial.println(bodyTemp, 2);
-  
-  // Classify temperature
-  if (bodyTemp < 35.0) {
-    tempCategory = "Low (Possible Hypothermia)";
-  } else if (bodyTemp >= 35.0 && bodyTemp <= 37.4) {
-    tempCategory = "Normal";
-  } else if (bodyTemp >= 37.5 && bodyTemp <= 38.0) {
-    tempCategory = "Mild Fever";
-  } else if (bodyTemp >= 38.1 && bodyTemp <= 39.0) {
-    tempCategory = "High Fever";
-  } else {
-    tempCategory = "Critical Fever";
-  }
-
-  // Detect human presence based on body range
-  if (bodyTemp >= 35.0 && bodyTemp <= 39.0) {
-    if (!measuringTemp) {
-      measuringTemp = true;
-      stableStartTime = millis();
-      Serial.println("👤 HUMAN_DETECTED");
-    } else {
-      unsigned long elapsedTime = millis() - stableStartTime;
-      int secondsLeft = 3 - (elapsedTime / 1000);
+    // Check for valid reading
+    if (isnan(bodyTemp) || bodyTemp < 20.0 || bodyTemp > 50.0) {
+      errorCount++;
+      Serial.println("TEMP_READING_ERROR");
       
-      // Send progress updates
-      static unsigned long lastProgressUpdate = 0;
-      if (millis() - lastProgressUpdate >= 1000) {
-        lastProgressUpdate = millis();
-        if (secondsLeft > 0) {
-          Serial.print("⏰ TEMP_PROGRESS:");
-          Serial.println(secondsLeft);
-        }
+      if (errorCount > 5) {
+        Serial.println("RESETTING_TEMP_SENSOR");
+        mlx.begin();
+        errorCount = 0;
       }
+      return;
+    }
+    
+    errorCount = 0; // Reset error count on successful reading
+    
+    // Send temperature data immediately
+    Serial.print("TEMP_DATA:");
+    Serial.println(bodyTemp, 2);
+    
+    // Classify temperature
+    if (bodyTemp < 35.0) {
+      tempCategory = "Low (Possible Hypothermia)";
+    } else if (bodyTemp >= 35.0 && bodyTemp <= 37.4) {
+      tempCategory = "Normal";
+    } else if (bodyTemp >= 37.5 && bodyTemp <= 38.0) {
+      tempCategory = "Mild Fever";
+    } else if (bodyTemp >= 38.1 && bodyTemp <= 39.0) {
+      tempCategory = "High Fever";
+    } else {
+      tempCategory = "Critical Fever";
+    }
+    
+    // Send progress every second
+    if (elapsedTime % 1000 == 0) {
+      int secondsLeft = 5 - (elapsedTime / 1000);
+      if (secondsLeft > 0) {
+        Serial.print("TEMP_PROGRESS:");
+        Serial.println(secondsLeft);
+      }
+    }
+    
+    // After 5 seconds, show final result
+    if (elapsedTime >= 5000) {
+      finalBodyTemp = bodyTemp;
       
-      // Send intermediate temperature data
-      Serial.print("📈 TEMP_DATA:");
-      Serial.print(bodyTemp, 2);
+      Serial.print("TEMP_FINAL:");
+      Serial.print(finalBodyTemp, 2);
       Serial.print(":");
       Serial.println(tempCategory);
       
-      // After 3 seconds, show final result
-      if (elapsedTime >= 3000) {
-        finalBodyTemp = bodyTemp;
-        
-        Serial.print("✅ TEMP_FINAL:");
-        Serial.print(finalBodyTemp, 2);
-        Serial.print(":");
-        Serial.println(tempCategory);
-        
-        Serial.println("🎯 TEMP_MEASUREMENT_COMPLETE");
-        stopMeasurement();
-      }
-    }
-  } else {
-    if (measuringTemp) {
-      Serial.println("❌ TEMP_DROPPED");
-      measuringTemp = false;
-    }
-    
-    // Auto-stop if no contact for 15 seconds
-    if (millis() - stableStartTime > 15000 && stableStartTime > 0) {
-      Serial.println("🕒 TEMP_TIMEOUT");
+      Serial.println("TEMP_MEASUREMENT_COMPLETE");
       stopMeasurement();
     }
   }
@@ -286,26 +253,26 @@ void runHeartRatePhase() {
   unsigned long currentTime = millis();
   
   // Calculate running time
-  secondsRunning = (currentTime - measurementStartTime) / 1000;
+  secondsRunning = (currentTime - hrMeasurementStartTime) / 1000;
   cycleSeconds = (currentTime - cycleStartTime) / 1000;
   
   // Check finger detection
   if (irValue > 50000) {
     if (!fingerDetected) {
       fingerDetected = true;
-      Serial.println("✅ FINGER_DETECTED");
+      Serial.println("FINGER_DETECTED");
     }
   } else {
     if (fingerDetected) {
-      Serial.println("❌ FINGER_REMOVED");
+      Serial.println("FINGER_REMOVED");
       fingerDetected = false;
       stopMeasurement();
       return;
     }
     
     // Timeout if no finger detected for 30 seconds
-    if (currentTime - measurementStartTime > 30000) {
-      Serial.println("🕒 HR_TIMEOUT");
+    if (currentTime - hrMeasurementStartTime > 30000) {
+      Serial.println("HR_TIMEOUT");
       stopMeasurement();
       return;
     }
@@ -314,7 +281,7 @@ void runHeartRatePhase() {
     static unsigned long lastNoFingerMessage = 0;
     if (currentTime - lastNoFingerMessage >= 10000) {
       lastNoFingerMessage = currentTime;
-      Serial.println("👆 WAITING_FOR_FINGER");
+      Serial.println("WAITING_FOR_FINGER");
     }
     return;
   }
@@ -324,7 +291,7 @@ void runHeartRatePhase() {
     lastSecondTime = currentTime;
     
     // Send progress update
-    Serial.print("⏱️ HR_PROGRESS:");
+    Serial.print("HR_PROGRESS:");
     Serial.println(60 - cycleSeconds);
     
     // Calculate heart rate and SpO2
@@ -337,7 +304,7 @@ void runHeartRatePhase() {
       }
       
       // Send real-time data
-      Serial.print("📊 HR_DATA:");
+      Serial.print("HR_DATA:");
       Serial.print(heartRate);
       Serial.print(":");
       Serial.print(spo2);
@@ -351,7 +318,7 @@ void runHeartRatePhase() {
       }
     } else {
       // No valid reading this second
-      Serial.println("📊 HR_DATA:0:0:0");
+      Serial.println("HR_DATA:0:0:0");
     }
   }
 }
@@ -436,7 +403,7 @@ void displayFinalResults() {
   float avgSpO2 = validSpo2Count > 0 ? (float)spo2Sum / validSpo2Count : 0;
   
   // Send final results
-  Serial.print("✅ HR_FINAL:");
+  Serial.print("HR_FINAL:");
   Serial.print(avgHeartRate, 1);
   Serial.print(":");
   Serial.print(hrMin);
@@ -453,7 +420,7 @@ void displayFinalResults() {
   Serial.print(":");
   Serial.println(validHrCount);
   
-  Serial.println("🎯 HR_MEASUREMENT_COMPLETE");
+  Serial.println("HR_MEASUREMENT_COMPLETE");
 }
 
 void stopMeasurement() {
@@ -461,11 +428,11 @@ void stopMeasurement() {
   currentPhase = IDLE_PHASE;
   measuringTemp = false;
   fingerDetected = false;
-  Serial.println("🛑 MEASUREMENT_STOPPED");
+  Serial.println("MEASUREMENT_STOPPED");
 }
 
 void sendStatus() {
-  Serial.print("📊 STATUS:");
+  Serial.print("STATUS:");
   Serial.print(currentPhase == BODY_TEMP_PHASE ? "TEMP" : 
               currentPhase == HEART_RATE_PHASE ? "HR" : "IDLE");
   Serial.print(":");
@@ -481,7 +448,7 @@ void sendStatus() {
 }
 
 void scanI2CDevices() {
-  Serial.println("🔍 Scanning I2C bus...");
+  Serial.println("Scanning I2C bus...");
   byte error, address;
   int nDevices = 0;
   
@@ -490,7 +457,7 @@ void scanI2CDevices() {
     error = Wire.endTransmission();
     
     if (error == 0) {
-      Serial.print("✅ I2C_DEVICE:0x");
+      Serial.print("I2C_DEVICE:0x");
       if (address < 16) Serial.print("0");
       Serial.print(address, HEX);
       
@@ -507,9 +474,9 @@ void scanI2CDevices() {
   }
   
   if (nDevices == 0) {
-    Serial.println("❌ NO_I2C_DEVICES");
+    Serial.println("NO_I2C_DEVICES");
   } else {
-    Serial.print("📊 I2C_SUMMARY:");
+    Serial.print("I2C_SUMMARY:");
     Serial.println(nDevices);
   }
 }

@@ -13,7 +13,6 @@ export default function Standby() {
   const [isPressed, setIsPressed] = useState(false);
   const [backendStatus, setBackendStatus] = useState('checking');
   const [sensorStatus, setSensorStatus] = useState('disconnected');
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const navigate = useNavigate();
 
   // Update time every second
@@ -24,17 +23,15 @@ export default function Standby() {
     return () => clearInterval(timer);
   }, []);
 
-  // Backend and sensor status check - IMPROVED FOR WINDOWS
+  // Backend and sensor status check - OPTIMIZED FETCHING
   useEffect(() => {
-    let timeoutId;
+    let intervalId;
     let isMounted = true;
 
-    const checkStatus = async (retryCount = 0) => {
+    const checkStatus = async () => {
       if (!isMounted) return;
 
       try {
-        console.log('🔍 Checking backend status...');
-        
         // 1. First check if backend is running
         const backendData = await checkBackendStatus();
         
@@ -44,11 +41,13 @@ export default function Standby() {
           // 2. If backend is connected, check sensor status
           try {
             const sensorData = await sensorAPI.getStatus();
-            console.log('📡 Sensor status:', sensorData);
             
             if (sensorData.connected && isMounted) {
               setSensorStatus('connected');
-              setConnectionAttempts(0); // Reset attempts on success
+              // Stop checking when everything is connected
+              if (intervalId) {
+                clearInterval(intervalId);
+              }
             } else if (isMounted) {
               setSensorStatus('disconnected');
               
@@ -59,34 +58,31 @@ export default function Standby() {
               for (const port of portsToTry) {
                 if (connected) break;
                 
-                console.log(`🔄 Trying to connect to ${port}...`);
                 try {
                   const connectResult = await sensorAPI.connect(port);
                   if (connectResult.connected) {
-                    console.log(`✅ Connected to Arduino on ${port}`);
                     setSensorStatus('connected');
                     connected = true;
-                    setConnectionAttempts(0);
+                    // Stop checking when connected
+                    if (intervalId) {
+                      clearInterval(intervalId);
+                    }
                     break;
                   }
                 } catch (portError) {
-                  console.log(`❌ Failed to connect to ${port}:`, portError.message);
+                  console.log(`Failed to connect to ${port}`);
                 }
                 
-                // Small delay between port attempts
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 300));
               }
               
               if (!connected && isMounted) {
                 setSensorStatus('error');
-                setConnectionAttempts(prev => prev + 1);
               }
             }
           } catch (sensorError) {
-            console.error('Sensor check failed:', sensorError);
             if (isMounted) {
               setSensorStatus('error');
-              setConnectionAttempts(prev => prev + 1);
             }
           }
         } else if (isMounted) {
@@ -94,30 +90,28 @@ export default function Standby() {
           setSensorStatus('disconnected');
         }
       } catch (error) {
-        console.error('Status check failed:', error);
         if (isMounted) {
           setBackendStatus('error');
           setSensorStatus('disconnected');
         }
       }
-
-      // Retry logic with increasing delays for sensor connection
-      if (isMounted) {
-        const baseDelay = backendStatus === 'connected' ? 10000 : 5000;
-        const sensorRetryDelay = Math.min(2000 * (connectionAttempts + 1), 15000);
-        const delay = Math.max(baseDelay, sensorRetryDelay);
-        
-        timeoutId = setTimeout(() => checkStatus(retryCount + 1), delay);
-      }
     };
 
+    // Start checking immediately
     checkStatus();
-    
+
+    // Only set up interval if not everything is connected yet
+    if (backendStatus !== 'connected' || sensorStatus !== 'connected') {
+      intervalId = setInterval(checkStatus, 2000); // Check every 2 seconds when errors
+    }
+
     return () => {
       isMounted = false;
-      clearTimeout(timeoutId);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
-  }, [backendStatus, connectionAttempts]);
+  }, []); // Empty dependency array - run only once on mount
 
   // Get common Windows Arduino ports
   const getWindowsPorts = () => {
@@ -125,16 +119,6 @@ export default function Standby() {
   };
 
   const handleStartPress = () => {
-    if (backendStatus !== 'connected') {
-      alert('Backend is not connected. Please check if the Flask server is running.');
-      return;
-    }
-    
-    if (sensorStatus !== 'connected') {
-      alert('Sensors are not connected. Please check if Arduino is plugged in.');
-      return;
-    }
-    
     setIsPressed(true);
     setTimeout(() => {
       setIsPressed(false);
@@ -142,43 +126,10 @@ export default function Standby() {
     }, 200);
   };
 
-  const handleManualRetry = async () => {
-    setSensorStatus('checking');
-    setConnectionAttempts(0);
-    
-    // Force re-check immediately
-    const portsToTry = getWindowsPorts();
-    let connected = false;
-    
-    for (const port of portsToTry) {
-      if (connected) break;
-      
-      console.log(`🔄 Manual retry: Trying ${port}...`);
-      try {
-        const connectResult = await sensorAPI.connect(port);
-        if (connectResult.connected) {
-          console.log(`✅ Connected to Arduino on ${port}`);
-          setSensorStatus('connected');
-          connected = true;
-          break;
-        }
-      } catch (portError) {
-        console.log(`❌ Failed to connect to ${port}`);
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    
-    if (!connected) {
-      setSensorStatus('error');
-    }
-  };
-
   const formatTime = (date) =>
     date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-
       hour12: true,
     });
 
@@ -226,11 +177,9 @@ export default function Standby() {
     }
   };
 
-  const isStartButtonEnabled = backendStatus === 'connected' && sensorStatus === 'connected';
-
   return (
     <Container fluid className="standby-container">
-      {/* System Status */}
+      {/* System Status - Only one status indicator */}
       <motion.div
         className="standby-backend-status"
         initial={{ opacity: 0 }}
@@ -240,24 +189,6 @@ export default function Standby() {
         <div className={`standby-status-indicator ${getStatusClass()}`}>
           {getStatusIcon()}
           <span className="standby-status-text">{getStatusText()}</span>
-          {(sensorStatus === 'error' || sensorStatus === 'disconnected') && (
-            <button 
-              className="standby-retry-button"
-              onClick={handleManualRetry}
-              style={{
-                marginLeft: '10px',
-                padding: '2px 8px',
-                fontSize: '12px',
-                background: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Retry
-            </button>
-          )}
         </div>
       </motion.div>
 
@@ -307,38 +238,17 @@ export default function Standby() {
                   onClick={handleStartPress}
                   onTouchStart={() => setIsPressed(true)}
                   onTouchEnd={() => setIsPressed(false)}
-                  className={`standby-start-button ${isPressed ? 'pressed' : ''} ${!isStartButtonEnabled ? 'disabled' : ''}`}
+                  className={`standby-start-button ${isPressed ? 'pressed' : ''}`}
                   size="lg"
-                  disabled={!isStartButtonEnabled}
                 >
                   <span className="standby-button-content">
-                    {isStartButtonEnabled ? 'Touch this to Start' : 'System Starting...'}
+                    Touch this to Start
                   </span>
                 </Button>
               </motion.div>
-
-              {/* Connection Instructions */}
-              {(sensorStatus === 'error' || sensorStatus === 'disconnected') && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="standby-connection-help"
-                >
-                  <p style={{ color: '#dc3545', fontSize: '14px', marginTop: '10px' }}>
-                    💡 Make sure Arduino is plugged in via USB
-                  </p>
-                </motion.div>
-              )}
-
-              {/* Debug Info - Remove in production */}
-              <div style={{ marginTop: '20px', fontSize: '12px', color: '#666' }}>
-                <div>Backend: {backendStatus}</div>
-                <div>Sensors: {sensorStatus}</div>
-                <div>Connection Attempts: {connectionAttempts}</div>
-              </div>
             </div>
           </motion.div>
-        </Col>
+        </Col>a
       </Row>
     </Container>
   );

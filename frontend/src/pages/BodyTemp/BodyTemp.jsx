@@ -13,9 +13,9 @@ export default function BodyTemp() {
   const [measurementComplete, setMeasurementComplete] = useState(false);
   const [sensorStatus, setSensorStatus] = useState("checking");
   const [errorMessage, setErrorMessage] = useState("");
-  const [userDetectionStatus, setUserDetectionStatus] = useState("");
   const [currentTempReading, setCurrentTempReading] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const [progress, setProgress] = useState(5);
   
   const measurementInterval = useRef(null);
   const maxRetries = 3;
@@ -41,32 +41,23 @@ export default function BodyTemp() {
       setSensorStatus("checking");
       setErrorMessage("");
       
-      // First check if backend is connected
       const backendStatus = await checkBackendStatus();
       
       if (backendStatus.status === 'connected') {
-        // Backend is running, now check sensor status
         try {
           const sensorStatus = await sensorAPI.getStatus();
           
           if (sensorStatus.connected || sensorStatus.simulation_mode) {
             setSensorStatus("connected");
             setErrorMessage("");
-            setRetryCount(0); // Reset retry count on success
-            
-            // Test temperature sensor specifically
-            try {
-              await sensorAPI.getTemperatureStatus();
-            } catch (tempError) {
-              console.log("Temperature status check failed:", tempError);
-            }
+            setRetryCount(0);
           } else {
             setSensorStatus("error");
             setErrorMessage("Sensors not connected. Please check hardware.");
           }
         } catch (sensorError) {
           console.log("Sensor status check failed:", sensorError);
-          setSensorStatus("connected"); // Still mark as connected for simulation
+          setSensorStatus("connected");
           setErrorMessage("Using simulation mode - Real sensors not available");
         }
       } else {
@@ -90,12 +81,11 @@ export default function BodyTemp() {
 
     setIsMeasuring(true);
     setErrorMessage("");
-    setUserDetectionStatus("");
     setCurrentTempReading("");
     setTemperature("");
+    setProgress(5);
 
     try {
-      // Start measurement on backend
       const startResult = await sensorAPI.startTemperature();
       
       if (startResult.error) {
@@ -111,21 +101,20 @@ export default function BodyTemp() {
         measurementTime += 1;
         try {
           const status = await sensorAPI.getTemperatureStatus();
+          console.log("Temperature status:", status);
           
           if (status.status === 'completed' && status.temperature) {
             // Measurement completed successfully
             setTemperature(status.temperature.toFixed(1));
             setIsMeasuring(false);
             setMeasurementComplete(true);
-            setUserDetectionStatus("");
             setErrorMessage("");
             setRetryCount(0);
             clearInterval(measurementInterval.current);
           } 
-          else if (status.status === 'error' || status.status === 'no_contact') {
+          else if (status.status === 'error') {
             // Handle errors
             consecutiveErrors++;
-            setUserDetectionStatus(status.status);
             setErrorMessage(status.message);
             setCurrentTempReading("");
             
@@ -140,20 +129,16 @@ export default function BodyTemp() {
               }
             }
           } 
-          else if (status.status === 'measuring') {
+          else if (status.status === 'measuring' || status.status === 'starting') {
             // Valid measurement in progress
-            consecutiveErrors = 0; // Reset error count on successful reading
+            consecutiveErrors = 0;
             if (status.temperature) {
               setCurrentTempReading(status.temperature.toFixed(1));
             }
-            setUserDetectionStatus("");
+            // Update progress (5 second countdown)
+            const newProgress = Math.max(0, 5 - Math.floor(measurementTime));
+            setProgress(newProgress);
             setErrorMessage("");
-          } 
-          else if (status.status === 'starting') {
-            // Measurement starting
-            setCurrentTempReading("");
-            setUserDetectionStatus("");
-            setErrorMessage("Initializing sensor...");
           }
         } catch (error) {
           console.error("Error checking measurement status:", error);
@@ -174,7 +159,6 @@ export default function BodyTemp() {
             setRetryCount(prev => prev + 1);
             setErrorMessage(`Measurement timeout - Retrying (${retryCount + 1}/${maxRetries})`);
             stopMeasurement();
-            // Auto-retry after 2 seconds
             setTimeout(startRealMeasurement, 2000);
           } else {
             stopMeasurement();
@@ -233,8 +217,8 @@ export default function BodyTemp() {
     setMeasurementComplete(false);
     setIsMeasuring(false);
     setErrorMessage("");
-    setUserDetectionStatus("");
     setCurrentTempReading("");
+    setProgress(5);
     setRetryCount(0);
     
     if (measurementInterval.current) {
@@ -262,39 +246,24 @@ export default function BodyTemp() {
     return { text: "Normal Temperature", class: "temperature-normal" };
   };
 
-  const getDetectionMessage = () => {
-    switch (userDetectionStatus) {
-      case "no_user":
-        return "❌ No user detected. Please ensure the sensor is properly placed on your forehead.";
-      case "no_contact":
-        return "⚠️ Poor sensor contact. Please press the sensor firmly against your forehead.";
-      case "error":
-        return "🔧 Sensor error detected. Please wait or retry.";
-      default:
-        return "";
+  const getSensorStatusMessage = () => {
+    if (isMeasuring) {
+      if (currentTempReading) {
+        return `Measuring: ${currentTempReading}°C (${progress}s remaining)`;
+      } else {
+        return `Initializing sensor... (${progress}s remaining)`;
+      }
     }
+    return "Place sensor near forehead for temperature measurement";
   };
 
   const status = measurementComplete ? getTemperatureStatus() : null;
-
-  const getSensorStatusMessage = () => {
-    if (isMeasuring) {
-      if (userDetectionStatus) {
-        return getDetectionMessage();
-      } else if (currentTempReading) {
-        return `Measuring... Current: ${currentTempReading}°C`;
-      } else {
-        return "Initializing temperature sensor...";
-      }
-    }
-    return "Place sensor on forehead for accurate reading";
-  };
 
   return (
     <div className="bodytemp-container">
       <div className={`bodytemp-content ${isVisible ? 'visible' : ''}`}>
         
-        {/* Progress Bar - 3/4 progress */}
+        {/* Progress Bar */}
         <div className="progress-container">
           <div className="progress-bar">
             <div 
@@ -313,7 +282,7 @@ export default function BodyTemp() {
         <div className="bodytemp-header">
           <h1 className="bodytemp-title">Body Temperature</h1>
           <p className="bodytemp-subtitle">
-            {isMeasuring ? getSensorStatusMessage() : "Place sensor on forehead for accurate temperature measurement"}
+            {getSensorStatusMessage()}
           </p>
           
           {/* Connection Status */}
@@ -362,13 +331,16 @@ export default function BodyTemp() {
             <div className="measuring-progress">
               <div className="pulse-wave"></div>
               <span className="current-measurement">
-                {userDetectionStatus ? "Adjust Sensor Position" : "Measuring Temperature"}
+                {currentTempReading ? "Measuring Temperature" : "Initializing Sensor"}
               </span>
               {currentTempReading && (
                 <span className="progress-text">
                   Current: {currentTempReading}°C
                 </span>
               )}
+              <span className="progress-text">
+                Time remaining: {progress} seconds
+              </span>
               {retryCount > 0 && (
                 <span className="retry-indicator">Retry {retryCount}/{maxRetries}</span>
               )}
@@ -447,7 +419,7 @@ export default function BodyTemp() {
               <div className="card-icon">📋</div>
               <div className="card-content">
                 <h4>Accurate Reading</h4>
-                <p>Ensure proper sensor contact with forehead for reliable measurements</p>
+                <p>Ensure proper sensor positioning for reliable measurements</p>
               </div>
             </div>
           </div>

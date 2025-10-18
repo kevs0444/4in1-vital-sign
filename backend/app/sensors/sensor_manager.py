@@ -133,34 +133,54 @@ class SensorManager:
                 time.sleep(0.1)
 
     def _parse_serial_data(self, data: str):
-        """Parse incoming serial data"""
+        """Parse incoming serial data - UPDATED FOR SIMPLIFIED ARDUINO CODE"""
         print(f"📥 ARDUINO: {data}")
         
-        # Temperature measurement patterns
+        # Temperature measurement patterns - SIMPLIFIED
         if "TEMP_MEASUREMENT_STARTED" in data:
             self.current_phase = "TEMP"
             self.measurement_active = True
+            self.temperature = None
             self._trigger_status_callbacks()
             
+        elif "MEASURING_TEMPERATURE" in data:
+            self._trigger_data_callbacks('status', 'measuring_temperature')
+            
         elif "TEMP_DATA:" in data:
-            # Format: "TEMP_DATA:36.5:Normal"
-            match = re.search(r'TEMP_DATA:([\d.]+):', data)
+            # Format: "TEMP_DATA:36.5"
+            match = re.search(r'TEMP_DATA:([\d.]+)', data)
             if match:
                 temp = float(match.group(1))
                 self.temperature = temp
                 self._trigger_data_callbacks('temperature', temp)
+                self._trigger_status_callbacks()
+                
+        elif "TEMP_PROGRESS:" in data:
+            # Format: "TEMP_PROGRESS:4"
+            match = re.search(r'TEMP_PROGRESS:(\d+)', data)
+            if match:
+                seconds = int(match.group(1))
+                self._trigger_data_callbacks('progress', seconds)
                 
         elif "TEMP_FINAL:" in data:
             # Format: "TEMP_FINAL:36.5:Normal"
-            match = re.search(r'TEMP_FINAL:([\d.]+):', data)
+            match = re.search(r'TEMP_FINAL:([\d.]+):(.+)', data)
             if match:
                 self.temperature = float(match.group(1))
+                category = match.group(2)
                 self.current_phase = "IDLE"
                 self.measurement_active = False
                 self._trigger_data_callbacks('temperature_final', self.temperature)
+                self._trigger_data_callbacks('temperature_category', category)
                 self._trigger_status_callbacks()
                 
-        # MAX30102 measurement patterns - UPDATED
+        elif "TEMP_MEASUREMENT_COMPLETE" in data:
+            self.current_phase = "IDLE"
+            self.measurement_active = False
+            self._trigger_data_callbacks('status', 'measurement_complete')
+            self._trigger_status_callbacks()
+
+        # MAX30102 measurement patterns
         elif "HR_MEASUREMENT_STARTED" in data:
             self.current_phase = "MAX"
             self.measurement_active = True
@@ -224,10 +244,6 @@ class SensorManager:
                 self._trigger_status_callbacks()
                 
         # Status and error patterns
-        elif "HUMAN_DETECTED" in data:
-            self._trigger_data_callbacks('contact_status', 'detected')
-        elif "NO_USER_DETECTED" in data:
-            self._trigger_data_callbacks('contact_status', 'no_contact')
         elif "MEASUREMENT_STOPPED" in data:
             self.current_phase = "IDLE"
             self.measurement_active = False
@@ -237,63 +253,11 @@ class SensorManager:
             self._trigger_data_callbacks('error', 'temperature_sensor_error')
         elif "RESETTING_TEMP_SENSOR" in data:
             self._trigger_data_callbacks('info', 'resetting_temperature_sensor')
-
-    def _simulate_sensor_error(self):
-        """Simulate real-world sensor errors with realistic probabilities"""
-        error_chance = random.random()
-        
-        if error_chance < 0.04:  # 4% chance of major error
-            return {
-                "status": "error",
-                "message": "❌ Sensor malfunction - Please check connection and retry",
-                "temperature": None
-            }
-        elif error_chance < 0.08:  # 4% chance of contact error
-            return {
-                "status": "no_contact",
-                "message": "⚠️ Poor sensor contact - Ensure firm forehead contact",
-                "temperature": None
-            }
-        elif error_chance < 0.12:  # 4% chance of environmental error
-            return {
-                "status": "error", 
-                "message": "🌡️ Ambient temperature interference - Move to stable environment",
-                "temperature": None
-            }
-        elif error_chance < 0.15:  # 3% chance of calibration error
-            return {
-                "status": "error",
-                "message": "🔧 Sensor calibration needed - Please wait",
-                "temperature": None
-            }
-        
-        return None  # No error
-
-    def _generate_realistic_temperature(self, elapsed_time):
-        """Generate realistic temperature readings with variations"""
-        # Base temperature varies by time of day (simulated)
-        hour_of_day = (time.time() % 86400) / 3600  # 0-23 hours
-        daily_variation = math.sin((hour_of_day - 14) * math.pi / 12) * 0.3  # Peak at 2 PM
-        
-        # Base temperature with individual variation
-        base_temp = 36.5 + random.uniform(-0.4, 0.4)  # Individual differences
-        
-        # Time-based variation during measurement
-        time_variation = math.sin(elapsed_time * 2) * 0.15  # Small oscillations
-        
-        # Sensor noise
-        sensor_noise = random.uniform(-0.08, 0.08)
-        
-        # Movement artifact (occasional spikes)
-        movement_artifact = 0
-        if random.random() < 0.1:  # 10% chance of movement
-            movement_artifact = random.uniform(-0.3, 0.5)
-        
-        simulated_temp = (base_temp + daily_variation + time_variation + 
-                         sensor_noise + movement_artifact)
-        
-        # Clamp to realistic human range
-        return max(35.0, min(39.5, simulated_temp))
+        elif "TEMP_TIMEOUT" in data or "HR_TIMEOUT" in data:
+            self.current_phase = "IDLE"
+            self.measurement_active = False
+            self._trigger_data_callbacks('status', 'timeout')
+            self._trigger_status_callbacks()
 
     def start_temperature_measurement(self):
         """Start temperature measurement"""
@@ -309,7 +273,7 @@ class SensorManager:
         self.temperature = None
         
         if self.simulation_mode:
-            print("🌡️ SIMULATION: Starting realistic temperature measurement")
+            print("🌡️ SIMULATION: Starting temperature measurement")
             return {
                 "status": "started", 
                 "message": "Temperature measurement started",
@@ -320,158 +284,92 @@ class SensorManager:
             return {"status": "started", "message": "Temperature measurement started"}
 
     def get_temperature_status(self):
-        """Get temperature measurement status with realistic simulation"""
-        if self.simulation_mode:
-            if self.current_phase == "TEMP" and self.measurement_active:
-                elapsed = time.time() - self.measurement_start_time
+        """Get temperature measurement status - SIMPLIFIED"""
+        if not self.is_connected:
+            return {
+                "status": "error",
+                "message": "Not connected to Arduino",
+                "temperature": None
+            }
+        
+        try:
+            # For real Arduino connection, return current state
+            if self.simulation_mode:
+                # Simulation logic
+                elapsed = time.time() - self.measurement_start_time if self.measurement_active else 0
                 
-                # Check for simulated sensor errors (only after initial phase)
-                if elapsed > 1:  # Only check errors after initialization
-                    sensor_error = self._simulate_sensor_error()
-                    if sensor_error:
-                        self.current_phase = "IDLE"
-                        self.measurement_active = False
-                        return sensor_error
-                
-                if elapsed < 2:
-                    return {
-                        "status": "starting",
-                        "message": "Initializing temperature sensor...",
-                        "temperature": None
-                    }
-                elif elapsed < 7:  # Variable measurement time 5-9 seconds
-                    # Realistic temperature generation
-                    simulated_temp = self._generate_realistic_temperature(elapsed)
-                    self.temperature = round(simulated_temp, 1)
-                    
-                    # Occasionally show unstable readings
-                    if random.random() < 0.15 and elapsed < 4:
+                if self.current_phase == "TEMP" and self.measurement_active:
+                    if elapsed < 2:
                         return {
-                            "status": "measuring",
-                            "message": "Stabilizing reading...",
+                            "status": "starting",
+                            "message": "Initializing temperature sensor...",
                             "temperature": None
                         }
-                    
-                    return {
-                        "status": "measuring",
-                        "message": "Measuring temperature...",
-                        "temperature": self.temperature
-                    }
-                else:
-                    # Final reading - use actual measured value
-                    final_temp = self.temperature if self.temperature else self._generate_realistic_temperature(elapsed)
-                    final_temp = round(final_temp, 1)
-                    
-                    # Occasionally require longer measurement
-                    if random.random() < 0.1 and elapsed < 9:  # 10% chance
+                    elif elapsed < 5:
+                        # Generate simulated temperature
+                        simulated_temp = round(36.5 + random.uniform(-0.3, 0.5), 1)
+                        self.temperature = simulated_temp
                         return {
                             "status": "measuring",
-                            "message": "Finalizing measurement...",
+                            "message": "Measuring temperature...",
+                            "temperature": simulated_temp
+                        }
+                    else:
+                        self.current_phase = "IDLE"
+                        self.measurement_active = False
+                        return {
+                            "status": "completed",
+                            "message": "Measurement complete",
                             "temperature": self.temperature
                         }
-                    
-                    self.current_phase = "IDLE"
-                    self.measurement_active = False
-                    
+                else:
                     return {
-                        "status": "completed",
-                        "message": "Temperature measurement complete",
-                        "temperature": final_temp
+                        "status": "idle",
+                        "message": "Ready for temperature measurement",
+                        "temperature": self.temperature
                     }
             else:
-                return {
-                    "status": "idle",
-                    "message": "Ready for temperature measurement",
-                    "temperature": self.temperature
-                }
-        else:
-            # Real Arduino code
-            if self.serial_conn and self.serial_conn.in_waiting > 0:
-                line = self.serial_conn.readline().decode('utf-8').strip()
-                if line:
-                    self._parse_serial_data(line)
-            
-            # Return current status based on parsed data
-            if self.current_phase == "TEMP" and self.measurement_active:
-                elapsed = time.time() - self.measurement_start_time
-                
-                if elapsed < 3:
+                # Real Arduino - return current state based on parsed data
+                if self.current_phase == "TEMP" and self.measurement_active:
+                    elapsed = time.time() - self.measurement_start_time
+                    
+                    if elapsed < 1:
+                        return {
+                            "status": "starting",
+                            "message": "Initializing sensor...",
+                            "temperature": None
+                        }
+                    elif self.temperature:
+                        return {
+                            "status": "measuring",
+                            "message": "Measuring temperature...",
+                            "temperature": self.temperature
+                        }
+                    else:
+                        return {
+                            "status": "measuring",
+                            "message": "Measuring temperature...",
+                            "temperature": None
+                        }
+                elif self.temperature:
                     return {
-                        "status": "starting",
-                        "message": "Initializing sensor...",
-                        "temperature": None
-                    }
-                elif elapsed < 8:
-                    return {
-                        "status": "measuring",
-                        "message": "Measuring temperature...",
+                        "status": "completed",
+                        "message": "Measurement complete",
                         "temperature": self.temperature
                     }
                 else:
-                    # Timeout or completion
-                    self.measurement_active = False
-                    self.current_phase = "IDLE"
                     return {
-                        "status": "completed" if self.temperature else "timeout",
-                        "message": "Measurement complete" if self.temperature else "Measurement timeout",
+                        "status": "idle",
+                        "message": "Ready for temperature measurement",
                         "temperature": self.temperature
                     }
-            else:
-                return {
-                    "status": "idle",
-                    "message": "Ready for measurement",
-                    "temperature": self.temperature
-                }
-
-    def _generate_realistic_vital_signs(self, elapsed_time):
-        """Generate realistic vital signs with occasional abnormalities"""
-        # Determine if this reading should be abnormal
-        abnormality_type = random.random()
-        
-        if abnormality_type < 0.08:  # 8% chance of bradycardia
-            heart_rate = random.randint(45, 59)
-            spo2 = random.randint(92, 98)
-            respiratory_rate = random.randint(10, 14)
-            abnormality = "bradycardia"
-        elif abnormality_type < 0.16:  # 8% chance of tachycardia
-            heart_rate = random.randint(101, 125)
-            spo2 = random.randint(94, 99)
-            respiratory_rate = random.randint(18, 24)
-            abnormality = "tachycardia"
-        elif abnormality_type < 0.20:  # 4% chance of low SpO2
-            heart_rate = random.randint(70, 90)
-            spo2 = random.randint(85, 93)
-            respiratory_rate = random.randint(14, 20)
-            abnormality = "low_spo2"
-        elif abnormality_type < 0.22:  # 2% chance of tachypnea
-            heart_rate = random.randint(80, 100)
-            spo2 = random.randint(95, 99)
-            respiratory_rate = random.randint(22, 28)
-            abnormality = "tachypnea"
-        elif abnormality_type < 0.24:  # 2% chance of bradypnea
-            heart_rate = random.randint(60, 80)
-            spo2 = random.randint(96, 99)
-            respiratory_rate = random.randint(8, 11)
-            abnormality = "bradypnea"
-        else:  # 76% normal readings
-            heart_rate = random.randint(62, 98)
-            spo2 = random.randint(96, 100)
-            respiratory_rate = random.randint(12, 20)
-            abnormality = "normal"
-        
-        # Add sensor noise and instability, especially early in measurement
-        if elapsed_time < 25:
-            instability_chance = max(0.1, 0.4 - (elapsed_time * 0.015))  # Decreases over time
-            if random.random() < instability_chance:
-                # Unstable reading
-                return None, None, None, "unstable"
-        
-        # Add small variations to make readings more realistic
-        heart_rate += random.randint(-2, 2)
-        spo2 = max(85, min(100, spo2 + random.randint(-1, 1)))
-        respiratory_rate += random.randint(-1, 1)
-        
-        return heart_rate, spo2, respiratory_rate, abnormality
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error getting temperature status: {str(e)}",
+                "temperature": None
+            }
 
     def start_max30102_measurement(self):
         """Start MAX30102 measurement"""
@@ -492,24 +390,13 @@ class SensorManager:
         self.measurement_start_time = time.time()
         
         if self.simulation_mode:
-            print("💓 SIMULATION: Starting realistic MAX30102 measurement")
-            # Simulate finger detection with variable timing
-            detection_delay = random.uniform(1.5, 4.0)
-            
-            def simulate_finger_detection():
-                time.sleep(detection_delay)
-                self.finger_detected = True
-                self._trigger_status_callbacks()
-            
-            threading.Thread(target=simulate_finger_detection, daemon=True).start()
-            
+            print("💓 SIMULATION: Starting MAX30102 measurement")
             return {
                 "status": "started",
                 "message": "MAX30102 measurement started",
                 "simulation": True
             }
         else:
-            # FIX: Send the correct command that Arduino expects
             self._send_command("START_HR")
             return {
                 "status": "started",
@@ -517,7 +404,7 @@ class SensorManager:
             }
 
     def get_max30102_status(self):
-        """Get MAX30102 measurement status with realistic simulation"""
+        """Get MAX30102 measurement status"""
         if not self.is_connected:
             return {
                 "status": "error",
@@ -535,41 +422,6 @@ class SensorManager:
             if self.current_phase == "MAX" and self.measurement_active:
                 elapsed = time.time() - self.measurement_start_time
                 progress_seconds = max(0, 60 - int(elapsed))
-                
-                # Simulate finger removal (5% chance after detection)
-                if (self.finger_detected and random.random() < 0.05 and 
-                    elapsed > 15 and elapsed < 50):
-                    self.finger_detected = False
-                    return {
-                        "current_phase": self.current_phase,
-                        "measurement_active": self.measurement_active,
-                        "heart_rate": None,
-                        "spo2": None,
-                        "respiratory_rate": None,
-                        "finger_detected": False,
-                        "progress_seconds": progress_seconds,
-                        "message": "❌ Finger moved - Please keep finger steady"
-                    }
-                
-                # Generate realistic vital signs
-                if elapsed > 10 and self.finger_detected:  # Only after stabilization
-                    heart_rate, spo2, respiratory_rate, abnormality = self._generate_realistic_vital_signs(elapsed)
-                    
-                    if abnormality == "unstable":
-                        # Show unstable reading
-                        self.heart_rate = None
-                        self.spo2 = None
-                        self.respiratory_rate = None
-                    else:
-                        self.heart_rate = heart_rate
-                        self.spo2 = spo2
-                        self.respiratory_rate = respiratory_rate
-                
-                # Auto-complete after 60 seconds with 5-second variation
-                if self.simulation_mode and elapsed >= random.randint(55, 65):
-                    self.current_phase = "IDLE"
-                    self.measurement_active = False
-                    self.finger_detected = False
             
             return {
                 "current_phase": self.current_phase,
@@ -618,12 +470,11 @@ class SensorManager:
         return {"status": "Measurement stopped"}
 
     def get_status(self):
-        """Get current sensor status - Honest reporting"""
-        # Only report as connected if we actually have a serial connection
+        """Get current sensor status"""
         connected_status = self.is_connected and not self.simulation_mode
         
         return {
-            "connected": connected_status,  # This will be FALSE when Arduino is removed
+            "connected": connected_status,
             "simulation_mode": self.simulation_mode,
             "current_phase": self.current_phase,
             "measurement_active": self.measurement_active,
@@ -633,17 +484,17 @@ class SensorManager:
             "respiratory_rate": self.respiratory_rate,
             "finger_detected": self.finger_detected,
             "port": self.port,
-            "hardware_available": connected_status  # Additional honest flag
+            "hardware_available": connected_status
         }
 
     def test_connection(self):
-        """Test connection - Honest reporting"""
+        """Test connection"""
         if self.simulation_mode:
             return {
                 "status": "simulation", 
                 "message": "Running in simulation mode - No hardware connected",
                 "simulation": True,
-                "connected": False  # Be honest
+                "connected": False
             }
         elif self.is_connected and self.serial_conn and self.serial_conn.is_open:
             try:
