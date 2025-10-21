@@ -30,6 +30,10 @@ bool heightSensorPowered = false;
 bool tempSensorPowered = false;
 bool hrSensorPowered = false;
 
+// Weight sensor initialization flag
+bool weightSensorInitialized = false;
+bool autoTareCompleted = false;
+
 // --- Measurement Variables ---
 // Weight
 const float PLATFORM_WEIGHT = 0.4;
@@ -53,7 +57,7 @@ const float TEMP_CALIBRATION_OFFSET = 1.5;
 unsigned long lastTempUpdateTime = 0;
 
 // Heart Rate & SpO2
-const unsigned long HR_MEASUREMENT_TIME = 30000; // Reduced to 30 seconds for testing
+const unsigned long HR_MEASUREMENT_TIME = 30000;
 bool fingerDetected = false;
 uint32_t irBuffer[100];
 uint32_t redBuffer[100];
@@ -70,33 +74,114 @@ void setup() {
   
   while (!Serial) { ; }
   
-  // Initialize sensors but keep them powered down
-  initializeSensors();
+  // Quick initialization - just establish connection first
+  Serial.println("STATUS:BOOTING_UP");
   
+  // Initialize basic sensor objects without full setup
+  initializeBasicSensors();
+  
+  // Mark as ready for commands immediately
   Serial.println("STATUS:READY_FOR_COMMANDS");
+  Serial.println("SYSTEM:CONNECTED_BASIC_MODE");
 }
 
-void initializeSensors() {
-  // Weight sensor
+void initializeBasicSensors() {
+  // Quick initialization - just create objects
   LoadCell.begin();
+  
+  // Temperature sensor quick init
+  tempSensor.begin();
+  
+  // Heart rate sensor quick init  
+  heartRateSensor.begin(Wire, I2C_SPEED_FAST);
+  
+  Serial.println("STATUS:BASIC_SENSORS_INITIALIZED");
+}
+
+void initializeWeightSensor() {
+  Serial.println("STATUS:INITIALIZING_WEIGHT_SENSOR");
+  
+  if (!weightSensorPowered) {
+    LoadCell.powerUp();
+    delay(100);
+  }
+  
+  // Start with stabilization time
+  LoadCell.start(2000, true);
+  
+  if (LoadCell.getTareTimeoutFlag() || LoadCell.getSignalTimeoutFlag()) {
+    Serial.println("ERROR:WEIGHT_SENSOR_TIMEOUT");
+    return;
+  }
+
+  // Get calibration factor from EEPROM
   float calFactor;
   EEPROM.get(0, calFactor);
-  LoadCell.setCalFactor(isnan(calFactor) || calFactor == 0 ? 696.0 : calFactor); // Default calibration factor
-  LoadCell.powerDown();
+  if (isnan(calFactor) || calFactor == 0) {
+    calFactor = 696.0; // Default calibration factor
+    Serial.println("STATUS:USING_DEFAULT_CALIBRATION");
+  }
+  LoadCell.setCalFactor(calFactor);
   
-  // Temperature sensor - initialize but don't start
-  if (!tempSensor.begin()) {
+  Serial.print("STATUS:CALIBRATION_FACTOR:");
+  Serial.println(calFactor);
+  
+  // Perform automatic tare (assume platform is empty at startup)
+  Serial.println("STATUS:PERFORMING_AUTO_TARE");
+  LoadCell.tareNoDelay();
+  
+  // Wait for tare to complete with timeout
+  unsigned long tareStartTime = millis();
+  while (!LoadCell.getTareStatus() && millis() - tareStartTime < 5000) {
+    delay(10);
+  }
+  
+  if (LoadCell.getTareStatus()) {
+    Serial.println("STATUS:TARE_COMPLETE");
+    weightSensorInitialized = true;
+    autoTareCompleted = true;
+  } else {
+    Serial.println("ERROR:TARE_FAILED");
+    // Continue anyway, user can retry later
+    weightSensorInitialized = true;
+  }
+  
+  Serial.println("STATUS:WEIGHT_SENSOR_READY");
+}
+
+void initializeOtherSensors() {
+  // Temperature sensor
+  if (tempSensor.begin()) {
+    Serial.println("STATUS:TEMP_SENSOR_READY");
+  } else {
     Serial.println("ERROR:TEMP_SENSOR_INIT_FAILED");
   }
   
-  // Heart rate sensor - initialize but don't start
-  if (!heartRateSensor.begin(Wire, I2C_SPEED_FAST)) {
+  // Heart rate sensor
+  if (heartRateSensor.begin(Wire, I2C_SPEED_FAST)) {
+    heartRateSensor.setup();
+    heartRateSensor.setPulseAmplitudeRed(0x0A);
+    heartRateSensor.setPulseAmplitudeGreen(0);
+    heartRateSensor.shutDown();
+    Serial.println("STATUS:HR_SENSOR_READY");
+  } else {
     Serial.println("ERROR:HR_SENSOR_INIT_FAILED");
   }
-  heartRateSensor.setup();
-  heartRateSensor.setPulseAmplitudeRed(0x0A);
-  heartRateSensor.setPulseAmplitudeGreen(0);
-  heartRateSensor.shutDown();
+  
+  // Height sensor
+  Serial.println("STATUS:HEIGHT_SENSOR_READY");
+}
+
+void fullSystemInitialize() {
+  Serial.println("STATUS:FULL_SYSTEM_INITIALIZATION_STARTED");
+  
+  // Initialize weight sensor with tare
+  initializeWeightSensor();
+  
+  // Initialize other sensors properly
+  initializeOtherSensors();
+  
+  Serial.println("STATUS:FULL_SYSTEM_INITIALIZATION_COMPLETE");
 }
 
 // =================================================================
@@ -166,14 +251,58 @@ void handleCommand(String command) {
     shutdownAllSensors();
   } else if (command == "GET_STATUS") {
     sendStatus();
+  } else if (command == "TARE_WEIGHT") {
+    performTare();
+  } else if (command == "INITIALIZE_WEIGHT") {
+    initializeWeightSensor();
+  } else if (command == "FULL_INITIALIZE") {
+    fullSystemInitialize();
+  } else {
+    Serial.print("ERROR:UNKNOWN_COMMAND:");
+    Serial.println(command);
+  }
+}
+
+void performTare() {
+  if (!weightSensorPowered) {
+    powerUpWeightSensor();
+  }
+  
+  Serial.println("STATUS:PERFORMING_TARE");
+  LoadCell.tareNoDelay();
+  
+  unsigned long tareStartTime = millis();
+  while (!LoadCell.getTareStatus() && millis() - tareStartTime < 5000) {
+    delay(10);
+  }
+  
+  if (LoadCell.getTareStatus()) {
+    Serial.println("STATUS:TARE_COMPLETE");
+    autoTareCompleted = true;
+  } else {
+    Serial.println("ERROR:TARE_FAILED");
   }
 }
 
 void powerUpWeightSensor() {
   if (!weightSensorPowered) {
     LoadCell.powerUp();
-    delay(10);
-    LoadCell.start(2000, true);
+    delay(100);
+    
+    // Initialize if not done
+    if (!weightSensorInitialized) {
+      LoadCell.start(2000, true);
+      
+      // Set calibration factor
+      float calFactor;
+      EEPROM.get(0, calFactor);
+      if (isnan(calFactor) || calFactor == 0) {
+        calFactor = 696.0;
+      }
+      LoadCell.setCalFactor(calFactor);
+      weightSensorInitialized = true;
+    }
+    
     weightSensorPowered = true;
     Serial.println("STATUS:WEIGHT_SENSOR_POWERED_UP");
   }
@@ -222,7 +351,7 @@ void powerUpHrSensor() {
   if (!hrSensorPowered) {
     Wire.begin();
     heartRateSensor.wakeUp();
-    delay(10);
+    delay(100);
     heartRateSensor.setup();
     heartRateSensor.setPulseAmplitudeRed(0x0A);
     heartRateSensor.setPulseAmplitudeGreen(0);
@@ -260,6 +389,12 @@ void sendStatus() {
   }
   Serial.print("STATUS:MEASUREMENT_ACTIVE:");
   Serial.println(measurementActive ? "YES" : "NO");
+  Serial.print("STATUS:WEIGHT_SENSOR_INITIALIZED:");
+  Serial.println(weightSensorInitialized ? "YES" : "NO");
+  Serial.print("STATUS:AUTO_TARE_COMPLETED:");
+  Serial.println(autoTareCompleted ? "YES" : "NO");
+  Serial.print("STATUS:SYSTEM_MODE:");
+  Serial.println(autoTareCompleted ? "FULLY_INITIALIZED" : "BASIC");
 }
 
 // =================================================================
@@ -267,6 +402,13 @@ void sendStatus() {
 // =================================================================
 void startWeightMeasurement() {
   if (!weightSensorPowered) powerUpWeightSensor();
+  
+  // Ensure weight sensor is initialized
+  if (!weightSensorInitialized) {
+    Serial.println("ERROR:WEIGHT_SENSOR_NOT_INITIALIZED");
+    return;
+  }
+  
   measurementActive = true;
   currentPhase = WEIGHT;
   weightState = W_DETECTING;
@@ -315,7 +457,7 @@ void runWeightPhase() {
   static bool averagingStarted = false;
   
   if (LoadCell.update()) {
-    float currentWeight = LoadCell.getData() - PLATFORM_WEIGHT;
+    float currentWeight = LoadCell.getData(); // No need to subtract platform weight - already tared
     if (currentWeight < 0) currentWeight = 0;
 
     switch (weightState) {
@@ -593,34 +735,4 @@ void runHeartRatePhase() {
     
     Serial.println("STATUS:HR_MEASUREMENT_COMPLETE");
   }
-}
-
-// =================================================================
-// --- CALIBRATION FUNCTION (Optional) ---
-// =================================================================
-void calibrateWeightSensor() {
-  if (!weightSensorPowered) powerUpWeightSensor();
-  
-  Serial.println("STATUS:CALIBRATION_STARTED");
-  Serial.println("Please remove all weight from the platform...");
-  delay(5000);
-  
-  LoadCell.tareNoDelay();
-  
-  Serial.println("Tare complete. Please place known weight on platform...");
-  delay(10000);
-  
-  if (LoadCell.update()) {
-    float knownWeight = 5.0; // Change this to your known weight in kg
-    float rawReading = LoadCell.getData();
-    float calFactor = rawReading / knownWeight;
-    
-    EEPROM.put(0, calFactor);
-    LoadCell.setCalFactor(calFactor);
-    
-    Serial.print("CALIBRATION_COMPLETE: Factor=");
-    Serial.println(calFactor);
-  }
-  
-  powerDownWeightSensor();
 }

@@ -27,6 +27,16 @@ class SensorManager:
         # Detailed status for multi-step measurements
         self.current_measurement_status = "idle" 
         
+        # System initialization status - start with basic connection
+        self.connection_established = False
+        self.basic_mode = True  # Start in basic mode, full init later
+        self.full_system_initialized = False
+        self.weight_sensor_ready = False
+        self.temperature_sensor_ready = False
+        self.height_sensor_ready = False
+        self.hr_sensor_ready = False
+        self.auto_tare_completed = False
+        
         self.force_simulation = force_simulation
         self.read_thread = None
         self.should_read = False
@@ -41,7 +51,8 @@ class SensorManager:
 
     def connect(self) -> bool:
         """
-        Connects to the Arduino.
+        Connects to the Arduino - BASIC CONNECTION ONLY.
+        Full initialization happens separately.
         """
         if self.is_connected:
             return True
@@ -57,34 +68,87 @@ class SensorManager:
                 # Give the Arduino time to reset
                 time.sleep(2)
                 
-                # Listen for the handshake for a moment instead of just one line
+                # Listen for basic ready signal (quick timeout)
                 start_time = time.time()
-                while time.time() - start_time < 2.0: # Listen for 2 seconds
+                
+                while time.time() - start_time < 5.0: # Quick 5-second timeout
                     if self.serial_conn.in_waiting > 0:
                         line = self.serial_conn.readline().decode('utf-8').strip()
-                        print(f"   ... Arduino on {port} says: {line}")
-                        if "READY_FOR_COMMANDS" in line:
-                            self.is_connected = True
-                            self.port = port # Save the working port
-                            self.start_reading()
-                            print(f"✅ Connection successful on {port}!")
-                            return True
+                        if line:
+                            print(f"   ... Arduino: {line}")
+                            
+                            # Parse basic status
+                            self._parse_serial_data(line)
+                            
+                            if "READY_FOR_COMMANDS" in line:
+                                self.is_connected = True
+                                self.connection_established = True
+                                self.port = port
+                                self.start_reading()
+                                print(f"✅ BASIC CONNECTION successful on {port}!")
+                                print("💡 System is in BASIC MODE - full initialization needed")
+                                return True
                 
-                # If handshake not found after listening, close and try next port
+                # If basic connection not found, try next port
                 self.serial_conn.close()
-                print(f"🟡 Port {port} is active but did not send ready signal.")
+                print(f"🟡 Port {port} not responding with basic handshake.")
 
-            except serial.SerialException:
-                # This port doesn't exist or is in use, which is normal.
-                print(f"⚪ Port {port} not available. Trying next...")
+            except serial.SerialException as e:
+                print(f"⚪ Port {port} not available: {e}")
                 continue
 
         print("❌ Connection Failed. No Arduino found on any scanned port.")
         self.is_connected = False
         return False
 
+    def full_initialize(self) -> bool:
+        """
+        Performs full system initialization including weight sensor tare.
+        This is called AFTER basic connection is established.
+        """
+        if not self.is_connected:
+            print("❌ Cannot initialize - not connected to Arduino")
+            return False
+        
+        print("🚀 Starting FULL SYSTEM INITIALIZATION...")
+        self._send_command("FULL_INITIALIZE")
+        
+        # Wait for initialization to complete
+        start_time = time.time()
+        while time.time() - start_time < 15.0: # 15 second timeout for full init
+            if self.full_system_initialized:
+                print("✅ FULL SYSTEM INITIALIZATION COMPLETE!")
+                self.basic_mode = False
+                return True
+            time.sleep(0.5)
+        
+        print("⚠️ Full initialization timeout - system may be in basic mode")
+        return False
+
+    def initialize_weight_sensor(self) -> bool:
+        """
+        Initializes only the weight sensor with tare.
+        """
+        if not self.is_connected:
+            print("❌ Cannot initialize weight sensor - not connected")
+            return False
+        
+        print("⚖️ Initializing weight sensor...")
+        self._send_command("INITIALIZE_WEIGHT")
+        
+        # Wait for weight sensor to be ready
+        start_time = time.time()
+        while time.time() - start_time < 10.0:
+            if self.weight_sensor_ready:
+                print("✅ Weight sensor initialized and ready!")
+                return True
+            time.sleep(0.5)
+        
+        print("⚠️ Weight sensor initialization timeout")
+        return False
+
     def disconnect(self):
-        """Disconnects from the Arduino."""
+        """Disconnects from the Arduino and powers down all sensors."""
         self.shutdown_all_sensors()
         self.should_read = False
         if self.read_thread and self.read_thread.is_alive():
@@ -94,6 +158,9 @@ class SensorManager:
         self.is_connected = False
         self.current_phase = "IDLE"
         self.measurement_active = False
+        self.connection_established = False
+        self.basic_mode = True
+        self.full_system_initialized = False
         print("🔌 Disconnected from Arduino")
 
     def start_reading(self):
@@ -126,6 +193,25 @@ class SensorManager:
         if prefix == "STATUS":
             status = parts[1] if len(parts) > 1 else ""
             self.current_measurement_status = status.lower()
+            
+            # Track system initialization
+            if "booting_up" in self.current_measurement_status:
+                self.basic_mode = True
+            elif "basic_sensors_initialized" in self.current_measurement_status:
+                self.basic_mode = True
+            elif "full_system_initialization_complete" in self.current_measurement_status:
+                self.full_system_initialized = True
+                self.basic_mode = False
+            elif "weight_sensor_ready" in self.current_measurement_status:
+                self.weight_sensor_ready = True
+            elif "temp_sensor_ready" in self.current_measurement_status:
+                self.temperature_sensor_ready = True
+            elif "height_sensor_ready" in self.current_measurement_status:
+                self.height_sensor_ready = True
+            elif "hr_sensor_ready" in self.current_measurement_status:
+                self.hr_sensor_ready = True
+            elif "tare_complete" in self.current_measurement_status:
+                self.auto_tare_completed = True
             
             # Update measurement state based on status
             if "complete" in self.current_measurement_status:
@@ -175,6 +261,12 @@ class SensorManager:
             self.current_measurement_status = "error"
             print(f"🚨 Arduino Error: {':'.join(parts[1:])}")
 
+        elif prefix == "SYSTEM":
+            system_msg = parts[1] if len(parts) > 1 else ""
+            if "connected_basic_mode" in system_msg:
+                self.basic_mode = True
+                self.connection_established = True
+
     def _send_command(self, command: str):
         """Sends a command to the Arduino."""
         if self.is_connected and self.serial_conn:
@@ -185,9 +277,15 @@ class SensorManager:
                 print(f"❌ Failed to send command: {e}")
 
     def _start_generic_measurement(self, phase: str, command: str, sensor_type: str):
-        """A generic helper to start any measurement phase with proper sensor management."""
+        """A generic helper to start any measurement phase."""
         if not self.is_connected:
             return {"status": "error", "message": "Not connected to Arduino"}
+        
+        # Allow measurements in basic mode, but warn about weight sensor
+        if sensor_type == "weight" and not self.weight_sensor_ready and self.basic_mode:
+            print("⚠️ Weight measurement in basic mode - sensor may not be tared")
+            # Continue anyway, but warn user
+            
         if self.measurement_active:
             return {"status": "error", "message": "Another measurement is in progress"}
         
@@ -212,7 +310,12 @@ class SensorManager:
         self.current_measurement_status = "initializing"
         
         self._send_command(command)
-        return {"status": "started", "message": f"{phase} measurement initiated"}
+        
+        message = f"{phase} measurement initiated"
+        if self.basic_mode and sensor_type == "weight":
+            message += " (BASIC MODE - weight may not be accurate)"
+            
+        return {"status": "started", "message": message}
 
     def _power_up_sensor(self, sensor_type: str):
         """Powers up a specific sensor."""
@@ -253,6 +356,33 @@ class SensorManager:
         self.current_phase = "IDLE"
         print("🔌 All sensors shut down")
 
+    def perform_tare(self):
+        """Performs tare operation on weight sensor."""
+        if not self.is_connected:
+            return {"status": "error", "message": "Not connected to Arduino"}
+        
+        self._send_command("TARE_WEIGHT")
+        return {"status": "started", "message": "Tare operation initiated"}
+
+    def get_system_status(self):
+        """Returns comprehensive system status."""
+        return {
+            "connected": self.is_connected,
+            "connection_established": self.connection_established,
+            "system_mode": "BASIC" if self.basic_mode else "FULLY_INITIALIZED",
+            "full_system_initialized": self.full_system_initialized,
+            "sensors_ready": {
+                "weight": self.weight_sensor_ready,
+                "temperature": self.temperature_sensor_ready,
+                "height": self.height_sensor_ready,
+                "max30102": self.hr_sensor_ready
+            },
+            "auto_tare_completed": self.auto_tare_completed,
+            "current_phase": self.current_phase,
+            "measurement_active": self.measurement_active,
+            "sensor_states": self.sensor_states
+        }
+
     # --- Public Methods for API Routes ---
     
     def get_status(self) -> Dict[str, Any]:
@@ -262,6 +392,10 @@ class SensorManager:
             "port": self.port if self.is_connected else None,
             "current_phase": self.current_phase,
             "measurement_active": self.measurement_active,
+            "system_mode": "BASIC" if self.basic_mode else "FULLY_INITIALIZED",
+            "full_system_initialized": self.full_system_initialized,
+            "weight_sensor_ready": self.weight_sensor_ready,
+            "auto_tare_completed": self.auto_tare_completed,
             "sensor_states": self.sensor_states
         }
 
@@ -272,7 +406,9 @@ class SensorManager:
         return {
             "status": self.current_measurement_status, 
             "weight": self.weight,
-            "measurement_active": self.measurement_active
+            "measurement_active": self.measurement_active,
+            "sensor_ready": self.weight_sensor_ready,
+            "auto_tare_completed": self.auto_tare_completed
         }
 
     def start_height_measurement(self):
@@ -282,7 +418,8 @@ class SensorManager:
         return {
             "status": self.current_measurement_status, 
             "height": self.height,
-            "measurement_active": self.measurement_active
+            "measurement_active": self.measurement_active,
+            "sensor_ready": self.height_sensor_ready
         }
         
     def start_temperature_measurement(self):
@@ -293,7 +430,8 @@ class SensorManager:
             "status": self.current_measurement_status, 
             "temperature": self.temperature,
             "live_temperature": self.live_temperature,
-            "measurement_active": self.measurement_active
+            "measurement_active": self.measurement_active,
+            "sensor_ready": self.temperature_sensor_ready
         }
 
     def start_max30102_measurement(self):
@@ -305,5 +443,41 @@ class SensorManager:
             "heart_rate": self.heart_rate,
             "spo2": self.spo2,
             "respiratory_rate": self.respiratory_rate,
-            "measurement_active": self.measurement_active
+            "measurement_active": self.measurement_active,
+            "sensor_ready": self.hr_sensor_ready
         }
+
+    def get_measurements(self):
+        """Returns all completed measurements."""
+        return {
+            "weight": self.weight,
+            "height": self.height,
+            "temperature": self.temperature,
+            "heart_rate": self.heart_rate,
+            "spo2": self.spo2,
+            "respiratory_rate": self.respiratory_rate
+        }
+
+    def reset_measurements(self):
+        """Resets all measurement results."""
+        self.weight = None
+        self.height = None
+        self.temperature = None
+        self.heart_rate = None
+        self.spo2 = None
+        self.respiratory_rate = None
+        self.live_temperature = None
+        
+        # Reset sensor states but keep readiness flags
+        for sensor_type in self.sensor_states.keys():
+            if self.sensor_states[sensor_type] == "COMPLETE":
+                self.sensor_states[sensor_type] = "OFF"
+        
+        print("📊 All measurements reset")
+        return {"status": "success", "message": "All measurements reset"}
+
+    def force_reconnect(self):
+        """Forces reconnection to Arduino."""
+        self.disconnect()
+        time.sleep(2)
+        return self.connect()

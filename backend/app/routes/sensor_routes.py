@@ -8,11 +8,13 @@ sensor_bp = Blueprint('sensor', __name__)
 
 @sensor_bp.route('/connect', methods=['POST'])
 def connect_sensors():
-    """Connects to Arduino and initializes sensors."""
+    """Establishes BASIC connection to Arduino."""
     connected = sensor_manager.connect()
     return jsonify({
         "connected": connected,
-        "port": sensor_manager.port if connected else None
+        "port": sensor_manager.port if connected else None,
+        "system_mode": "BASIC" if sensor_manager.basic_mode else "FULLY_INITIALIZED",
+        "message": "Basic connection established" if connected else "Connection failed"
     })
 
 @sensor_bp.route('/disconnect', methods=['POST'])
@@ -25,6 +27,63 @@ def disconnect_sensors():
 def get_sensor_status():
     """Returns comprehensive sensor status."""
     return jsonify(sensor_manager.get_status())
+
+@sensor_bp.route('/system_status', methods=['GET'])
+def get_system_status():
+    """Returns detailed system status including sensor readiness."""
+    return jsonify(sensor_manager.get_system_status())
+
+@sensor_bp.route('/initialize', methods=['POST'])
+def initialize_system():
+    """Performs FULL system initialization including weight sensor tare."""
+    if not sensor_manager.is_connected:
+        return jsonify({"status": "error", "message": "Not connected to Arduino"})
+    
+    success = sensor_manager.full_initialize()
+    return jsonify({
+        "status": "success" if success else "warning",
+        "message": "Full system initialization complete" if success else "Initialization may be incomplete",
+        "full_system_initialized": sensor_manager.full_system_initialized,
+        "weight_sensor_ready": sensor_manager.weight_sensor_ready,
+        "auto_tare_completed": sensor_manager.auto_tare_completed
+    })
+
+@sensor_bp.route('/initialize_weight', methods=['POST'])
+def initialize_weight_sensor():
+    """Initializes only the weight sensor with tare."""
+    if not sensor_manager.is_connected:
+        return jsonify({"status": "error", "message": "Not connected to Arduino"})
+    
+    success = sensor_manager.initialize_weight_sensor()
+    return jsonify({
+        "status": "success" if success else "warning",
+        "message": "Weight sensor initialized" if success else "Weight sensor initialization may be incomplete",
+        "weight_sensor_ready": sensor_manager.weight_sensor_ready,
+        "auto_tare_completed": sensor_manager.auto_tare_completed
+    })
+
+@sensor_bp.route('/tare', methods=['POST'])
+def tare_weight_sensor():
+    """Performs tare operation on weight sensor."""
+    result = sensor_manager.perform_tare()
+    return jsonify(result)
+
+@sensor_bp.route('/reset', methods=['POST'])
+def reset_measurements():
+    """Resets all measurement results."""
+    result = sensor_manager.reset_measurements()
+    return jsonify(result)
+
+@sensor_bp.route('/reconnect', methods=['POST'])
+def force_reconnect():
+    """Forces reconnection to Arduino."""
+    result = sensor_manager.force_reconnect()
+    return jsonify(result)
+
+@sensor_bp.route('/measurements', methods=['GET'])
+def get_all_measurements():
+    """Returns all completed measurements."""
+    return jsonify(sensor_manager.get_measurements())
 
 # Individual sensor routes
 @sensor_bp.route('/weight/start', methods=['POST'])
