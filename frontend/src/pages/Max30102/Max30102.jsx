@@ -10,54 +10,33 @@ export default function Max30102() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
-  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [isMeasuring, setIsMeasuring] = useState(false); // Tracks if backend is busy
   const [measurementComplete, setMeasurementComplete] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Place finger on the sensor to begin.");
+  const [fingerDetected, setFingerDetected] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("Initializing...");
   const [measurements, setMeasurements] = useState({
     heartRate: "--",
     spo2: "--.-",
     respiratoryRate: "--"
   });
-  const [progressSeconds, setProgressSeconds] = useState(30);
+  const [progressSeconds, setProgressSeconds] = useState(60); // Changed to 60 seconds
   const [progressPercent, setProgressPercent] = useState(0);
+  const [liveSamples, setLiveSamples] = useState([]);
 
   const pollerRef = useRef(null);
-  const countdownRef = useRef(null);
-  const measurementTimeout = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
+    sensorAPI.prepareMax30102().then(() => {
+      startPolling(); // Start polling immediately
+    });
+
     return () => {
       clearTimeout(timer);
       stopPolling();
+      sensorAPI.shutdownMax30102();
     };
   }, []);
-
-  const handleStartMeasurement = async () => {
-    if (isMeasuring) return;
-    
-    setIsMeasuring(true);
-    setMeasurementComplete(false);
-    setStatusMessage("Initializing pulse oximeter...");
-    setMeasurements({ heartRate: "--", spo2: "--.-", respiratoryRate: "--" });
-    setProgressSeconds(30);
-    setProgressPercent(0);
-    
-    try {
-      const result = await sensorAPI.startMax30102();
-      if (result.status === 'started') {
-        setStatusMessage("Starting measurement...");
-        startPolling();
-        startCountdown();
-      } else {
-        setStatusMessage(result.message || "Failed to start measurement.");
-        setIsMeasuring(false);
-      }
-    } catch (error) {
-      setStatusMessage("❌ Connection Failed. Check backend.");
-      setIsMeasuring(false);
-    }
-  };
 
   const startPolling = () => {
     stopPolling();
@@ -65,21 +44,19 @@ export default function Max30102() {
     pollerRef.current = setInterval(async () => {
       try {
         const data = await sensorAPI.getMax30102Status();
-        console.log("MAX30102 status:", data);
+        setIsMeasuring(data.measurement_active);
+        setFingerDetected(data.finger_detected);
+        setLiveSamples(data.live_samples || []);
         
-        // Handle progress updates
         if (data.status && data.status.includes('HR_PROGRESS')) {
           const progressParts = data.status.split(':');
-          if (progressParts.length >= 3) {
-            const elapsed = parseInt(progressParts[1]);
-            const total = parseInt(progressParts[2]);
-            const progressPercent = (elapsed / total) * 100;
-            setProgressPercent(progressPercent);
-            setProgressSeconds(total - elapsed);
-          }
+          const elapsed = parseInt(progressParts[1]);
+          const total = parseInt(progressParts[2]);
+          const progressPercent = (elapsed / total) * 100;
+          setProgressPercent(progressPercent);
+          setProgressSeconds(total - elapsed);
         }
         
-        // Update displayed values if they exist
         if (data.heart_rate !== null && data.heart_rate !== undefined) {
           setMeasurements(prev => ({ ...prev, heartRate: Math.round(data.heart_rate) }));
         }
@@ -90,104 +67,36 @@ export default function Max30102() {
           setMeasurements(prev => ({ ...prev, respiratoryRate: Math.round(data.respiratory_rate) }));
         }
 
-        // Update status
-        handleStatusUpdate(data.status);
-
-        // Check if measurement is complete
         if (data.status === 'hr_measurement_complete') {
           setStatusMessage("Measurement Complete!");
           setMeasurementComplete(true);
-          setIsMeasuring(false);
           setProgressPercent(100);
           stopPolling();
-          stopCountdown();
         } else if (data.status === 'error' || data.status === 'hr_reading_failed') {
           setStatusMessage("❌ Measurement Failed. Please try again.");
-          setIsMeasuring(false);
           stopPolling();
-          stopCountdown();
-        }
-
-        // Direct result check
-        if (data.heart_rate && data.spo2 && !measurementComplete) {
-          console.log("HR result received:", data);
-          setMeasurements({
-            heartRate: Math.round(data.heart_rate),
-            spo2: data.spo2.toFixed(1),
-            respiratoryRate: Math.round(data.respiratory_rate || 16)
-          });
-          setMeasurementComplete(true);
-          setIsMeasuring(false);
-          setStatusMessage("Measurement Complete!");
-          setProgressPercent(100);
-          stopPolling();
-          stopCountdown();
+        } else if (!data.measurement_active && !measurementComplete) {
+          if (data.finger_detected) {
+            setStatusMessage("✅ Finger Detected. Starting measurement...");
+          } else {
+            setStatusMessage("Place finger on the sensor to begin.");
+          }
+        } else if (data.measurement_active) {
+          setStatusMessage("Measuring... Keep finger steady.");
         }
 
       } catch (error) {
         console.error("Error polling MAX30102 status:", error);
         setStatusMessage("❌ Connection Error");
-        setIsMeasuring(false);
         stopPolling();
-        stopCountdown();
       }
     }, 1500);
-  };
-
-  const handleStatusUpdate = (status) => {
-    switch (status) {
-      case 'initializing':
-        setStatusMessage("Initializing Pulse Oximeter...");
-        break;
-      case 'hr_measurement_started':
-        setStatusMessage("Starting measurement...");
-        break;
-      case 'waiting_for_finger':
-        setStatusMessage("👆 Place finger on sensor.");
-        break;
-      case 'finger_detected':
-        setStatusMessage("✅ Finger Detected. Measuring...");
-        break;
-      case 'error':
-      case 'finger_removed':
-        setStatusMessage("❌ Finger removed. Please place finger back on sensor.");
-        break;
-      default:
-        if (status && !status.includes('HR_PROGRESS')) {
-          setStatusMessage(status);
-        }
-        break;
-    }
-  };
-
-  const startCountdown = () => {
-    setProgressSeconds(30);
-    countdownRef.current = setInterval(() => {
-      setProgressSeconds(prev => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const stopCountdown = () => {
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
   };
 
   const stopPolling = () => {
     if (pollerRef.current) {
       clearInterval(pollerRef.current);
       pollerRef.current = null;
-    }
-    if (measurementTimeout.current) {
-      clearTimeout(measurementTimeout.current);
-      measurementTimeout.current = null;
     }
   };
 
@@ -206,17 +115,6 @@ export default function Max30102() {
     };
     
     navigate("/ai-loading", { state: finalData });
-  };
-
-  const handleRetry = () => {
-    stopPolling();
-    stopCountdown();
-    setIsMeasuring(false);
-    setMeasurementComplete(false);
-    setMeasurements({ heartRate: "--", spo2: "--.-", respiratoryRate: "--" });
-    setStatusMessage("Place finger on the sensor to begin.");
-    setProgressSeconds(30);
-    setProgressPercent(0);
   };
 
   const getStatusColor = (type, value) => {
@@ -291,11 +189,27 @@ export default function Max30102() {
 
         <div className="sensor-display-section">
           <div className="sensor-visual-area">
-            <div className={`finger-sensor ${isMeasuring ? 'active' : ''}`}>
+            <div className={`finger-sensor ${fingerDetected ? 'active' : ''}`}>
               <div className="sensor-light"></div>
               <div className="finger-placeholder">👆</div>
             </div>
           </div>
+
+          {/* Live Samples Display */}
+          {liveSamples.length > 0 && (
+            <div className="live-samples-container">
+              <h4>Live Data Samples (every 5s)</h4>
+              <div className="samples-grid">
+                {liveSamples.map((sample, index) => (
+                  <div key={index} className="sample-item">
+                    <span className="sample-index">#{index + 1}</span>
+                    <span className="sample-hr">HR: {Math.round(sample.hr)}</span>
+                    <span className="sample-spo2">SpO₂: {sample.spo2.toFixed(1)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="measurements-grid">
             <div className="measurement-card">
@@ -340,28 +254,14 @@ export default function Max30102() {
         </div>
 
         <div className="measurement-controls">
-          {!measurementComplete ? (
-            <button 
-              className={`measure-button ${isMeasuring ? "measuring" : ""}`} 
-              onClick={handleStartMeasurement} 
-              disabled={isMeasuring}
-            >
-              {isMeasuring ? (
-                <>
-                  <div className="spinner"></div>
-                  Measuring...
-                </>
-              ) : (
-                "❤️ Start Measurement"
-              )}
-            </button>
-          ) : (
-            <div className="measurement-complete">
-              <span className="success-text">✓ Measurement Complete</span>
-              <button className="retry-button" onClick={handleRetry}>
-                Measure Again
-              </button>
+          {!isMeasuring && !measurementComplete && (
+            <div className="waiting-prompt">
+              <div className="spinner"></div>
+              <span>Waiting for finger...</span>
             </div>
+          )}
+          {measurementComplete && (
+            <span className="success-text">✓ Measurement Complete</span>
           )}
         </div>
 

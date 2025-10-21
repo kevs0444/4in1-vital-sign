@@ -38,6 +38,51 @@ export const sensorAPI = {
     }
   },
 
+  getSystemStatus: async () => {
+    try {
+      const response = await fetch(`${API_URL}/sensor/system_status`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting system status:', error);
+      // Return a default error state that the frontend can interpret
+      return { connected: false, connection_established: false, sensors_ready: {} };
+    }
+  },
+
+  // Reset all measurements
+  reset: async () => {
+    try {
+      const response = await fetch(`${API_URL}/sensor/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      return { error: 'Failed to reset measurements', details: error.message };
+    }
+  },
+
+  // Generic prepare/shutdown functions
+  _prepareSensor: async (sensorName) => {
+    try {
+      await fetch(`${API_URL}/sensor/${sensorName}/prepare`, { method: 'POST' });
+    } catch (error) {
+      console.error(`Error preparing ${sensorName} sensor:`, error);
+    }
+  },
+
+  _shutdownSensor: async (sensorName) => {
+    try {
+      await fetch(`${API_URL}/sensor/${sensorName}/shutdown`, { method: 'POST' });
+    } catch (error) {
+      console.error(`Error shutting down ${sensorName} sensor:`, error);
+    }
+  },
+
   // ... (All other API functions like startWeight, getStatus, etc., remain unchanged)
   // ==================== WEIGHT SENSOR ====================
   startWeight: async () => {
@@ -53,6 +98,9 @@ export const sensorAPI = {
       return { error: 'Failed to start measurement', details: error.message };
     }
   },
+
+  prepareWeight: () => sensorAPI._prepareSensor('weight'),
+  shutdownWeight: () => sensorAPI._shutdownSensor('weight'),
 
   getWeightStatus: async () => {
     try {
@@ -80,6 +128,9 @@ export const sensorAPI = {
     }
   },
 
+  prepareHeight: () => sensorAPI._prepareSensor('height'),
+  shutdownHeight: () => sensorAPI._shutdownSensor('height'),
+
   getHeightStatus: async () => {
     try {
       const response = await fetch(`${API_URL}/sensor/height/status`);
@@ -104,6 +155,9 @@ export const sensorAPI = {
       return { error: 'Failed to start measurement', details: error.message };
     }
   },
+
+  prepareTemperature: () => sensorAPI._prepareSensor('temperature'),
+  shutdownTemperature: () => sensorAPI._shutdownSensor('temperature'),
   
   getTemperatureStatus: async () => {
     try {
@@ -128,6 +182,9 @@ export const sensorAPI = {
       return { error: 'Failed to start MAX30102 measurement', details: error.message };
     }
   },
+
+  prepareMax30102: () => sensorAPI._prepareSensor('max30102'),
+  shutdownMax30102: () => sensorAPI._shutdownSensor('max30102'),
 
   getMax30102Status: async () => {
     try {

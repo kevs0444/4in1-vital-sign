@@ -11,7 +11,7 @@ import { sensorAPI } from '../../utils/api';
 export default function Standby() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPressed, setIsPressed] = useState(false);
-  const [systemStatus, setSystemStatus] = useState('checking'); // 'checking', 'connected', or 'error'
+  const [systemStatus, setSystemStatus] = useState('checking_backend'); // 'checking_backend', 'backend_down', 'connecting_arduino', 'calibrating_weight', 'ready'
   const navigate = useNavigate();
 
   const pollerRef = useRef(null);
@@ -22,46 +22,41 @@ export default function Standby() {
     return () => clearInterval(timer);
   }, []);
 
-  // Effect for handling the connection logic
   useEffect(() => {
-    // This function tells the backend to start its auto-scanning process
-    const attemptConnection = async () => {
-      try {
-        const result = await sensorAPI.connect(); // Backend does the hard work
-        if (result.connected) {
-          setSystemStatus('connected');
-          if (pollerRef.current) clearInterval(pollerRef.current); // Stop polling on success
-        } else {
-          setSystemStatus('error');
+    const startStatusPolling = async () => {
+      // Immediately try to connect. The backend is smart enough to handle this.
+      await sensorAPI.connect();
+      // Set up an interval to continuously check the system status.
+      pollerRef.current = setInterval(async () => {
+        try {
+          const status = await sensorAPI.getSystemStatus();
+          
+          if (status.connected && status.sensors_ready.weight) {
+            setSystemStatus('ready'); // Arduino connected, weight sensor ready
+          } else if (status.connection_established) { // Backend has connected to Arduino, but weight sensor is not ready
+            setSystemStatus('calibrating_weight'); 
+          } else {
+            // Backend is running but has not yet established a connection with the Arduino.
+            setSystemStatus('connecting_arduino'); 
+          }
+        } catch (e) {
+          setSystemStatus('backend_down');
         }
-      } catch (e) {
-        setSystemStatus('error');
+      }, 2500); // Poll every 2.5 seconds
+    };
+
+    startStatusPolling();
+
+    // Cleanup function to stop the poller when the component unmounts.
+    return () => {
+      if (pollerRef.current) {
+        clearInterval(pollerRef.current);
       }
     };
-
-    // This function checks if we are already connected when the page loads
-    const checkInitialStatus = async () => {
-        const status = await sensorAPI.getStatus();
-        if (status.connected) {
-            setSystemStatus('connected');
-        } else {
-            // If not connected, start the connection attempt
-            attemptConnection();
-            // If the first attempt fails, keep trying every 5 seconds
-            pollerRef.current = setInterval(attemptConnection, 5000);
-        }
-    };
-
-    checkInitialStatus();
-
-    // Cleanup function to stop the poller if the user navigates away
-    return () => {
-      if (pollerRef.current) clearInterval(pollerRef.current);
-    };
-  }, []); // Empty array means this runs only once when the component mounts
+  }, []); // Empty dependency array ensures this runs only once on mount.
 
   const handleStartPress = () => {
-    if (systemStatus !== 'connected') {
+    if (systemStatus !== 'ready') {
       alert("System is not ready. Please check the sensor connection.");
       return;
     }
@@ -78,22 +73,26 @@ export default function Standby() {
   const formatDate = (date) =>
     date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  const getStatusIcon = (status) => {
-    if (status === 'connected') return <CheckCircle className="standby-status-icon connected" />;
-    if (status === 'error') return <Error className="standby-status-icon error" />;
+  const getStatusIcon = (currentSystemStatus) => {
+    if (currentSystemStatus === 'ready') return <CheckCircle className="standby-status-icon connected" />;
+    if (currentSystemStatus === 'backend_down' || currentSystemStatus === 'connecting_arduino') return <Error className="standby-status-icon error" />;
     return <Circle className="standby-status-icon checking" />;
   };
 
-  const getStatusText = (status) => {
-    if (status === 'connected') return 'System Ready';
-    if (status === 'error') return 'Sensors Not Found';
-    return 'Connecting to Sensors...';
+  const getStatusText = (currentSystemStatus) => {
+    if (currentSystemStatus === 'backend_down') return 'Backend Not Connected';
+    if (currentSystemStatus === 'ready') return 'System Ready';
+    if (currentSystemStatus === 'calibrating_weight') return 'Calibrating Weight Sensor...';
+    if (currentSystemStatus === 'connecting_arduino') return 'Connecting to Arduino...';
+    return 'Checking System...'; // Default for 'checking_backend'
   };
+
+  const isStartButtonEnabled = systemStatus === 'ready';
 
   return (
     <Container fluid className="standby-container">
       <motion.div className="standby-backend-status">
-        <div className={`standby-status-indicator ${systemStatus}`}>
+        <div className={`standby-status-indicator ${systemStatus === 'ready' ? 'connected' : (systemStatus === 'backend_down' || systemStatus === 'connecting_arduino' ? 'error' : 'checking')}`}>
           {getStatusIcon(systemStatus)}
           <span className="standby-status-text">{getStatusText(systemStatus)}</span>
         </div>
@@ -118,10 +117,10 @@ export default function Standby() {
               onTouchStart={() => setIsPressed(true)}
               onTouchEnd={() => setIsPressed(false)}
               className={`standby-start-button ${isPressed ? 'pressed' : ''}`}
-              disabled={systemStatus !== 'connected'}
+              disabled={!isStartButtonEnabled}
             >
               <span className="standby-button-content">
-                {systemStatus === 'connected' ? 'Touch this to Start' : 'System Not Ready'}
+                {isStartButtonEnabled ? 'Touch this to Start' : getStatusText(systemStatus)}
               </span>
             </Button>
           </div>

@@ -9,9 +9,9 @@ export default function Height() {
   const location = useLocation();
   const [height, setHeight] = useState("");
   const [isVisible, setIsVisible] = useState(false);
-  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [isMeasuring, setIsMeasuring] = useState(false); // Tracks if backend is busy
   const [measurementComplete, setMeasurementComplete] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Press Start to Begin");
+  const [statusMessage, setStatusMessage] = useState("Initializing...");
   const [progress, setProgress] = useState(0);
 
   const pollerId = useRef(null);
@@ -19,10 +19,17 @@ export default function Height() {
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
+    // Power up the sensor, then start polling for auto-measurement
+    sensorAPI.prepareHeight().then(async () => {
+      await sensorAPI.startHeight(); // Immediately try to start the measurement
+      pollHeightStatus();
+    });
+
     return () => {
       clearTimeout(timer);
       if (pollerId.current) clearInterval(pollerId.current);
       if (measurementTimeout.current) clearTimeout(measurementTimeout.current);
+      sensorAPI.shutdownHeight();
     };
   }, []);
 
@@ -55,10 +62,10 @@ export default function Height() {
         // Handle status messages
         switch (data.status) {
           case 'initializing':
-            setStatusMessage("Initializing Height Sensor...");
+            setStatusMessage("Initializing sensor...");
             break;
           case 'height_measurement_started':
-            setStatusMessage("Starting height measurement...");
+            setStatusMessage("Measurement started. Please stand still.");
             break;
           case 'height_measuring':
             setStatusMessage("Measuring height... Please stand still.");
@@ -69,19 +76,20 @@ export default function Height() {
             if (data.height) {
               setHeight(data.height.toFixed(1));
               setMeasurementComplete(true);
-              setIsMeasuring(false);
               clearInterval(pollerId.current);
             }
             break;
           case 'error':
           case 'height_reading_failed':
             setStatusMessage("❌ Height Measurement Failed! Please try again.");
-            setIsMeasuring(false);
             clearInterval(pollerId.current);
             break;
           default:
-            if (data.status && !data.status.includes('HEIGHT_PROGRESS')) {
-              setStatusMessage(data.status);
+            // For idle states, guide the user
+            if (!data.measurement_active && !measurementComplete) {
+              setStatusMessage("Please stand under the sensor to begin.");
+            } else if (data.measurement_active) {
+              setStatusMessage("Measuring... Please stand still.");
             }
             break;
         }
@@ -91,20 +99,12 @@ export default function Height() {
           console.log("Height result received:", data.height);
           setHeight(data.height.toFixed(1));
           setMeasurementComplete(true);
-          setIsMeasuring(false);
           setStatusMessage("Height Measurement Complete!");
           setProgress(100);
           clearInterval(pollerId.current);
         }
 
-        // If measurement is no longer active but we don't have result
-        if (!data.measurement_active && isMeasuring && !measurementComplete) {
-          console.log("Height measurement stopped without result");
-          setStatusMessage("❌ Measurement stopped. Please try again.");
-          setIsMeasuring(false);
-          clearInterval(pollerId.current);
-        }
-
+        setIsMeasuring(data.measurement_active);
       } catch (error) {
         console.error("Error polling height status:", error);
         setStatusMessage("❌ Connection Error");
@@ -112,48 +112,6 @@ export default function Height() {
         clearInterval(pollerId.current);
       }
     }, 800);
-  };
-
-  const handleStartMeasurement = async () => {
-    if (isMeasuring) return;
-    
-    setIsMeasuring(true);
-    setMeasurementComplete(false);
-    setHeight("");
-    setStatusMessage("Starting height measurement...");
-    setProgress(0);
-
-    try {
-      const result = await sensorAPI.startHeight();
-      console.log("Start height result:", result);
-      
-      if (result.status === 'started') {
-        setStatusMessage("Initializing sensor...");
-        
-        // Start polling
-        setTimeout(() => {
-          pollHeightStatus();
-        }, 500);
-        
-        // Safety timeout
-        measurementTimeout.current = setTimeout(() => {
-          if (isMeasuring && !measurementComplete) {
-            console.log("Height measurement timeout reached");
-            setStatusMessage("❌ Measurement timeout. Please try again.");
-            setIsMeasuring(false);
-            if (pollerId.current) clearInterval(pollerId.current);
-          }
-        }, 15000); // 15 seconds timeout for height
-        
-      } else {
-        setStatusMessage(result.message || "Failed to start measurement.");
-        setIsMeasuring(false);
-      }
-    } catch (error) {
-      console.error("Start height measurement error:", error);
-      setStatusMessage("❌ Connection Failed. Check backend.");
-      setIsMeasuring(false);
-    }
   };
 
   const handleContinue = () => {
@@ -169,16 +127,6 @@ export default function Height() {
         height: parseFloat(height) 
       } 
     });
-  };
-
-  const handleRetry = () => {
-    if (pollerId.current) clearInterval(pollerId.current);
-    if (measurementTimeout.current) clearTimeout(measurementTimeout.current);
-    setHeight("");
-    setMeasurementComplete(false);
-    setIsMeasuring(false);
-    setStatusMessage("Press Start to Begin");
-    setProgress(0);
   };
 
   const getHeightStatus = (height) => {
@@ -250,28 +198,13 @@ export default function Height() {
         </div>
 
         <div className="measurement-controls">
-          {!measurementComplete ? (
-            <button 
-              className={`measure-button ${isMeasuring ? "measuring" : ""}`} 
-              onClick={handleStartMeasurement} 
-              disabled={isMeasuring}
-            >
-              {isMeasuring ? (
-                <>
-                  <div className="spinner"></div>
-                  Measuring...
-                </>
-              ) : (
-                <>📏 Start Measurement</>
-              )}
-            </button>
-          ) : (
-            <div className="measurement-complete">
-              <button className="retry-button" onClick={handleRetry}>
-                Measure Again
-              </button>
+          {!isMeasuring && !measurementComplete && (
+            <div className="waiting-prompt">
+              <div className="spinner"></div>
+              <span>Waiting for user...</span>
             </div>
           )}
+          {/* The "Measure Again" button has been removed to enforce a one-time measurement per phase. */}
         </div>
 
         <div className="continue-button-container">

@@ -91,6 +91,16 @@ def start_weight():
     result = sensor_manager.start_weight_measurement()
     return jsonify(result)
 
+@sensor_bp.route('/weight/prepare', methods=['POST'])
+def prepare_weight():
+    sensor_manager._power_up_sensor("weight")
+    return jsonify({"status": "powered_up"})
+
+@sensor_bp.route('/weight/shutdown', methods=['POST'])
+def shutdown_weight():
+    sensor_manager._power_down_sensor("weight")
+    return jsonify({"status": "powered_down"})
+
 @sensor_bp.route('/weight/status', methods=['GET'])
 def get_weight_status():
     return jsonify(sensor_manager.get_weight_status())
@@ -99,6 +109,16 @@ def get_weight_status():
 def start_height():
     result = sensor_manager.start_height_measurement()
     return jsonify(result)
+
+@sensor_bp.route('/height/prepare', methods=['POST'])
+def prepare_height():
+    sensor_manager._power_up_sensor("height")
+    return jsonify({"status": "powered_up"})
+
+@sensor_bp.route('/height/shutdown', methods=['POST'])
+def shutdown_height():
+    sensor_manager._power_down_sensor("height")
+    return jsonify({"status": "powered_down"})
 
 @sensor_bp.route('/height/status', methods=['GET'])
 def get_height_status():
@@ -109,6 +129,16 @@ def start_temperature():
     result = sensor_manager.start_temperature_measurement()
     return jsonify(result)
 
+@sensor_bp.route('/temperature/prepare', methods=['POST'])
+def prepare_temperature():
+    sensor_manager._power_up_sensor("temperature")
+    return jsonify({"status": "powered_up"})
+
+@sensor_bp.route('/temperature/shutdown', methods=['POST'])
+def shutdown_temperature():
+    sensor_manager._power_down_sensor("temperature")
+    return jsonify({"status": "powered_down"})
+
 @sensor_bp.route('/temperature/status', methods=['GET'])
 def get_temperature_status():
     return jsonify(sensor_manager.get_temperature_status())
@@ -117,6 +147,16 @@ def get_temperature_status():
 def start_max30102():
     result = sensor_manager.start_max30102_measurement()
     return jsonify(result)
+
+@sensor_bp.route('/max30102/prepare', methods=['POST'])
+def prepare_max30102():
+    sensor_manager._power_up_sensor("max30102")
+    return jsonify({"status": "powered_up"})
+
+@sensor_bp.route('/max30102/shutdown', methods=['POST'])
+def shutdown_max30102():
+    sensor_manager._power_down_sensor("max30102")
+    return jsonify({"status": "powered_down"})
 
 @sensor_bp.route('/max30102/status', methods=['GET'])
 def get_max30102_status():

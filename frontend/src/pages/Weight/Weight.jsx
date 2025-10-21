@@ -9,7 +9,7 @@ export default function Weight() {
   const location = useLocation();
   const [weight, setWeight] = useState("");
   const [isVisible, setIsVisible] = useState(false);
-  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [isMeasuring, setIsMeasuring] = useState(false); // Tracks if backend is busy
   const [measurementComplete, setMeasurementComplete] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Press Start to Begin");
   const [progress, setProgress] = useState(0);
@@ -19,12 +19,22 @@ export default function Weight() {
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
+    // Automatically start the measurement process when the page loads.
+    sensorAPI.startWeight().then(() => {
+      setStatusMessage("Please step on the scale and stand still.");
+      pollWeightStatus();
+    });
+
     return () => {
       clearTimeout(timer);
       if (pollerId.current) clearInterval(pollerId.current);
       if (measurementTimeout.current) clearTimeout(measurementTimeout.current);
+      sensorAPI.shutdownWeight();
     };
   }, []);
+
+  // This effect handles the auto-start logic based on backend status
+  useEffect(() => {}, [isMeasuring, measurementComplete]);
 
   const pollWeightStatus = () => {
     pollerId.current = setInterval(async () => {
@@ -32,40 +42,38 @@ export default function Weight() {
         const data = await sensorAPI.getWeightStatus();
         console.log("Weight status:", data);
         
+        setIsMeasuring(data.measurement_active);
         // Handle progress updates
-        if (data.status && data.status.includes('AVERAGING_PROGRESS')) {
+        if (data.status && data.status.includes('weight_stabilizing')) {
+          const progressParts = data.status.split(':');
+          const elapsed = parseInt(progressParts[1]);
+          const total = parseInt(progressParts[2]);
+          // Calculate progress for the first 3 seconds (0% to 60%)
+          const progressPercent = (elapsed / total) * 60;
+          setProgress(progressPercent);
+          setStatusMessage(`Stand straight, do not move... ${3 - elapsed}s`);
+        } else if (data.status && data.status.includes('weight_averaging')) {
           const progressParts = data.status.split(':');
           if (progressParts.length >= 3) {
             const elapsed = parseInt(progressParts[1]);
             const total = parseInt(progressParts[2]);
-            const progressPercent = (elapsed / total) * 100;
+            // Calculate progress for the last 2 seconds (60% to 100%)
+            const progressPercent = 60 + ((elapsed / total) * 40);
             setProgress(progressPercent);
-            setStatusMessage(`Averaging... ${elapsed}/${total}s`);
+            setStatusMessage(`Averaging weight... ${2 - elapsed}s`);
           }
         }
         
         // Handle status messages
         switch (data.status) {
           case 'initializing':
-            setStatusMessage("Initializing Weight Sensor...");
+            setStatusMessage("Initializing sensor...");
             break;
           case 'weight_measurement_started':
-            setStatusMessage("Please step on the scale.");
+            setStatusMessage("Measurement started...");
             break;
           case 'waiting_for_user_weight':
             setStatusMessage("Waiting for weight detection...");
-            break;
-          case 'weight_detected':
-            setStatusMessage("Weight Detected! Please hold still.");
-            setProgress(25);
-            break;
-          case 'stabilizing':
-            setStatusMessage("Stabilizing...");
-            setProgress(50);
-            break;
-          case 'weight_averaging':
-            setStatusMessage("Averaging Weight... Do not move.");
-            setProgress(75);
             break;
           case 'weight_measurement_complete':
             setStatusMessage("Weight Measurement Complete!");
@@ -73,7 +81,6 @@ export default function Weight() {
             if (data.weight) {
               setWeight(data.weight.toFixed(1));
               setMeasurementComplete(true);
-              setIsMeasuring(false);
               clearInterval(pollerId.current);
             }
             break;
@@ -83,8 +90,13 @@ export default function Weight() {
             clearInterval(pollerId.current);
             break;
           default:
-            if (data.status && !data.status.includes('AVERAGING')) {
-              setStatusMessage(data.status);
+            // For idle states, guide the user
+            if (!data.measurement_active && !measurementComplete) {
+              if (!data.sensor_ready) {
+                setStatusMessage("Calibrating scale, please wait...");
+              } else {
+                setStatusMessage("Please step on the scale and stand still.");
+              }
             }
             break;
         }
@@ -94,7 +106,6 @@ export default function Weight() {
           console.log("Weight result received:", data.weight);
           setWeight(data.weight.toFixed(1));
           setMeasurementComplete(true);
-          setIsMeasuring(false);
           setStatusMessage("Weight Measurement Complete!");
           setProgress(100);
           clearInterval(pollerId.current);
@@ -102,53 +113,10 @@ export default function Weight() {
 
       } catch (error) {
         console.error("Error polling weight status:", error);
-        setStatusMessage("❌ Connection Error");
-        setIsMeasuring(false);
+        setStatusMessage("❌ Connection Error. Please check backend.");
         clearInterval(pollerId.current);
       }
     }, 800); // Poll every 800ms
-  };
-
-  const handleStartMeasurement = async () => {
-    if (isMeasuring) return;
-    
-    setIsMeasuring(true);
-    setMeasurementComplete(false);
-    setWeight("");
-    setStatusMessage("Starting weight measurement...");
-    setProgress(0);
-
-    try {
-      const result = await sensorAPI.startWeight();
-      console.log("Start weight result:", result);
-      
-      if (result.status === 'started') {
-        setStatusMessage("Initializing sensor...");
-        
-        // Start polling
-        setTimeout(() => {
-          pollWeightStatus();
-        }, 500);
-        
-        // Safety timeout - if no result after 30 seconds, show error
-        measurementTimeout.current = setTimeout(() => {
-          if (isMeasuring && !measurementComplete) {
-            console.log("Measurement timeout reached");
-            setStatusMessage("❌ Measurement timeout. Please try again.");
-            setIsMeasuring(false);
-            if (pollerId.current) clearInterval(pollerId.current);
-          }
-        }, 30000);
-        
-      } else {
-        setStatusMessage(result.message || "Failed to start measurement.");
-        setIsMeasuring(false);
-      }
-    } catch (error) {
-      console.error("Start measurement error:", error);
-      setStatusMessage("❌ Connection Failed. Check backend.");
-      setIsMeasuring(false);
-    }
   };
 
   const handleContinue = () => {
@@ -163,16 +131,6 @@ export default function Weight() {
         weight: parseFloat(weight) 
       } 
     });
-  };
-
-  const handleRetry = () => {
-    if (pollerId.current) clearInterval(pollerId.current);
-    if (measurementTimeout.current) clearTimeout(measurementTimeout.current);
-    setWeight("");
-    setMeasurementComplete(false);
-    setIsMeasuring(false);
-    setStatusMessage("Press Start to Begin");
-    setProgress(0);
   };
 
   return (
@@ -230,28 +188,13 @@ export default function Weight() {
         </div>
 
         <div className="measurement-controls">
-          {!measurementComplete ? (
-            <button 
-              className={`measure-button ${isMeasuring ? "measuring" : ""}`} 
-              onClick={handleStartMeasurement} 
-              disabled={isMeasuring}
-            >
-              {isMeasuring ? (
-                <>
-                  <div className="spinner"></div>
-                  Measuring...
-                </>
-              ) : (
-                <>⚖️ Start Measurement</>
-              )}
-            </button>
-          ) : (
-            <div className="measurement-complete">
-              <button className="retry-button" onClick={handleRetry}>
-                Measure Again
-              </button>
+          {!isMeasuring && !measurementComplete && (
+            <div className="waiting-prompt">
+              <div className="spinner"></div>
+              <span>Waiting for user to step on scale...</span>
             </div>
           )}
+          {/* The "Measure Again" button has been removed to enforce a one-time measurement per phase. */}
         </div>
 
         <div className="continue-button-container">

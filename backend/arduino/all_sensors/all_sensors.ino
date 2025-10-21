@@ -19,7 +19,7 @@ MAX30105 heartRateSensor;
 // =================================================================
 // --- SYSTEM STATE MANAGEMENT ---
 // =================================================================
-enum SystemPhase { IDLE, WEIGHT, HEIGHT, TEMP, HR };
+enum SystemPhase { IDLE, INITIALIZING_WEIGHT, WEIGHT, HEIGHT, TEMP, HR };
 SystemPhase currentPhase = IDLE;
 bool measurementActive = false;
 unsigned long phaseStartTime = 0;
@@ -53,17 +53,25 @@ int heightReadCount = 0;
 
 // Temperature
 const unsigned long TEMP_MEASUREMENT_TIME = 5000;
-const float TEMP_CALIBRATION_OFFSET = 1.5;
+const float TEMP_CALIBRATION_OFFSET = 1.5; // Adjusted calibration offset
 unsigned long lastTempUpdateTime = 0;
 
 // Heart Rate & SpO2
-const unsigned long HR_MEASUREMENT_TIME = 30000;
+const unsigned long HR_MEASUREMENT_TIME = 60000; // Changed to 60 seconds
 bool fingerDetected = false;
 uint32_t irBuffer[100];
 uint32_t redBuffer[100];
 int bufferIndex = 0;
 unsigned long lastHRSampleTime = 0;
 const unsigned long HR_SAMPLE_INTERVAL = 10;
+
+// New variables for HR averaging - moved to global scope
+float hrSum = 0;
+float spo2Sum = 0;
+int validSamples = 0;
+int sampleCount = 0;
+unsigned long lastSampleCollectionTime = 0;
+
 
 // =================================================================
 // --- SETUP FUNCTION ---
@@ -103,17 +111,10 @@ void initializeWeightSensor() {
   
   if (!weightSensorPowered) {
     LoadCell.powerUp();
-    delay(100);
+    weightSensorPowered = true; // Keep the sensor powered for idle detection
+    delay(200); // Give a bit more time after power up
   }
   
-  // Start with stabilization time
-  LoadCell.start(2000, true);
-  
-  if (LoadCell.getTareTimeoutFlag() || LoadCell.getSignalTimeoutFlag()) {
-    Serial.println("ERROR:WEIGHT_SENSOR_TIMEOUT");
-    return;
-  }
-
   // Get calibration factor from EEPROM
   float calFactor;
   EEPROM.get(0, calFactor);
@@ -122,31 +123,16 @@ void initializeWeightSensor() {
     Serial.println("STATUS:USING_DEFAULT_CALIBRATION");
   }
   LoadCell.setCalFactor(calFactor);
-  
+
   Serial.print("STATUS:CALIBRATION_FACTOR:");
   Serial.println(calFactor);
   
-  // Perform automatic tare (assume platform is empty at startup)
+  // Perform a single, reliable tare operation
   Serial.println("STATUS:PERFORMING_AUTO_TARE");
-  LoadCell.tareNoDelay();
-  
-  // Wait for tare to complete with timeout
-  unsigned long tareStartTime = millis();
-  while (!LoadCell.getTareStatus() && millis() - tareStartTime < 5000) {
-    delay(10);
-  }
-  
-  if (LoadCell.getTareStatus()) {
-    Serial.println("STATUS:TARE_COMPLETE");
-    weightSensorInitialized = true;
-    autoTareCompleted = true;
-  } else {
-    Serial.println("ERROR:TARE_FAILED");
-    // Continue anyway, user can retry later
-    weightSensorInitialized = true;
-  }
-  
-  Serial.println("STATUS:WEIGHT_SENSOR_READY");
+  currentPhase = INITIALIZING_WEIGHT;
+  measurementActive = true; // Use this flag to signify a background task is running
+  phaseStartTime = millis();
+  LoadCell.tareNoDelay(); // Start the non-blocking tare process
 }
 
 void initializeOtherSensors() {
@@ -198,6 +184,9 @@ void loop() {
   // Process active measurements
   if (measurementActive) {
     switch (currentPhase) {
+      case INITIALIZING_WEIGHT:
+        runWeightInitializationPhase();
+        break;
       case WEIGHT: 
         runWeightPhase(); 
         break;
@@ -213,6 +202,9 @@ void loop() {
       default: 
         break;
     }
+  } else {
+    // When IDLE, run background tasks for auto-detection
+    runIdleTasks();
   }
 }
 
@@ -445,97 +437,135 @@ void startHeartRateMeasurement() {
   bufferIndex = 0;
   lastHRSampleTime = 0;
   Serial.println("STATUS:HR_MEASUREMENT_STARTED");
+
 }
 
 // =================================================================
 // --- SENSOR MEASUREMENT PHASES ---
 // =================================================================
+void runIdleTasks() {
+  static unsigned long lastIdleUpdateTime = 0;
+
+  // Run these checks every 500ms to avoid spamming serial
+  if (millis() - lastIdleUpdateTime > 500) {
+    lastIdleUpdateTime = millis();
+
+    // --- Check for live temperature ---
+    if (tempSensorPowered) {
+      float objectTemp = tempSensor.readObjectTempC();
+      if (objectTemp > 20.0 && objectTemp < 45.0) {
+        float liveTemp = objectTemp + TEMP_CALIBRATION_OFFSET;
+        Serial.print("DATA:TEMP:");
+        Serial.println(liveTemp, 1);
+      }
+    }
+
+    // --- Check for finger on MAX30102 ---
+    if (hrSensorPowered) {
+      long irValue = heartRateSensor.getIR();
+      if (irValue > 50000 && !fingerDetected) {
+        fingerDetected = true;
+        Serial.println("FINGER_DETECTED");
+      } else if (irValue < 50000 && fingerDetected) {
+        fingerDetected = false;
+        Serial.println("FINGER_REMOVED");
+      }
+    }
+
+    // --- Check for weight on scale ---
+    if (weightSensorPowered && LoadCell.update()) {
+      float currentWeight = LoadCell.getData();
+      if (currentWeight > WEIGHT_THRESHOLD) {
+        Serial.println("WEIGHT_DETECTED");
+      }
+    }
+  }
+}
+
+// =================================================================
+// --- SENSOR MEASUREMENT PHASES ---
+// =================================================================
+void runWeightInitializationPhase() {
+  LoadCell.update(); // Keep updating the sensor
+
+  if (LoadCell.getTareStatus()) {
+    // Tare is successful
+    Serial.println("STATUS:TARE_COMPLETE");
+    Serial.println("STATUS:WEIGHT_SENSOR_READY");
+    weightSensorInitialized = true;
+    autoTareCompleted = true;
+    measurementActive = false;
+    currentPhase = IDLE;
+  } else if (millis() - phaseStartTime > 10000) { // Add a 10-second timeout as a safeguard
+    // Tare failed to complete in a reasonable time
+    Serial.println("ERROR:TARE_FAILED");
+    weightSensorInitialized = false;
+    autoTareCompleted = false;
+    measurementActive = false;
+    currentPhase = IDLE;
+  }
+}
+
+
 void runWeightPhase() {
   static unsigned long lastWeightUpdate = 0;
   static float weightSum = 0;
   static int readingCount = 0;
-  static bool averagingStarted = false;
-  
-  if (LoadCell.update()) {
-    float currentWeight = LoadCell.getData(); // No need to subtract platform weight - already tared
-    if (currentWeight < 0) currentWeight = 0;
+  static float previousWeight = 0;
 
-    switch (weightState) {
-      case W_DETECTING:
-        if (millis() - lastWeightUpdate > 1000) {
-          Serial.println("STATUS:WAITING_FOR_USER_WEIGHT");
-          lastWeightUpdate = millis();
-        }
-        
-        if (currentWeight > WEIGHT_THRESHOLD) {
-          Serial.println("STATUS:WEIGHT_DETECTED");
-          weightState = W_STABILIZING;
-          phaseStartTime = millis();
-          weightSum = 0;
-          readingCount = 0;
-          averagingStarted = false;
-        }
-        break;
-        
-      case W_STABILIZING:
-        if (!averagingStarted) {
-          Serial.println("STATUS:STABILIZING");
-          averagingStarted = true;
-        }
-        
-        // Accumulate readings during stabilization
+  // The weightState enum helps manage the measurement process.
+  switch (weightState) {
+    case W_DETECTING:
+      // This state is triggered when the measurement starts.
+      // Immediately start averaging.
+      Serial.println("STATUS:WEIGHT_AVERAGING");
+      weightState = W_AVERAGING;
+      phaseStartTime = millis(); // Reset timer for the 3-second averaging period
+      weightSum = 0;
+      readingCount = 0;
+      lastWeightUpdate = millis(); // Initialize for progress display
+      break;
+
+    case W_AVERAGING:
+      if (LoadCell.update()) {
+        float currentWeight = LoadCell.getData();
+        if (currentWeight < 0) currentWeight = 0;
         weightSum += currentWeight;
         readingCount++;
-        
-        if (millis() - phaseStartTime >= STABILIZATION_TIME) {
-          // Calculate average from stabilization period
-          float stabilizedWeight = weightSum / readingCount;
-          Serial.println("STATUS:WEIGHT_AVERAGING");
-          
-          // Reset for averaging period
-          weightState = W_AVERAGING;
-          phaseStartTime = millis();
-          weightSum = 0;
-          readingCount = 0;
-        }
-        break;
-        
-      case W_AVERAGING:
-        // Accumulate readings during averaging period
-        weightSum += currentWeight;
-        readingCount++;
-        
-        // Show progress every second
-        if (millis() - lastWeightUpdate > 1000) {
-          int elapsed = (millis() - phaseStartTime) / 1000;
-          int total = WEIGHT_AVERAGING_TIME / 1000;
-          Serial.print("STATUS:AVERAGING_PROGRESS:");
-          Serial.print(elapsed);
-          Serial.print("/");
-          Serial.println(total);
-          lastWeightUpdate = millis();
-        }
-        
-        // Check if averaging period is complete
-        if (millis() - phaseStartTime >= WEIGHT_AVERAGING_TIME) {
-          // Calculate final average weight
+      }
+
+      // Show progress every second
+      if (millis() - lastWeightUpdate > 1000) {
+        int elapsed = (millis() - phaseStartTime) / 1000;
+        int total = 3; // Hardcoded 3-second average
+        Serial.print("STATUS:AVERAGING_PROGRESS:");
+        Serial.print(elapsed);
+        Serial.print("/");
+        Serial.println(total);
+        lastWeightUpdate = millis();
+      }
+
+      // Check if averaging period is complete
+      if (millis() - phaseStartTime >= 3000) { // 3-second averaging period
+        if (readingCount > 0) {
           float finalWeight = weightSum / readingCount;
           if (finalWeight < 0) finalWeight = 0;
-          
+
           Serial.print("RESULT:WEIGHT:");
           Serial.println(finalWeight, 2);
-          delay(100); // Ensure message is sent
-          
-          // Reset and power down
-          measurementActive = false;
-          currentPhase = IDLE;
-          weightState = W_DETECTING;
-          powerDownWeightSensor();
-          
-          Serial.println("STATUS:WEIGHT_MEASUREMENT_COMPLETE");
+        } else {
+          Serial.println("ERROR:WEIGHT_READING_FAILED");
         }
-        break;
-    }
+        delay(100); // Ensure message is sent
+
+        // Reset and power down
+        measurementActive = false;
+        currentPhase = IDLE;
+        weightState = W_DETECTING; // Reset state for next measurement
+        // No need to power down, as it's handled by the frontend's lifecycle now.
+        Serial.println("STATUS:WEIGHT_MEASUREMENT_COMPLETE");
+      }
+      break;
   }
 }
 
@@ -593,20 +623,8 @@ void runHeightPhase() {
 void runTemperaturePhase() {
   unsigned long currentTime = millis();
   
-  // Send live temperature data every second
+  // Show progress every second
   if (currentTime - lastTempUpdateTime >= 1000) {
-    float objectTemp = tempSensor.readObjectTempC();
-    float ambientTemp = tempSensor.readAmbientTempC();
-    
-    // Only send if we have a valid reading
-    if (objectTemp > 20.0 && objectTemp < 45.0) {
-      float liveTemp = objectTemp + TEMP_CALIBRATION_OFFSET;
-      Serial.print("DATA:TEMP:");
-      Serial.println(liveTemp, 1);
-    }
-    
-    lastTempUpdateTime = currentTime;
-    
     // Show progress
     int elapsed = (currentTime - phaseStartTime) / 1000;
     int total = TEMP_MEASUREMENT_TIME / 1000;
@@ -614,6 +632,7 @@ void runTemperaturePhase() {
     Serial.print(elapsed);
     Serial.print("/");
     Serial.println(total);
+    lastTempUpdateTime = currentTime;
   }
 
   // Check if measurement time is complete
@@ -651,79 +670,95 @@ void runHeartRatePhase() {
   unsigned long currentTime = millis();
   
   // Check for finger detection
-  if (!fingerDetected) {
-    long irValue = heartRateSensor.getIR();
-    
-    if (millis() - lastHRSampleTime > 1000) {
-      Serial.println("STATUS:WAITING_FOR_FINGER");
-      lastHRSampleTime = millis();
-    }
-    
-    if (irValue > 50000) {
-      fingerDetected = true;
-      bufferIndex = 0;
-      Serial.println("STATUS:FINGER_DETECTED");
-    }
-    return;
-  }
-  
-  // Check if finger was removed
   long irValue = heartRateSensor.getIR();
   if (irValue < 50000) {
+    // Finger was removed during measurement
     fingerDetected = false;
-    Serial.println("ERROR:FINGER_REMOVED");
+    Serial.println("FINGER_REMOVED"); // Use FINGER_REMOVED for consistency
     measurementActive = false;
     currentPhase = IDLE;
     powerDownHrSensor();
     return;
-  }
-  
-  // Collect samples for HR calculation
-  if (currentTime - lastHRSampleTime >= HR_SAMPLE_INTERVAL && bufferIndex < 100) {
-    lastHRSampleTime = currentTime;
-    
-    irBuffer[bufferIndex] = heartRateSensor.getIR();
-    redBuffer[bufferIndex] = heartRateSensor.getRed();
-    bufferIndex++;
-    
-    heartRateSensor.nextSample();
-    
-    // Show progress every 5 seconds
-    static unsigned long lastProgressTime = 0;
-    if (currentTime - lastProgressTime >= 5000) {
+  } else if (!fingerDetected) {
+    // This handles the case where measurement starts but the first check hasn't happened
+    fingerDetected = true;
+    if (millis() - lastHRSampleTime > 1000) {
+      // Reset accumulators for the new averaging logic
+      hrSum = 0;
+      spo2Sum = 0;
+      validSamples = 0;
+      sampleCount = 0;
+      lastSampleCollectionTime = currentTime;
+
       int elapsed = (currentTime - phaseStartTime) / 1000;
       int total = HR_MEASUREMENT_TIME / 1000;
       Serial.print("STATUS:HR_PROGRESS:");
       Serial.print(elapsed);
       Serial.print("/");
       Serial.println(total);
-      lastProgressTime = currentTime;
+      lastHRSampleTime = currentTime;
     }
   }
   
-  // Process data when buffer is full or time is up
-  if (bufferIndex >= 100 || (currentTime - phaseStartTime >= HR_MEASUREMENT_TIME && bufferIndex > 50)) {
+  // --- New 5-second interval sampling logic ---
+  
+  // 1. Collect samples continuously
+  if (currentTime - lastHRSampleTime >= HR_SAMPLE_INTERVAL) {
+    lastHRSampleTime = currentTime;
+    if (bufferIndex < 100) {
+      irBuffer[bufferIndex] = heartRateSensor.getIR();
+      redBuffer[bufferIndex] = heartRateSensor.getRed();
+      bufferIndex++;
+      heartRateSensor.nextSample();
+    }
+  }
+
+  // 2. Process samples every 5 seconds
+  if (currentTime - lastSampleCollectionTime >= 5000 && bufferIndex > 25) {
+    lastSampleCollectionTime = currentTime;
+    sampleCount++;
+
     int32_t spo2_val;
     int8_t spo2_valid;
     int32_t hr_val; 
     int8_t hr_valid;
-    
-    // Calculate heart rate and SpO2
+
     maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferIndex, redBuffer, &spo2_val, &spo2_valid, &hr_val, &hr_valid);
     
-    if (hr_valid && spo2_valid && hr_val > 30 && hr_val < 250 && spo2_val > 70) {
-      int respiratoryRate = estimateRespiratoryRate(hr_val);
-      
-      Serial.print("RESULT:HR:");
+    if (hr_valid && spo2_valid && hr_val > 40 && hr_val < 220 && spo2_val > 70) {
+      // Send live sample data to backend
+      Serial.print("DATA:HR_SAMPLE:");
       Serial.print(hr_val);
       Serial.print(":");
-      Serial.print(spo2_val);
+      Serial.println(spo2_val);
+      
+      // Add to sum for final average
+      hrSum += hr_val;
+      spo2Sum += spo2_val;
+      validSamples++;
+    }
+    
+    // Reset buffer for the next 5-second interval
+    bufferIndex = 0;
+  }
+
+  // 3. Finalize measurement after 60 seconds
+  if (currentTime - phaseStartTime >= HR_MEASUREMENT_TIME) {
+    if (validSamples > 0) {
+      float finalHr = hrSum / validSamples;
+      float finalSpo2 = spo2Sum / validSamples;
+      int respiratoryRate = estimateRespiratoryRate(finalHr);
+
+      Serial.print("RESULT:HR:");
+      Serial.print(finalHr, 0);
+      Serial.print(":");
+      Serial.print(finalSpo2, 1);
       Serial.print(":");
       Serial.println(respiratoryRate);
     } else {
       Serial.println("ERROR:HR_READING_FAILED");
     }
-    
+
     delay(100); // Ensure message is sent
     
     // Reset and power down
