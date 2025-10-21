@@ -581,6 +581,7 @@ void runHeightPhase() {
       if (distCm > 0 && distCm < 500) { // Valid range check
         distanceSum += distCm;
         heightReadCount++;
+        Serial.println("STATUS:HEIGHT_MEASURING"); // Add status for active measuring
         
         // Show progress every second
         static unsigned long lastProgressTime = 0;

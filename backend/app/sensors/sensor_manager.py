@@ -58,7 +58,7 @@ class SensorManager:
         self.weight_detected = False
         self.weight_measurement_pending = False
 
-    def connect(self) -> bool:
+    def _connect_thread_worker(self):
         """
         Connects to the Arduino - BASIC CONNECTION ONLY.
         Full initialization happens separately.
@@ -112,7 +112,20 @@ class SensorManager:
 
         print("❌ Connection Failed. No Arduino found on any scanned port.")
         self.is_connected = False
-        return False
+        # No return value needed for thread worker
+
+    def connect(self) -> bool:
+        """
+        Triggers the connection process in a background thread.
+        """
+        if self.is_connected:
+            return True
+        
+        # Start the connection process in a non-blocking thread
+        connection_thread = threading.Thread(target=self._connect_thread_worker)
+        connection_thread.daemon = True
+        connection_thread.start()
+        return True # Return immediately, indicating the process has started
 
     def full_initialize(self) -> bool:
         """
@@ -148,17 +161,8 @@ class SensorManager:
         
         print("⚖️ Initializing weight sensor...")
         self._send_command("INITIALIZE_WEIGHT")
-        
-        # Wait for weight sensor to be ready
-        start_time = time.time()
-        while time.time() - start_time < 10.0:
-            if self.weight_sensor_ready:
-                print("✅ Weight sensor initialized and ready!")
-                return True
-            time.sleep(0.5)
-        
-        print("⚠️ Weight sensor initialization timeout")
-        return False
+        # The method now just triggers the process. The frontend will poll for completion.
+        return True
 
     def disconnect(self):
         """Disconnects from the Arduino and powers down all sensors."""

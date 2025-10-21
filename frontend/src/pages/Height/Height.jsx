@@ -65,7 +65,7 @@ export default function Height() {
             setStatusMessage("Initializing sensor...");
             break;
           case 'height_measurement_started':
-            setStatusMessage("Measurement started. Please stand still.");
+            setStatusMessage("Please stand under the sensor and stay still.");
             break;
           case 'height_measuring':
             setStatusMessage("Measuring height... Please stand still.");

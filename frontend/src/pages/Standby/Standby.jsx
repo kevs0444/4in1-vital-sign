@@ -24,25 +24,26 @@ export default function Standby() {
 
   useEffect(() => {
     const startStatusPolling = async () => {
-      // Immediately try to connect. The backend is smart enough to handle this.
-      await sensorAPI.connect();
-      // Set up an interval to continuously check the system status.
-      pollerRef.current = setInterval(async () => {
-        try {
-          const status = await sensorAPI.getSystemStatus();
-          
-          if (status.connected && status.sensors_ready.weight) {
-            setSystemStatus('ready'); // Arduino connected, weight sensor ready
-          } else if (status.connection_established) { // Backend has connected to Arduino, but weight sensor is not ready
-            setSystemStatus('calibrating_weight'); 
-          } else {
-            // Backend is running but has not yet established a connection with the Arduino.
-            setSystemStatus('connecting_arduino'); 
+      // Trigger the connection attempt in the background.
+      sensorAPI.connect();
+
+      // Give the backend a moment to start before we begin polling.
+      setTimeout(() => {
+        // Set up an interval to continuously check the system status.
+        pollerRef.current = setInterval(async () => {
+          try {
+            const status = await sensorAPI.getSystemStatus();
+
+            if (status.connected && status.sensors_ready.weight) {
+              setSystemStatus('ready');
+            } else {
+              setSystemStatus('connecting_arduino'); 
+            }
+          } catch (e) {
+            setSystemStatus('backend_down'); // This happens if the fetch call itself fails
           }
-        } catch (e) {
-          setSystemStatus('backend_down');
-        }
-      }, 2500); // Poll every 2.5 seconds
+        }, 2500); // Poll every 2.5 seconds
+      }, 1000); // Start polling after a 1-second delay.
     };
 
     startStatusPolling();
@@ -82,8 +83,7 @@ export default function Standby() {
   const getStatusText = (currentSystemStatus) => {
     if (currentSystemStatus === 'backend_down') return 'Backend Not Connected';
     if (currentSystemStatus === 'ready') return 'System Ready';
-    if (currentSystemStatus === 'calibrating_weight') return 'Calibrating Weight Sensor...';
-    if (currentSystemStatus === 'connecting_arduino') return 'Connecting to Arduino...';
+    if (currentSystemStatus === 'connecting_arduino') return 'Connecting to System...';
     return 'Checking System...'; // Default for 'checking_backend'
   };
 
