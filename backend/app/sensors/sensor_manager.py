@@ -30,12 +30,18 @@ class SensorManager:
         self.force_simulation = force_simulation
         self.read_thread = None
         self.should_read = False
+        
+        # Sensor power states
+        self.sensor_states = {
+            "weight": "OFF",
+            "height": "OFF", 
+            "temperature": "OFF",
+            "max30102": "OFF"
+        }
 
     def connect(self) -> bool:
         """
         Connects to the Arduino.
-        IMPROVED: Now automatically scans common COM ports and listens patiently
-        for the handshake message.
         """
         if self.is_connected:
             return True
@@ -56,7 +62,7 @@ class SensorManager:
                 while time.time() - start_time < 2.0: # Listen for 2 seconds
                     if self.serial_conn.in_waiting > 0:
                         line = self.serial_conn.readline().decode('utf-8').strip()
-                        print(f"   ... Arduino on {port} says: {line}") # Debug print
+                        print(f"   ... Arduino on {port} says: {line}")
                         if "READY_FOR_COMMANDS" in line:
                             self.is_connected = True
                             self.port = port # Save the working port
@@ -79,6 +85,7 @@ class SensorManager:
 
     def disconnect(self):
         """Disconnects from the Arduino."""
+        self.shutdown_all_sensors()
         self.should_read = False
         if self.read_thread and self.read_thread.is_alive():
             self.read_thread.join(timeout=2)
@@ -118,24 +125,45 @@ class SensorManager:
 
         if prefix == "STATUS":
             status = parts[1] if len(parts) > 1 else ""
-            self.current_measurement_status = status.lower() # Using consistent underscore format
-            if "measurement_complete" in self.current_measurement_status:
+            self.current_measurement_status = status.lower()
+            
+            # Update measurement state based on status
+            if "complete" in self.current_measurement_status:
                 self.measurement_active = False
                 self.current_phase = "IDLE"
-                self.current_measurement_status = "completed"
+            elif "started" in self.current_measurement_status:
+                self.measurement_active = True
 
         elif prefix == "RESULT":
             sensor = parts[1] if len(parts) > 1 else ""
-            if sensor == "WEIGHT": self.weight = float(parts[2]) if len(parts) > 2 else 0
-            elif sensor == "HEIGHT": self.height = float(parts[2]) if len(parts) > 2 else 0
+            if sensor == "WEIGHT": 
+                self.weight = float(parts[2]) if len(parts) > 2 else 0
+                self.sensor_states["weight"] = "COMPLETE"
+                self.measurement_active = False
+                self.current_phase = "IDLE"
+                print(f"✅ Weight measurement completed: {self.weight} kg")
+            elif sensor == "HEIGHT": 
+                self.height = float(parts[2]) if len(parts) > 2 else 0
+                self.sensor_states["height"] = "COMPLETE"
+                self.measurement_active = False
+                self.current_phase = "IDLE"
+                print(f"✅ Height measurement completed: {self.height} cm")
             elif sensor == "TEMP": 
                 value = float(parts[2]) if len(parts) > 2 else 0
                 self.temperature = value
                 self.live_temperature = value
+                self.sensor_states["temperature"] = "COMPLETE"
+                self.measurement_active = False
+                self.current_phase = "IDLE"
+                print(f"✅ Temperature measurement completed: {self.temperature} °C")
             elif sensor == "HR":
                 self.heart_rate = float(parts[2]) if len(parts) > 2 else None
                 self.spo2 = float(parts[3]) if len(parts) > 3 else None
                 self.respiratory_rate = float(parts[4]) if len(parts) > 4 else None
+                self.sensor_states["max30102"] = "COMPLETE"
+                self.measurement_active = False
+                self.current_phase = "IDLE"
+                print(f"✅ HR measurement completed: HR={self.heart_rate}, SpO2={self.spo2}, RR={self.respiratory_rate}")
         
         elif prefix == "DATA":
             sensor = parts[1] if len(parts) > 1 else ""
@@ -149,7 +177,6 @@ class SensorManager:
 
     def _send_command(self, command: str):
         """Sends a command to the Arduino."""
-        # ✅ FIX: Corrected the typo here from 'is_serial_conn' to 'serial_conn'
         if self.is_connected and self.serial_conn:
             try:
                 self.serial_conn.write(f"{command}\n".encode('utf-8'))
@@ -157,19 +184,18 @@ class SensorManager:
             except Exception as e:
                 print(f"❌ Failed to send command: {e}")
 
-    def _start_generic_measurement(self, phase: str, command: str):
-        """A generic helper to start any measurement phase."""
+    def _start_generic_measurement(self, phase: str, command: str, sensor_type: str):
+        """A generic helper to start any measurement phase with proper sensor management."""
         if not self.is_connected:
             return {"status": "error", "message": "Not connected to Arduino"}
         if self.measurement_active:
             return {"status": "error", "message": "Another measurement is in progress"}
         
-        self.current_phase = phase
-        self.measurement_active = True
-        self.current_measurement_status = "initializing"
-        
-        if phase == "WEIGHT": self.weight = None
-        elif phase == "HEIGHT": self.height = None
+        # Reset previous measurement result
+        if phase == "WEIGHT": 
+            self.weight = None
+        elif phase == "HEIGHT": 
+            self.height = None
         elif phase == "TEMP": 
             self.temperature = None
             self.live_temperature = None
@@ -178,8 +204,54 @@ class SensorManager:
             self.spo2 = None
             self.respiratory_rate = None
         
+        # Power up the requested sensor
+        self._power_up_sensor(sensor_type)
+        
+        self.current_phase = phase
+        self.measurement_active = True
+        self.current_measurement_status = "initializing"
+        
         self._send_command(command)
         return {"status": "started", "message": f"{phase} measurement initiated"}
+
+    def _power_up_sensor(self, sensor_type: str):
+        """Powers up a specific sensor."""
+        power_commands = {
+            "weight": "POWER_UP_WEIGHT",
+            "height": "POWER_UP_HEIGHT", 
+            "temperature": "POWER_UP_TEMP",
+            "max30102": "POWER_UP_HR"
+        }
+        if sensor_type in power_commands:
+            self._send_command(power_commands[sensor_type])
+            self.sensor_states[sensor_type] = "ACTIVE"
+            print(f"🔋 Powered up {sensor_type} sensor")
+
+    def _power_down_sensor(self, sensor_type: str):
+        """Powers down a specific sensor."""
+        power_commands = {
+            "weight": "POWER_DOWN_WEIGHT",
+            "height": "POWER_DOWN_HEIGHT",
+            "temperature": "POWER_DOWN_TEMP", 
+            "max30102": "POWER_DOWN_HR"
+        }
+        if sensor_type in power_commands:
+            self._send_command(power_commands[sensor_type])
+            if self.sensor_states[sensor_type] != "COMPLETE":
+                self.sensor_states[sensor_type] = "OFF"
+            print(f"🔌 Powered down {sensor_type} sensor")
+
+    def shutdown_all_sensors(self):
+        """Completely shuts down all sensors."""
+        for sensor_type in self.sensor_states.keys():
+            if self.sensor_states[sensor_type] in ["ACTIVE", "COMPLETE"]:
+                self._power_down_sensor(sensor_type)
+        self._send_command("SHUTDOWN_ALL")
+        for sensor_type in self.sensor_states.keys():
+            self.sensor_states[sensor_type] = "OFF"
+        self.measurement_active = False
+        self.current_phase = "IDLE"
+        print("🔌 All sensors shut down")
 
     # --- Public Methods for API Routes ---
     
@@ -190,39 +262,48 @@ class SensorManager:
             "port": self.port if self.is_connected else None,
             "current_phase": self.current_phase,
             "measurement_active": self.measurement_active,
+            "sensor_states": self.sensor_states
         }
 
     def start_weight_measurement(self):
-        return self._start_generic_measurement("WEIGHT", "START_WEIGHT")
+        return self._start_generic_measurement("WEIGHT", "START_WEIGHT", "weight")
 
     def get_weight_status(self):
-        return {"status": self.current_measurement_status, "weight": self.weight}
+        return {
+            "status": self.current_measurement_status, 
+            "weight": self.weight,
+            "measurement_active": self.measurement_active
+        }
 
     def start_height_measurement(self):
-        return self._start_generic_measurement("HEIGHT", "START_HEIGHT")
+        return self._start_generic_measurement("HEIGHT", "START_HEIGHT", "height")
 
     def get_height_status(self):
-        return {"status": self.current_measurement_status, "height": self.height}
+        return {
+            "status": self.current_measurement_status, 
+            "height": self.height,
+            "measurement_active": self.measurement_active
+        }
         
     def start_temperature_measurement(self):
-        return self._start_generic_measurement("TEMP", "START_TEMP")
+        return self._start_generic_measurement("TEMP", "START_TEMP", "temperature")
 
     def get_temperature_status(self):
         return {
             "status": self.current_measurement_status, 
             "temperature": self.temperature,
-            "live_temperature": self.live_temperature
+            "live_temperature": self.live_temperature,
+            "measurement_active": self.measurement_active
         }
 
     def start_max30102_measurement(self):
-        return self._start_generic_measurement("HR", "START_HR")
+        return self._start_generic_measurement("HR", "START_HR", "max30102")
 
     def get_max30102_status(self):
         return {
             "status": self.current_measurement_status, 
             "heart_rate": self.heart_rate,
             "spo2": self.spo2,
-            "respiratory_rate": self.respiratory_rate
+            "respiratory_rate": self.respiratory_rate,
+            "measurement_active": self.measurement_active
         }
-
-# ✅ FIX: Removed the extra '}' that was causing the syntax error
