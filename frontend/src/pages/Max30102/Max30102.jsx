@@ -4,7 +4,7 @@ import "./Max30102.css";
 import heartRateIcon from "../../assets/icons/heart-rate-icon.png";
 import spo2Icon from "../../assets/icons/spo2-icon.png";
 import respiratoryIcon from "../../assets/icons/respiratory-icon.png";
-import { sensorAPI, createMax30102Poller, interpretMax30102Status } from "../../utils/api";
+import { sensorAPI } from "../../utils/api";
 
 export default function Max30102() {
   const navigate = useNavigate();
@@ -12,602 +12,204 @@ export default function Max30102() {
   const [isVisible, setIsVisible] = useState(false);
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurementComplete, setMeasurementComplete] = useState(false);
-  const [currentMeasurement, setCurrentMeasurement] = useState("");
-  const [fingerStatus, setFingerStatus] = useState("waiting");
-  const [progressSeconds, setProgressSeconds] = useState(60);
-  const [connectionStatus, setConnectionStatus] = useState("disconnected");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [retryCount, setRetryCount] = useState(0);
-  
+  const [statusMessage, setStatusMessage] = useState("Place finger on the sensor to begin.");
   const [measurements, setMeasurements] = useState({
-    heartRate: "",
-    spo2: "",
-    respiratoryRate: ""
+    heartRate: "--",
+    spo2: "--.-",
+    respiratoryRate: "--" // Now it will be updated
   });
+  const [progressSeconds, setProgressSeconds] = useState(60);
 
   const pollerRef = useRef(null);
-  const measurementStartTimeRef = useRef(null);
-  const maxRetries = 2;
+  const countdownRef = useRef(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
-
-    initializeSensorConnection();
-
+    const timer = setTimeout(() => setIsVisible(true), 100);
     return () => {
       clearTimeout(timer);
-      stopMeasurement();
-      if (pollerRef.current) {
-        pollerRef.current.stopPolling();
-      }
+      stopPolling();
     };
   }, []);
 
-  const initializeSensorConnection = async () => {
-    try {
-      setConnectionStatus("connecting");
-      
-      // Test backend connection first
-      const status = await sensorAPI.getStatus();
-      
-      if (status.connected || status.simulation_mode) {
-        setConnectionStatus("connected");
-        setErrorMessage("");
-      } else {
-        // Try to connect
-        const connectResult = await sensorAPI.connect();
-        if (connectResult.connected) {
-          setConnectionStatus("connected");
-          setErrorMessage("");
-        } else {
-          setConnectionStatus("error");
-          setErrorMessage("Failed to connect to sensors. Using simulation mode.");
-        }
-      }
-    } catch (error) {
-      setConnectionStatus("error");
-      setErrorMessage("Connection error. Using simulation mode.");
-      console.error("Error initializing sensor connection:", error);
-    }
-  };
-
-  const startMax30102Measurement = async () => {
+  const handleStartMeasurement = async () => {
     if (isMeasuring) return;
+    setIsMeasuring(true);
+    setMeasurementComplete(false);
+    setStatusMessage("Initializing sensor...");
+    setMeasurements({ heartRate: "--", spo2: "--.-", respiratoryRate: "--" });
     
-    if (connectionStatus === "error" && retryCount >= maxRetries) {
-      alert("Maximum connection attempts reached. Please check hardware and restart.");
-      return;
-    }
-
-    try {
-      setIsMeasuring(true);
-      setMeasurementComplete(false);
-      setFingerStatus("waiting");
-      setProgressSeconds(60);
-      setErrorMessage("");
-      setRetryCount(0);
-      measurementStartTimeRef.current = Date.now();
-      
-      // Start the measurement on Arduino
-      const result = await sensorAPI.startMax30102();
-      
-      if (result.error) {
-        throw new Error(result.error);
-      }
-      
-      console.log("✅ MAX30102 measurement started:", result);
-      
-      // Start polling for updates
+    const result = await sensorAPI.startMax30102();
+    if (result.status === 'started') {
       startPolling();
-      
-    } catch (error) {
-      console.error("Error starting MAX30102 measurement:", error);
-      setConnectionStatus("error");
-      setErrorMessage(`Failed to start measurement: ${error.message}`);
-      setIsMeasuring(false);
-      setRetryCount(prev => prev + 1);
-    }
-  };
-
-  const startPolling = () => {
-    if (pollerRef.current) {
-      pollerRef.current.stopPolling();
-    }
-
-    let consecutiveErrors = 0;
-    const maxConsecutiveErrors = 3;
-
-    const poller = createMax30102Poller(
-      // onUpdate callback
-      (statusData) => {
-        try {
-          const interpreted = interpretMax30102Status(statusData);
-          console.log("📊 MAX30102 Status Update:", interpreted);
-          
-          handleStatusUpdate(interpreted);
-          consecutiveErrors = 0; // Reset error count on successful update
-          
-        } catch (error) {
-          console.error("Error interpreting status:", error);
-          consecutiveErrors++;
-          if (consecutiveErrors >= maxConsecutiveErrors) {
-            setErrorMessage("Data interpretation error - Please retry");
-            setIsMeasuring(false);
-            if (pollerRef.current) {
-              pollerRef.current.stopPolling();
-            }
-          }
-        }
-      },
-      // onError callback
-      (error) => {
-        console.error("❌ Polling error:", error);
-        consecutiveErrors++;
-        
-        if (consecutiveErrors >= maxConsecutiveErrors) {
-          setConnectionStatus("error");
-          setErrorMessage("Connection lost during measurement");
-          setIsMeasuring(false);
-          setRetryCount(prev => prev + 1);
-        }
-      },
-      1000 // Poll every second
-    );
-
-    pollerRef.current = poller;
-    poller.startPolling();
-
-    // Auto-timeout after 70 seconds (10 seconds grace period)
-    setTimeout(() => {
-      if (isMeasuring && !measurementComplete) {
-        setErrorMessage("Measurement timeout - Please retry");
-        setIsMeasuring(false);
-        if (pollerRef.current) {
-          pollerRef.current.stopPolling();
-        }
-        setRetryCount(prev => prev + 1);
-      }
-    }, 70000);
-  };
-
-  const handleStatusUpdate = (interpreted) => {
-    // Update measurements
-    setMeasurements({
-      heartRate: interpreted.heartRate.display,
-      spo2: interpreted.spo2.display,
-      respiratoryRate: interpreted.respiratoryRate.display
-    });
-
-    // Update finger status and sensor visual
-    setFingerStatus(interpreted.fingerStatus);
-    
-    // Update progress seconds from sensor data (for time display only)
-    setProgressSeconds(interpreted.progress);
-    
-    // Update measurement state
-    setIsMeasuring(interpreted.isMeasuring);
-    
-    // Update current measurement label based on progress and data availability
-    if (interpreted.isMeasuring) {
-      if (!interpreted.fingerDetected) {
-        setCurrentMeasurement("Waiting for Finger");
-      } else if (!interpreted.heartRate.value && !interpreted.spo2.value) {
-        setCurrentMeasurement("Initializing Sensor...");
-      } else if (interpreted.progress > 40) {
-        setCurrentMeasurement("Stabilizing Signal...");
-      } else if (interpreted.progress > 20) {
-        setCurrentMeasurement("Measuring Heart Rate");
-      } else if (interpreted.progress > 10) {
-        setCurrentMeasurement("Measuring Blood Oxygen");
-      } else {
-        setCurrentMeasurement("Calculating Respiratory Rate");
-      }
-    }
-
-    // Handle errors
-    if (interpreted.hasError) {
-      setErrorMessage(interpreted.message);
-      setFingerStatus("error");
-    } else if (interpreted.fingerStatus === 'waiting') {
-      setErrorMessage("👆 Place finger on sensor and keep still");
-    } else if (interpreted.fingerStatus === 'removed') {
-      setErrorMessage("❌ Finger removed - Please place finger back");
+      startCountdown();
     } else {
-      setErrorMessage("");
-    }
-
-    // Check if measurement is complete
-    if (interpreted.isComplete && !measurementComplete) {
-      setMeasurementComplete(true);
+      setStatusMessage(result.message || "Failed to start. Check connection.");
       setIsMeasuring(false);
-      setErrorMessage("");
-      setRetryCount(0);
+    }
+  };
+  
+  const startPolling = () => {
+    stopPolling();
+    pollerRef.current = setInterval(async () => {
+      const data = await sensorAPI.getMax30102Status();
       
-      // Stop polling when complete
-      if (pollerRef.current) {
-        pollerRef.current.stopPolling();
+      // Update displayed values if they exist
+      if (data.heart_rate) setMeasurements(prev => ({ ...prev, heartRate: Math.round(data.heart_rate) }));
+      if (data.spo2) setMeasurements(prev => ({ ...prev, spo2: data.spo2.toFixed(1) }));
+      // CORRECTED: Update respiratory rate from API data
+      if (data.respiratory_rate) setMeasurements(prev => ({ ...prev, respiratoryRate: Math.round(data.respiratory_rate) }));
+
+      handleStatusUpdate(data.status);
+
+      if (data.status === 'completed') {
+        setStatusMessage("Measurement Complete!");
+        setMeasurementComplete(true);
+        setIsMeasuring(false);
+        stopPolling();
       }
-      
-      console.log("🎯 MAX30102 Measurement Complete!");
+    }, 1500);
+  };
+  
+  const handleStatusUpdate = (status) => {
+    switch (status) {
+      case 'initializing': setStatusMessage("Initializing Sensor..."); break;
+      case 'waiting for finger': setStatusMessage("👆 Place finger on sensor."); break;
+      case 'finger detected': setStatusMessage("✅ Finger Detected. Measuring..."); break;
+      case 'measuring': setStatusMessage("💓 Measuring Vitals... Keep still."); break;
+      case 'error':
+        setStatusMessage("❌ Sensor Error. Please try again.");
+        setIsMeasuring(false);
+        stopPolling();
+        break;
+      default: break;
     }
   };
 
-  const stopMeasurement = async () => {
-    try {
-      await sensorAPI.stopMeasurement();
-    } catch (error) {
-      console.error("Error stopping measurement:", error);
-    } finally {
-      setIsMeasuring(false);
-      if (pollerRef.current) {
-        pollerRef.current.stopPolling();
-      }
-    }
+  const startCountdown = () => {
+    setProgressSeconds(60);
+    countdownRef.current = setInterval(() => {
+      setProgressSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+  
+  const stopPolling = () => {
+    if (pollerRef.current) clearInterval(pollerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
   };
 
   const handleContinue = () => {
-    if (!measurementComplete) {
-      alert("Please complete all measurements first");
-      return;
-    }
-    
-    // Validate measurements
-    const hr = measurements.heartRate && measurements.heartRate !== '--' ? parseInt(measurements.heartRate) : null;
-    const spo2 = measurements.spo2 && measurements.spo2 !== '--.-' ? parseFloat(measurements.spo2) : null;
-    const rr = measurements.respiratoryRate && measurements.respiratoryRate !== '--' ? parseInt(measurements.respiratoryRate) : null;
-    
-    if (!hr || !spo2 || !rr) {
-      alert("Some measurements are missing. Please complete the measurement first.");
-      return;
-    }
-
-    // Create complete data object with all measurements
-    const completeData = {
-      // Personal information from previous steps
+    if (!measurementComplete) return;
+    const finalData = {
       ...location.state,
-      
-      // Max30102 measurements
-      heartRate: hr,
-      spo2: spo2,
-      respiratoryRate: rr,
-      
-      // Additional metadata
-      max30102Complete: true,
-      measurementTimestamp: new Date().toISOString(),
-      measurementDuration: measurementStartTimeRef.current ? 
-        Math.round((Date.now() - measurementStartTimeRef.current) / 1000) : 0,
-      
-      // Ensure temperature data is preserved
-      temperature: location.state?.temperature || null,
-      bodyTemp: location.state?.temperature || null,
-      
-      // Measurement quality indicators
-      measurementQuality: {
-        heartRateStable: hr >= 50 && hr <= 120,
-        spo2Stable: spo2 >= 90,
-        respiratoryStable: rr >= 8 && rr <= 25,
-        allMeasurementsComplete: true
-      }
+      heartRate: parseFloat(measurements.heartRate),
+      spo2: parseFloat(measurements.spo2),
+      // CORRECTED: Pass the final respiratory rate
+      respiratoryRate: parseInt(measurements.respiratoryRate),
+      measurementTimestamp: new Date().toISOString()
     };
-    
-    console.log("🧠 Navigating to AI Loading with complete data:", completeData);
-    navigate("/ai-loading", {
-      state: completeData
-    });
+    navigate("/ai-loading", { state: finalData });
   };
-
+  
   const handleRetry = () => {
-    setMeasurements({
-      heartRate: "",
-      spo2: "",
-      respiratoryRate: ""
-    });
-    setMeasurementComplete(false);
+    stopPolling();
     setIsMeasuring(false);
-    setCurrentMeasurement("");
-    setFingerStatus("waiting");
+    setMeasurementComplete(false);
+    setMeasurements({ heartRate: "--", spo2: "--.-", respiratoryRate: "--" });
+    setStatusMessage("Place finger on the sensor to begin.");
     setProgressSeconds(60);
-    setErrorMessage("");
-    setRetryCount(0);
-    
-    // Stop any ongoing measurement
-    stopMeasurement();
-  };
-
-  const handleForceRetryConnection = async () => {
-    setRetryCount(0);
-    setErrorMessage("");
-    await initializeSensorConnection();
   };
 
   const getStatusColor = (type, value) => {
-    if (!value || value === '--' || value === '--.-') return "default";
-    
-    const numValue = parseFloat(value);
-    
+    if (value === '--' || value === '--.-') return "default";
+    const num = parseFloat(value);
     switch (type) {
-      case "heartRate":
-        if (numValue < 50) return "critical";
-        if (numValue < 60) return "low";
-        if (numValue > 100) return "high";
-        if (numValue > 120) return "critical";
-        return "normal";
-      case "spo2":
-        if (numValue < 90) return "critical";
-        if (numValue < 95) return "low";
-        return "normal";
-      case "respiratoryRate":
-        if (numValue < 8) return "critical";
-        if (numValue < 12) return "low";
-        if (numValue > 20) return "high";
-        if (numValue > 25) return "critical";
-        return "normal";
-      default:
-        return "default";
+      case "heartRate": return (num < 60 || num > 100) ? "high" : "normal";
+      case "spo2": return num < 95 ? "low" : "normal";
+      // CORRECTED: Added status color for RR
+      case "respiratoryRate": return (num < 12 || num > 20) ? "high" : "normal";
+      default: return "normal";
     }
   };
-
-  const getStatusText = (type, value) => {
-    if (!value || value === '--' || value === '--.-') return "Not measured";
-    
-    const status = getStatusColor(type, value);
-    
-    switch (status) {
-      case "critical":
-        return type === "spo2" ? "Critical Low" : "Critical";
-      case "low":
-        return type === "spo2" ? "Low Oxygen" : "Low";
-      case "high":
-        return type === "spo2" ? "Normal" : "High";
-      case "normal":
-        return "Normal";
-      default:
-        return "Not measured";
-    }
-  };
-
-  const getFingerStatusMessage = () => {
-    switch (fingerStatus) {
-      case "detected":
-        return "✅ Finger detected - Measuring...";
-      case "waiting":
-        return "👆 Place finger on sensor";
-      case "removed":
-        return "❌ Finger removed - Please place finger back";
-      case "error":
-        return "🔧 Sensor error - Please retry";
-      default:
-        return "👆 Place finger on sensor";
-    }
-  };
-
-  const allMeasurementsValid = measurements.heartRate !== '--' && 
-                              measurements.spo2 !== '--.-' && 
-                              measurements.respiratoryRate !== '--';
 
   return (
     <div className="max30102-container">
       <div className={`max30102-content ${isVisible ? 'visible' : ''}`}>
-        
-        {/* Progress Bar - Always full since we're on the last page */}
         <div className="progress-container">
-          <div className="progress-bar">
-            <div 
-              className="progress-fill" 
-              style={{width: `100%`}} // Always full width
-            ></div>
-          </div>
-          <span className="progress-step">
-            Step 4 of 4 - Vital Signs | 
-            {connectionStatus === "connected" ? " ✅ Connected" : " ❌ Disconnected"} |
-            {isMeasuring ? ` Time: ${progressSeconds}s` : " Ready to Measure"}
-            {retryCount > 0 && ` | Retry: ${retryCount}/${maxRetries}`}
-          </span>
+          <div className="progress-bar"><div className="progress-fill" style={{ width: "100%" }}></div></div>
+          <span className="progress-step">Step 4 of 4 - Vital Signs</span>
         </div>
 
-        {/* Header */}
         <div className="max30102-header">
           <h1 className="max30102-title">Pulse Oximeter</h1>
-          <p className="max30102-subtitle">
-            {isMeasuring ? getFingerStatusMessage() : "Place finger on sensor for heart rate, SpO2, and respiratory rate"}
-          </p>
-          
-          {/* Connection Status */}
-          {connectionStatus !== "connected" && (
-            <div className="connection-status-error">
-              <span className="error-icon">⚠️</span>
-              {connectionStatus === "error" && "Sensor connection issue - Using simulation mode"}
-              {connectionStatus === "connecting" && "Connecting to sensors..."}
-              <button className="retry-connection" onClick={handleForceRetryConnection}>
-                Retry Connection
-              </button>
-            </div>
-          )}
+          <p className="max30102-subtitle">{statusMessage}</p>
         </div>
 
-        {/* Display Section */}
         <div className="sensor-display-section">
           <div className="sensor-visual-area">
-            <div className={`finger-sensor ${fingerStatus === "detected" ? 'active' : ''} ${fingerStatus === "error" ? 'error' : ''}`}>
-              <div className="sensor-light"></div>
-              <div className="finger-placeholder">👆</div>
-            </div>
-            {isMeasuring && (
-              <div className="measuring-progress">
-                <div className="pulse-wave"></div>
-                <span className="current-measurement">
-                  {currentMeasurement || "Initializing..."}
-                </span>
-                <span className="progress-text">
-                  {progressSeconds > 0 ? `${progressSeconds}s remaining` : "Complete!"}
-                </span>
-                {retryCount > 0 && (
-                  <span className="retry-indicator">Retry {retryCount}/{maxRetries}</span>
-                )}
+             <div className={`finger-sensor ${isMeasuring ? 'active' : ''}`}>
+                <div className="sensor-light"></div>
+                <div className="finger-placeholder">👆</div>
               </div>
-            )}
+              {isMeasuring && (
+                <div className="measuring-progress">
+                  <span className="progress-text">{progressSeconds > 0 ? `${progressSeconds}s remaining` : "Finalizing..."}</span>
+                </div>
+              )}
           </div>
 
-          {/* Measurements Grid */}
           <div className="measurements-grid">
-            {/* Heart Rate */}
             <div className="measurement-card">
-              <div className="measurement-icon">
-                <img src={heartRateIcon} alt="Heart Rate" className="measurement-image" />
-              </div>
+              <img src={heartRateIcon} alt="Heart Rate Icon" className="measurement-icon"/>
               <div className="measurement-info">
-                <h3 className="measurement-title">Heart Rate</h3>
-                <div className="measurement-value">
-                  {measurements.heartRate ? (
-                    <>
-                      <span className="value">{measurements.heartRate}</span>
-                      <span className="unit">BPM</span>
-                    </>
-                  ) : (
-                    <span className="placeholder">--</span>
-                  )}
+                <h3>Heart Rate</h3>
+                <div className={`measurement-value ${getStatusColor('heartRate', measurements.heartRate)}`}>
+                  {measurements.heartRate} <span className="unit">BPM</span>
                 </div>
-                <span className={`measurement-status ${getStatusColor('heartRate', measurements.heartRate)}`}>
-                  {getStatusText('heartRate', measurements.heartRate)}
-                </span>
               </div>
             </div>
-
-            {/* SpO2 */}
             <div className="measurement-card">
-              <div className="measurement-icon">
-                <img src={spo2Icon} alt="Blood Oxygen" className="measurement-image" />
-              </div>
+              <img src={spo2Icon} alt="SpO2 Icon" className="measurement-icon"/>
               <div className="measurement-info">
-                <h3 className="measurement-title">Blood Oxygen</h3>
-                <div className="measurement-value">
-                  {measurements.spo2 ? (
-                    <>
-                      <span className="value">{measurements.spo2}</span>
-                      <span className="unit">%</span>
-                    </>
-                  ) : (
-                    <span className="placeholder">--.-</span>
-                  )}
+                <h3>Blood Oxygen</h3>
+                <div className={`measurement-value ${getStatusColor('spo2', measurements.spo2)}`}>
+                  {measurements.spo2} <span className="unit">%</span>
                 </div>
-                <span className={`measurement-status ${getStatusColor('spo2', measurements.spo2)}`}>
-                  {getStatusText('spo2', measurements.spo2)}
-                </span>
               </div>
             </div>
-
-            {/* Respiratory Rate */}
             <div className="measurement-card">
-              <div className="measurement-icon">
-                <img src={respiratoryIcon} alt="Respiratory Rate" className="measurement-image" />
-              </div>
+              <img src={respiratoryIcon} alt="Respiratory Rate Icon" className="measurement-icon"/>
               <div className="measurement-info">
-                <h3 className="measurement-title">Respiratory Rate</h3>
-                <div className="measurement-value">
-                  {measurements.respiratoryRate ? (
-                    <>
-                      <span className="value">{measurements.respiratoryRate}</span>
-                      <span className="unit">/min</span>
-                    </>
-                  ) : (
-                    <span className="placeholder">--</span>
-                  )}
+                <h3>Respiratory Rate</h3>
+                <div className={`measurement-value ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
+                  {measurements.respiratoryRate} <span className="unit">/min</span>
                 </div>
-                <span className={`measurement-status ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
-                  {getStatusText('respiratoryRate', measurements.respiratoryRate)}
-                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Error Message Display */}
-        {errorMessage && (
-          <div className="error-message">
-            <span className="error-icon">⚠️</span>
-            {errorMessage}
-            {retryCount < maxRetries && (
-              <button className="retry-button-small" onClick={startMax30102Measurement}>
-                Retry Measurement
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Measurement Controls */}
         <div className="measurement-controls">
           {!measurementComplete ? (
-            <button 
-              className="measure-button"
-              onClick={startMax30102Measurement}
-              disabled={isMeasuring || (connectionStatus === "error" && retryCount >= maxRetries)}
-            >
-              {isMeasuring ? (
-                <>
-                  <div className="spinner"></div>
-                  Measuring... ({progressSeconds}s)
-                  {retryCount > 0 && ` - Retry ${retryCount}/${maxRetries}`}
-                </>
-              ) : (
-                <>
-                  <div className="button-icon">❤️</div>
-                  {connectionStatus === "connected" ? "Start Measurement" : "Check Connection First"}
-                </>
-              )}
+            <button className="measure-button" onClick={handleStartMeasurement} disabled={isMeasuring}>
+              {isMeasuring ? (<><div className="spinner"></div>Measuring...</>) : "❤️ Start Measurement"}
             </button>
           ) : (
             <div className="measurement-complete">
-              <span className="success-text">✓ All Measurements Complete</span>
-              <div className="complete-actions">
-                <button 
-                  className="retry-button"
-                  onClick={handleRetry}
-                >
-                  Measure Again
-                </button>
-              </div>
+              <span className="success-text">✓ Measurement Complete</span>
+              <button className="retry-button" onClick={handleRetry}>Measure Again</button>
             </div>
           )}
         </div>
-
-        {/* Educational Content */}
-        <div className="educational-content">
-          <h3 className="education-title">About Pulse Oximeter</h3>
-          <div className="education-points">
-            <div className="education-card">
-              <div className="card-icon">❤️</div>
-              <div className="card-content">
-                <h4>Heart Rate Monitoring</h4>
-                <p>Measures beats per minute for cardiovascular health assessment</p>
-              </div>
-            </div>
-            <div className="education-card">
-              <div className="card-icon">🩸</div>
-              <div className="card-content">
-                <h4>Blood Oxygen (SpO2)</h4>
-                <p>Measures oxygen saturation levels in your blood</p>
-              </div>
-            </div>
-            <div className="education-card">
-              <div className="card-icon">🌬️</div>
-              <div className="card-content">
-                <h4>Respiratory Rate</h4>
-                <p>Tracks breathing rate per minute for respiratory health</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Continue Button */}
+        
         <div className="continue-button-container">
-          <button 
-            className="continue-button"
-            onClick={handleContinue}
-            disabled={!measurementComplete || !allMeasurementsValid}
-          >
-            {allMeasurementsValid ? "View AI Results" : "Complete All Measurements"}
+          <button className="continue-button" onClick={handleContinue} disabled={!measurementComplete}>
+            View AI Results
           </button>
         </div>
       </div>

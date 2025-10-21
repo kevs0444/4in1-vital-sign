@@ -1,0 +1,8 @@
+{
+  "short_name": "Vital Kiosk",
+  "name": "4 in Juan Vital Kiosk",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}

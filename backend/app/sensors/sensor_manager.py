@@ -2,9 +2,7 @@ import serial
 import threading
 import time
 import re
-import random
-import math
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any
 
 class SensorManager:
     def __init__(self, port: str = 'COM3', baudrate: int = 9600, force_simulation: bool = False):
@@ -15,93 +13,72 @@ class SensorManager:
         self.current_phase = "IDLE"
         self.measurement_active = False
         
-        # Measurement results
+        # FINAL measurement results
+        self.weight = None
+        self.height = None
         self.temperature = None
         self.heart_rate = None
         self.spo2 = None
         self.respiratory_rate = None
-        self.finger_detected = False
         
-        # Measurement timing
-        self.measurement_start_time = 0
-        self.measurement_duration = 60
+        # LIVE data for ongoing measurements
+        self.live_temperature = None
         
-        # Connection settings - NO FORCE SIMULATION
-        self.simulation_mode = force_simulation
+        # Detailed status for multi-step measurements
+        self.current_measurement_status = "idle" 
+        
         self.force_simulation = force_simulation
-        
-        # Callbacks
-        self.data_callbacks = []
-        self.status_callbacks = []
         self.read_thread = None
         self.should_read = False
 
     def connect(self) -> bool:
-        """Connect to Arduino - Returns TRUE only if actually connected"""
-        try:
-            # Only use simulation if explicitly forced
-            if self.force_simulation:
-                print("🔧 FORCED SIMULATION MODE: Skipping Arduino connection")
-                self.is_connected = True
-                self.simulation_mode = True
-                return True
-            
-            print(f"🔌 Attempting to connect to Arduino on {self.port}...")
-            
+        """
+        Connects to the Arduino.
+        IMPROVED: Now automatically scans common COM ports and listens patiently
+        for the handshake message.
+        """
+        if self.is_connected:
+            return True
+
+        # Expanded list of common ports for Windows
+        common_ports = ['COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'COM10', 'COM11', 'COM12']
+        
+        for port in common_ports:
             try:
-                self.serial_conn = serial.Serial(
-                    port=self.port,
-                    baudrate=self.baudrate,
-                    timeout=1
-                )
+                print(f"🔌 Attempting to connect to Arduino on {port}...")
+                self.serial_conn = serial.Serial(port, self.baudrate, timeout=1)
+                
+                # Give the Arduino time to reset
                 time.sleep(2)
-                self.is_connected = True
-                self.simulation_mode = False
-                self.start_reading()
-                print(f"✅ Connected to Arduino on {self.port}")
-                return True
-            except Exception as e:
-                print(f"❌ Failed to connect to Arduino on {self.port}: {e}")
                 
-                # Try alternative ports
-                common_ports = ['COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8']
-                connected = False
-                for port in common_ports:
-                    if port != self.port:
-                        try:
-                            print(f"🔄 Trying alternative port: {port}")
-                            self.serial_conn = serial.Serial(
-                                port=port,
-                                baudrate=self.baudrate,
-                                timeout=1
-                            )
-                            self.port = port
+                # Listen for the handshake for a moment instead of just one line
+                start_time = time.time()
+                while time.time() - start_time < 2.0: # Listen for 2 seconds
+                    if self.serial_conn.in_waiting > 0:
+                        line = self.serial_conn.readline().decode('utf-8').strip()
+                        print(f"   ... Arduino on {port} says: {line}") # Debug print
+                        if "READY_FOR_COMMANDS" in line:
                             self.is_connected = True
-                            self.simulation_mode = False
+                            self.port = port # Save the working port
                             self.start_reading()
-                            print(f"✅ Connected to Arduino on {port}")
-                            connected = True
-                            break
-                        except Exception as port_error:
-                            print(f"❌ Failed on port {port}: {port_error}")
-                            continue
+                            print(f"✅ Connection successful on {port}!")
+                            return True
                 
-                if not connected:
-                    print("❌ All connection attempts failed. No Arduino detected.")
-                    self.simulation_mode = False  # No simulation fallback
-                    self.is_connected = False
-                    return False
-                else:
-                    return True
-                    
-        except Exception as e:
-            print(f"❌ Critical connection error: {e}")
-            self.simulation_mode = False
-            self.is_connected = False
-            return False
+                # If handshake not found after listening, close and try next port
+                self.serial_conn.close()
+                print(f"🟡 Port {port} is active but did not send ready signal.")
+
+            except serial.SerialException:
+                # This port doesn't exist or is in use, which is normal.
+                print(f"⚪ Port {port} not available. Trying next...")
+                continue
+
+        print("❌ Connection Failed. No Arduino found on any scanned port.")
+        self.is_connected = False
+        return False
 
     def disconnect(self):
-        """Disconnect from Arduino"""
+        """Disconnects from the Arduino."""
         self.should_read = False
         if self.read_thread and self.read_thread.is_alive():
             self.read_thread.join(timeout=2)
@@ -113,15 +90,15 @@ class SensorManager:
         print("🔌 Disconnected from Arduino")
 
     def start_reading(self):
-        """Start background thread for reading serial data"""
-        if not self.simulation_mode and self.serial_conn:
+        """Starts a background thread to read data from the serial port."""
+        if self.is_connected and (not self.read_thread or not self.read_thread.is_alive()):
             self.should_read = True
             self.read_thread = threading.Thread(target=self._read_serial)
             self.read_thread.daemon = True
             self.read_thread.start()
 
     def _read_serial(self):
-        """Background thread for reading serial data"""
+        """The actual work of reading and parsing serial data, running in a thread."""
         while self.should_read and self.serial_conn and self.serial_conn.is_open:
             try:
                 if self.serial_conn.in_waiting > 0:
@@ -130,434 +107,122 @@ class SensorManager:
                         self._parse_serial_data(line)
             except Exception as e:
                 print(f"❌ Serial read error: {e}")
-                time.sleep(0.1)
+                self.is_connected = False # Assume connection is lost on error
+                break
 
     def _parse_serial_data(self, data: str):
-        """Parse incoming serial data - UPDATED FOR SIMPLIFIED ARDUINO CODE"""
+        """Parses incoming messages from the Arduino and updates the manager's state."""
         print(f"📥 ARDUINO: {data}")
-        
-        # Temperature measurement patterns - SIMPLIFIED
-        if "TEMP_MEASUREMENT_STARTED" in data:
-            self.current_phase = "TEMP"
-            self.measurement_active = True
-            self.temperature = None
-            self._trigger_status_callbacks()
-            
-        elif "MEASURING_TEMPERATURE" in data:
-            self._trigger_data_callbacks('status', 'measuring_temperature')
-            
-        elif "TEMP_DATA:" in data:
-            # Format: "TEMP_DATA:36.5"
-            match = re.search(r'TEMP_DATA:([\d.]+)', data)
-            if match:
-                temp = float(match.group(1))
-                self.temperature = temp
-                self._trigger_data_callbacks('temperature', temp)
-                self._trigger_status_callbacks()
-                
-        elif "TEMP_PROGRESS:" in data:
-            # Format: "TEMP_PROGRESS:4"
-            match = re.search(r'TEMP_PROGRESS:(\d+)', data)
-            if match:
-                seconds = int(match.group(1))
-                self._trigger_data_callbacks('progress', seconds)
-                
-        elif "TEMP_FINAL:" in data:
-            # Format: "TEMP_FINAL:36.5:Normal"
-            match = re.search(r'TEMP_FINAL:([\d.]+):(.+)', data)
-            if match:
-                self.temperature = float(match.group(1))
-                category = match.group(2)
-                self.current_phase = "IDLE"
+        parts = data.split(':')
+        prefix = parts[0]
+
+        if prefix == "STATUS":
+            status = parts[1] if len(parts) > 1 else ""
+            self.current_measurement_status = status.lower() # Using consistent underscore format
+            if "measurement_complete" in self.current_measurement_status:
                 self.measurement_active = False
-                self._trigger_data_callbacks('temperature_final', self.temperature)
-                self._trigger_data_callbacks('temperature_category', category)
-                self._trigger_status_callbacks()
-                
-        elif "TEMP_MEASUREMENT_COMPLETE" in data:
-            self.current_phase = "IDLE"
-            self.measurement_active = False
-            self._trigger_data_callbacks('status', 'measurement_complete')
-            self._trigger_status_callbacks()
-
-        # MAX30102 measurement patterns
-        elif "HR_MEASUREMENT_STARTED" in data:
-            self.current_phase = "MAX"
-            self.measurement_active = True
-            self.measurement_start_time = time.time()
-            self._trigger_status_callbacks()
-            
-        elif "FINGER_DETECTED" in data:
-            self.finger_detected = True
-            self._trigger_data_callbacks('finger_status', 'detected')
-            self._trigger_status_callbacks()
-            
-        elif "FINGER_REMOVED" in data:
-            self.finger_detected = False
-            self._trigger_data_callbacks('finger_status', 'removed')
-            self._trigger_status_callbacks()
-            
-        elif "WAITING_FOR_FINGER" in data:
-            self.finger_detected = False
-            self._trigger_data_callbacks('finger_status', 'waiting')
-            self._trigger_status_callbacks()
-                
-        elif "HR_DATA:" in data:
-            # Format: "HR_DATA:72:98:16"
-            match = re.search(r'HR_DATA:(\d+):(\d+):(\d+)', data)
-            if match:
-                hr = int(match.group(1))
-                spo2 = int(match.group(2))
-                rr = int(match.group(3))
-                
-                self.heart_rate = hr
-                self.spo2 = spo2
-                self.respiratory_rate = rr
-                
-                self._trigger_data_callbacks('heart_rate', hr)
-                self._trigger_data_callbacks('spo2', spo2)
-                self._trigger_data_callbacks('respiratory_rate', rr)
-                
-        elif "HR_PROGRESS:" in data:
-            # Format: "HR_PROGRESS:45"
-            match = re.search(r'HR_PROGRESS:(\d+)', data)
-            if match:
-                seconds = int(match.group(1))
-                self._trigger_data_callbacks('progress', seconds)
-                
-        elif "HR_FINAL:" in data:
-            # Format: "HR_FINAL:72.0:65-85:98.0:96-100:16:50"
-            match = re.search(r'HR_FINAL:([\d.]+):([\d-]+):([\d.]+):([\d-]+):(\d+):(\d+)', data)
-            if match:
-                self.heart_rate = float(match.group(1))
-                self.spo2 = float(match.group(3))
-                self.respiratory_rate = int(match.group(5))
-                
                 self.current_phase = "IDLE"
-                self.measurement_active = False
-                self.finger_detected = False
-                self._trigger_data_callbacks('max_final', {
-                    'heart_rate': self.heart_rate,
-                    'spo2': self.spo2,
-                    'respiratory_rate': self.respiratory_rate
-                })
-                self._trigger_status_callbacks()
-                
-        # Status and error patterns
-        elif "MEASUREMENT_STOPPED" in data:
-            self.current_phase = "IDLE"
-            self.measurement_active = False
-            self.finger_detected = False
-            self._trigger_status_callbacks()
-        elif "TEMP_READING_ERROR" in data:
-            self._trigger_data_callbacks('error', 'temperature_sensor_error')
-        elif "RESETTING_TEMP_SENSOR" in data:
-            self._trigger_data_callbacks('info', 'resetting_temperature_sensor')
-        elif "TEMP_TIMEOUT" in data or "HR_TIMEOUT" in data:
-            self.current_phase = "IDLE"
-            self.measurement_active = False
-            self._trigger_data_callbacks('status', 'timeout')
-            self._trigger_status_callbacks()
+                self.current_measurement_status = "completed"
 
-    def start_temperature_measurement(self):
-        """Start temperature measurement"""
-        if not self.is_connected:
-            return {"error": "Not connected to Arduino"}
+        elif prefix == "RESULT":
+            sensor = parts[1] if len(parts) > 1 else ""
+            if sensor == "WEIGHT": self.weight = float(parts[2]) if len(parts) > 2 else 0
+            elif sensor == "HEIGHT": self.height = float(parts[2]) if len(parts) > 2 else 0
+            elif sensor == "TEMP": 
+                value = float(parts[2]) if len(parts) > 2 else 0
+                self.temperature = value
+                self.live_temperature = value
+            elif sensor == "HR":
+                self.heart_rate = float(parts[2]) if len(parts) > 2 else None
+                self.spo2 = float(parts[3]) if len(parts) > 3 else None
+                self.respiratory_rate = float(parts[4]) if len(parts) > 4 else None
         
-        if self.measurement_active:
-            return {"error": "Another measurement in progress"}
-        
-        self.current_phase = "TEMP"
-        self.measurement_active = True
-        self.measurement_start_time = time.time()
-        self.temperature = None
-        
-        if self.simulation_mode:
-            print("🌡️ SIMULATION: Starting temperature measurement")
-            return {
-                "status": "started", 
-                "message": "Temperature measurement started",
-                "simulation": True
-            }
-        else:
-            self._send_command("START_TEMP")
-            return {"status": "started", "message": "Temperature measurement started"}
+        elif prefix == "DATA":
+            sensor = parts[1] if len(parts) > 1 else ""
+            value = parts[2] if len(parts) > 2 else "0"
+            if sensor == "TEMP":
+                self.live_temperature = float(value)
 
-    def get_temperature_status(self):
-        """Get temperature measurement status - SIMPLIFIED"""
-        if not self.is_connected:
-            return {
-                "status": "error",
-                "message": "Not connected to Arduino",
-                "temperature": None
-            }
-        
-        try:
-            # For real Arduino connection, return current state
-            if self.simulation_mode:
-                # Simulation logic
-                elapsed = time.time() - self.measurement_start_time if self.measurement_active else 0
-                
-                if self.current_phase == "TEMP" and self.measurement_active:
-                    if elapsed < 2:
-                        return {
-                            "status": "starting",
-                            "message": "Initializing temperature sensor...",
-                            "temperature": None
-                        }
-                    elif elapsed < 5:
-                        # Generate simulated temperature
-                        simulated_temp = round(36.5 + random.uniform(-0.3, 0.5), 1)
-                        self.temperature = simulated_temp
-                        return {
-                            "status": "measuring",
-                            "message": "Measuring temperature...",
-                            "temperature": simulated_temp
-                        }
-                    else:
-                        self.current_phase = "IDLE"
-                        self.measurement_active = False
-                        return {
-                            "status": "completed",
-                            "message": "Measurement complete",
-                            "temperature": self.temperature
-                        }
-                else:
-                    return {
-                        "status": "idle",
-                        "message": "Ready for temperature measurement",
-                        "temperature": self.temperature
-                    }
-            else:
-                # Real Arduino - return current state based on parsed data
-                if self.current_phase == "TEMP" and self.measurement_active:
-                    elapsed = time.time() - self.measurement_start_time
-                    
-                    if elapsed < 1:
-                        return {
-                            "status": "starting",
-                            "message": "Initializing sensor...",
-                            "temperature": None
-                        }
-                    elif self.temperature:
-                        return {
-                            "status": "measuring",
-                            "message": "Measuring temperature...",
-                            "temperature": self.temperature
-                        }
-                    else:
-                        return {
-                            "status": "measuring",
-                            "message": "Measuring temperature...",
-                            "temperature": None
-                        }
-                elif self.temperature:
-                    return {
-                        "status": "completed",
-                        "message": "Measurement complete",
-                        "temperature": self.temperature
-                    }
-                else:
-                    return {
-                        "status": "idle",
-                        "message": "Ready for temperature measurement",
-                        "temperature": self.temperature
-                    }
-                
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Error getting temperature status: {str(e)}",
-                "temperature": None
-            }
-
-    def start_max30102_measurement(self):
-        """Start MAX30102 measurement"""
-        if not self.is_connected:
-            return {"error": "Not connected to Arduino"}
-        
-        if self.measurement_active:
-            return {"error": "Another measurement in progress"}
-            
-        # Reset previous measurements
-        self.heart_rate = None
-        self.spo2 = None
-        self.respiratory_rate = None
-        self.finger_detected = False
-        
-        self.current_phase = "MAX"
-        self.measurement_active = True
-        self.measurement_start_time = time.time()
-        
-        if self.simulation_mode:
-            print("💓 SIMULATION: Starting MAX30102 measurement")
-            return {
-                "status": "started",
-                "message": "MAX30102 measurement started",
-                "simulation": True
-            }
-        else:
-            self._send_command("START_HR")
-            return {
-                "status": "started",
-                "message": "MAX30102 measurement started"
-            }
-
-    def get_max30102_status(self):
-        """Get MAX30102 measurement status"""
-        if not self.is_connected:
-            return {
-                "status": "error",
-                "message": "Not connected to Arduino",
-                "heart_rate": None,
-                "spo2": None,
-                "respiratory_rate": None,
-                "finger_detected": False,
-                "progress_seconds": 60
-            }
-        
-        try:
-            # Calculate progress
-            progress_seconds = 60
-            if self.current_phase == "MAX" and self.measurement_active:
-                elapsed = time.time() - self.measurement_start_time
-                progress_seconds = max(0, 60 - int(elapsed))
-            
-            return {
-                "current_phase": self.current_phase,
-                "measurement_active": self.measurement_active,
-                "heart_rate": self.heart_rate,
-                "spo2": self.spo2,
-                "respiratory_rate": self.respiratory_rate,
-                "finger_detected": self.finger_detected,
-                "progress_seconds": progress_seconds,
-                "message": self._get_max30102_message()
-            }
-            
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Error getting MAX30102 status: {str(e)}",
-                "heart_rate": None,
-                "spo2": None,
-                "respiratory_rate": None,
-                "finger_detected": False,
-                "progress_seconds": 60
-            }
-
-    def _get_max30102_message(self):
-        """Get appropriate message for MAX30102 status"""
-        if not self.measurement_active:
-            return "Ready for measurement"
-        elif not self.finger_detected:
-            return "👆 Place finger on sensor"
-        elif not self.heart_rate and not self.spo2:
-            return "🔄 Stabilizing signal..."
-        elif self.heart_rate is None or self.spo2 is None:
-            return "📡 Acquiring signal..."
-        else:
-            return "💓 Measuring vital signs..."
-
-    def stop_measurement(self):
-        """Stop current measurement"""
-        if self.is_connected and not self.simulation_mode:
-            self._send_command("STOP")
-        
-        self.current_phase = "IDLE"
-        self.measurement_active = False
-        self.finger_detected = False
-        
-        return {"status": "Measurement stopped"}
-
-    def get_status(self):
-        """Get current sensor status"""
-        connected_status = self.is_connected and not self.simulation_mode
-        
-        return {
-            "connected": connected_status,
-            "simulation_mode": self.simulation_mode,
-            "current_phase": self.current_phase,
-            "measurement_active": self.measurement_active,
-            "temperature": self.temperature,
-            "heart_rate": self.heart_rate,
-            "spo2": self.spo2,
-            "respiratory_rate": self.respiratory_rate,
-            "finger_detected": self.finger_detected,
-            "port": self.port,
-            "hardware_available": connected_status
-        }
-
-    def test_connection(self):
-        """Test connection"""
-        if self.simulation_mode:
-            return {
-                "status": "simulation", 
-                "message": "Running in simulation mode - No hardware connected",
-                "simulation": True,
-                "connected": False
-            }
-        elif self.is_connected and self.serial_conn and self.serial_conn.is_open:
-            try:
-                self._send_command("TEST_CONNECTION")
-                return {
-                    "status": "connected", 
-                    "message": "Arduino communication OK",
-                    "connected": True
-                }
-            except Exception as e:
-                return {
-                    "status": "error", 
-                    "message": f"Arduino communication failed: {e}",
-                    "connected": False
-                }
-        else:
-            return {
-                "status": "disconnected", 
-                "message": "No Arduino hardware connected",
-                "connected": False
-            }
-
-    def get_all_measurements(self):
-        """Get all completed measurements"""
-        return {
-            "temperature": self.temperature,
-            "heart_rate": self.heart_rate,
-            "spo2": self.spo2,
-            "respiratory_rate": self.respiratory_rate,
-            "timestamp": time.time(),
-            "simulation_mode": self.simulation_mode
-        }
+        elif prefix == "ERROR":
+            self.current_measurement_status = "error"
+            print(f"🚨 Arduino Error: {':'.join(parts[1:])}")
 
     def _send_command(self, command: str):
-        """Send command to Arduino"""
-        try:
-            if self.serial_conn and self.serial_conn.is_open:
+        """Sends a command to the Arduino."""
+        # ✅ FIX: Corrected the typo here from 'is_serial_conn' to 'serial_conn'
+        if self.is_connected and self.serial_conn:
+            try:
                 self.serial_conn.write(f"{command}\n".encode('utf-8'))
                 print(f"📤 SENT: {command}")
-        except Exception as e:
-            print(f"❌ Failed to send command: {e}")
-
-    def add_data_callback(self, callback: Callable):
-        """Add callback for real-time data updates"""
-        self.data_callbacks.append(callback)
-
-    def add_status_callback(self, callback: Callable):
-        """Add callback for status updates"""
-        self.status_callbacks.append(callback)
-
-    def _trigger_data_callbacks(self, data_type: str, value: Any):
-        """Trigger all data callbacks"""
-        for callback in self.data_callbacks:
-            try:
-                callback(data_type, value)
             except Exception as e:
-                print(f"❌ Callback error: {e}")
+                print(f"❌ Failed to send command: {e}")
 
-    def _trigger_status_callbacks(self):
-        """Trigger all status callbacks"""
-        status = self.get_status()
-        for callback in self.status_callbacks:
-            try:
-                callback(status)
-            except Exception as e:
-                print(f"❌ Callback error: {e}")
+    def _start_generic_measurement(self, phase: str, command: str):
+        """A generic helper to start any measurement phase."""
+        if not self.is_connected:
+            return {"status": "error", "message": "Not connected to Arduino"}
+        if self.measurement_active:
+            return {"status": "error", "message": "Another measurement is in progress"}
+        
+        self.current_phase = phase
+        self.measurement_active = True
+        self.current_measurement_status = "initializing"
+        
+        if phase == "WEIGHT": self.weight = None
+        elif phase == "HEIGHT": self.height = None
+        elif phase == "TEMP": 
+            self.temperature = None
+            self.live_temperature = None
+        elif phase == "HR":
+            self.heart_rate = None
+            self.spo2 = None
+            self.respiratory_rate = None
+        
+        self._send_command(command)
+        return {"status": "started", "message": f"{phase} measurement initiated"}
+
+    # --- Public Methods for API Routes ---
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Returns the overall status of the sensor manager."""
+        return {
+            "connected": self.is_connected,
+            "port": self.port if self.is_connected else None,
+            "current_phase": self.current_phase,
+            "measurement_active": self.measurement_active,
+        }
+
+    def start_weight_measurement(self):
+        return self._start_generic_measurement("WEIGHT", "START_WEIGHT")
+
+    def get_weight_status(self):
+        return {"status": self.current_measurement_status, "weight": self.weight}
+
+    def start_height_measurement(self):
+        return self._start_generic_measurement("HEIGHT", "START_HEIGHT")
+
+    def get_height_status(self):
+        return {"status": self.current_measurement_status, "height": self.height}
+        
+    def start_temperature_measurement(self):
+        return self._start_generic_measurement("TEMP", "START_TEMP")
+
+    def get_temperature_status(self):
+        return {
+            "status": self.current_measurement_status, 
+            "temperature": self.temperature,
+            "live_temperature": self.live_temperature
+        }
+
+    def start_max30102_measurement(self):
+        return self._start_generic_measurement("HR", "START_HR")
+
+    def get_max30102_status(self):
+        return {
+            "status": self.current_measurement_status, 
+            "heart_rate": self.heart_rate,
+            "spo2": self.spo2,
+            "respiratory_rate": self.respiratory_rate
+        }
+
+# ✅ FIX: Removed the extra '}' that was causing the syntax error
