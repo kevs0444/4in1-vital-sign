@@ -1,10 +1,34 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
 import "./Max30102.css";
 import heartRateIcon from "../../assets/icons/heart-rate-icon.png";
 import spo2Icon from "../../assets/icons/spo2-icon.png";
 import respiratoryIcon from "../../assets/icons/respiratory-icon.png";
 import { sensorAPI } from "../../utils/api";
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 export default function Max30102() {
   const navigate = useNavigate();
@@ -19,12 +43,62 @@ export default function Max30102() {
     spo2: "--.-",
     respiratoryRate: "--"
   });
-  const [progressSeconds, setProgressSeconds] = useState(60);
+  const [progressSeconds, setProgressSeconds] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
-  const [liveSamples, setLiveSamples] = useState([]);
   const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 3;
   const [sensorReady, setSensorReady] = useState(false);
+  
+  // Combined chart data for all three measurements
+  const [chartData, setChartData] = useState({
+    labels: Array.from({length: 12}, (_, i) => `${(i + 1) * 5}s`), // 5s, 10s, 15s...60s
+    datasets: [
+      {
+        label: 'Heart Rate (BPM)',
+        data: Array(12).fill(null),
+        borderColor: '#dc3545',
+        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+        borderWidth: 3,
+        fill: false,
+        tension: 0.4,
+        pointBackgroundColor: '#dc3545',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        yAxisID: 'y',
+      },
+      {
+        label: 'SpO₂ (%)',
+        data: Array(12).fill(null),
+        borderColor: '#2196F3',
+        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+        borderWidth: 3,
+        fill: false,
+        tension: 0.4,
+        pointBackgroundColor: '#2196F3',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        yAxisID: 'y1',
+      },
+      {
+        label: 'Respiratory Rate',
+        data: Array(12).fill(null),
+        borderColor: '#28a745',
+        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+        borderWidth: 3,
+        fill: false,
+        tension: 0.4,
+        pointBackgroundColor: '#28a745',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        yAxisID: 'y2',
+      }
+    ]
+  });
 
   const pollerRef = useRef(null);
   const fingerCheckRef = useRef(null);
@@ -48,7 +122,6 @@ export default function Max30102() {
     try {
       setStatusMessage("🔄 Powering up pulse oximeter...");
       
-      // First, prepare the sensor
       const prepareResult = await sensorAPI.prepareMax30102();
       
       if (prepareResult.error) {
@@ -57,13 +130,11 @@ export default function Max30102() {
         return;
       }
       
-      // Wait a bit for sensor to fully power up
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       setStatusMessage("✅ Pulse oximeter ready. Place finger on sensor...");
       setSensorReady(true);
       
-      // Start monitoring for finger detection
       startFingerMonitoring();
       
     } catch (error) {
@@ -76,7 +147,6 @@ export default function Max30102() {
   const startFingerMonitoring = () => {
     stopMonitoring();
     
-    // Start finger detection monitoring
     fingerCheckRef.current = setInterval(async () => {
       try {
         const data = await sensorAPI.getMax30102Status();
@@ -84,7 +154,6 @@ export default function Max30102() {
         setFingerDetected(data.finger_detected);
         setSensorReady(data.sensor_prepared || false);
         
-        // Auto-start measurement when finger is detected and sensor is ready
         if (data.finger_detected && data.sensor_prepared && !data.measurement_active && !measurementComplete) {
           setStatusMessage("✅ Finger detected. Starting measurement...");
           clearInterval(fingerCheckRef.current);
@@ -93,7 +162,6 @@ export default function Max30102() {
           }, 1000);
         }
         
-        // Update status based on finger detection
         if (!data.measurement_active && !measurementComplete) {
           if (data.finger_detected) {
             setStatusMessage("✅ Finger detected. Starting measurement...");
@@ -110,7 +178,6 @@ export default function Max30102() {
       }
     }, 1000);
 
-    // Start main status polling
     startMainPolling();
   };
 
@@ -124,41 +191,38 @@ export default function Max30102() {
         const data = await sensorAPI.getMax30102Status();
         
         setIsMeasuring(data.measurement_active);
-        setLiveSamples(data.live_samples || []);
         setSensorReady(data.sensor_prepared || false);
         
-        // Update progress
+        // Update progress for 60-second measurement
         if (data.status && data.status.includes('hr_progress')) {
           const progressParts = data.status.split(':');
           const elapsed = parseInt(progressParts[1]);
-          const total = parseInt(progressParts[2]);
+          const total = 60;
           const progressPercent = (elapsed / total) * 100;
           setProgressPercent(progressPercent);
-          setProgressSeconds(total - elapsed);
-          setStatusMessage(`📊 Measuring... ${total - elapsed}s remaining`);
+          setProgressSeconds(elapsed);
+          setStatusMessage(`📊 Measuring... ${60 - elapsed}s remaining`);
         }
         
-        // Update measurements from live data
-        if (data.heart_rate !== null && data.heart_rate !== undefined && data.heart_rate !== "--") {
+        // Update current measurements
+        if (data.heart_rate !== null && data.heart_rate !== undefined && data.heart_rate > 0) {
           setMeasurements(prev => ({ ...prev, heartRate: Math.round(data.heart_rate) }));
         }
-        if (data.spo2 !== null && data.spo2 !== undefined && data.spo2 !== "--.-") {
+        if (data.spo2 !== null && data.spo2 !== undefined && data.spo2 > 0) {
           setMeasurements(prev => ({ ...prev, spo2: data.spo2.toFixed(1) }));
         }
-        if (data.respiratory_rate !== null && data.respiratory_rate !== undefined && data.respiratory_rate !== "--") {
+        if (data.respiratory_rate !== null && data.respiratory_rate !== undefined && data.respiratory_rate > 0) {
           setMeasurements(prev => ({ ...prev, respiratoryRate: Math.round(data.respiratory_rate) }));
         }
 
         // Handle completion
         if (data.status === 'hr_measurement_complete') {
           if (data.heart_rate && data.heart_rate > 40 && data.spo2 && data.spo2 > 70) {
-            // Valid measurement received
             setMeasurementComplete(true);
-            setStatusMessage("✅ Measurement Complete!");
+            setStatusMessage("✅ 60-Second Measurement Complete!");
             setProgressPercent(100);
             stopMonitoring();
           } else {
-            // Invalid measurement, retry
             setStatusMessage("❌ Invalid readings, retrying...");
             handleRetry();
           }
@@ -176,7 +240,17 @@ export default function Max30102() {
 
   const startMeasurement = async () => {
     try {
-      setStatusMessage("🎬 Starting pulse oximeter measurement...");
+      setStatusMessage("🎬 Starting 60-second vital signs monitoring...");
+      
+      // Reset chart data
+      setChartData(prev => ({
+        ...prev,
+        datasets: prev.datasets.map(dataset => ({
+          ...dataset,
+          data: Array(12).fill(null)
+        }))
+      }));
+      
       const response = await sensorAPI.startMax30102();
       
       if (response.error) {
@@ -184,11 +258,10 @@ export default function Max30102() {
         if (!response.error.includes("Finger not detected")) {
           handleRetry();
         } else {
-          // If finger not detected, go back to finger monitoring
           startFingerMonitoring();
         }
       } else {
-        setStatusMessage("📊 Measurement started. Keep finger steady...");
+        setStatusMessage("📊 60-second measurement started. Keep finger steady...");
       }
     } catch (error) {
       console.error("Start MAX30102 error:", error);
@@ -196,6 +269,37 @@ export default function Max30102() {
       handleRetry();
     }
   };
+
+  // Listen for combined vital signs data
+  useEffect(() => {
+    const handleSerialData = (event) => {
+      if (event.detail && event.detail.data && event.detail.data.includes('DATA:VITAL_SIGNS:')) {
+        const dataString = event.detail.data.replace('DATA:VITAL_SIGNS:', '');
+        const [hr, spo2, rr, timeIndex, elapsed] = dataString.split(':').map(Number);
+        
+        const dataPointIndex = Math.floor(timeIndex / 5) - 1;
+        
+        if (dataPointIndex >= 0 && dataPointIndex < 12) {
+          setChartData(prev => {
+            const newDatasets = [...prev.datasets];
+            newDatasets[0].data[dataPointIndex] = hr > 0 ? hr : null;
+            newDatasets[1].data[dataPointIndex] = spo2 > 0 ? spo2 : null;
+            newDatasets[2].data[dataPointIndex] = rr > 0 ? rr : null;
+            
+            return {
+              ...prev,
+              datasets: newDatasets
+            };
+          });
+          
+          console.log(`Updated chart at ${timeIndex}s: HR=${hr}, SpO2=${spo2}, RR=${rr}`);
+        }
+      }
+    };
+
+    window.addEventListener('serialData', handleSerialData);
+    return () => window.removeEventListener('serialData', handleSerialData);
+  }, []);
 
   const handleRetry = () => {
     if (retryCount < MAX_RETRIES) {
@@ -283,6 +387,128 @@ export default function Max30102() {
     }
   };
 
+  // Combined chart configuration
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          font: {
+            size: 11,
+            weight: '600'
+          }
+        }
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleFont: {
+          size: 12,
+        },
+        bodyFont: {
+          size: 11,
+        },
+        padding: 10,
+      },
+      title: {
+        display: true,
+        text: '60-Second Vital Signs Monitoring',
+        font: {
+          size: 14,
+          weight: 'bold'
+        },
+        padding: 10
+      }
+    },
+    scales: {
+      x: {
+        display: true,
+        title: {
+          display: true,
+          text: 'Time (seconds)',
+          font: {
+            size: 11,
+            weight: '600'
+          }
+        },
+        grid: {
+          display: true,
+          color: 'rgba(0, 0, 0, 0.05)',
+        },
+        ticks: {
+          maxTicksLimit: 12,
+          font: {
+            size: 9,
+          },
+        },
+      },
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Heart Rate (BPM)',
+          font: {
+            size: 11,
+            weight: '600'
+          }
+        },
+        min: 40,
+        max: 120,
+        grid: {
+          color: 'rgba(220, 53, 69, 0.1)',
+        },
+        ticks: {
+          font: {
+            size: 9,
+          },
+        },
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        title: {
+          display: true,
+          text: 'SpO₂ (%)',
+          font: {
+            size: 11,
+            weight: '600'
+          }
+        },
+        min: 90,
+        max: 100,
+        grid: {
+          drawOnChartArea: false,
+        },
+        ticks: {
+          font: {
+            size: 9,
+          },
+        },
+      },
+      y2: {
+        type: 'linear',
+        display: false, // Hide respiratory rate axis since it overlaps
+        min: 10,
+        max: 22,
+      },
+    },
+  };
+
+  const MAX_RETRIES = 3;
+
   return (
     <div className="max30102-container">
       <div className={`max30102-content ${isVisible ? 'visible' : ''}`}>
@@ -315,7 +541,7 @@ export default function Max30102() {
                 ></div>
               </div>
               <span className="progress-text">
-                {progressSeconds > 0 ? `${progressSeconds}s remaining` : "Finalizing..."}
+                {progressSeconds > 0 ? `${60 - progressSeconds}s remaining` : "60-second measurement"}
               </span>
             </div>
           )}
@@ -336,18 +562,16 @@ export default function Max30102() {
             </div>
           </div>
 
-          {/* Live Samples Display - Only show during measurement */}
-          {isMeasuring && liveSamples.length > 0 && (
-            <div className="live-samples-container">
-              <h4>Live Data Samples</h4>
-              <div className="samples-grid">
-                {liveSamples.slice(-6).map((sample, index) => (
-                  <div key={index} className="sample-item">
-                    <span className="sample-index">#{liveSamples.length - 6 + index + 1}</span>
-                    <span className="sample-hr">HR: {Math.round(sample.hr)}</span>
-                    <span className="sample-spo2">SpO₂: {sample.spo2.toFixed(1)}%</span>
+          {/* Combined Chart Display */}
+          {isMeasuring && (
+            <div className="charts-container">
+              <h4>60-Second Vital Signs Trend</h4>
+              <div className="charts-grid">
+                <div className="chart-item">
+                  <div className="chart-wrapper">
+                    <Line data={chartData} options={chartOptions} />
                   </div>
-                ))}
+                </div>
               </div>
             </div>
           )}
@@ -419,23 +643,23 @@ export default function Max30102() {
           {sensorReady && !fingerDetected && !isMeasuring && !measurementComplete && (
             <div className="waiting-prompt">
               <div className="finger-pulse"></div>
-              <span>Place finger on sensor to begin measurement</span>
+              <span>Place finger on sensor to begin 60-second measurement</span>
             </div>
           )}
           {sensorReady && fingerDetected && !isMeasuring && !measurementComplete && (
             <div className="ready-prompt">
               <div className="checkmark">✓</div>
-              <span>Finger detected! Starting measurement...</span>
+              <span>Finger detected! Starting 60-second measurement...</span>
             </div>
           )}
           {isMeasuring && (
             <div className="measuring-prompt">
               <div className="pulse-animation"></div>
-              <span>Measuring... Keep finger steady</span>
+              <span>60-second measurement in progress... Keep finger steady</span>
             </div>
           )}
           {measurementComplete && (
-            <span className="success-text">✅ Measurement Complete</span>
+            <span className="success-text">✅ 60-Second Measurement Complete</span>
           )}
         </div>
 
