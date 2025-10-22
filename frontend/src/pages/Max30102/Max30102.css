@@ -96,6 +96,60 @@
   color: #666;
   line-height: 1.3;
   padding: 0 10px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.retry-indicator {
+  background: #ffa500;
+  color: white;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  margin-top: 8px;
+  display: inline-block;
+  font-weight: 600;
+}
+
+.sensor-status {
+  background: #ffa500;
+  color: white;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  margin-top: 8px;
+  display: inline-block;
+  font-weight: 600;
+}
+
+/* Measurement Progress */
+.measurement-progress {
+  margin: 12px 0;
+  padding: 0 10px;
+}
+
+.progress-bar-horizontal {
+  width: 100%;
+  height: 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-fill-horizontal {
+  height: 100%;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.progress-text {
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 600;
 }
 
 /* Sensor Display Section - Optimized */
@@ -113,10 +167,10 @@
 }
 
 .finger-sensor {
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   background: linear-gradient(135deg, #333, #555);
-  border-radius: 16px;
+  border-radius: 20px;
   margin: 0 auto 12px;
   display: flex;
   flex-direction: column;
@@ -125,20 +179,42 @@
   position: relative;
   border: 3px solid #666;
   transition: all 0.3s ease;
+  padding: 10px;
+}
+
+.finger-sensor.initializing {
+  border-color: #ffa500;
+  background: linear-gradient(135deg, #444, #666);
+  box-shadow: 0 0 15px rgba(255, 165, 0, 0.4);
+}
+
+.finger-sensor.ready {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #333, #555);
 }
 
 .finger-sensor.active {
   border-color: #dc3545;
-  box-shadow: 0 0 15px rgba(220, 53, 69, 0.4);
+  box-shadow: 0 0 20px rgba(220, 53, 69, 0.6);
+  background: linear-gradient(135deg, #444, #666);
 }
 
 .sensor-light {
-  width: 25px;
-  height: 25px;
+  width: 30px;
+  height: 30px;
   background: #666;
   border-radius: 50%;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   transition: all 0.3s ease;
+}
+
+.finger-sensor.initializing .sensor-light {
+  background: #ffa500;
+  animation: sensorPulse 1.5s ease-in-out infinite;
+}
+
+.finger-sensor.ready .sensor-light {
+  background: #28a745;
 }
 
 .finger-sensor.active .sensor-light {
@@ -148,42 +224,77 @@
 
 @keyframes sensorPulse {
   0%, 100% { 
-    box-shadow: 0 0 8px rgba(220, 53, 69, 0.4);
+    box-shadow: 0 0 8px currentColor;
+    transform: scale(1);
   }
   50% { 
-    box-shadow: 0 0 15px rgba(220, 53, 69, 0.6);
+    box-shadow: 0 0 20px currentColor;
+    transform: scale(1.1);
   }
 }
 
 .finger-placeholder {
-  font-size: 1.7rem;
+  font-size: 2rem;
+  margin-bottom: 5px;
 }
 
-.measuring-progress {
+.finger-status {
+  font-size: 0.75rem;
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 5px;
+}
+
+/* Live Samples Display */
+.live-samples-container {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 15px;
+  margin: 15px 0;
+  border: 2px solid #e9ecef;
+}
+
+.live-samples-container h4 {
+  font-size: 1rem;
+  color: #333;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.samples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.sample-item {
+  background: white;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  gap: 4px;
+  transition: all 0.3s ease;
 }
 
-.pulse-wave {
-  width: 80px;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #dc3545, transparent);
-  border-radius: 2px;
-  animation: wavePulse 1.5s ease-in-out infinite;
+.sample-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  border-color: #dc3545;
 }
 
-@keyframes wavePulse {
-  0% { transform: scaleX(0); opacity: 0; }
-  50% { transform: scaleX(1); opacity: 1; }
-  100% { transform: scaleX(0); opacity: 0; }
-}
-
-.current-measurement {
-  font-size: 0.9rem;
+.sample-index {
+  font-size: 0.7rem;
   color: #666;
   font-weight: 600;
+}
+
+.sample-hr, .sample-spo2 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #333;
 }
 
 /* Measurements Grid - Optimized 3 columns */
@@ -235,7 +346,7 @@
   width: 100%;
 }
 
-.measurement-title {
+.measurement-info h3 {
   font-size: 0.8rem;
   color: #333;
   font-weight: 700;
@@ -305,223 +416,107 @@
 .measurement-controls {
   flex-shrink: 0;
   margin: 12px 0 8px 0;
-}
-
-.measure-button {
-  width: 100%;
-  padding: 20px 16px;
-  border: none;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
-  font-size: 1.3rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 70px;
+  min-height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
-  animation: redGlow 2s ease-in-out infinite alternate;
 }
 
-.measure-button:hover:not(:disabled) {
-  transform: translateY(-3px);
-  animation: redStrongGlow 1s ease-in-out infinite alternate;
+.waiting-prompt, .ready-prompt, .measuring-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: #f8f9fa;
+  border-radius: 25px;
+  border: 2px solid #e9ecef;
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
-.measure-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  animation: none;
+.waiting-prompt {
+  color: #666;
 }
 
-/* Glow Animations */
-@keyframes redGlow {
-  from {
-    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4),
-                0 0 8px rgba(220, 53, 69, 0.3);
-  }
-  to {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.5),
-                0 0 25px rgba(220, 53, 69, 0.3);
-  }
+.ready-prompt {
+  color: #28a745;
+  background: #f0fff4;
+  border-color: #28a745;
 }
 
-@keyframes redStrongGlow {
-  from {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.6),
-                0 0 25px rgba(220, 53, 69, 0.4);
-  }
-  to {
-    box-shadow: 0 12px 28px rgba(220, 53, 69, 0.6),
-                0 0 20px rgba(220, 53, 69, 0.8),
-                0 0 35px rgba(220, 53, 69, 0.5);
-  }
-}
-
-/* Shimmer effect */
-.measure-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-.measure-button:hover::before {
-  left: 100%;
+.measuring-prompt {
+  color: #2196F3;
+  background: #f0f8ff;
+  border-color: #2196F3;
 }
 
 .spinner {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border: 2px solid transparent;
-  border-top: 2px solid white;
+  border-top: 2px solid currentColor;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-right: 10px;
 }
 
+.finger-pulse {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #dc3545;
+  animation: pulse 1.5s infinite;
+}
+
+.pulse-animation {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2196F3;
+  animation: heartbeat 1.5s infinite;
+}
+
+.checkmark {
+  width: 20px;
+  height: 20px;
+  background: #28a745;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.success-text {
+  color: #28a745;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 12px 20px;
+  background: #f0fff4;
+  border-radius: 25px;
+  border: 2px solid #28a745;
+}
+
+/* Animations */
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
 
-.measurement-complete {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-.success-text {
-  color: #dc3545;
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.retry-button {
-  border: 2px solid #dc3545;
-  background: transparent;
-  color: #dc3545;
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 45px;
-  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.2);
-}
-
-.retry-button:hover {
-  background: #fff0f0;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
-}
-
-.retry-button:active {
-  transform: translateY(0);
-}
-
-/* Educational Content - Optimized */
-.educational-content {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border-radius: 12px;
-  padding: 16px;
-  margin: 8px 0;
-  transition: opacity 0.5s ease;
-  flex-shrink: 0;
-  flex: 0.9;
-  border: 2px solid #e9ecef;
-}
-
-.education-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: #333;
-  text-align: center;
-}
-
-.education-points {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.education-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px;
-  background: white;
-  border-radius: 10px;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-}
-
-.education-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
-  border-color: #dc3545;
-}
-
-.education-card:active {
-  transform: translateY(0);
-}
-
-.card-icon {
-  font-size: 1.7rem;
-  min-width: 45px;
-  height: 45px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 10px;
-  flex-shrink: 0;
-  color: white;
-}
-
-.card-content {
-  flex: 1;
-  text-align: left;
-}
-
-.card-content h4 {
-  color: #333;
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin: 0 0 6px 0;
-  line-height: 1.2;
-}
-
-.card-content p {
-  color: #666;
-  font-size: 0.8rem;
-  line-height: 1.3;
-  margin: 0;
+@keyframes heartbeat {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.1); }
+  50% { transform: scale(1); }
+  75% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 /* Continue Button - Optimized */
@@ -563,6 +558,32 @@
   transform: none;
   box-shadow: none;
   animation: none;
+}
+
+/* Glow Animations */
+@keyframes redGlow {
+  from {
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4),
+                0 0 8px rgba(220, 53, 69, 0.3);
+  }
+  to {
+    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
+                0 0 15px rgba(220, 53, 69, 0.5),
+                0 0 25px rgba(220, 53, 69, 0.3);
+  }
+}
+
+@keyframes redStrongGlow {
+  from {
+    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
+                0 0 15px rgba(220, 53, 69, 0.6),
+                0 0 25px rgba(220, 53, 69, 0.4);
+  }
+  to {
+    box-shadow: 0 12px 28px rgba(220, 53, 69, 0.6),
+                0 0 20px rgba(220, 53, 69, 0.8),
+                0 0 35px rgba(220, 53, 69, 0.5);
+  }
 }
 
 /* Shimmer effect for continue button */
@@ -610,16 +631,21 @@
   
   .max30102-subtitle {
     font-size: 0.8rem;
+    min-height: 35px;
   }
   
   .finger-sensor {
-    width: 90px;
-    height: 90px;
+    width: 100px;
+    height: 100px;
   }
   
   .sensor-light {
-    width: 22px;
-    height: 22px;
+    width: 25px;
+    height: 25px;
+  }
+  
+  .finger-placeholder {
+    font-size: 1.7rem;
   }
   
   .measurements-grid {
@@ -641,25 +667,18 @@
     font-size: 1.2rem;
   }
   
-  .measure-button,
   .continue-button {
     padding: 18px 14px;
     font-size: 1.2rem;
     min-height: 65px;
   }
   
-  .educational-content {
-    padding: 14px;
-  }
-  
-  .education-card {
+  .live-samples-container {
     padding: 12px;
   }
   
-  .card-icon {
-    min-width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
+  .samples-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   }
 }
 
@@ -680,8 +699,8 @@
   }
   
   .finger-sensor {
-    width: 80px;
-    height: 80px;
+    width: 90px;
+    height: 90px;
   }
   
   .measurements-grid {
@@ -696,5 +715,31 @@
   
   .value, .placeholder {
     font-size: 1.1rem;
+  }
+  
+  .waiting-prompt, .ready-prompt, .measuring-prompt {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Tall mobile screens */
+@media (max-height: 700px) {
+  .max30102-content {
+    min-height: 82vh;
+    max-height: 88vh;
+  }
+  
+  .sensor-display-section {
+    min-height: 150px;
+  }
+  
+  .finger-sensor {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .measurement-card {
+    min-height: 90px;
   }
 }

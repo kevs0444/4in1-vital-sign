@@ -166,9 +166,20 @@
   transform: scale(1.03);
 }
 
-.weight-unit {
-  font-size: 1.5rem;
-  color: #777;
+.sensor-indicator.active .indicator-dot {
+  animation: pulse 1s infinite alternate;
+}
+
+.indicator-dot {
+  width: 10px;
+  height: 10px;
+  background: #dc3545;
+  border-radius: 50%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: background-color 0.3s ease;
 }
 
 /* Measurement Controls - Optimized for screen */

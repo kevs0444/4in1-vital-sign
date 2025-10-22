@@ -93,8 +93,8 @@ def start_weight():
 
 @sensor_bp.route('/weight/prepare', methods=['POST'])
 def prepare_weight():
-    sensor_manager._power_up_sensor("weight")
-    return jsonify({"status": "powered_up"})
+    result = sensor_manager.prepare_weight_sensor()
+    return jsonify(result)
 
 @sensor_bp.route('/weight/shutdown', methods=['POST'])
 def shutdown_weight():
@@ -112,8 +112,8 @@ def start_height():
 
 @sensor_bp.route('/height/prepare', methods=['POST'])
 def prepare_height():
-    sensor_manager._power_up_sensor("height")
-    return jsonify({"status": "powered_up"})
+    result = sensor_manager.prepare_height_sensor()
+    return jsonify(result)
 
 @sensor_bp.route('/height/shutdown', methods=['POST'])
 def shutdown_height():
@@ -131,8 +131,8 @@ def start_temperature():
 
 @sensor_bp.route('/temperature/prepare', methods=['POST'])
 def prepare_temperature():
-    sensor_manager._power_up_sensor("temperature")
-    return jsonify({"status": "powered_up"})
+    result = sensor_manager.prepare_temperature_sensor()
+    return jsonify(result)
 
 @sensor_bp.route('/temperature/shutdown', methods=['POST'])
 def shutdown_temperature():
@@ -150,8 +150,8 @@ def start_max30102():
 
 @sensor_bp.route('/max30102/prepare', methods=['POST'])
 def prepare_max30102():
-    sensor_manager._power_up_sensor("max30102")
-    return jsonify({"status": "powered_up"})
+    result = sensor_manager.prepare_max30102_sensor()
+    return jsonify(result)
 
 @sensor_bp.route('/max30102/shutdown', methods=['POST'])
 def shutdown_max30102():

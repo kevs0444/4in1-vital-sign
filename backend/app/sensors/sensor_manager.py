@@ -42,7 +42,7 @@ class SensorManager:
         self.read_thread = None
         self.should_read = False
         
-        # Sensor power states
+        # Sensor power states - initialize all as OFF
         self.sensor_states = {
             "weight": "OFF",
             "height": "OFF", 
@@ -57,6 +57,14 @@ class SensorManager:
         self.min_valid_temperature = 34.0 # User specified threshold for auto-measurement
         self.weight_detected = False
         self.weight_measurement_pending = False
+
+        # Track which sensors have been prepared
+        self.sensors_prepared = {
+            "weight": False,
+            "height": False,
+            "temperature": False,
+            "max30102": False
+        }
 
     def _connect_thread_worker(self):
         """
@@ -178,6 +186,11 @@ class SensorManager:
         self.connection_established = False
         self.basic_mode = True
         self.full_system_initialized = False
+        # Reset all sensor states
+        for sensor_type in self.sensor_states.keys():
+            self.sensor_states[sensor_type] = "OFF"
+        for sensor_type in self.sensors_prepared.keys():
+            self.sensors_prepared[sensor_type] = False
         print("🔌 Disconnected from Arduino")
 
     def start_reading(self):
@@ -193,12 +206,16 @@ class SensorManager:
         while self.should_read and self.serial_conn and self.serial_conn.is_open:
             try:
                 if self.serial_conn.in_waiting > 0:
-                    line = self.serial_conn.readline().decode('utf-8').strip()
-                    if line:
-                        self._parse_serial_data(line)
+                    try:
+                        line = self.serial_conn.readline().decode('utf-8').strip()
+                        if line:
+                            self._parse_serial_data(line)
+                    except UnicodeDecodeError:
+                        # This can happen if the connection is interrupted mid-byte. Ignore and continue.
+                        print("⚠️ Warning: Serial UnicodeDecodeError, skipping line.")
             except Exception as e:
                 print(f"❌ Serial read error: {e}")
-                self.is_connected = False # Assume connection is lost on error
+                self.is_connected = False  # Assume connection is lost on a major error
                 break
 
     def _parse_serial_data(self, data: str):
@@ -210,6 +227,10 @@ class SensorManager:
         if prefix == "STATUS":
             status = parts[1] if len(parts) > 1 else ""
             self.current_measurement_status = status.lower()
+            
+            # DEBUG: Print HR progress
+            if "hr_progress" in status:
+                print(f"🔵 HR Progress: {status}")
             
             # Track system initialization
             if "booting_up" in self.current_measurement_status:
@@ -234,6 +255,7 @@ class SensorManager:
             if "complete" in self.current_measurement_status:
                 self.measurement_active = False
                 self.current_phase = "IDLE"
+                # The "RESULT" block will now handle setting the final status.
                 self._check_for_pending_auto_measurements() # Check for pending after any measurement completes
             elif "started" in self.current_measurement_status:
                 self.measurement_active = True
@@ -241,40 +263,62 @@ class SensorManager:
         elif prefix == "RESULT":
             sensor = parts[1] if len(parts) > 1 else ""
             if sensor == "WEIGHT": 
-                self.weight = float(parts[2]) if len(parts) > 2 else 0
-                self.sensor_states["weight"] = "COMPLETE"
-                self.measurement_active = False
-                self.current_phase = "IDLE"
-                self.weight_measurement_pending = False
-                self._check_for_pending_auto_measurements()
-                print(f"✅ Weight measurement completed: {self.weight} kg")
+                weight_value = float(parts[2]) if len(parts) > 2 else 0
+                if weight_value > 0:  # Only accept valid weights
+                    self.weight = weight_value
+                    self.sensor_states["weight"] = "COMPLETE"
+                    self.measurement_active = False
+                    self.current_phase = "IDLE"
+                    self.current_measurement_status = "weight_measurement_complete"
+                    self.weight_measurement_pending = False
+                    self._check_for_pending_auto_measurements()
+                    print(f"✅ Weight measurement completed: {self.weight} kg")
+                else:
+                    print("⚠️ Invalid weight reading received")
             elif sensor == "HEIGHT": 
-                self.height = float(parts[2]) if len(parts) > 2 else 0
-                self.sensor_states["height"] = "COMPLETE"
-                self.measurement_active = False
-                self.current_phase = "IDLE"
-                self._check_for_pending_auto_measurements()
-                print(f"✅ Height measurement completed: {self.height} cm")
+                height_value = float(parts[2]) if len(parts) > 2 else 0
+                if 100 < height_value < 220:  # Only accept valid heights
+                    self.height = height_value
+                    self.sensor_states["height"] = "COMPLETE"
+                    self.measurement_active = False
+                    self.current_phase = "IDLE"
+                    self.current_measurement_status = "height_measurement_complete"
+                    self._check_for_pending_auto_measurements()
+                    print(f"✅ Height measurement completed: {self.height} cm")
+                else:
+                    print("⚠️ Invalid height reading received")
             elif sensor == "TEMP": 
                 value = float(parts[2]) if len(parts) > 2 else 0
-                self.temperature = value
-                self.live_temperature = value
-                self.sensor_states["temperature"] = "COMPLETE"
-                self.measurement_active = False
-                self.current_phase = "IDLE"
-                self.temp_measurement_pending = False # Measurement completed, no longer pending
-                self._check_for_pending_auto_measurements()
-                print(f"✅ Temperature measurement completed: {self.temperature} °C")
+                if 34.0 <= value <= 42.0:  # Only accept valid temperatures
+                    self.temperature = value
+                    self.live_temperature = value
+                    self.sensor_states["temperature"] = "COMPLETE"
+                    self.measurement_active = False
+                    self.current_phase = "IDLE"
+                    self.current_measurement_status = "temperature_measurement_complete"
+                    self.temp_measurement_pending = False
+                    self._check_for_pending_auto_measurements()
+                    print(f"✅ Temperature measurement completed: {self.temperature} °C")
+                else:
+                    print("⚠️ Invalid temperature reading received")
             elif sensor == "HR":
-                self.heart_rate = float(parts[2]) if len(parts) > 2 else None
-                self.spo2 = float(parts[3]) if len(parts) > 3 else None
-                self.respiratory_rate = float(parts[4]) if len(parts) > 4 else None
-                self.sensor_states["max30102"] = "COMPLETE"
-                self.measurement_active = False
-                self.current_phase = "IDLE"
-                self.hr_measurement_pending = False # Measurement completed, no longer pending
-                self._check_for_pending_auto_measurements()
-                print(f"✅ HR measurement completed: HR={self.heart_rate}, SpO2={self.spo2}, RR={self.respiratory_rate}")
+                hr_value = float(parts[2]) if len(parts) > 2 else None
+                spo2_value = float(parts[3]) if len(parts) > 3 else None
+                rr_value = float(parts[4]) if len(parts) > 4 else None
+                
+                if hr_value and hr_value > 40 and spo2_value and spo2_value > 70:
+                    self.heart_rate = hr_value
+                    self.spo2 = spo2_value
+                    self.respiratory_rate = rr_value
+                    self.sensor_states["max30102"] = "COMPLETE"
+                    self.measurement_active = False
+                    self.current_phase = "IDLE"
+                    self.current_measurement_status = "hr_measurement_complete"
+                    self.hr_measurement_pending = False
+                    self._check_for_pending_auto_measurements()
+                    print(f"✅ HR measurement completed: HR={self.heart_rate}, SpO2={self.spo2}, RR={self.respiratory_rate}")
+                else:
+                    print("⚠️ Invalid HR/SpO2 readings received")
         
         elif prefix == "DATA":
             sensor = parts[1] if len(parts) > 1 else ""
@@ -286,10 +330,9 @@ class SensorManager:
                     print(f"🌡️ Live Temperature: {self.live_temperature} °C")
                     # Auto-measure temperature if valid and not already measuring/pending
                     if self.live_temperature >= self.min_valid_temperature:
-                        if not self.measurement_active:
-                            self.start_temperature_measurement()
-                        else:
+                        if not self.measurement_active and not self.temp_measurement_pending:
                             self.temp_measurement_pending = True
+                            print("🔄 Temperature valid - queuing auto-measurement")
                     else:
                         self.temp_measurement_pending = False # Temp dropped below threshold, cancel pending
                 except ValueError:
@@ -299,9 +342,21 @@ class SensorManager:
                 try:
                     hr_sample = float(parts[2]) if len(parts) > 2 else 0
                     spo2_sample = float(parts[3]) if len(parts) > 3 else 0
+                    print(f"🟢 HR Live Sample: HR={hr_sample}, SpO2={spo2_sample}")
                     self.live_hr_samples.append({"hr": hr_sample, "spo2": spo2_sample})
-                except (ValueError, IndexError):
-                    print(f"⚠️ Could not parse HR_SAMPLE data: {data}")
+                    # Keep only last 12 samples
+                    if len(self.live_hr_samples) > 12:
+                        self.live_hr_samples = self.live_hr_samples[-12:]
+                except (ValueError, IndexError) as e:
+                    print(f"⚠️ Could not parse HR_SAMPLE data: {data}, Error: {e}")
+            
+            elif sensor == "HR_SAMPLE_ERROR":
+                try:
+                    hr_sample = float(parts[2]) if len(parts) > 2 else 0
+                    spo2_sample = float(parts[3]) if len(parts) > 3 else 0
+                    print(f"🟡 HR Sample Error: HR={hr_sample}, SpO2={spo2_sample}")
+                except (ValueError, IndexError) as e:
+                    print(f"⚠️ Could not parse HR_SAMPLE_ERROR data: {data}, Error: {e}")
 
         elif prefix == "WEIGHT_DETECTED":
             # Ignore weight detection if the measurement is already complete for this session
@@ -317,23 +372,26 @@ class SensorManager:
                     self.weight_measurement_pending = True
 
         # --- Auto-measurement specific status handling ---
-        elif prefix == "FINGER_DETECTED": # Assuming Arduino sends this status
-            if not self.finger_detected: # Only trigger if state changes
+        elif prefix == "FINGER_DETECTED":
+            if not self.finger_detected:
                 print("👆 Finger detected!")
                 self.finger_detected = True
-                if not self.measurement_active:
-                    self.start_max30102_measurement()
-                else:
+                if not self.measurement_active and not self.hr_measurement_pending:
                     self.hr_measurement_pending = True
-        elif prefix == "FINGER_REMOVED": # Assuming Arduino sends this status
-            if self.finger_detected: # Only trigger if state changes
+                    print("🔄 Finger detected - queuing HR measurement")
+        elif prefix == "FINGER_REMOVED":
+            if self.finger_detected:
                 print("👇 Finger removed.")
                 self.finger_detected = False
-                self.hr_measurement_pending = False # Cancel pending HR measurement
+                # Don't cancel pending immediately - give grace period
 
         elif prefix == "ERROR":
             self.current_measurement_status = "error"
             print(f"🚨 Arduino Error: {':'.join(parts[1:])}")
+
+        elif prefix == "DEBUG":
+            # Print debug messages for troubleshooting
+            print(f"🔍 ARDUINO DEBUG: {':'.join(parts[1:])}")
 
         elif prefix == "SYSTEM":
             system_msg = parts[1] if len(parts) > 1 else ""
@@ -349,11 +407,11 @@ class SensorManager:
         if not self.measurement_active: # Only proceed if no other measurement is active
             if self.hr_measurement_pending and self.finger_detected:
                 print("🔄 Starting pending HR measurement...")
-                self.hr_measurement_pending = False # Clear pending flag as it's about to start
+                self.hr_measurement_pending = False
                 self.start_max30102_measurement()
             elif self.temp_measurement_pending and self.live_temperature is not None and self.live_temperature >= self.min_valid_temperature:
                 print("🔄 Starting pending Temperature measurement...")
-                self.temp_measurement_pending = False # Clear pending flag as it's about to start
+                self.temp_measurement_pending = False
                 self.start_temperature_measurement()
             elif self.weight_measurement_pending and self.weight_detected:
                 print("🔄 Starting pending Weight measurement...")
@@ -382,23 +440,27 @@ class SensorManager:
         if self.measurement_active:
             return {"status": "error", "message": "Another measurement is in progress"}
         
-        # Reset previous measurement result
+        # Reset previous measurement result for this sensor only
         if phase == "WEIGHT": 
             self.weight = None
-            self.weight_detected = False # Reset detection flag
+            self.weight_detected = False
+            self.sensor_states["weight"] = "ACTIVE"
         elif phase == "HEIGHT": 
             self.height = None
+            self.sensor_states["height"] = "ACTIVE"
         elif phase == "TEMP": 
             self.temperature = None
-            self.live_temperature = None
+            self.sensor_states["temperature"] = "ACTIVE"
         elif phase == "HR":
             self.heart_rate = None
             self.spo2 = None
             self.respiratory_rate = None
-            self.live_hr_samples = [] # Reset live samples
+            self.live_hr_samples = []
+            self.sensor_states["max30102"] = "ACTIVE"
         
-        # Power up the requested sensor
-        self._power_up_sensor(sensor_type)
+        # Ensure sensor is powered up
+        if not self.sensors_prepared.get(sensor_type, False):
+            self._power_up_sensor(sensor_type)
         
         self.current_phase = phase
         self.measurement_active = True
@@ -413,7 +475,7 @@ class SensorManager:
         return {"status": "started", "message": message}
 
     def _power_up_sensor(self, sensor_type: str):
-        """Powers up a specific sensor."""
+        """Powers up a specific sensor and marks it as prepared."""
         power_commands = {
             "weight": "POWER_UP_WEIGHT",
             "height": "POWER_UP_HEIGHT", 
@@ -423,10 +485,11 @@ class SensorManager:
         if sensor_type in power_commands:
             self._send_command(power_commands[sensor_type])
             self.sensor_states[sensor_type] = "ACTIVE"
+            self.sensors_prepared[sensor_type] = True
             print(f"🔋 Powered up {sensor_type} sensor")
 
     def _power_down_sensor(self, sensor_type: str):
-        """Powers down a specific sensor."""
+        """Powers down a specific sensor but keeps it as prepared."""
         power_commands = {
             "weight": "POWER_DOWN_WEIGHT",
             "height": "POWER_DOWN_HEIGHT",
@@ -435,6 +498,7 @@ class SensorManager:
         }
         if sensor_type in power_commands:
             self._send_command(power_commands[sensor_type])
+            # Only change state if not complete
             if self.sensor_states[sensor_type] != "COMPLETE":
                 self.sensor_states[sensor_type] = "OFF"
             print(f"🔌 Powered down {sensor_type} sensor")
@@ -447,6 +511,8 @@ class SensorManager:
         self._send_command("SHUTDOWN_ALL")
         for sensor_type in self.sensor_states.keys():
             self.sensor_states[sensor_type] = "OFF"
+        for sensor_type in self.sensors_prepared.keys():
+            self.sensors_prepared[sensor_type] = False
         self.measurement_active = False
         self.current_phase = "IDLE"
         print("🔌 All sensors shut down")
@@ -475,7 +541,8 @@ class SensorManager:
             "auto_tare_completed": self.auto_tare_completed,
             "current_phase": self.current_phase,
             "measurement_active": self.measurement_active,
-            "sensor_states": self.sensor_states
+            "sensor_states": self.sensor_states,
+            "sensors_prepared": self.sensors_prepared
         }
 
     # --- Public Methods for API Routes ---
@@ -491,28 +558,27 @@ class SensorManager:
             "full_system_initialized": self.full_system_initialized,
             "weight_sensor_ready": self.weight_sensor_ready,
             "auto_tare_completed": self.auto_tare_completed,
-            "sensor_states": self.sensor_states
+            "sensor_states": self.sensor_states,
+            "sensors_prepared": self.sensors_prepared
         }
 
     def start_weight_measurement(self):
-        if not self.weight_sensor_ready:
+        if not self.weight_sensor_ready and not self.basic_mode:
             return {"status": "error", "message": "Weight sensor not initialized. Please wait."}
         return self._start_generic_measurement("WEIGHT", "START_WEIGHT", "weight")
 
     def get_weight_status(self):
         return {
-            "is_ready_for_measurement": self.weight_sensor_ready,
+            "is_ready_for_measurement": self.weight_sensor_ready or self.basic_mode,
             "status": self.current_measurement_status, 
             "weight": self.weight,
             "measurement_active": self.measurement_active,
             "sensor_ready": self.weight_sensor_ready,
-            "auto_tare_completed": self.auto_tare_completed
+            "auto_tare_completed": self.auto_tare_completed,
+            "sensor_prepared": self.sensors_prepared.get("weight", False)
         }
 
     def start_height_measurement(self):
-        # Height is manual, but good practice to have a guard
-        if not self.height_sensor_ready:
-            return {"status": "error", "message": "Height sensor not ready."}
         return self._start_generic_measurement("HEIGHT", "START_HEIGHT", "height")
 
     def get_height_status(self):
@@ -520,13 +586,12 @@ class SensorManager:
             "status": self.current_measurement_status, 
             "height": self.height,
             "measurement_active": self.measurement_active,
-            "sensor_ready": self.height_sensor_ready
+            "sensor_ready": self.height_sensor_ready,
+            "sensor_prepared": self.sensors_prepared.get("height", False)
         }
         
     def start_temperature_measurement(self):
-        # Prevent starting measurement if temperature is not in the valid range.
-        if self.live_temperature is None or self.live_temperature < self.min_valid_temperature:
-            return {"status": "error", "message": f"Cannot start: Temperature is below the valid threshold of {self.min_valid_temperature}°C."}
+        # Allow starting even if temperature is not valid yet - let the system handle it
         return self._start_generic_measurement("TEMP", "START_TEMP", "temperature")
 
     def get_temperature_status(self):
@@ -538,13 +603,12 @@ class SensorManager:
             "temperature": self.temperature,
             "live_temperature": self.live_temperature,
             "measurement_active": self.measurement_active,
-            "sensor_ready": self.temperature_sensor_ready
+            "sensor_ready": self.temperature_sensor_ready,
+            "sensor_prepared": self.sensors_prepared.get("temperature", False)
         }
 
     def start_max30102_measurement(self):
-        # Prevent starting measurement if a finger is not detected.
-        if not self.finger_detected:
-            return {"status": "error", "message": "Cannot start: Finger not detected on the sensor."}
+        # Allow starting even if finger not detected - let the system handle it
         return self._start_generic_measurement("HR", "START_HR", "max30102")
 
     def get_max30102_status(self):
@@ -557,7 +621,8 @@ class SensorManager:
             "respiratory_rate": self.respiratory_rate,
             "measurement_active": self.measurement_active,
             "live_samples": self.live_hr_samples,
-            "sensor_ready": self.hr_sensor_ready
+            "sensor_ready": self.hr_sensor_ready,
+            "sensor_prepared": self.sensors_prepared.get("max30102", False)
         }
 
     def get_measurements(self):
@@ -582,7 +647,7 @@ class SensorManager:
         self.live_temperature = None
         self.live_hr_samples = []
         
-        # Reset sensor states but keep readiness flags
+        # Reset sensor states but keep readiness flags and prepared status
         for sensor_type in self.sensor_states.keys():
             if self.sensor_states[sensor_type] == "COMPLETE":
                 self.sensor_states[sensor_type] = "OFF"
@@ -596,3 +661,25 @@ class SensorManager:
         self.disconnect()
         time.sleep(2)
         return self.connect()
+
+    # --- Individual sensor prepare/shutdown methods ---
+    
+    def prepare_weight_sensor(self):
+        """Prepares the weight sensor for measurement."""
+        self._power_up_sensor("weight")
+        return {"status": "success", "message": "Weight sensor prepared"}
+
+    def prepare_height_sensor(self):
+        """Prepares the height sensor for measurement."""
+        self._power_up_sensor("height")
+        return {"status": "success", "message": "Height sensor prepared"}
+
+    def prepare_temperature_sensor(self):
+        """Prepares the temperature sensor for measurement."""
+        self._power_up_sensor("temperature")
+        return {"status": "success", "message": "Temperature sensor prepared"}
+
+    def prepare_max30102_sensor(self):
+        """Prepares the MAX30102 sensor for measurement."""
+        self._power_up_sensor("max30102")
+        return {"status": "success", "message": "MAX30102 sensor prepared"}

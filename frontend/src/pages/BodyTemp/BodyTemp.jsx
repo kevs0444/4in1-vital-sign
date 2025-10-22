@@ -9,82 +9,127 @@ export default function BodyTemp() {
   const location = useLocation();
   const [temperature, setTemperature] = useState("");
   const [isVisible, setIsVisible] = useState(false);
-  const [isMeasuring, setIsMeasuring] = useState(false); // Tracks if backend is busy
+  const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurementComplete, setMeasurementComplete] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Initializing...");
   const [liveReading, setLiveReading] = useState("");
-  const [isReady, setIsReady] = useState(false); // Tracks if temp is valid for measurement
+  const [isReady, setIsReady] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   const pollerRef = useRef(null);
-  const measurementTimeout = useRef(null);
+  const autoStartRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
-    sensorAPI.prepareTemperature().then(() => {
-      startPolling(); // Start polling immediately on component mount
-    });
+    initializeTemperatureSensor();
 
     return () => {
       clearTimeout(timer);
-      stopPolling();
-      sensorAPI.shutdownTemperature();
+      stopMonitoring();
+      if (autoStartRef.current) clearTimeout(autoStartRef.current);
     };
   }, []);
 
-  const startPolling = () => {
-    stopPolling();
+  const initializeTemperatureSensor = async () => {
+    try {
+      setStatusMessage("Powering up temperature sensor...");
+      const prepareResult = await sensorAPI.prepareTemperature();
+      
+      if (prepareResult.error) {
+        setStatusMessage(`❌ ${prepareResult.error}`);
+        handleRetry();
+        return;
+      }
+      
+      setStatusMessage("Temperature sensor ready. Point at forehead...");
+      startMonitoring();
+      
+    } catch (error) {
+      console.error("Temperature initialization error:", error);
+      setStatusMessage("❌ Failed to initialize temperature sensor");
+      handleRetry();
+    }
+  };
 
+  const startMonitoring = () => {
+    stopMonitoring();
+    
     pollerRef.current = setInterval(async () => {
       try {
         const data = await sensorAPI.getTemperatureStatus();
+        console.log("Temperature status:", data);
+        
         setIsMeasuring(data.measurement_active);
         setIsReady(data.is_ready_for_measurement);
         
-        if (data.status && data.status.includes('TEMP_PROGRESS')) {
+        // Update live reading
+        if (data.live_temperature !== null && data.live_temperature !== undefined) {
+          setLiveReading(data.live_temperature.toFixed(1));
+          
+          // Auto-start measurement when temperature is valid and not already measuring
+          if (data.live_temperature >= data.ready_threshold && 
+              !data.measurement_active && 
+              !measurementComplete) {
+            setStatusMessage(`✅ Valid temperature detected (${data.live_temperature.toFixed(1)}°C). Starting measurement...`);
+            
+            // Clear any existing auto-start timeout
+            if (autoStartRef.current) clearTimeout(autoStartRef.current);
+            
+            // Start measurement after short delay
+            autoStartRef.current = setTimeout(() => {
+              startMeasurement();
+            }, 1000);
+          } else if (data.live_temperature < data.ready_threshold && !data.measurement_active) {
+            setStatusMessage(`Warming up... (${data.live_temperature.toFixed(1)}°C / ${data.ready_threshold}°C)`);
+          }
+        }
+
+        // Handle progress during active measurement
+        if (data.status && data.status.includes('temp_progress')) {
           const progressParts = data.status.split(':');
           const elapsed = parseInt(progressParts[1]);
           const total = parseInt(progressParts[2]);
           const progressPercent = (elapsed / total) * 100;
           setProgress(progressPercent);
-          setStatusMessage(`Measuring... ${elapsed}/${total}s`);
+          setStatusMessage(`Measuring temperature... ${total - elapsed}s`);
         }
         
-        if (data.live_temperature !== null && data.live_temperature !== undefined) {
-          setLiveReading(data.live_temperature.toFixed(1));
-        }
-
+        // Handle final result
         if (data.temperature !== null && data.temperature !== undefined) {
-          setTemperature(data.temperature.toFixed(1));
+          if (data.temperature >= 34.0 && data.temperature <= 42.0) {
+            // Valid temperature received
+            setTemperature(data.temperature.toFixed(1));
+            setMeasurementComplete(true);
+            setStatusMessage("✅ Temperature Measurement Complete!");
+            setProgress(100);
+            stopMonitoring();
+          } else {
+            // Invalid temperature, retry
+            setStatusMessage("❌ Invalid temperature reading, retrying...");
+            handleRetry();
+          }
         }
 
         // Handle status messages
         switch (data.status) {
-          case 'initializing':
-            setStatusMessage("Initializing sensor...");
-            break;
           case 'temp_measurement_started':
-            setStatusMessage("Measurement started...");
+            setStatusMessage("Measuring temperature...");
             break;
           case 'temp_measurement_complete':
-            setStatusMessage("Measurement Complete!");
-            setProgress(100);
-            setLiveReading("");
-            setMeasurementComplete(true);
-            stopPolling();
+            // Handled above with data.temperature check
             break;
           case 'error':
           case 'temp_reading_invalid':
-            setStatusMessage("❌ Measurement Failed. Please try again.");
-            stopPolling();
+            setStatusMessage("❌ Measurement failed, retrying...");
+            handleRetry();
             break;
           default:
-            // For idle states, guide the user
-            if (!data.measurement_active && !measurementComplete) {
-              if (data.live_temperature && data.live_temperature < data.ready_threshold) {
-                setStatusMessage(`Sensor is too cold (${data.live_temperature.toFixed(1)}°C). Please warm it up.`);
-              } else {
-                setStatusMessage("Place sensor near forehead to begin.");
+            // Show sensor status
+            if (data.sensor_prepared && !data.measurement_active && !measurementComplete) {
+              if (!data.live_temperature) {
+                setStatusMessage("Sensor active, waiting for reading...");
               }
             }
             break;
@@ -92,26 +137,53 @@ export default function BodyTemp() {
 
       } catch (error) {
         console.error("Error polling temperature status:", error);
-        setStatusMessage("❌ Connection Error");
-        setIsMeasuring(false);
-        stopPolling();
+        setStatusMessage("⚠️ Connection issue, retrying...");
       }
     }, 1000);
   };
 
-  const stopPolling = () => {
+  const startMeasurement = async () => {
+    try {
+      setStatusMessage("Starting temperature measurement...");
+      const response = await sensorAPI.startTemperature();
+      
+      if (response.error) {
+        setStatusMessage(`❌ ${response.error}`);
+        handleRetry();
+      } else {
+        setStatusMessage("Temperature measurement started...");
+      }
+    } catch (error) {
+      console.error("Start temperature error:", error);
+      setStatusMessage("❌ Failed to start measurement");
+      handleRetry();
+    }
+  };
+
+  const handleRetry = () => {
+    if (retryCount < MAX_RETRIES) {
+      setRetryCount(prev => prev + 1);
+      setStatusMessage(`🔄 Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+      
+      setTimeout(() => {
+        initializeTemperatureSensor();
+      }, 2000);
+    } else {
+      setStatusMessage("❌ Maximum retries reached. Please check the sensor.");
+    }
+  };
+
+  const stopMonitoring = () => {
     if (pollerRef.current) {
       clearInterval(pollerRef.current);
       pollerRef.current = null;
-    }
-    if (measurementTimeout.current) {
-      clearTimeout(measurementTimeout.current);
-      measurementTimeout.current = null;
     }
   };
 
   const handleContinue = () => {
     if (!measurementComplete || !temperature) return;
+    
+    stopMonitoring();
     
     navigate("/max30102", {
       state: { 
@@ -146,6 +218,11 @@ export default function BodyTemp() {
         <div className="bodytemp-header">
           <h1 className="bodytemp-title">Body Temperature</h1>
           <p className="bodytemp-subtitle">{statusMessage}</p>
+          {retryCount > 0 && (
+            <div className="retry-indicator">
+              Retry attempt: {retryCount}/{MAX_RETRIES}
+            </div>
+          )}
           {isMeasuring && progress > 0 && (
             <div className="measurement-progress">
               <div className="progress-bar-horizontal">
@@ -174,24 +251,23 @@ export default function BodyTemp() {
                 <span className={`measurement-status ${statusInfo.class}`}>
                   {statusInfo.text}
                 </span>
+                {liveReading && !measurementComplete && (
+                  <div className="live-indicator">Live Reading</div>
+                )}
               </div>
             </div>
           </div>
-          
-          {/* Live measurement indicator */}
-          {isMeasuring && liveReading && (
-            <div className="live-measurement-indicator">
-              <div className="pulse-ring"></div>
-              <span>Live Reading: {liveReading}°C</span>
-            </div>
-          )}
         </div>
 
         <div className="measurement-controls">
           {!isMeasuring && !measurementComplete && (
             <div className="waiting-prompt">
               <div className="spinner"></div>
-              <span>Waiting for valid temperature...</span>
+              <span>
+                {liveReading && liveReading < 34.0 
+                  ? `Point sensor at forehead (${liveReading}°C)` 
+                  : "Waiting for valid temperature..."}
+              </span>
             </div>
           )}
           {measurementComplete && (

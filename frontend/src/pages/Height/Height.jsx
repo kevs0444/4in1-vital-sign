@@ -9,29 +9,58 @@ export default function Height() {
   const location = useLocation();
   const [height, setHeight] = useState("");
   const [isVisible, setIsVisible] = useState(false);
-  const [isMeasuring, setIsMeasuring] = useState(false); // Tracks if backend is busy
+  const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurementComplete, setMeasurementComplete] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Initializing...");
   const [progress, setProgress] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   const pollerId = useRef(null);
-  const measurementTimeout = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
-    // Power up the sensor, then start polling for auto-measurement
-    sensorAPI.prepareHeight().then(async () => {
-      await sensorAPI.startHeight(); // Immediately try to start the measurement
-      pollHeightStatus();
-    });
+    startMeasurementProcess();
 
     return () => {
       clearTimeout(timer);
       if (pollerId.current) clearInterval(pollerId.current);
-      if (measurementTimeout.current) clearTimeout(measurementTimeout.current);
-      sensorAPI.shutdownHeight();
     };
   }, []);
+
+  const startMeasurementProcess = async () => {
+    try {
+      setStatusMessage("Starting height measurement...");
+      const response = await sensorAPI.startHeight();
+      
+      if (response.error) {
+        setStatusMessage(`❌ ${response.error}`);
+        handleRetry();
+        return;
+      }
+      
+      setStatusMessage("Please stand under the sensor.");
+      pollHeightStatus();
+      
+    } catch (error) {
+      console.error("Start height error:", error);
+      setStatusMessage("❌ Failed to start measurement");
+      handleRetry();
+    }
+  };
+
+  const handleRetry = () => {
+    if (retryCount < MAX_RETRIES) {
+      setRetryCount(prev => prev + 1);
+      setStatusMessage(`🔄 Retrying measurement... (${retryCount + 1}/${MAX_RETRIES})`);
+      
+      setTimeout(() => {
+        startMeasurementProcess();
+      }, 2000);
+    } else {
+      setStatusMessage("❌ Maximum retries reached. Please check the sensor.");
+    }
+  };
 
   const convertToFeetInches = (cm) => {
     if (!cm || cm === "--.--") return "--'--\"";
@@ -42,20 +71,28 @@ export default function Height() {
   };
 
   const pollHeightStatus = () => {
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 3;
+
     pollerId.current = setInterval(async () => {
       try {
         const data = await sensorAPI.getHeightStatus();
         console.log("Height status:", data);
         
+        consecutiveErrors = 0; // Reset error counter
+        
+        setIsMeasuring(data.measurement_active);
+
         // Handle progress updates
-        if (data.status && data.status.includes('HEIGHT_PROGRESS')) {
+        if (data.status && data.status.includes('height_progress')) {
           const progressParts = data.status.split(':');
-          if (progressParts.length >= 3) {
-            const elapsed = parseInt(progressParts[1]);
-            const total = parseInt(progressParts[2]);
+          const progressValues = progressParts[1].split('/');
+          if (progressValues.length === 2) {
+            const elapsed = parseInt(progressValues[0]);
+            const total = parseInt(progressValues[1]);
             const progressPercent = (elapsed / total) * 100;
             setProgress(progressPercent);
-            setStatusMessage(`Measuring height... ${elapsed}/${total}s`);
+            setStatusMessage(`Measuring... Please stand still (${total - elapsed}s)`);
           }
         }
         
@@ -65,59 +102,79 @@ export default function Height() {
             setStatusMessage("Initializing sensor...");
             break;
           case 'height_measurement_started':
-            setStatusMessage("Please stand under the sensor and stay still.");
-            break;
-          case 'height_measuring':
-            setStatusMessage("Measuring height... Please stand still.");
+            setStatusMessage("Please stand under the sensor.");
+            setProgress(0);
             break;
           case 'height_measurement_complete':
-            setStatusMessage("Height Measurement Complete!");
-            setProgress(100);
-            if (data.height) {
+            if (data.height && data.height > 100 && data.height < 220) {
+              // Valid height received
               setHeight(data.height.toFixed(1));
               setMeasurementComplete(true);
+              setStatusMessage("✅ Height Measurement Complete!");
+              setProgress(100);
               clearInterval(pollerId.current);
+              
+              setTimeout(() => {
+                sensorAPI.shutdownHeight();
+              }, 1000);
+            } else {
+              // Invalid height, retry
+              setStatusMessage("❌ Invalid height reading, retrying...");
+              handleRetry();
             }
             break;
           case 'error':
           case 'height_reading_failed':
-            setStatusMessage("❌ Height Measurement Failed! Please try again.");
+          case 'height_reading_out_of_range':
+            setStatusMessage("❌ Measurement failed, retrying...");
+            setIsMeasuring(false);
             clearInterval(pollerId.current);
+            handleRetry();
             break;
           default:
-            // For idle states, guide the user
-            if (!data.measurement_active && !measurementComplete) {
-              setStatusMessage("Please stand under the sensor to begin.");
-            } else if (data.measurement_active) {
-              setStatusMessage("Measuring... Please stand still.");
+            if (data.measurement_active && !data.status.includes('height_progress')) {
+              setStatusMessage("Waiting for user detection...");
+              setProgress(0);
             }
             break;
         }
 
-        // Direct result check - this is the most important part
-        if (data.height && data.height > 0 && !measurementComplete) {
-          console.log("Height result received:", data.height);
+        // Check for height result directly
+        if (data.height && data.height > 100 && data.height < 220 && !measurementComplete) {
           setHeight(data.height.toFixed(1));
           setMeasurementComplete(true);
-          setStatusMessage("Height Measurement Complete!");
+          setStatusMessage("✅ Height Measurement Complete!");
           setProgress(100);
           clearInterval(pollerId.current);
+          
+          setTimeout(() => {
+            sensorAPI.shutdownHeight();
+          }, 1000);
         }
 
-        setIsMeasuring(data.measurement_active);
       } catch (error) {
         console.error("Error polling height status:", error);
-        setStatusMessage("❌ Connection Error");
-        setIsMeasuring(false);
-        clearInterval(pollerId.current);
+        consecutiveErrors++;
+        
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          setStatusMessage("❌ Connection issues, retrying...");
+          clearInterval(pollerId.current);
+          handleRetry();
+        } else {
+          setStatusMessage("⚠️ Temporary connection issue...");
+        }
       }
-    }, 800);
+    }, 1000);
   };
 
   const handleContinue = () => {
     if (!measurementComplete || !height) {
       alert("Please complete the height measurement first.");
       return;
+    }
+    
+    if (pollerId.current) {
+      clearInterval(pollerId.current);
     }
     
     navigate("/bodytemp", { 
@@ -128,16 +185,6 @@ export default function Height() {
       } 
     });
   };
-
-  const getHeightStatus = (height) => {
-    if (!height || height === "--.--") return { text: "Not measured", class: "default" };
-    const heightValue = parseFloat(height);
-    if (heightValue < 100) return { text: "Very Short", class: "low" };
-    if (heightValue > 200) return { text: "Very Tall", class: "high" };
-    return { text: "Normal", class: "normal" };
-  };
-
-  const statusInfo = getHeightStatus(height);
 
   return (
     <div className="height-container">
@@ -152,6 +199,11 @@ export default function Height() {
         <div className="height-header">
           <h1 className="height-title">Height Measurement</h1>
           <p className="height-subtitle">{statusMessage}</p>
+          {retryCount > 0 && (
+            <div className="retry-indicator">
+              Retry attempt: {retryCount}/{MAX_RETRIES}
+            </div>
+          )}
           {isMeasuring && progress > 0 && (
             <div className="measurement-progress">
               <div className="progress-bar-horizontal">
@@ -179,7 +231,7 @@ export default function Height() {
                   <div className="pulse-dot"></div>
                   <span className="measuring-text">Measuring...</span>
                 </div>
-              ) : measurementComplete ? (
+              ) : measurementComplete && height ? (
                 <div className="height-result">
                   <span className="height-number">{height}</span>
                   <span className="height-unit">cm</span>
@@ -198,20 +250,19 @@ export default function Height() {
         </div>
 
         <div className="measurement-controls">
-          {!isMeasuring && !measurementComplete && (
+          {!isMeasuring && !measurementComplete && statusMessage.includes("Waiting") && (
             <div className="waiting-prompt">
               <div className="spinner"></div>
               <span>Waiting for user...</span>
             </div>
           )}
-          {/* The "Measure Again" button has been removed to enforce a one-time measurement per phase. */}
         </div>
 
         <div className="continue-button-container">
           <button 
             className="continue-button" 
             onClick={handleContinue} 
-            disabled={!measurementComplete}
+            disabled={!measurementComplete || !height}
           >
             Continue to Temperature
           </button>

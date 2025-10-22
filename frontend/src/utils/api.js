@@ -6,10 +6,9 @@ const API_URL = "http://127.0.0.1:5000/api";
 export const sensorAPI = {
   // ==================== CONNECTION & GENERAL ====================
   
-  // Connect to Arduino - CORRECTED
+  // Connect to Arduino
   connect: async () => {
     try {
-      // This function no longer sends a port number in the body.
       const response = await fetch(`${API_URL}/sensor/connect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,7 +46,6 @@ export const sensorAPI = {
       return await response.json();
     } catch (error) {
       console.error('Error getting system status:', error);
-      // Return a default error state that the frontend can interpret
       return { connected: false, connection_established: false, sensors_ready: {} };
     }
   },
@@ -66,24 +64,33 @@ export const sensorAPI = {
     }
   },
 
-  // Generic prepare/shutdown functions
+  // Generic prepare/shutdown functions - FIXED to return promises
   _prepareSensor: async (sensorName) => {
     try {
-      await fetch(`${API_URL}/sensor/${sensorName}/prepare`, { method: 'POST' });
+      const response = await fetch(`${API_URL}/sensor/${sensorName}/prepare`, { 
+        method: 'POST' 
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
     } catch (error) {
       console.error(`Error preparing ${sensorName} sensor:`, error);
+      return { error: `Failed to prepare ${sensorName} sensor` };
     }
   },
 
   _shutdownSensor: async (sensorName) => {
     try {
-      await fetch(`${API_URL}/sensor/${sensorName}/shutdown`, { method: 'POST' });
+      const response = await fetch(`${API_URL}/sensor/${sensorName}/shutdown`, { 
+        method: 'POST' 
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
     } catch (error) {
       console.error(`Error shutting down ${sensorName} sensor:`, error);
+      return { error: `Failed to shutdown ${sensorName} sensor` };
     }
   },
 
-  // ... (All other API functions like startWeight, getStatus, etc., remain unchanged)
   // ==================== WEIGHT SENSOR ====================
   startWeight: async () => {
     try {

@@ -12,12 +12,14 @@
     "@testing-library/user-event": "^13.5.0",
     "bootstrap": "^5.3.8",
     "framer-motion": "^12.23.22",
+    "node-thermal-printer": "^4.5.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.1",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3",
     "react-scripts": "5.0.1",
+    "thermal-printer": "^1.0.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

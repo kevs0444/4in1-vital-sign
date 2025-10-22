@@ -1,5 +1,5 @@
-// Share.jsx - Focused on Receipt Testing
-import React, { useState, useEffect } from "react";
+// Share.jsx - Custom Print Dialog UI
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Share.css";
 import shareIcon from "../../assets/icons/share-icon.png";
@@ -13,6 +13,8 @@ export default function Share() {
   const [userData, setUserData] = useState({});
   const [printerStatus, setPrinterStatus] = useState("checking");
   const [testLog, setTestLog] = useState([]);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [copies, setCopies] = useState(1);
 
   useEffect(() => {
     // Get all collected data from location state
@@ -23,6 +25,8 @@ export default function Share() {
     // Animation trigger
     const timer = setTimeout(() => {
       setIsVisible(true);
+      // Show custom print dialog after animation
+      setTimeout(() => setShowPrintDialog(true), 500);
     }, 100);
 
     // Check printer status
@@ -41,20 +45,17 @@ export default function Share() {
     setPrinterStatus("checking");
     
     try {
-      // Simulate printer detection
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // For testing, we'll randomly set printer status
-      const isOnline = Math.random() > 0.3; // 70% chance online
+      const isOnline = Math.random() > 0.1; // 90% chance online
       
       if (isOnline) {
         setPrinterStatus("online");
-        addToLog("✓ Thermal printer detected: FlashLabel 58MM");
+        addToLog("✓ Thermal printer detected: USB001");
         addToLog("✓ Printer is online and ready");
       } else {
         setPrinterStatus("offline");
         addToLog("✗ Thermal printer not detected");
-        addToLog("⚠ Please check printer connection");
       }
     } catch (error) {
       setPrinterStatus("offline");
@@ -78,45 +79,41 @@ export default function Share() {
   const generateReceiptContent = () => {
     const bmi = calculateBMI();
     const bmiCategory = bmi ? getBMICategory(parseFloat(bmi)) : "N/A";
-    const currentDate = new Date().toLocaleDateString();
-    const currentTime = new Date().toLocaleTimeString();
+    const currentDate = new Date().toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+    const currentTime = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
 
     return `
-================================
-    VITAL SIGN HEALTH REPORT
-================================
+ HEALTH REPORT
+===============
+${userData.firstName || 'Patient'} ${userData.lastName || ''}
+Age: ${userData.age || '--'} | ${userData.sex === 'male' ? 'M' : 'F'}
+${currentDate} ${currentTime}
 
-Patient: ${userData.firstName || 'Test'} ${userData.lastName || 'User'}
-Age: ${userData.age || '--'} years | Sex: ${userData.sex === 'male' ? 'M' : 'F'}
-Date: ${currentDate}
-Time: ${currentTime}
-
---------------------------------
-         VITAL SIGNS
---------------------------------
+VITAL SIGNS
+-----------
 Weight: ${userData.weight || '--'} kg
 Height: ${userData.height || '--'} cm
 BMI: ${bmi || '--'} (${bmiCategory})
 
-Temperature: ${userData.temperature || '--'} °C
-Heart Rate: ${userData.heartRate || '--'} BPM
-Blood Oxygen: ${userData.spo2 || '--'} %
-Respiratory Rate: ${userData.respiratoryRate || '--'}/min
+Temp: ${userData.temperature || '--'}°C
+Heart: ${userData.heartRate || '--'} BPM
+Oxygen: ${userData.spo2 || '--'}%
+Resp Rate: ${userData.respiratoryRate || '--'}/min
 
---------------------------------
-    HEALTH STATUS SUMMARY
---------------------------------
+HEALTH SUMMARY
+--------------
 ${generateHealthStatusSummary()}
 
-================================
-   FOUR-IN-ONE VITAL SENSOR
-    Automated Health Check
-================================
-
+Automated Health Check
 Thank you for using our service!
-For medical advice, please consult
-a healthcare professional.
-
 `.trim();
   };
 
@@ -124,88 +121,75 @@ a healthcare professional.
     const summaries = [];
     
     if (userData.heartRate) {
-      if (userData.heartRate < 60) summaries.push("• Heart rate: Low (Bradycardia)");
-      else if (userData.heartRate > 100) summaries.push("• Heart rate: High (Tachycardia)");
-      else summaries.push("• Heart rate: Normal");
+      if (userData.heartRate < 60) summaries.push("• Bradycardia");
+      else if (userData.heartRate > 100) summaries.push("• Tachycardia");
+      else summaries.push("• Normal HR");
     }
     
     if (userData.spo2) {
-      if (userData.spo2 < 95) summaries.push("• Oxygen: Low (Hypoxemia)");
-      else summaries.push("• Oxygen: Normal");
+      if (userData.spo2 < 95) summaries.push("• Low Oxygen");
+      else summaries.push("• Normal O2");
     }
     
     if (userData.temperature) {
-      if (userData.temperature > 37.5) summaries.push("• Temperature: Fever");
-      else if (userData.temperature < 36.1) summaries.push("• Temperature: Low");
-      else summaries.push("• Temperature: Normal");
+      if (userData.temperature > 37.5) summaries.push("• Fever");
+      else if (userData.temperature < 36.1) summaries.push("• Low Temp");
+      else summaries.push("• Normal Temp");
     }
     
     const bmi = calculateBMI();
     if (bmi) {
-      summaries.push(`• BMI: ${getBMICategory(parseFloat(bmi))}`);
+      summaries.push(`• ${getBMICategory(parseFloat(bmi))}`);
     }
     
-    return summaries.length > 0 ? summaries.join('\n') : "• Complete measurements for analysis";
+    return summaries.length > 0 ? summaries.join('\n') : "Complete measurements for analysis";
   };
 
-  const testPrint = async () => {
-    addToLog("Starting test print...");
-    
-    try {
-      // Simulate test print process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      addToLog("✓ Test print command sent");
-      addToLog("✓ Printer responded successfully");
-      addToLog("✓ Test print completed");
-      
-    } catch (error) {
-      addToLog("✗ Test print failed");
-      addToLog(`Error: ${error.message}`);
-    }
-  };
-
-  const simulatePrintReceipt = async () => {
+  const handlePrint = async () => {
     if (printerStatus !== "online") {
       addToLog("⚠ Cannot print: Printer is offline");
       alert("Printer is offline. Please check connection and try again.");
       return;
     }
 
+    setShowPrintDialog(false);
     setIsPrinting(true);
-    addToLog("Starting receipt printing...");
-    
+    addToLog(`Starting print job - ${copies} copies`);
+
     try {
-      const receiptContent = generateReceiptContent();
-      addToLog("✓ Receipt content generated");
-      addToLog("✓ Sending to thermal printer...");
-      
-      // Simulate printing process steps
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      addToLog("✓ Printer initialized");
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      addToLog("✓ Printing header...");
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      addToLog("✓ Printing vital signs data...");
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      addToLog("✓ Printing health summary...");
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      addToLog("✓ Receipt printed successfully!");
-      
+      for (let i = 0; i < copies; i++) {
+        addToLog(`Printing copy ${i + 1} of ${copies}...`);
+        await simulatePrintProcess();
+        
+        if (i < copies - 1) {
+          addToLog("✓ Copy completed, starting next...");
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      addToLog("✅ All copies printed successfully!");
       setIsPrinting(false);
       setPrintComplete(true);
-      
+
     } catch (error) {
       console.error("Printing error:", error);
-      addToLog("✗ Printing failed");
-      addToLog(`Error: ${error.message}`);
+      addToLog("❌ Printing failed");
       setIsPrinting(false);
-      alert("Printing failed. Please try again.");
+      setShowPrintDialog(true); // Re-open dialog on error
     }
+  };
+
+  const simulatePrintProcess = async () => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    addToLog("✓ Printer initialized");
+    
+    await new Promise(resolve => setTimeout(resolve, 800));
+    addToLog("✓ Sending data to USB001...");
+    
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    addToLog("✓ Printing completed");
+    
+    return true;
   };
 
   const handleBack = () => {
@@ -213,43 +197,38 @@ a healthcare professional.
   };
 
   const handleReturnHome = () => {
-    // Redirect to localhost:3000 for testing
     window.location.href = "http://localhost:3000";
   };
 
   const handleRetry = () => {
     setPrintComplete(false);
     setTestLog([]);
+    setShowPrintDialog(true);
     checkPrinterStatus();
   };
 
-  const getStatusMessage = () => {
-    if (isPrinting) return "Printing in progress...";
-    if (printComplete) return "Receipt printed successfully!";
-    return "Thermal Receipt Printer Test";
+  const incrementCopies = () => {
+    if (copies < 5) setCopies(copies + 1);
+  };
+
+  const decrementCopies = () => {
+    if (copies > 1) setCopies(copies - 1);
   };
 
   return (
     <div className="share-container">
       <div className={`share-content ${isVisible ? 'visible' : ''}`}>
         
-        {/* Testing Phase Banner */}
-        <div className="testing-banner">
-          <div className="banner-icon">🧪</div>
-          <div className="banner-text">TESTING PHASE - Thermal Printer Integration</div>
-        </div>
-
         {/* Header */}
         <div className="share-header">
           <div className="share-icon">
             <img src={shareIcon} alt="Receipt Printer" />
           </div>
-          <h1 className="share-title">
-            {isPrinting ? "Printing..." : 
-             printComplete ? "Success!" : "Receipt Printer"}
-          </h1>
+          <h1 className="share-title">Print Health Report</h1>
           <p className="share-subtitle">
-            {getStatusMessage()}
+            {isPrinting ? "Printing in progress..." : 
+             printComplete ? "Print completed successfully!" : 
+             "Ready to print your health report"}
           </p>
         </div>
 
@@ -260,24 +239,81 @@ a healthcare professional.
              printerStatus === 'checking' ? '🖨️ ⏳' : '🖨️ ❌'}
           </div>
           <div className="printer-text">
-            {printerStatus === 'online' && "Thermal Printer: ONLINE"}
+            {printerStatus === 'online' && "Thermal Printer USB001: Ready"}
             {printerStatus === 'checking' && "Checking printer status..."}
-            {printerStatus === 'offline' && "Thermal Printer: OFFLINE"}
+            {printerStatus === 'offline' && "Printer Offline - Check Connection"}
           </div>
         </div>
 
-        {/* Receipt Preview */}
-        <div className="receipt-preview">
-          <div className="receipt-preview-content">
-            <h4>Receipt Preview (58MM Thermal)</h4>
-            <div className="receipt-content">
-              <pre>{generateReceiptContent()}</pre>
+        {/* Custom Print Dialog */}
+        {showPrintDialog && !isPrinting && !printComplete && (
+          <div className="print-dialog">
+            <div className="dialog-header">
+              <h3>Print Health Report</h3>
+              <p>Configure your print settings</p>
             </div>
-            <p className="receipt-notice">
-              This preview shows how the receipt will appear on 58MM thermal paper
-            </p>
+
+            <div className="dialog-content">
+              {/* Printer Selection */}
+              <div className="setting-group">
+                <label className="setting-label">Printer</label>
+                <div className="printer-selection">
+                  <div className="printer-option active">
+                    <span className="printer-name">USB001 Thermal Printer</span>
+                    <span className="printer-status-badge online">Online</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Copies Selection */}
+              <div className="setting-group">
+                <label className="setting-label">Copies</label>
+                <div className="copies-selector">
+                  <button className="counter-btn" onClick={decrementCopies}>-</button>
+                  <span className="copies-count">{copies}</span>
+                  <button className="counter-btn" onClick={incrementCopies}>+</button>
+                </div>
+              </div>
+
+              {/* Paper Settings */}
+              <div className="setting-group">
+                <label className="setting-label">Paper Settings</label>
+                <div className="paper-settings">
+                  <div className="paper-option">
+                    <span className="paper-type">58mm Thermal Paper</span>
+                    <span className="paper-size">Portrait</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Receipt Preview */}
+              <div className="setting-group">
+                <label className="setting-label">Preview</label>
+                <div className="receipt-preview-small">
+                  <div className="preview-content">
+                    <pre>{generateReceiptContent().split('\n').slice(0, 8).join('\n')}...</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="dialog-actions">
+              <button 
+                className="dialog-btn secondary"
+                onClick={handleBack}
+              >
+                Cancel
+              </button>
+              <button 
+                className="dialog-btn primary"
+                onClick={handlePrint}
+                disabled={printerStatus !== "online"}
+              >
+                🖨️ Print Now
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Printing Animation */}
         {isPrinting && (
@@ -288,7 +324,7 @@ a healthcare professional.
                 <div className="ring-progress"></div>
               </div>
               <div className="printing-status">
-                <span className="status-text">Printing Receipt...</span>
+                <span className="status-text">Printing {copies} {copies === 1 ? 'copy' : 'copies'}...</span>
                 <span className="status-subtext">
                   Please wait while we print your health report
                 </span>
@@ -310,8 +346,8 @@ a healthcare professional.
             <div className="complete-message">
               <h3>Print Successful!</h3>
               <p>
-                Your health report has been printed on thermal paper.
-                Please collect your receipt.
+                Your health report has been printed successfully. 
+                {copies > 1 && ` ${copies} copies were printed.`}
               </p>
             </div>
           </div>
@@ -320,7 +356,7 @@ a healthcare professional.
         {/* Test Results Log */}
         {(testLog.length > 0) && (
           <div className="test-results">
-            <h4>Printer Test Log</h4>
+            <h4>Print Log</h4>
             <div className="test-log">
               <pre>{testLog.join('\n')}</pre>
             </div>
@@ -329,66 +365,23 @@ a healthcare professional.
 
         {/* Action Buttons */}
         <div className="action-buttons">
-          {!isPrinting && !printComplete && (
-            <>
-              <button 
-                className="back-button"
-                onClick={handleBack}
-              >
-                ← Back
-              </button>
-              
-              <button 
-                className="test-button"
-                onClick={testPrint}
-                disabled={printerStatus === "checking"}
-              >
-                Test Printer
-              </button>
-              
-              <button 
-                className="print-button"
-                onClick={simulatePrintReceipt}
-                disabled={printerStatus !== "online"}
-              >
-                🖨️ Print Receipt
-              </button>
-
-              <button 
-                className="return-home-button"
-                onClick={handleReturnHome}
-              >
-                Return to Home
-              </button>
-            </>
-          )}
-          
           {printComplete && (
             <>
               <button 
                 className="retry-button"
                 onClick={handleRetry}
               >
-                Print Another
+                🖨️ Print Again
               </button>
               
               <button 
                 className="return-home-button"
                 onClick={handleReturnHome}
               >
-                ✅ Return to Home
+                🏠 Return to Home
               </button>
             </>
           )}
-        </div>
-
-        {/* Testing Instructions */}
-        <div className="system-notice">
-          <div className="system-icon">💡</div>
-          <div className="system-text">
-            <strong>Testing Instructions</strong>
-            <span>1. Click "Test Printer" to check connection • 2. Click "Print Receipt" to generate thermal print • 3. Use "Return to Home" to go back to localhost:3000</span>
-          </div>
         </div>
       </div>
     </div>
