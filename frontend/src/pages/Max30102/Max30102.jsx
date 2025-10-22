@@ -1,34 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Line } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
 import "./Max30102.css";
 import heartRateIcon from "../../assets/icons/heart-rate-icon.png";
 import spo2Icon from "../../assets/icons/spo2-icon.png";
 import respiratoryIcon from "../../assets/icons/respiratory-icon.png";
 import { sensorAPI } from "../../utils/api";
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
 
 export default function Max30102() {
   const navigate = useNavigate();
@@ -48,57 +24,15 @@ export default function Max30102() {
   const [retryCount, setRetryCount] = useState(0);
   const [sensorReady, setSensorReady] = useState(false);
   
-  // Combined chart data for all three measurements
-  const [chartData, setChartData] = useState({
-    labels: Array.from({length: 12}, (_, i) => `${(i + 1) * 5}s`), // 5s, 10s, 15s...60s
-    datasets: [
-      {
-        label: 'Heart Rate (BPM)',
-        data: Array(12).fill(null),
-        borderColor: '#dc3545',
-        backgroundColor: 'rgba(220, 53, 69, 0.1)',
-        borderWidth: 3,
-        fill: false,
-        tension: 0.4,
-        pointBackgroundColor: '#dc3545',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        yAxisID: 'y',
-      },
-      {
-        label: 'SpO₂ (%)',
-        data: Array(12).fill(null),
-        borderColor: '#2196F3',
-        backgroundColor: 'rgba(33, 150, 243, 0.1)',
-        borderWidth: 3,
-        fill: false,
-        tension: 0.4,
-        pointBackgroundColor: '#2196F3',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        yAxisID: 'y1',
-      },
-      {
-        label: 'Respiratory Rate',
-        data: Array(12).fill(null),
-        borderColor: '#28a745',
-        backgroundColor: 'rgba(40, 167, 69, 0.1)',
-        borderWidth: 3,
-        fill: false,
-        tension: 0.4,
-        pointBackgroundColor: '#28a745',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        yAxisID: 'y2',
-      }
-    ]
-  });
+  // 5-second average data for 60 seconds (12 blocks)
+  const [fiveSecondAverages, setFiveSecondAverages] = useState(
+    Array(12).fill().map(() => ({
+      heartRate: null,
+      spo2: null,
+      respiratoryRate: null,
+      timeIndex: 0
+    }))
+  );
 
   const pollerRef = useRef(null);
   const fingerCheckRef = useRef(null);
@@ -204,7 +138,7 @@ export default function Max30102() {
           setStatusMessage(`📊 Measuring... ${60 - elapsed}s remaining`);
         }
         
-        // Update current measurements
+        // Update current measurements in real-time
         if (data.heart_rate !== null && data.heart_rate !== undefined && data.heart_rate > 0) {
           setMeasurements(prev => ({ ...prev, heartRate: Math.round(data.heart_rate) }));
         }
@@ -235,21 +169,29 @@ export default function Max30102() {
         console.error("Error polling MAX30102 status:", error);
         setStatusMessage("⚠️ Connection issue, retrying...");
       }
-    }, 1500);
+    }, 1000);
   };
 
   const startMeasurement = async () => {
     try {
       setStatusMessage("🎬 Starting 60-second vital signs monitoring...");
       
-      // Reset chart data
-      setChartData(prev => ({
-        ...prev,
-        datasets: prev.datasets.map(dataset => ({
-          ...dataset,
-          data: Array(12).fill(null)
+      // Reset 5-second averages
+      setFiveSecondAverages(
+        Array(12).fill().map(() => ({
+          heartRate: null,
+          spo2: null,
+          respiratoryRate: null,
+          timeIndex: 0
         }))
-      }));
+      );
+      
+      // Reset measurements
+      setMeasurements({
+        heartRate: "--",
+        spo2: "--.-",
+        respiratoryRate: "--"
+      });
       
       const response = await sensorAPI.startMax30102();
       
@@ -270,29 +212,61 @@ export default function Max30102() {
     }
   };
 
-  // Listen for combined vital signs data
+  // Listen for real-time vital signs data and 5-second averages
   useEffect(() => {
     const handleSerialData = (event) => {
-      if (event.detail && event.detail.data && event.detail.data.includes('DATA:VITAL_SIGNS:')) {
-        const dataString = event.detail.data.replace('DATA:VITAL_SIGNS:', '');
-        const [hr, spo2, rr, timeIndex, elapsed] = dataString.split(':').map(Number);
+      if (event.detail && event.detail.data) {
+        const data = event.detail.data;
         
-        const dataPointIndex = Math.floor(timeIndex / 5) - 1;
-        
-        if (dataPointIndex >= 0 && dataPointIndex < 12) {
-          setChartData(prev => {
-            const newDatasets = [...prev.datasets];
-            newDatasets[0].data[dataPointIndex] = hr > 0 ? hr : null;
-            newDatasets[1].data[dataPointIndex] = spo2 > 0 ? spo2 : null;
-            newDatasets[2].data[dataPointIndex] = rr > 0 ? rr : null;
-            
-            return {
-              ...prev,
-              datasets: newDatasets
-            };
-          });
+        // Handle real-time data
+        if (data.includes('DATA:VITAL_SIGNS:')) {
+          const dataString = data.replace('DATA:VITAL_SIGNS:', '');
+          const parts = dataString.split(':');
+          const hr = parseFloat(parts[0]);
+          const spo2 = parseFloat(parts[1]);
+          const rr = parseFloat(parts[2]);
+          const timeIndex = parseInt(parts[3]);
           
-          console.log(`Updated chart at ${timeIndex}s: HR=${hr}, SpO2=${spo2}, RR=${rr}`);
+          // Update current measurements display
+          if (hr > 0) {
+            setMeasurements(prev => ({ ...prev, heartRate: Math.round(hr) }));
+          }
+          if (spo2 > 0) {
+            setMeasurements(prev => ({ ...prev, spo2: spo2.toFixed(1) }));
+          }
+          if (rr > 0) {
+            setMeasurements(prev => ({ ...prev, respiratoryRate: Math.round(rr) }));
+          }
+          
+          console.log(`Real-time update at ${timeIndex}s: HR=${hr}, SpO2=${spo2}, RR=${rr}`);
+        }
+        
+        // Handle 5-second average data
+        else if (data.includes('DATA:5SEC_AVERAGE:')) {
+          const dataString = data.replace('DATA:5SEC_AVERAGE:', '');
+          const parts = dataString.split(':');
+          const hr = parseFloat(parts[0]);
+          const spo2 = parseFloat(parts[1]);
+          const rr = parseFloat(parts[2]);
+          const timeIndex = parseInt(parts[3]);
+          
+          // Update 5-second averages (12 blocks for 60 seconds)
+          const blockIndex = Math.floor(timeIndex / 5) - 1;
+          
+          if (blockIndex >= 0 && blockIndex < 12) {
+            setFiveSecondAverages(prev => {
+              const newAverages = [...prev];
+              newAverages[blockIndex] = {
+                heartRate: hr > 0 ? hr : null,
+                spo2: spo2 > 0 ? spo2 : null,
+                respiratoryRate: rr > 0 ? rr : null,
+                timeIndex: timeIndex
+              };
+              return newAverages;
+            });
+            
+            console.log(`5-second average at ${timeIndex}s: HR=${hr}, SpO2=${spo2}, RR=${rr}`);
+          }
         }
       }
     };
@@ -339,7 +313,9 @@ export default function Max30102() {
       heartRate: parseFloat(measurements.heartRate),
       spo2: parseFloat(measurements.spo2),
       respiratoryRate: parseInt(measurements.respiratoryRate),
-      measurementTimestamp: new Date().toISOString()
+      measurementTimestamp: new Date().toISOString(),
+      // Include 5-second averages for detailed analysis
+      fiveSecondAverages: fiveSecondAverages
     };
     
     navigate("/ai-loading", { state: finalData });
@@ -387,127 +363,47 @@ export default function Max30102() {
     }
   };
 
-  // Combined chart configuration
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: 'index',
-      intersect: false,
-    },
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        labels: {
-          usePointStyle: true,
-          padding: 15,
-          font: {
-            size: 11,
-            weight: '600'
-          }
-        }
-      },
-      tooltip: {
-        mode: 'index',
-        intersect: false,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleFont: {
-          size: 12,
-        },
-        bodyFont: {
-          size: 11,
-        },
-        padding: 10,
-      },
-      title: {
-        display: true,
-        text: '60-Second Vital Signs Monitoring',
-        font: {
-          size: 14,
-          weight: 'bold'
-        },
-        padding: 10
-      }
-    },
-    scales: {
-      x: {
-        display: true,
-        title: {
-          display: true,
-          text: 'Time (seconds)',
-          font: {
-            size: 11,
-            weight: '600'
-          }
-        },
-        grid: {
-          display: true,
-          color: 'rgba(0, 0, 0, 0.05)',
-        },
-        ticks: {
-          maxTicksLimit: 12,
-          font: {
-            size: 9,
-          },
-        },
-      },
-      y: {
-        type: 'linear',
-        display: true,
-        position: 'left',
-        title: {
-          display: true,
-          text: 'Heart Rate (BPM)',
-          font: {
-            size: 11,
-            weight: '600'
-          }
-        },
-        min: 40,
-        max: 120,
-        grid: {
-          color: 'rgba(220, 53, 69, 0.1)',
-        },
-        ticks: {
-          font: {
-            size: 9,
-          },
-        },
-      },
-      y1: {
-        type: 'linear',
-        display: true,
-        position: 'right',
-        title: {
-          display: true,
-          text: 'SpO₂ (%)',
-          font: {
-            size: 11,
-            weight: '600'
-          }
-        },
-        min: 90,
-        max: 100,
-        grid: {
-          drawOnChartArea: false,
-        },
-        ticks: {
-          font: {
-            size: 9,
-          },
-        },
-      },
-      y2: {
-        type: 'linear',
-        display: false, // Hide respiratory rate axis since it overlaps
-        min: 10,
-        max: 22,
-      },
-    },
+  // Calculate 60-second summary statistics from 5-second averages
+  const getSummaryStats = () => {
+    const validAverages = fiveSecondAverages.filter(avg => 
+      avg.heartRate !== null && avg.heartRate > 0 && 
+      avg.spo2 !== null && avg.spo2 > 0
+    );
+
+    if (validAverages.length === 0) {
+      return {
+        avgHR: "--",
+        avgSpO2: "--.-",
+        avgRR: "--",
+        minHR: "--",
+        maxHR: "--",
+        dataPoints: 0
+      };
+    }
+
+    const hrValues = validAverages.map(avg => avg.heartRate).filter(hr => hr > 0);
+    const spo2Values = validAverages.map(avg => avg.spo2).filter(spo2 => spo2 > 0);
+    const rrValues = validAverages.map(avg => avg.respiratoryRate).filter(rr => rr > 0);
+
+    const avgHR = hrValues.length > 0 ? hrValues.reduce((a, b) => a + b, 0) / hrValues.length : 0;
+    const avgSpO2 = spo2Values.length > 0 ? spo2Values.reduce((a, b) => a + b, 0) / spo2Values.length : 0;
+    const avgRR = rrValues.length > 0 ? rrValues.reduce((a, b) => a + b, 0) / rrValues.length : 0;
+
+    const minHR = hrValues.length > 0 ? Math.min(...hrValues) : 0;
+    const maxHR = hrValues.length > 0 ? Math.max(...hrValues) : 0;
+
+    return {
+      avgHR: avgHR > 0 ? avgHR.toFixed(1) : "--",
+      avgSpO2: avgSpO2 > 0 ? avgSpO2.toFixed(1) : "--.-",
+      avgRR: avgRR > 0 ? avgRR.toFixed(1) : "--",
+      minHR: minHR > 0 ? minHR.toFixed(0) : "--",
+      maxHR: maxHR > 0 ? maxHR.toFixed(0) : "--",
+      dataPoints: validAverages.length
+    };
   };
 
   const MAX_RETRIES = 3;
+  const summaryStats = getSummaryStats();
 
   return (
     <div className="max30102-container">
@@ -562,75 +458,119 @@ export default function Max30102() {
             </div>
           </div>
 
-          {/* Combined Chart Display */}
-          {isMeasuring && (
-            <div className="charts-container">
-              <h4>60-Second Vital Signs Trend</h4>
-              <div className="charts-grid">
-                <div className="chart-item">
-                  <div className="chart-wrapper">
-                    <Line data={chartData} options={chartOptions} />
+          {/* Real-time Measurements Display */}
+          <div className="real-time-measurements">
+            <div className="measurements-grid">
+              <div className="measurement-card">
+                <img src={heartRateIcon} alt="Heart Rate Icon" className="measurement-icon"/>
+                <div className="measurement-info">
+                  <h3>Heart Rate</h3>
+                  <div className="measurement-value">
+                    {measurements.heartRate === "--" ? (
+                      <span className="placeholder">--</span>
+                    ) : (
+                      <span className="value">{measurements.heartRate}</span>
+                    )}
+                    <span className="unit">BPM</span>
                   </div>
+                  <span className={`measurement-status ${getStatusColor('heartRate', measurements.heartRate)}`}>
+                    {getStatusText('heartRate', measurements.heartRate)}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="measurement-card">
+                <img src={spo2Icon} alt="SpO2 Icon" className="measurement-icon"/>
+                <div className="measurement-info">
+                  <h3>Blood Oxygen</h3>
+                  <div className="measurement-value">
+                    {measurements.spo2 === "--.-" ? (
+                      <span className="placeholder">--.-</span>
+                    ) : (
+                      <span className="value">{measurements.spo2}</span>
+                    )}
+                    <span className="unit">%</span>
+                  </div>
+                  <span className={`measurement-status ${getStatusColor('spo2', measurements.spo2)}`}>
+                    {getStatusText('spo2', measurements.spo2)}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="measurement-card">
+                <img src={respiratoryIcon} alt="Respiratory Rate Icon" className="measurement-icon"/>
+                <div className="measurement-info">
+                  <h3>Respiratory Rate</h3>
+                  <div className="measurement-value">
+                    {measurements.respiratoryRate === "--" ? (
+                      <span className="placeholder">--</span>
+                    ) : (
+                      <span className="value">{measurements.respiratoryRate}</span>
+                    )}
+                    <span className="unit">/min</span>
+                  </div>
+                  <span className={`measurement-status ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
+                    {getStatusText('respiratoryRate', measurements.respiratoryRate)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 60-Second Summary with 5-Second Averages */}
+          {isMeasuring && (
+            <div className="summary-section">
+              <h4>60-Second Summary (5-Second Averages)</h4>
+              <div className="averages-grid">
+                {fiveSecondAverages.map((average, index) => (
+                  <div key={index} className="average-item">
+                    <div className="average-time">{(index + 1) * 5}s</div>
+                    <div className="average-values">
+                      <span className="average-hr">
+                        {average.heartRate ? average.heartRate.toFixed(0) : "--"} BPM
+                      </span>
+                      <span className="average-spo2">
+                        {average.spo2 ? average.spo2.toFixed(1) : "--.-"}%
+                      </span>
+                      <span className="average-rr">
+                        {average.respiratoryRate ? average.respiratoryRate.toFixed(0) : "--"} RR
+                      </span>
+                    </div>
+                    <div className={`average-status ${average.heartRate && average.spo2 ? 'valid' : 'invalid'}`}>
+                      {average.heartRate && average.spo2 ? "✓" : "✗"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="summary-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Avg Heart Rate:</span>
+                  <span className="stat-value">{summaryStats.avgHR} BPM</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Avg SpO2:</span>
+                  <span className="stat-value">{summaryStats.avgSpO2}%</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Avg Resp Rate:</span>
+                  <span className="stat-value">{summaryStats.avgRR} /min</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">HR Range:</span>
+                  <span className="stat-value">{summaryStats.minHR}-{summaryStats.maxHR} BPM</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Valid Data Points:</span>
+                  <span className="stat-value">{summaryStats.dataPoints}/12</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Time Elapsed:</span>
+                  <span className="stat-value">{progressSeconds}/60s</span>
                 </div>
               </div>
             </div>
           )}
-
-          <div className="measurements-grid">
-            <div className="measurement-card">
-              <img src={heartRateIcon} alt="Heart Rate Icon" className="measurement-icon"/>
-              <div className="measurement-info">
-                <h3>Heart Rate</h3>
-                <div className="measurement-value">
-                  {measurements.heartRate === "--" ? (
-                    <span className="placeholder">--</span>
-                  ) : (
-                    <span className="value">{measurements.heartRate}</span>
-                  )}
-                  <span className="unit">BPM</span>
-                </div>
-                <span className={`measurement-status ${getStatusColor('heartRate', measurements.heartRate)}`}>
-                  {getStatusText('heartRate', measurements.heartRate)}
-                </span>
-              </div>
-            </div>
-            
-            <div className="measurement-card">
-              <img src={spo2Icon} alt="SpO2 Icon" className="measurement-icon"/>
-              <div className="measurement-info">
-                <h3>Blood Oxygen</h3>
-                <div className="measurement-value">
-                  {measurements.spo2 === "--.-" ? (
-                    <span className="placeholder">--.-</span>
-                  ) : (
-                    <span className="value">{measurements.spo2}</span>
-                  )}
-                  <span className="unit">%</span>
-                </div>
-                <span className={`measurement-status ${getStatusColor('spo2', measurements.spo2)}`}>
-                  {getStatusText('spo2', measurements.spo2)}
-                </span>
-              </div>
-            </div>
-            
-            <div className="measurement-card">
-              <img src={respiratoryIcon} alt="Respiratory Rate Icon" className="measurement-icon"/>
-              <div className="measurement-info">
-                <h3>Respiratory Rate</h3>
-                <div className="measurement-value">
-                  {measurements.respiratoryRate === "--" ? (
-                    <span className="placeholder">--</span>
-                  ) : (
-                    <span className="value">{measurements.respiratoryRate}</span>
-                  )}
-                  <span className="unit">/min</span>
-                </div>
-                <span className={`measurement-status ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
-                  {getStatusText('respiratoryRate', measurements.respiratoryRate)}
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="measurement-controls">

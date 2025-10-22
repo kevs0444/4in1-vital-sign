@@ -2,6 +2,7 @@ import serial
 import threading
 import time
 import re
+import random
 from typing import Dict, Any
 
 class SensorManager:
@@ -23,7 +24,12 @@ class SensorManager:
         
         # LIVE data for ongoing measurements
         self.live_temperature = None
-        self.live_hr_samples = [] # To store the 12 samples
+        
+        # Real-time MAX30102 data for 30 seconds
+        self.real_time_hr_data = []
+        self.real_time_spo2_data = []
+        self.real_time_rr_data = []
+        self.measurement_start_time = None
         
         # Detailed status for multi-step measurements
         self.current_measurement_status = "idle" 
@@ -65,6 +71,11 @@ class SensorManager:
             "temperature": False,
             "max30102": False
         }
+
+        # MAX30102 measurement tracking
+        self.hr_measurement_duration = 30  # 30 seconds total
+        self.last_vitals_update = 0
+        self.vitals_update_interval = 1  # Update every second
 
     def _connect_thread_worker(self):
         """
@@ -338,25 +349,39 @@ class SensorManager:
                 except ValueError:
                     print(f"⚠️ Could not parse temperature value: {value_str}")
             
-            elif sensor == "HR_SAMPLE":
+            elif sensor == "VITAL_SIGNS":
                 try:
-                    hr_sample = float(parts[2]) if len(parts) > 2 else 0
-                    spo2_sample = float(parts[3]) if len(parts) > 3 else 0
-                    print(f"🟢 HR Live Sample: HR={hr_sample}, SpO2={spo2_sample}")
-                    self.live_hr_samples.append({"hr": hr_sample, "spo2": spo2_sample})
-                    # Keep only last 12 samples
-                    if len(self.live_hr_samples) > 12:
-                        self.live_hr_samples = self.live_hr_samples[-12:]
+                    hr = float(parts[2]) if len(parts) > 2 else 0
+                    spo2 = float(parts[3]) if len(parts) > 3 else 0
+                    rr = float(parts[4]) if len(parts) > 4 else 0
+                    time_index = int(parts[5]) if len(parts) > 5 else 0
+                    
+                    # Store real-time data
+                    if hr > 0 and spo2 > 0:
+                        # Update current measurements for real-time display
+                        self.heart_rate = hr
+                        self.spo2 = spo2
+                        self.respiratory_rate = rr
+                        
+                        # Store in real-time arrays (keep last 30 seconds)
+                        current_time = time_index
+                        if current_time < 30:
+                            # Ensure arrays are the right size
+                            while len(self.real_time_hr_data) <= current_time:
+                                self.real_time_hr_data.append(None)
+                            while len(self.real_time_spo2_data) <= current_time:
+                                self.real_time_spo2_data.append(None)
+                            while len(self.real_time_rr_data) <= current_time:
+                                self.real_time_rr_data.append(None)
+                            
+                            self.real_time_hr_data[current_time] = hr
+                            self.real_time_spo2_data[current_time] = spo2
+                            self.real_time_rr_data[current_time] = rr
+                        
+                        print(f"📊 Real-time vitals - Time: {time_index}s, HR: {hr}, SpO2: {spo2}, RR: {rr}")
+                        
                 except (ValueError, IndexError) as e:
-                    print(f"⚠️ Could not parse HR_SAMPLE data: {data}, Error: {e}")
-            
-            elif sensor == "HR_SAMPLE_ERROR":
-                try:
-                    hr_sample = float(parts[2]) if len(parts) > 2 else 0
-                    spo2_sample = float(parts[3]) if len(parts) > 3 else 0
-                    print(f"🟡 HR Sample Error: HR={hr_sample}, SpO2={spo2_sample}")
-                except (ValueError, IndexError) as e:
-                    print(f"⚠️ Could not parse HR_SAMPLE_ERROR data: {data}, Error: {e}")
+                    print(f"⚠️ Could not parse VITAL_SIGNS data: {data}, Error: {e}")
 
         elif prefix == "WEIGHT_DETECTED":
             # Ignore weight detection if the measurement is already complete for this session
@@ -455,7 +480,11 @@ class SensorManager:
             self.heart_rate = None
             self.spo2 = None
             self.respiratory_rate = None
-            self.live_hr_samples = []
+            # Reset real-time data arrays
+            self.real_time_hr_data = []
+            self.real_time_spo2_data = []
+            self.real_time_rr_data = []
+            self.measurement_start_time = time.time()
             self.sensor_states["max30102"] = "ACTIVE"
         
         # Ensure sensor is powered up
@@ -612,6 +641,14 @@ class SensorManager:
         return self._start_generic_measurement("HR", "START_HR", "max30102")
 
     def get_max30102_status(self):
+        # Calculate elapsed time for progress tracking
+        elapsed_time = 0
+        if self.measurement_start_time and self.measurement_active:
+            elapsed_time = int(time.time() - self.measurement_start_time)
+        
+        # Get real-time data summary
+        real_time_summary = self._get_real_time_summary()
+        
         return {
             "finger_detected": self.finger_detected,
             "is_ready_for_measurement": self.finger_detected,
@@ -620,9 +657,47 @@ class SensorManager:
             "spo2": self.spo2,
             "respiratory_rate": self.respiratory_rate,
             "measurement_active": self.measurement_active,
-            "live_samples": self.live_hr_samples,
+            "elapsed_time": elapsed_time,
+            "total_duration": self.hr_measurement_duration,
+            "real_time_data": {
+                "heart_rate": self.real_time_hr_data,
+                "spo2": self.real_time_spo2_data,
+                "respiratory_rate": self.real_time_rr_data
+            },
+            "summary_stats": real_time_summary,
             "sensor_ready": self.hr_sensor_ready,
             "sensor_prepared": self.sensors_prepared.get("max30102", False)
+        }
+
+    def _get_real_time_summary(self):
+        """Calculate summary statistics from real-time data."""
+        valid_hr = [hr for hr in self.real_time_hr_data if hr is not None and hr > 0]
+        valid_spo2 = [spo2 for spo2 in self.real_time_spo2_data if spo2 is not None and spo2 > 0]
+        valid_rr = [rr for rr in self.real_time_rr_data if rr is not None and rr > 0]
+        
+        if not valid_hr:
+            return {
+                "avg_hr": 0,
+                "avg_spo2": 0,
+                "avg_rr": 0,
+                "min_hr": 0,
+                "max_hr": 0,
+                "data_points": 0
+            }
+        
+        avg_hr = sum(valid_hr) / len(valid_hr)
+        avg_spo2 = sum(valid_spo2) / len(valid_spo2) if valid_spo2 else 0
+        avg_rr = sum(valid_rr) / len(valid_rr) if valid_rr else 0
+        min_hr = min(valid_hr)
+        max_hr = max(valid_hr)
+        
+        return {
+            "avg_hr": round(avg_hr, 1),
+            "avg_spo2": round(avg_spo2, 1),
+            "avg_rr": round(avg_rr, 1),
+            "min_hr": round(min_hr, 0),
+            "max_hr": round(max_hr, 0),
+            "data_points": len(valid_hr)
         }
 
     def get_measurements(self):
@@ -633,7 +708,12 @@ class SensorManager:
             "temperature": self.temperature,
             "heart_rate": self.heart_rate,
             "spo2": self.spo2,
-            "respiratory_rate": self.respiratory_rate
+            "respiratory_rate": self.respiratory_rate,
+            "real_time_data": {
+                "heart_rate": self.real_time_hr_data,
+                "spo2": self.real_time_spo2_data,
+                "respiratory_rate": self.real_time_rr_data
+            }
         }
 
     def reset_measurements(self):
@@ -645,7 +725,12 @@ class SensorManager:
         self.spo2 = None
         self.respiratory_rate = None
         self.live_temperature = None
-        self.live_hr_samples = []
+        
+        # Reset real-time data
+        self.real_time_hr_data = []
+        self.real_time_spo2_data = []
+        self.real_time_rr_data = []
+        self.measurement_start_time = None
         
         # Reset sensor states but keep readiness flags and prepared status
         for sensor_type in self.sensor_states.keys():

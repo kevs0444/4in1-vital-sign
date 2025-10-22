@@ -61,27 +61,29 @@ const unsigned long TEMP_MEASUREMENT_TIME = 5000;
 const float TEMP_CALIBRATION_OFFSET = 1.5; // Adjusted calibration offset
 unsigned long lastTempUpdateTime = 0;
 
-// Heart Rate & SpO2 - 60 SECOND MEASUREMENT WITH 5-SECOND AVERAGES
+// Heart Rate & SpO2 - 60 SECOND MEASUREMENT WITH MAXIM ALGORITHM
 const unsigned long HR_MEASUREMENT_TIME = 60000; // 60 seconds total measurement
-const unsigned long HR_AVERAGING_INTERVAL = 5000; // Calculate averages every 5 seconds
 bool fingerDetected = false;
-unsigned long lastHRSampleTime = 0;
-unsigned long lastAverageTime = 0;
-unsigned long lastBeat = 0;
+unsigned long lastSecondTime = 0;
+unsigned long lastSampleTime = 0;
 
-// Real-time data collection for 5-second averages
-#define MAX_SAMPLES 100
-float heartRateSamples[MAX_SAMPLES];
-float spo2Samples[MAX_SAMPLES];
-float respiratorySamples[MAX_SAMPLES];
-int sampleCount = 0;
-int current5SecondBlock = 0;
+// MAX30102 Data buffers for Maxim algorithm
+#define BUFFER_SIZE 100
+uint32_t irBuffer[BUFFER_SIZE];
+uint32_t redBuffer[BUFFER_SIZE];
+int bufferIndex = 0;
 
-// 5-second average results (12 blocks for 60 seconds)
+// Real-time data for 60 seconds (12 x 5-second blocks)
 float heartRateAverages[12] = {0};
 float spo2Averages[12] = {0};
 float respiratoryAverages[12] = {0};
 bool blockCompleted[12] = {false};
+int current5SecondBlock = 0;
+
+// Current second measurements
+int currentHeartRate = 0;
+int currentSpO2 = 0;
+int currentRespiratoryRate = 0;
 
 // Final 60-second averages
 float finalHeartRate = 0;
@@ -90,11 +92,7 @@ float finalRespiratoryRate = 0;
 
 // Measurement tracking
 int secondsElapsed = 0;
-unsigned long lastSecondTime = 0;
-
-// Beat detection
-float beatsPerMinute = 0;
-int beatAvg = 0;
+unsigned long last5SecondTime = 0;
 
 // =================================================================
 // --- SETUP FUNCTION ---
@@ -155,7 +153,7 @@ void initializeBasicSensors() {
   if (sensorInitialized) {
     Serial.println("DEBUG:MAX30102 found successfully!");
     
-    // Configure sensor with better settings
+    // Configure sensor with optimal settings for Maxim algorithm
     byte ledBrightness = 0x1F; // Options: 0=Off to 255=50mA
     byte sampleAverage = 4;    // Options: 1, 2, 4, 8, 16, 32
     byte ledMode = 2;          // Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
@@ -221,7 +219,7 @@ void initializeOtherSensors() {
     particleSensor.setPulseAmplitudeRed(0x0A);
     particleSensor.setPulseAmplitudeGreen(0);
     Serial.println("STATUS:HR_SENSOR_READY");
-    Serial.println("DEBUG:HR sensor ready - 60-second monitoring with 5-second averages");
+    Serial.println("DEBUG:HR sensor ready - 60-second monitoring with Maxim algorithm");
   } else {
     Serial.println("ERROR:HR_SENSOR_INIT_FAILED");
   }
@@ -416,7 +414,7 @@ void powerUpHrSensor() {
     particleSensor.wakeUp();
     delay(100);
     
-    // Configuration for 60-second monitoring
+    // Configuration for 60-second monitoring with Maxim algorithm
     particleSensor.setup();
     particleSensor.setPulseAmplitudeRed(0x0A);
     particleSensor.setPulseAmplitudeGreen(0);
@@ -424,7 +422,7 @@ void powerUpHrSensor() {
     hrSensorPowered = true;
     
     Serial.println("STATUS:HR_SENSOR_POWERED_UP");
-    Serial.println("DEBUG:MAX30102 powered up - 60-second monitoring with 5-second averages");
+    Serial.println("DEBUG:MAX30102 powered up - 60-second monitoring with Maxim algorithm");
   }
 }
 
@@ -513,11 +511,11 @@ void startHeartRateMeasurement() {
   currentPhase = HR;
   phaseStartTime = millis();
   lastSecondTime = millis();
-  lastAverageTime = millis();
+  last5SecondTime = millis();
   fingerDetected = false;
   
   // Reset all data arrays
-  sampleCount = 0;
+  bufferIndex = 0;
   current5SecondBlock = 0;
   
   for (int i = 0; i < 12; i++) {
@@ -527,24 +525,22 @@ void startHeartRateMeasurement() {
     blockCompleted[i] = false;
   }
   
-  for (int i = 0; i < MAX_SAMPLES; i++) {
-    heartRateSamples[i] = 0;
-    spo2Samples[i] = 0;
-    respiratorySamples[i] = 0;
+  for (int i = 0; i < BUFFER_SIZE; i++) {
+    irBuffer[i] = 0;
+    redBuffer[i] = 0;
   }
   
   finalHeartRate = 0;
   finalSpO2 = 0;
   finalRespiratoryRate = 0;
   
-  // Reset beat detection
-  lastBeat = 0;
-  beatsPerMinute = 0;
-  beatAvg = 0;
+  currentHeartRate = 0;
+  currentSpO2 = 0;
+  currentRespiratoryRate = 0;
   
   Serial.println("STATUS:HR_MEASUREMENT_STARTED");
   Serial.println("DEBUG:60-second MAX30102 monitoring started");
-  Serial.println("DEBUG:Calculating 5-second averages, 12 blocks total");
+  Serial.println("DEBUG:Using Maxim algorithm for HR/SpO2 calculation");
   Serial.println("TIME | HR Avg | SpO2 Avg | RR Avg | Status");
   Serial.println("-----|---------|----------|---------|--------");
 }
@@ -572,12 +568,10 @@ void runIdleTasks() {
     if (hrSensorPowered) {
       long irValue = particleSensor.getIR();
       
-      if (irValue > 10000) {
+      if (irValue > 50000) {
         if (!fingerDetected) {
           fingerDetected = true;
           Serial.println("FINGER_DETECTED");
-          Serial.print("DEBUG:Real finger detected - IR value: ");
-          Serial.println(irValue);
         }
       } else {
         if (fingerDetected) {
@@ -789,7 +783,7 @@ void runTemperaturePhase() {
 }
 
 // =================================================================
-// --- IMPROVED HR/SpO2 FUNCTIONS WITH BETTER FINGER DETECTION ---
+// --- IMPROVED HR/SpO2 FUNCTIONS USING MAXIM ALGORITHM ---
 // =================================================================
 void runHeartRatePhase() {
   unsigned long currentTime = millis();
@@ -808,41 +802,34 @@ void runHeartRatePhase() {
     Serial.println(progressPercent);
   }
 
-  // IMPROVED: Check for finger detection with better threshold
+  // Check for finger detection
   long irValue = particleSensor.getIR();
-  long redValue = particleSensor.getRed();
-  
-  // Better finger detection - check both IR and Red values
-  bool newFingerDetected = (irValue > 10000 && redValue > 5000); // Lower threshold for better detection
+  bool newFingerDetected = (irValue > 50000);
   
   if (newFingerDetected && !fingerDetected) {
     fingerDetected = true;
     Serial.println("FINGER_DETECTED");
-    Serial.print("DEBUG:Finger detected - IR: ");
-    Serial.print(irValue);
-    Serial.print(", Red: ");
-    Serial.println(redValue);
   } else if (!newFingerDetected && fingerDetected) {
     fingerDetected = false;
     Serial.println("FINGER_REMOVED");
-    Serial.print("DEBUG:No finger - IR: ");
-    Serial.print(irValue);
-    Serial.print(", Red: ");
-    Serial.println(redValue);
   }
 
-  // Process sensor data continuously
-  if (particleSensor.available()) {
-    processSensorData();
-    particleSensor.nextSample();
+  // Collect samples continuously when finger is detected
+  if (fingerDetected && particleSensor.available()) {
+    collectSensorSamples();
+  }
+
+  // Calculate vital signs every second when we have enough samples
+  if (bufferIndex >= BUFFER_SIZE) {
+    calculateVitalSigns();
+    bufferIndex = 0; // Reset buffer for next second
   }
 
   // Calculate 5-second averages
-  if (currentTime - lastAverageTime >= HR_AVERAGING_INTERVAL && current5SecondBlock < 12) {
+  if (currentTime - last5SecondTime >= 5000 && current5SecondBlock < 12) {
     calculate5SecondAverage();
-    lastAverageTime = currentTime;
+    last5SecondTime = currentTime;
     current5SecondBlock++;
-    sampleCount = 0; // Reset for next 5-second block
   }
 
   // Finalize measurement after 60 seconds
@@ -851,155 +838,72 @@ void runHeartRatePhase() {
   }
 }
 
-void processSensorData() {
-  long redValue = particleSensor.getRed();
-  long irValue = particleSensor.getIR();
-  
-  // DEBUG: Print raw values occasionally to see what's happening
-  static unsigned long lastDebugPrint = 0;
-  if (millis() - lastDebugPrint > 2000) {
-    lastDebugPrint = millis();
-    Serial.print("DEBUG:Raw values - IR: ");
-    Serial.print(irValue);
-    Serial.print(", Red: ");
-    Serial.println(redValue);
-  }
-  
-  // IMPROVED: Better heart rate detection
-  if (fingerDetected && irValue > 10000) {
-    // Use the built-in beat detection algorithm
-    if (checkForBeat(irValue) == true) {
-      // We sensed a beat!
-      long delta = millis() - lastBeat;
-      lastBeat = millis();
-
-      beatsPerMinute = 60 / (delta / 1000.0);
-
-      // Only use realistic heart rate values
-      if (beatsPerMinute > 20 && beatsPerMinute < 250) {
-        // Store heart rate sample
-        if (sampleCount < MAX_SAMPLES) {
-          heartRateSamples[sampleCount] = beatsPerMinute;
-          
-          // DEBUG: Print when beat is detected
-          Serial.print("DEBUG:Beat detected - HR: ");
-          Serial.println(beatsPerMinute);
-        }
-      }
-    }
+void collectSensorSamples() {
+  // Collect samples at approximately 100Hz (10ms intervals)
+  if (millis() - lastSampleTime >= 10) {
+    lastSampleTime = millis();
     
-    // IMPROVED: Better SpO2 calculation
-    if (irValue > 10000 && redValue > 5000) {
-      float ratio = (float)redValue / (float)irValue;
-      
-      // More realistic SpO2 calculation
-      float spo2Value = calculateSPO2(ratio, irValue);
-      
-      // Store SpO2 sample if valid
-      if (spo2Value >= 90.0 && spo2Value <= 100.0) {
-        if (sampleCount < MAX_SAMPLES) {
-          spo2Samples[sampleCount] = spo2Value;
-        }
-      }
-      
-      // Estimate respiratory rate
-      float respiratoryValue = estimateRespiratoryRate();
-      if (sampleCount < MAX_SAMPLES) {
-        respiratorySamples[sampleCount] = respiratoryValue;
-      }
-      
-      sampleCount++;
+    if (bufferIndex < BUFFER_SIZE) {
+      redBuffer[bufferIndex] = particleSensor.getRed();
+      irBuffer[bufferIndex] = particleSensor.getIR();
+      bufferIndex++;
     }
+    particleSensor.nextSample();
   }
 }
 
-float calculateSPO2(float ratio, long irValue) {
-  // IMPROVED: Better SpO2 calculation algorithm
-  // This is a simplified version - real implementation would be more complex
+bool calculateVitalSigns() {
+  int32_t spo2Value, heartRateValue;
+  int8_t validSPO2, validHeartRate;
   
-  // Normalize ratio based on typical values
-  float normalizedRatio = ratio * 100.0;
+  // Calculate heart rate and SpO2 using Maxim algorithm
+  maxim_heart_rate_and_oxygen_saturation(
+    irBuffer, BUFFER_SIZE, redBuffer,
+    &spo2Value, &validSPO2,
+    &heartRateValue, &validHeartRate
+  );
   
-  // Calculate SpO2 using a more realistic formula
-  float spo2 = 104.0 - (17.0 * normalizedRatio / 100.0);
-  
-  // Add some variation based on signal quality
-  if (irValue > 50000) {
-    spo2 += random(0, 5) / 10.0; // Good signal - small positive variation
-  } else {
-    spo2 -= random(0, 10) / 10.0; // Weaker signal - more variation
+  // Store valid readings
+  if (validHeartRate && validSPO2 && heartRateValue > 0 && spo2Value > 0) {
+    currentHeartRate = heartRateValue;
+    currentSpO2 = spo2Value;
+    currentRespiratoryRate = estimateRespiratoryRate();
+    
+    // Send real-time data to frontend
+    Serial.print("DATA:VITAL_SIGNS:");
+    Serial.print(currentHeartRate);
+    Serial.print(":");
+    Serial.print(currentSpO2);
+    Serial.print(":");
+    Serial.print(currentRespiratoryRate);
+    Serial.print(":");
+    Serial.print(secondsElapsed);
+    Serial.print(":");
+    Serial.println(secondsElapsed);
+    
+    return true;
   }
   
-  // Constrain to realistic values
-  spo2 = constrain(spo2, 90.0, 100.0);
-  
-  return spo2;
+  return false;
 }
 
 int estimateRespiratoryRate() {
-  // IMPROVED: More realistic respiratory rate estimation
+  // Simple respiratory rate estimation
   int baseRate = 16;
-  
-  // Add some realistic variation
-  int variation = random(-2, 3);
-  baseRate += variation;
-  
-  // Constrain to normal respiratory rate range
-  baseRate = constrain(baseRate, 12, 20);
-  
   return baseRate;
 }
 
 void calculate5SecondAverage() {
-  float hrSum = 0, spo2Sum = 0, rrSum = 0;
-  int hrCount = 0, spo2Count = 0, rrCount = 0;
-  
-  // Calculate sums of valid samples
-  for (int i = 0; i < sampleCount; i++) {
-    if (heartRateSamples[i] > 30 && heartRateSamples[i] < 200) {
-      hrSum += heartRateSamples[i];
-      hrCount++;
-    }
-    if (spo2Samples[i] > 90.0 && spo2Samples[i] <= 100.0) {
-      spo2Sum += spo2Samples[i];
-      spo2Count++;
-    }
-    if (respiratorySamples[i] > 10 && respiratorySamples[i] < 25) {
-      rrSum += respiratorySamples[i];
-      rrCount++;
-    }
-  }
-  
-  // Calculate averages
-  float hrAvg = hrCount > 0 ? hrSum / hrCount : 0;
-  float spo2Avg = spo2Count > 0 ? spo2Sum / spo2Count : 0;
-  float rrAvg = rrCount > 0 ? rrSum / rrCount : 0;
-  
-  // IMPROVED: If no valid data but finger was detected, generate realistic demo data
-  if (fingerDetected && hrAvg == 0 && spo2Avg == 0) {
-    hrAvg = 70 + random(-10, 11); // 60-80 BPM range
-    spo2Avg = 97.0 + (random(0, 31) / 10.0); // 97.0-100.0% range
-    rrAvg = 16 + random(-2, 3); // 14-18 breaths/min range
-    
-    Serial.println("DEBUG:Using realistic demo data for this interval");
-  }
-  
-  // Store the 5-second average
-  heartRateAverages[current5SecondBlock] = hrAvg;
-  spo2Averages[current5SecondBlock] = spo2Avg;
-  respiratoryAverages[current5SecondBlock] = rrAvg;
+  // For now, we'll use the current reading as the 5-second average
+  // In a more sophisticated implementation, we'd average multiple readings
+  heartRateAverages[current5SecondBlock] = currentHeartRate;
+  spo2Averages[current5SecondBlock] = currentSpO2;
+  respiratoryAverages[current5SecondBlock] = currentRespiratoryRate;
   blockCompleted[current5SecondBlock] = true;
   
-  // Send the 5-second average to frontend
-  send5SecondAverage();
-  
-  // Display in terminal
-  displayTerminalOutput();
-}
-
-void send5SecondAverage() {
+  // Send 5-second average to frontend
   int timeSeconds = (current5SecondBlock + 1) * 5;
-  Serial.print("DATA:VITAL_SIGNS:");
+  Serial.print("DATA:5SEC_AVERAGE:");
   Serial.print(heartRateAverages[current5SecondBlock], 1);
   Serial.print(":");
   Serial.print(spo2Averages[current5SecondBlock], 1);
@@ -1009,6 +913,9 @@ void send5SecondAverage() {
   Serial.print(timeSeconds);
   Serial.print(":");
   Serial.println(secondsElapsed);
+  
+  // Display in terminal
+  displayTerminalOutput();
 }
 
 void displayTerminalOutput() {
@@ -1105,33 +1012,13 @@ void finalizeHRMeasurement() {
     Serial.println(finalRespiratoryRate, 1);
     
   } else {
-    // IMPROVED: If no valid data, provide realistic demo results
-    finalHeartRate = 72.5;
-    finalSpO2 = 98.2;
-    finalRespiratoryRate = 16.5;
+    // No valid data collected
+    Serial.println("MEASUREMENT RESULT: No valid sensor data collected");
+    Serial.println("Please ensure finger is properly placed on sensor");
+    Serial.println("and try again.");
     
-    Serial.println("USING REALISTIC DEMO DATA (no valid sensor readings):");
-    Serial.print("Heart Rate:      ");
-    Serial.print(finalHeartRate, 1);
-    Serial.println(" BPM");
-    
-    Serial.print("SpO2:            ");
-    Serial.print(finalSpO2, 1);
-    Serial.println(" %");
-    
-    Serial.print("Respiratory Rate: ");
-    Serial.print(finalRespiratoryRate, 1);
-    Serial.println(" breaths/min");
-    
-    // Send final results
-    Serial.print("RESULT:HR:");
-    Serial.print(finalHeartRate, 1);
-    Serial.print(":");
-    Serial.print(finalSpO2, 1);
-    Serial.print(":");
-    Serial.println(finalRespiratoryRate, 1);
-    
-    Serial.println("DEBUG:No valid sensor data - using realistic demo values");
+    // Send error result
+    Serial.println("RESULT:HR:0:0:0");
   }
   
   Serial.println("========================================");

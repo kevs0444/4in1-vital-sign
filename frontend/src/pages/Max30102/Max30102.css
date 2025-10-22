@@ -246,67 +246,9 @@
   margin-top: 5px;
 }
 
-/* Charts Container */
-.charts-container {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 15px;
+/* Real-time Measurements */
+.real-time-measurements {
   margin: 15px 0;
-  border: 2px solid #e9ecef;
-}
-
-.charts-container h4 {
-  font-size: 1rem;
-  color: #333;
-  margin-bottom: 12px;
-  font-weight: 700;
-  text-align: center;
-}
-
-.charts-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 15px;
-}
-
-.chart-item {
-  background: white;
-  padding: 15px;
-  border-radius: 10px;
-  border: 1px solid #dee2e6;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.chart-title {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #333;
-  margin: 0;
-}
-
-.chart-value {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #dc3545;
-  background: #f8f9fa;
-  padding: 4px 8px;
-  border-radius: 12px;
-  border: 1px solid #e9ecef;
-}
-
-.chart-wrapper {
-  position: relative;
-  height: 120px;
-  width: 100%;
 }
 
 /* Measurements Grid - Optimized 3 columns */
@@ -422,6 +364,128 @@
 .measurement-card .measurement-status.default {
   background: #6c757d;
   color: white;
+}
+
+/* Summary Section */
+.summary-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 15px;
+  margin: 15px 0;
+  border: 2px solid #e9ecef;
+}
+
+.summary-section h4 {
+  font-size: 1rem;
+  color: #333;
+  margin-bottom: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Averages Grid */
+.averages-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 15px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.average-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  font-size: 0.7rem;
+}
+
+.average-time {
+  font-weight: 600;
+  color: #333;
+  min-width: 25px;
+}
+
+.average-values {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  margin: 0 8px;
+}
+
+.average-hr {
+  color: #dc3545;
+  font-weight: 600;
+  font-size: 0.65rem;
+}
+
+.average-spo2 {
+  color: #2196F3;
+  font-weight: 600;
+  font-size: 0.65rem;
+}
+
+.average-rr {
+  color: #28a745;
+  font-weight: 600;
+  font-size: 0.65rem;
+}
+
+.average-status {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: bold;
+}
+
+.average-status.valid {
+  background: #28a745;
+  color: white;
+}
+
+.average-status.invalid {
+  background: #6c757d;
+  color: white;
+}
+
+/* Summary Stats */
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  border-top: 1px solid #dee2e6;
+  padding-top: 12px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 0.8rem;
+  color: #333;
+  font-weight: 700;
 }
 
 /* Measurement Controls - Optimized */
@@ -685,12 +749,46 @@
     min-height: 65px;
   }
   
-  .charts-container {
+  .summary-section {
     padding: 12px;
   }
   
-  .chart-wrapper {
-    height: 100px;
+  .averages-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    max-height: 120px;
+  }
+  
+  .average-item {
+    padding: 4px 6px;
+    font-size: 0.65rem;
+  }
+  
+  .average-values {
+    margin: 0 6px;
+  }
+  
+  .average-hr,
+  .average-spo2,
+  .average-rr {
+    font-size: 0.6rem;
+  }
+  
+  .summary-stats {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .stat-item {
+    padding: 5px 6px;
+  }
+  
+  .stat-label {
+    font-size: 0.7rem;
+  }
+  
+  .stat-value {
+    font-size: 0.75rem;
   }
 }
 
@@ -734,16 +832,24 @@
     font-size: 0.9rem;
   }
   
-  .charts-grid {
-    gap: 10px;
+  .averages-grid {
+    grid-template-columns: repeat(2, 1fr);
+    max-height: 100px;
   }
   
-  .chart-item {
-    padding: 12px;
+  .average-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 2px;
   }
   
-  .chart-wrapper {
-    height: 90px;
+  .average-values {
+    margin: 0;
+  }
+  
+  .summary-stats {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }
 
@@ -767,71 +873,30 @@
     min-height: 90px;
   }
   
-  .charts-container {
+  .summary-section {
     margin: 10px 0;
   }
-}
-
-/* Share.css - ADD THESE STYLES */
-.real-time-charts {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  margin: 20px 0;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.charts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin: 20px 0;
-}
-
-.chart-container {
-  text-align: center;
-  padding: 10px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background: #fafafa;
-}
-
-.chart-container h4 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  color: #333;
-}
-
-.vital-chart {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
-}
-
-.chart-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 15px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-}
-
-.legend-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .charts-grid {
-    grid-template-columns: 1fr;
+  
+  .averages-grid {
+    max-height: 80px;
   }
+}
+
+/* Scrollbar styling for averages grid */
+.averages-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.averages-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.averages-grid::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.averages-grid::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
