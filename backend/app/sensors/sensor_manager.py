@@ -3,7 +3,7 @@ import threading
 import time
 import re
 import random
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 class SensorManager:
     def __init__(self, port: str = 'COM3', baudrate: int = 9600, force_simulation: bool = False):
@@ -25,10 +25,10 @@ class SensorManager:
         # LIVE data for ongoing measurements
         self.live_temperature = None
         
-        # Real-time MAX30102 data for 30 seconds
-        self.real_time_hr_data = []
-        self.real_time_spo2_data = []
-        self.real_time_rr_data = []
+        # Per-second data storage for 10 seconds
+        self.per_second_hr_data: List[float] = [None] * 10
+        self.per_second_spo2_data: List[float] = [None] * 10
+        self.per_second_rr_data: List[float] = [None] * 10
         self.measurement_start_time = None
         
         # Detailed status for multi-step measurements
@@ -73,7 +73,7 @@ class SensorManager:
         }
 
         # MAX30102 measurement tracking
-        self.hr_measurement_duration = 30  # 30 seconds total
+        self.hr_measurement_duration = 10  # 10 seconds total
         self.last_vitals_update = 0
         self.vitals_update_interval = 1  # Update every second
 
@@ -202,6 +202,10 @@ class SensorManager:
             self.sensor_states[sensor_type] = "OFF"
         for sensor_type in self.sensors_prepared.keys():
             self.sensors_prepared[sensor_type] = False
+        # Reset per-second data
+        self.per_second_hr_data = [None] * 10
+        self.per_second_spo2_data = [None] * 10
+        self.per_second_rr_data = [None] * 10
         print("🔌 Disconnected from Arduino")
 
     def start_reading(self):
@@ -328,6 +332,9 @@ class SensorManager:
                     self.hr_measurement_pending = False
                     self._check_for_pending_auto_measurements()
                     print(f"✅ HR measurement completed: HR={self.heart_rate}, SpO2={self.spo2}, RR={self.respiratory_rate}")
+                    
+                    # Calculate and display per-second data summary
+                    self._display_per_second_summary()
                 else:
                     print("⚠️ Invalid HR/SpO2 readings received")
         
@@ -356,29 +363,18 @@ class SensorManager:
                     rr = float(parts[4]) if len(parts) > 4 else 0
                     time_index = int(parts[5]) if len(parts) > 5 else 0
                     
-                    # Store real-time data
-                    if hr > 0 and spo2 > 0:
+                    # Store per-second data
+                    if hr > 0 and spo2 > 0 and 0 <= time_index < 10:
+                        self.per_second_hr_data[time_index] = hr
+                        self.per_second_spo2_data[time_index] = spo2
+                        self.per_second_rr_data[time_index] = rr
+                        
                         # Update current measurements for real-time display
                         self.heart_rate = hr
                         self.spo2 = spo2
                         self.respiratory_rate = rr
                         
-                        # Store in real-time arrays (keep last 30 seconds)
-                        current_time = time_index
-                        if current_time < 30:
-                            # Ensure arrays are the right size
-                            while len(self.real_time_hr_data) <= current_time:
-                                self.real_time_hr_data.append(None)
-                            while len(self.real_time_spo2_data) <= current_time:
-                                self.real_time_spo2_data.append(None)
-                            while len(self.real_time_rr_data) <= current_time:
-                                self.real_time_rr_data.append(None)
-                            
-                            self.real_time_hr_data[current_time] = hr
-                            self.real_time_spo2_data[current_time] = spo2
-                            self.real_time_rr_data[current_time] = rr
-                        
-                        print(f"📊 Real-time vitals - Time: {time_index}s, HR: {hr}, SpO2: {spo2}, RR: {rr}")
+                        print(f"📊 Second {time_index+1}: HR={hr}, SpO2={spo2}, RR={rr}")
                         
                 except (ValueError, IndexError) as e:
                     print(f"⚠️ Could not parse VITAL_SIGNS data: {data}, Error: {e}")
@@ -423,6 +419,42 @@ class SensorManager:
             if "connected_basic_mode" in system_msg:
                 self.basic_mode = True
                 self.connection_established = True
+
+    def _display_per_second_summary(self):
+        """Display a summary of the per-second data collected."""
+        valid_hr = [hr for hr in self.per_second_hr_data if hr is not None]
+        valid_spo2 = [spo2 for spo2 in self.per_second_spo2_data if spo2 is not None]
+        valid_rr = [rr for rr in self.per_second_rr_data if rr is not None]
+        
+        print("\n📊 PER-SECOND DATA SUMMARY:")
+        print("Second | Heart Rate | SpO2 | Respiratory Rate")
+        print("-------|------------|------|------------------")
+        
+        for i in range(10):
+            print(f"   {i+1}   | ", end="")
+            
+            if self.per_second_hr_data[i] is not None:
+                if self.per_second_hr_data[i] < 100:
+                    print(" ", end="")
+                print(f"{self.per_second_hr_data[i]:.1f}     | ", end="")
+            else:
+                print("  --     | ", end="")
+                
+            if self.per_second_spo2_data[i] is not None:
+                if self.per_second_spo2_data[i] < 100:
+                    print(" ", end="")
+                print(f"{self.per_second_spo2_data[i]:.1f}  | ", end="")
+            else:
+                print("  --  | ", end="")
+                
+            if self.per_second_rr_data[i] is not None:
+                if self.per_second_rr_data[i] < 10:
+                    print(" ", end="")
+                print(f"{self.per_second_rr_data[i]:.1f}")
+            else:
+                print("  --")
+        
+        print(f"\nValid seconds: HR={len(valid_hr)}/10, SpO2={len(valid_spo2)}/10, RR={len(valid_rr)}/10")
 
     def _check_for_pending_auto_measurements(self):
         """
@@ -480,10 +512,10 @@ class SensorManager:
             self.heart_rate = None
             self.spo2 = None
             self.respiratory_rate = None
-            # Reset real-time data arrays
-            self.real_time_hr_data = []
-            self.real_time_spo2_data = []
-            self.real_time_rr_data = []
+            # Reset per-second data arrays
+            self.per_second_hr_data = [None] * 10
+            self.per_second_spo2_data = [None] * 10
+            self.per_second_rr_data = [None] * 10
             self.measurement_start_time = time.time()
             self.sensor_states["max30102"] = "ACTIVE"
         
@@ -638,7 +670,10 @@ class SensorManager:
 
     def start_max30102_measurement(self):
         # Allow starting even if finger not detected - let the system handle it
-        return self._start_generic_measurement("HR", "START_HR", "max30102")
+        if not self.finger_detected:
+            return {"status": "error", "error": "Finger not detected. Please place your finger on the sensor."}
+        else:
+            return self._start_generic_measurement("HR", "START_HR", "max30102")
 
     def get_max30102_status(self):
         # Calculate elapsed time for progress tracking
@@ -646,8 +681,13 @@ class SensorManager:
         if self.measurement_start_time and self.measurement_active:
             elapsed_time = int(time.time() - self.measurement_start_time)
         
-        # Get real-time data summary
-        real_time_summary = self._get_real_time_summary()
+        # If measurement should be complete but backend hasn't updated, check for completion
+        if elapsed_time >= 10 and self.measurement_active and self.current_phase == "HR":
+            print("🕒 Measurement time elapsed, checking for completion...")
+            self.measurement_active = False # Mark as inactive
+        
+        # Get per-second data summary
+        per_second_summary = self._get_per_second_summary()
         
         return {
             "finger_detected": self.finger_detected,
@@ -659,21 +699,21 @@ class SensorManager:
             "measurement_active": self.measurement_active,
             "elapsed_time": elapsed_time,
             "total_duration": self.hr_measurement_duration,
-            "real_time_data": {
-                "heart_rate": self.real_time_hr_data,
-                "spo2": self.real_time_spo2_data,
-                "respiratory_rate": self.real_time_rr_data
+            "per_second_data": {
+                "heart_rate": self.per_second_hr_data,
+                "spo2": self.per_second_spo2_data,
+                "respiratory_rate": self.per_second_rr_data
             },
-            "summary_stats": real_time_summary,
+            "summary_stats": per_second_summary,
             "sensor_ready": self.hr_sensor_ready,
             "sensor_prepared": self.sensors_prepared.get("max30102", False)
         }
 
-    def _get_real_time_summary(self):
-        """Calculate summary statistics from real-time data."""
-        valid_hr = [hr for hr in self.real_time_hr_data if hr is not None and hr > 0]
-        valid_spo2 = [spo2 for spo2 in self.real_time_spo2_data if spo2 is not None and spo2 > 0]
-        valid_rr = [rr for rr in self.real_time_rr_data if rr is not None and rr > 0]
+    def _get_per_second_summary(self):
+        """Calculate summary statistics from per-second data."""
+        valid_hr = [hr for hr in self.per_second_hr_data if hr is not None and hr > 0]
+        valid_spo2 = [spo2 for spo2 in self.per_second_spo2_data if spo2 is not None and spo2 > 0]
+        valid_rr = [rr for rr in self.per_second_rr_data if rr is not None and rr > 0]
         
         if not valid_hr:
             return {
@@ -682,7 +722,8 @@ class SensorManager:
                 "avg_rr": 0,
                 "min_hr": 0,
                 "max_hr": 0,
-                "data_points": 0
+                "valid_seconds": 0,
+                "total_seconds": 10
             }
         
         avg_hr = sum(valid_hr) / len(valid_hr)
@@ -697,7 +738,8 @@ class SensorManager:
             "avg_rr": round(avg_rr, 1),
             "min_hr": round(min_hr, 0),
             "max_hr": round(max_hr, 0),
-            "data_points": len(valid_hr)
+            "valid_seconds": len(valid_hr),
+            "total_seconds": 10
         }
 
     def get_measurements(self):
@@ -709,10 +751,10 @@ class SensorManager:
             "heart_rate": self.heart_rate,
             "spo2": self.spo2,
             "respiratory_rate": self.respiratory_rate,
-            "real_time_data": {
-                "heart_rate": self.real_time_hr_data,
-                "spo2": self.real_time_spo2_data,
-                "respiratory_rate": self.real_time_rr_data
+            "per_second_data": {
+                "heart_rate": self.per_second_hr_data,
+                "spo2": self.per_second_spo2_data,
+                "respiratory_rate": self.per_second_rr_data
             }
         }
 
@@ -726,10 +768,10 @@ class SensorManager:
         self.respiratory_rate = None
         self.live_temperature = None
         
-        # Reset real-time data
-        self.real_time_hr_data = []
-        self.real_time_spo2_data = []
-        self.real_time_rr_data = []
+        # Reset per-second data
+        self.per_second_hr_data = [None] * 10
+        self.per_second_spo2_data = [None] * 10
+        self.per_second_rr_data = [None] * 10
         self.measurement_start_time = None
         
         # Reset sensor states but keep readiness flags and prepared status

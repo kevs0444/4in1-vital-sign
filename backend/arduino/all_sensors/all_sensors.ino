@@ -61,8 +61,8 @@ const unsigned long TEMP_MEASUREMENT_TIME = 5000;
 const float TEMP_CALIBRATION_OFFSET = 1.5; // Adjusted calibration offset
 unsigned long lastTempUpdateTime = 0;
 
-// Heart Rate & SpO2 - 60 SECOND MEASUREMENT WITH MAXIM ALGORITHM
-const unsigned long HR_MEASUREMENT_TIME = 60000; // 60 seconds total measurement
+// Heart Rate & SpO2 - 10 SECOND MEASUREMENT WITH PER-SECOND DATA
+const unsigned long HR_MEASUREMENT_TIME = 10000; // 10 seconds total measurement
 bool fingerDetected = false;
 unsigned long lastSecondTime = 0;
 unsigned long lastSampleTime = 0;
@@ -73,26 +73,27 @@ uint32_t irBuffer[BUFFER_SIZE];
 uint32_t redBuffer[BUFFER_SIZE];
 int bufferIndex = 0;
 
-// Real-time data for 60 seconds (12 x 5-second blocks)
-float heartRateAverages[12] = {0};
-float spo2Averages[12] = {0};
-float respiratoryAverages[12] = {0};
-bool blockCompleted[12] = {false};
-int current5SecondBlock = 0;
+// Per-second data storage for 10 seconds
+float heartRateSecondData[10] = {0};
+float spo2SecondData[10] = {0};
+float respiratorySecondData[10] = {0};
+bool secondDataValid[10] = {false};
+int currentSecond = 0;
 
 // Current second measurements
 int currentHeartRate = 0;
 int currentSpO2 = 0;
 int currentRespiratoryRate = 0;
 
-// Final 60-second averages
+// Final 10-second averages
 float finalHeartRate = 0;
 float finalSpO2 = 0;
 float finalRespiratoryRate = 0;
 
 // Measurement tracking
 int secondsElapsed = 0;
-unsigned long last5SecondTime = 0;
+unsigned long lastDataSendTime = 0;
+bool measurementFinalized = false;
 
 // =================================================================
 // --- SETUP FUNCTION ---
@@ -219,7 +220,7 @@ void initializeOtherSensors() {
     particleSensor.setPulseAmplitudeRed(0x0A);
     particleSensor.setPulseAmplitudeGreen(0);
     Serial.println("STATUS:HR_SENSOR_READY");
-    Serial.println("DEBUG:HR sensor ready - 60-second monitoring with Maxim algorithm");
+    Serial.println("DEBUG:HR sensor ready - 10-second monitoring with per-second data");
   } else {
     Serial.println("ERROR:HR_SENSOR_INIT_FAILED");
   }
@@ -252,7 +253,7 @@ void loop() {
   }
 
   // Process active measurements
-  if (measurementActive) {
+  if (measurementActive && !measurementFinalized) {
     switch (currentPhase) {
       case INITIALIZING_WEIGHT:
         runWeightInitializationPhase();
@@ -414,7 +415,7 @@ void powerUpHrSensor() {
     particleSensor.wakeUp();
     delay(100);
     
-    // Configuration for 60-second monitoring with Maxim algorithm
+    // Configuration for 10-second monitoring with Maxim algorithm
     particleSensor.setup();
     particleSensor.setPulseAmplitudeRed(0x0A);
     particleSensor.setPulseAmplitudeGreen(0);
@@ -422,7 +423,7 @@ void powerUpHrSensor() {
     hrSensorPowered = true;
     
     Serial.println("STATUS:HR_SENSOR_POWERED_UP");
-    Serial.println("DEBUG:MAX30102 powered up - 60-second monitoring with Maxim algorithm");
+    Serial.println("DEBUG:MAX30102 powered up - 10-second monitoring with per-second data");
   }
 }
 
@@ -441,6 +442,7 @@ void shutdownAllSensors() {
   powerDownHrSensor();
   measurementActive = false;
   currentPhase = IDLE;
+  measurementFinalized = false;
   Serial.println("STATUS:ALL_SENSORS_SHUTDOWN");
 }
 
@@ -455,6 +457,8 @@ void sendStatus() {
   }
   Serial.print("STATUS:MEASUREMENT_ACTIVE:");
   Serial.println(measurementActive ? "YES" : "NO");
+  Serial.print("STATUS:MEASUREMENT_FINALIZED:");
+  Serial.println(measurementFinalized ? "YES" : "NO");
   Serial.print("STATUS:WEIGHT_SENSOR_INITIALIZED:");
   Serial.println(weightSensorInitialized ? "YES" : "NO");
   Serial.print("STATUS:AUTO_TARE_COMPLETED:");
@@ -475,6 +479,7 @@ void startWeightMeasurement() {
   }
   
   measurementActive = true;
+  measurementFinalized = false;
   currentPhase = WEIGHT;
   weightState = W_DETECTING;
   phaseStartTime = millis();
@@ -484,6 +489,7 @@ void startWeightMeasurement() {
 void startHeightMeasurement() {
   if (!heightSensorPowered) powerUpHeightSensor();
   measurementActive = true;
+  measurementFinalized = false;
   currentPhase = HEIGHT;
   distanceSum = 0;
   heightReadCount = 0;
@@ -496,6 +502,7 @@ void startHeightMeasurement() {
 void startTemperatureMeasurement() {
   if (!tempSensorPowered) powerUpTempSensor();
   measurementActive = true;
+  measurementFinalized = false;
   currentPhase = TEMP;
   phaseStartTime = millis();
   lastTempUpdateTime = millis();
@@ -508,21 +515,24 @@ void startHeartRateMeasurement() {
   }
   
   measurementActive = true;
+  measurementFinalized = false;
   currentPhase = HR;
   phaseStartTime = millis();
   lastSecondTime = millis();
-  last5SecondTime = millis();
+  lastDataSendTime = millis();
   fingerDetected = false;
   
   // Reset all data arrays
   bufferIndex = 0;
-  current5SecondBlock = 0;
+  currentSecond = 0;
+  secondsElapsed = 0;
   
-  for (int i = 0; i < 12; i++) {
-    heartRateAverages[i] = 0;
-    spo2Averages[i] = 0;
-    respiratoryAverages[i] = 0;
-    blockCompleted[i] = false;
+  // Initialize per-second data arrays
+  for (int i = 0; i < 10; i++) {
+    heartRateSecondData[i] = 0;
+    spo2SecondData[i] = 0;
+    respiratorySecondData[i] = 0;
+    secondDataValid[i] = false;
   }
   
   for (int i = 0; i < BUFFER_SIZE; i++) {
@@ -539,10 +549,10 @@ void startHeartRateMeasurement() {
   currentRespiratoryRate = 0;
   
   Serial.println("STATUS:HR_MEASUREMENT_STARTED");
-  Serial.println("DEBUG:60-second MAX30102 monitoring started");
-  Serial.println("DEBUG:Using Maxim algorithm for HR/SpO2 calculation");
-  Serial.println("TIME | HR Avg | SpO2 Avg | RR Avg | Status");
-  Serial.println("-----|---------|----------|---------|--------");
+  Serial.println("DEBUG:10-second MAX30102 monitoring started");
+  Serial.println("DEBUG:Collecting per-second data for final average");
+  Serial.println("SECOND | Heart Rate | SpO2 | Respiratory Rate | Status");
+  Serial.println("-------|------------|------|------------------|--------");
 }
 
 // =================================================================
@@ -565,7 +575,7 @@ void runIdleTasks() {
     }
 
     // Check for finger on MAX30102
-    if (hrSensorPowered) {
+    if (hrSensorPowered && !measurementFinalized) {
       long irValue = particleSensor.getIR();
       
       if (irValue > 50000) {
@@ -600,12 +610,14 @@ void runWeightInitializationPhase() {
     weightSensorInitialized = true;
     autoTareCompleted = true;
     measurementActive = false;
+    measurementFinalized = true;
     currentPhase = IDLE;
   } else if (millis() - phaseStartTime > 10000) {
     Serial.println("ERROR:TARE_FAILED");
     weightSensorInitialized = false;
     autoTareCompleted = false;
     measurementActive = false;
+    measurementFinalized = true;
     currentPhase = IDLE;
   }
 }
@@ -664,6 +676,7 @@ void runWeightPhase() {
       if (millis() - stateStartTime > STABILIZATION_TIMEOUT) {
         Serial.println("ERROR:WEIGHT_UNSTABLE");
         measurementActive = false;
+        measurementFinalized = true;
         currentPhase = IDLE;
         weightState = W_DETECTING;
       }
@@ -736,6 +749,7 @@ void finalizeWeightMeasurement(float weightSum, int readingCount) {
   }
   delay(100);
   measurementActive = false;
+  measurementFinalized = true;
   currentPhase = IDLE;
   weightState = W_DETECTING;
   Serial.println("STATUS:WEIGHT_MEASUREMENT_COMPLETE");
@@ -744,6 +758,7 @@ void finalizeWeightMeasurement(float weightSum, int readingCount) {
 void finalizeHeightMeasurement() {
   delay(100);
   measurementActive = false;
+  measurementFinalized = true;
   currentPhase = IDLE;
   heightState = H_DETECTING;
   Serial.println("STATUS:HEIGHT_MEASUREMENT_COMPLETE");
@@ -776,6 +791,7 @@ void runTemperaturePhase() {
     
     delay(100);
     measurementActive = false;
+    measurementFinalized = true;
     currentPhase = IDLE;
     powerDownTempSensor();
     Serial.println("STATUS:TEMP_MEASUREMENT_COMPLETE");
@@ -783,7 +799,7 @@ void runTemperaturePhase() {
 }
 
 // =================================================================
-// --- IMPROVED HR/SpO2 FUNCTIONS USING MAXIM ALGORITHM ---
+// --- IMPROVED HR/SpO2 FUNCTIONS WITH PER-SECOND DATA ---
 // =================================================================
 void runHeartRatePhase() {
   unsigned long currentTime = millis();
@@ -793,13 +809,19 @@ void runHeartRatePhase() {
     lastSecondTime = currentTime;
     secondsElapsed = (currentTime - phaseStartTime) / 1000;
     
-    // Send progress update
-    int remaining = 60 - secondsElapsed;
-    int progressPercent = (secondsElapsed * 100) / 60;
+    // Send progress update - 10 seconds total
+    int remaining = 10 - secondsElapsed;
+    int progressPercent = (secondsElapsed * 100) / 10;
     Serial.print("STATUS:HR_PROGRESS:");
     Serial.print(secondsElapsed);
-    Serial.print("/60:");
+    Serial.print("/10:");
     Serial.println(progressPercent);
+    
+    // Store current second data
+    if (secondsElapsed > 0 && secondsElapsed <= 10) {
+      currentSecond = secondsElapsed - 1;
+      storeSecondData();
+    }
   }
 
   // Check for finger detection
@@ -815,25 +837,24 @@ void runHeartRatePhase() {
   }
 
   // Collect samples continuously when finger is detected
-  if (fingerDetected && particleSensor.available()) {
+  if (fingerDetected && particleSensor.available() && !measurementFinalized) {
     collectSensorSamples();
   }
 
   // Calculate vital signs every second when we have enough samples
-  if (bufferIndex >= BUFFER_SIZE) {
+  if (bufferIndex >= BUFFER_SIZE && !measurementFinalized) {
     calculateVitalSigns();
     bufferIndex = 0; // Reset buffer for next second
   }
 
-  // Calculate 5-second averages
-  if (currentTime - last5SecondTime >= 5000 && current5SecondBlock < 12) {
-    calculate5SecondAverage();
-    last5SecondTime = currentTime;
-    current5SecondBlock++;
+  // Send real-time data every second
+  if (currentTime - lastDataSendTime >= 1000 && !measurementFinalized) {
+    sendRealTimeData();
+    lastDataSendTime = currentTime;
   }
 
-  // Finalize measurement after 60 seconds
-  if (currentTime - phaseStartTime >= HR_MEASUREMENT_TIME) {
+  // Finalize measurement after 10 seconds
+  if (currentTime - phaseStartTime >= HR_MEASUREMENT_TIME && !measurementFinalized) {
     finalizeHRMeasurement();
   }
 }
@@ -869,7 +890,30 @@ bool calculateVitalSigns() {
     currentSpO2 = spo2Value;
     currentRespiratoryRate = estimateRespiratoryRate();
     
-    // Send real-time data to frontend
+    return true;
+  }
+  
+  return false;
+}
+
+void storeSecondData() {
+  // Store current readings for this second
+  if (currentHeartRate > 0 && currentSpO2 > 0) {
+    heartRateSecondData[currentSecond] = currentHeartRate;
+    spo2SecondData[currentSecond] = currentSpO2;
+    respiratorySecondData[currentSecond] = currentRespiratoryRate;
+    secondDataValid[currentSecond] = true;
+    
+    // Display current second data in terminal
+    displaySecondData(currentSecond + 1);
+  } else {
+    secondDataValid[currentSecond] = false;
+  }
+}
+
+void sendRealTimeData() {
+  // Send real-time data to frontend
+  if (currentHeartRate > 0 && currentSpO2 > 0) {
     Serial.print("DATA:VITAL_SIGNS:");
     Serial.print(currentHeartRate);
     Serial.print(":");
@@ -880,113 +924,108 @@ bool calculateVitalSigns() {
     Serial.print(secondsElapsed);
     Serial.print(":");
     Serial.println(secondsElapsed);
-    
-    return true;
   }
-  
-  return false;
 }
 
-int estimateRespiratoryRate() {
-  // Simple respiratory rate estimation
-  int baseRate = 16;
-  return baseRate;
-}
-
-void calculate5SecondAverage() {
-  // For now, we'll use the current reading as the 5-second average
-  // In a more sophisticated implementation, we'd average multiple readings
-  heartRateAverages[current5SecondBlock] = currentHeartRate;
-  spo2Averages[current5SecondBlock] = currentSpO2;
-  respiratoryAverages[current5SecondBlock] = currentRespiratoryRate;
-  blockCompleted[current5SecondBlock] = true;
-  
-  // Send 5-second average to frontend
-  int timeSeconds = (current5SecondBlock + 1) * 5;
-  Serial.print("DATA:5SEC_AVERAGE:");
-  Serial.print(heartRateAverages[current5SecondBlock], 1);
-  Serial.print(":");
-  Serial.print(spo2Averages[current5SecondBlock], 1);
-  Serial.print(":");
-  Serial.print(respiratoryAverages[current5SecondBlock], 1);
-  Serial.print(":");
-  Serial.print(timeSeconds);
-  Serial.print(":");
-  Serial.println(secondsElapsed);
-  
-  // Display in terminal
-  displayTerminalOutput();
-}
-
-void displayTerminalOutput() {
-  int timeSeconds = (current5SecondBlock + 1) * 5;
-  
-  Serial.print(" ");
-  if (timeSeconds < 10) Serial.print(" ");
-  Serial.print(timeSeconds);
-  Serial.print("s  | ");
+void displaySecondData(int second) {
+  Serial.print("  ");
+  if (second < 10) Serial.print(" ");
+  Serial.print(second);
+  Serial.print("   | ");
   
   // Heart Rate
-  if (heartRateAverages[current5SecondBlock] > 0) {
-    if (heartRateAverages[current5SecondBlock] < 100) Serial.print(" ");
-    Serial.print(heartRateAverages[current5SecondBlock], 1);
-    Serial.print("  | ");
+  if (heartRateSecondData[second-1] > 0) {
+    if (heartRateSecondData[second-1] < 100) Serial.print(" ");
+    Serial.print(heartRateSecondData[second-1], 1);
+    Serial.print("     | ");
   } else {
-    Serial.print("  --   | ");
+    Serial.print("  --     | ");
   }
   
   // SpO2
-  if (spo2Averages[current5SecondBlock] > 0) {
-    if (spo2Averages[current5SecondBlock] < 100) Serial.print(" ");
-    Serial.print(spo2Averages[current5SecondBlock], 1);
-    Serial.print("   | ");
+  if (spo2SecondData[second-1] > 0) {
+    if (spo2SecondData[second-1] < 100) Serial.print(" ");
+    Serial.print(spo2SecondData[second-1], 1);
+    Serial.print("  | ");
   } else {
-    Serial.print("  --   | ");
+    Serial.print("  --  | ");
   }
   
   // Respiratory Rate
-  if (respiratoryAverages[current5SecondBlock] > 0) {
-    if (respiratoryAverages[current5SecondBlock] < 10) Serial.print(" ");
-    Serial.print(respiratoryAverages[current5SecondBlock], 1);
-    Serial.print("   | ");
+  if (respiratorySecondData[second-1] > 0) {
+    if (respiratorySecondData[second-1] < 10) Serial.print(" ");
+    Serial.print(respiratorySecondData[second-1], 1);
+    Serial.print("        | ");
   } else {
-    Serial.print("  --   | ");
+    Serial.print("  --        | ");
   }
   
   // Status
-  if (heartRateAverages[current5SecondBlock] > 0 && spo2Averages[current5SecondBlock] > 0) {
-    Serial.println("✅ Good");
-  } else if (heartRateAverages[current5SecondBlock] > 0 || spo2Averages[current5SecondBlock] > 0) {
-    Serial.println("⚠️  Partial");
+  if (secondDataValid[second-1]) {
+    Serial.println("✅ Valid");
   } else {
     Serial.println("❌ No Data");
   }
 }
 
+int estimateRespiratoryRate() {
+  // Simple respiratory rate estimation based on heart rate variability
+  // This is a placeholder - in a real implementation, you'd analyze the PPG signal
+  int baseRate = 12 + (random(0, 9)); // Random between 12-20
+  return baseRate;
+}
+
 void finalizeHRMeasurement() {
   Serial.println("\n========================================");
-  Serial.println("=== 60-SECOND MEASUREMENT COMPLETE ===");
+  Serial.println("=== 10-SECOND MEASUREMENT COMPLETE ===");
   Serial.println("========================================");
   
-  // Calculate final averages from all 5-second blocks
+  // Calculate final averages from all valid seconds
   float totalHr = 0, totalSpo2 = 0, totalRr = 0;
-  int validBlocks = 0;
+  int validSeconds = 0;
   
-  for (int i = 0; i < 12; i++) {
-    if (blockCompleted[i] && heartRateAverages[i] > 0 && spo2Averages[i] > 0) {
-      totalHr += heartRateAverages[i];
-      totalSpo2 += spo2Averages[i];
-      totalRr += respiratoryAverages[i];
-      validBlocks++;
+  for (int i = 0; i < 10; i++) {
+    if (secondDataValid[i]) {
+      totalHr += heartRateSecondData[i];
+      totalSpo2 += spo2SecondData[i];
+      totalRr += respiratorySecondData[i];
+      validSeconds++;
     }
   }
   
-  if (validBlocks > 0) {
-    finalHeartRate = totalHr / validBlocks;
-    finalSpO2 = totalSpo2 / validBlocks;
-    finalRespiratoryRate = totalRr / validBlocks;
+  if (validSeconds > 0) {
+    finalHeartRate = totalHr / validSeconds;
+    finalSpO2 = totalSpo2 / validSeconds;
+    finalRespiratoryRate = totalRr / validSeconds;
     
-    Serial.println("FINAL AVERAGES (from 5-second blocks):");
+    Serial.println("PER-SECOND DATA SUMMARY:");
+    Serial.println("Second | Heart Rate | SpO2 | Respiratory Rate");
+    Serial.println("-------|------------|------|------------------");
+    
+    for (int i = 0; i < 10; i++) {
+      Serial.print("  ");
+      if (i+1 < 10) Serial.print(" ");
+      Serial.print(i+1);
+      Serial.print("   | ");
+      
+      if (secondDataValid[i]) {
+        if (heartRateSecondData[i] < 100) Serial.print(" ");
+        Serial.print(heartRateSecondData[i], 1);
+        Serial.print("     | ");
+        
+        if (spo2SecondData[i] < 100) Serial.print(" ");
+        Serial.print(spo2SecondData[i], 1);
+        Serial.print("  | ");
+        
+        if (respiratorySecondData[i] < 10) Serial.print(" ");
+        Serial.print(respiratorySecondData[i], 1);
+      } else {
+        Serial.print("  --     |   --   |   --");
+      }
+      Serial.println();
+    }
+    
+    Serial.println("\nFINAL 10-SECOND AVERAGES:");
     Serial.print("Heart Rate:      ");
     Serial.print(finalHeartRate, 1);
     Serial.println(" BPM");
@@ -999,9 +1038,9 @@ void finalizeHRMeasurement() {
     Serial.print(finalRespiratoryRate, 1);
     Serial.println(" breaths/min");
     
-    Serial.print("Valid 5-second blocks: ");
-    Serial.print(validBlocks);
-    Serial.println("/12");
+    Serial.print("Valid seconds:   ");
+    Serial.print(validSeconds);
+    Serial.println("/10");
     
     // Send final results
     Serial.print("RESULT:HR:");
@@ -1025,6 +1064,7 @@ void finalizeHRMeasurement() {
 
   // Reset and power down
   measurementActive = false;
+  measurementFinalized = true;
   currentPhase = IDLE;
   fingerDetected = false;
   

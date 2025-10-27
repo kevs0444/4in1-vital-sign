@@ -1,9 +1,9 @@
 /* GLOBAL RESET - Prevent result.css conflicts */
-.bloodpressure-container * {
+.bmi-container * {
   box-sizing: border-box;
 }
 
-.bloodpressure-container {
+.bmi-container {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -22,7 +22,7 @@
   bottom: 0;
 }
 
-.bloodpressure-content {
+.bmi-content {
   background: white;
   border-radius: 16px;
   width: 100%;
@@ -42,7 +42,7 @@
   position: relative;
 }
 
-.bloodpressure-content.visible {
+.bmi-content.visible {
   opacity: 1;
   transform: translateY(0);
 }
@@ -77,13 +77,13 @@
 }
 
 /* Header - More compact */
-.bloodpressure-header {
+.bmi-header {
   text-align: center;
   margin-bottom: 12px;
   flex-shrink: 0;
 }
 
-.bloodpressure-title {
+.bmi-title {
   font-size: 1.6rem;
   color: #333;
   font-weight: 700;
@@ -91,79 +91,15 @@
   line-height: 1.2;
 }
 
-.bloodpressure-subtitle {
+.bmi-subtitle {
   font-size: 0.85rem;
   color: #666;
   line-height: 1.3;
   padding: 0 10px;
 }
 
-/* Single BP Icon Styles */
-.bp-icon-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 15px 0 25px 0;
-}
-
-.bp-main-icon {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-  margin-bottom: 10px;
-}
-
-.bp-icon-label {
-  font-size: 0.9rem;
-  color: #666;
-  font-weight: 600;
-  text-align: center;
-}
-
-/* Connection Status */
-.connection-status-error {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin: 10px 0;
-  text-align: center;
-  color: #856404;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.retry-connection {
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.retry-connection:hover {
-  background: #c82333;
-  transform: translateY(-1px);
-}
-
-/* Display Section */
-.sensor-display-section {
-  margin: 8px 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 180px;
-}
-
-/* Dual Blood Pressure Cards */
-.bp-cards-container {
+/* Measurement Cards Container */
+.bmi-cards-container {
   display: flex;
   justify-content: center;
   gap: 15px;
@@ -172,11 +108,12 @@
   flex-wrap: wrap;
 }
 
-.measurement-card.bp-card {
+/* Measurement Cards */
+.measurement-card.bmi-card {
   flex: 1;
   min-width: 140px;
   max-width: 200px;
-  min-height: 140px;
+  min-height: 160px;
   padding: 20px 15px;
   display: flex;
   flex-direction: column;
@@ -189,15 +126,20 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-.measurement-card.bp-card:hover {
+.measurement-card.bmi-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
   border-color: #dc3545;
 }
 
-/* Remove individual card icons */
-.measurement-card.bp-card .measurement-icon {
-  display: none;
+.measurement-card.bmi-card .measurement-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 .measurement-image {
@@ -211,7 +153,7 @@
   width: 100%;
 }
 
-.measurement-card.bp-card .measurement-title {
+.measurement-card.bmi-card .measurement-title {
   font-size: 1rem;
   color: #333;
   font-weight: 700;
@@ -227,22 +169,22 @@
   margin-bottom: 8px;
 }
 
-.measurement-card.bp-card .value,
-.measurement-card.bp-card .placeholder {
+.measurement-card.bmi-card .value,
+.measurement-card.bmi-card .placeholder {
   font-size: 1.8rem;
   font-weight: 800;
   line-height: 1;
 }
 
-.measurement-card.bp-card .value {
+.measurement-card.bmi-card .value {
   color: #333;
 }
 
-.measurement-card.bp-card .placeholder {
+.measurement-card.bmi-card .placeholder {
   color: #ccc;
 }
 
-.measurement-card.bp-card .unit {
+.measurement-card.bmi-card .unit {
   font-size: 1rem;
   color: #666;
   font-weight: 600;
@@ -257,87 +199,95 @@
   min-width: 80px;
 }
 
-.measurement-card.bp-card .measurement-status {
+.measurement-card.bmi-card .measurement-status {
   font-size: 0.8rem;
   padding: 6px 12px;
   min-width: 90px;
 }
 
-/* Status colors for BP */
-.measurement-status.normal {
+/* Status colors */
+.measurement-status.measuring {
+  background: #17a2b8;
+  color: white;
+}
+
+.measurement-status.complete {
   background: #28a745;
   color: white;
 }
 
-.measurement-status.elevated {
-  background: #ffc107;
-  color: #212529;
-}
-
-.measurement-status.hypertension-stage1 {
-  background: #fd7e14;
-  color: white;
-}
-
-.measurement-status.hypertension-stage2 {
-  background: #dc3545;
-  color: white;
-}
-
-.measurement-status.hypertensive-crisis {
-  background: #6f42c1;
-  color: white;
-}
-
-.measurement-status.default {
+.measurement-status.waiting {
   background: #6c757d;
   color: white;
 }
 
-/* BP Status Overview */
-.bp-status-overview {
+/* BMI Result Display */
+.bmi-result-section {
   margin-top: 15px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 10px;
-  border: 1px solid #e9ecef;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+  transition: all 0.5s ease;
 }
 
-.bp-overall-status {
-  font-size: 1rem;
+.bmi-result-section.has-result {
+  background: linear-gradient(135deg, #e8f5e8, #d4edda);
+  border-color: #28a745;
+  transform: scale(1.02);
+}
+
+.bmi-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #333;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.bmi-category {
+  font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: 8px;
-  color: #333;
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: inline-block;
 }
 
-.bp-category-info {
+/* BMI Category Colors */
+.bmi-category.underweight {
+  background: #17a2b8;
+  color: white;
+}
+
+.bmi-category.normal {
+  background: #28a745;
+  color: white;
+}
+
+.bmi-category.overweight {
+  background: #ffc107;
+  color: #212529;
+}
+
+.bmi-category.obese {
+  background: #dc3545;
+  color: white;
+}
+
+.bmi-description {
   font-size: 0.85rem;
   color: #666;
   line-height: 1.3;
 }
 
 /* Measurement Progress */
-.measurement-progress {
+.measuring-progress {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   margin-top: 16px;
-}
-
-.progress-bar-horizontal {
-  width: 200px;
-  height: 6px;
-  background: #f0f0f0;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill-horizontal {
-  height: 100%;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 3px;
-  transition: width 0.5s ease;
 }
 
 .pulse-wave {
@@ -404,101 +354,10 @@
   transform: translateY(-1px);
 }
 
-/* User Detection Warning */
-.user-detection-warning {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 12px;
-  padding: 16px;
-  margin: 20px 0;
-  text-align: center;
-  animation: pulseWarning 2s infinite;
-}
-
-.user-detection-warning.no_user {
-  background: #f8d7da;
-  border-color: #f5c6cb;
-}
-
-.warning-icon {
-  font-size: 24px;
-  margin-right: 10px;
-}
-
-.warning-text {
-  color: #856404;
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.user-detection-warning.no_user .warning-text {
-  color: #721c24;
-}
-
-.detection-tips {
-  margin-top: 12px;
-  text-align: left;
-  background: rgba(255, 255, 255, 0.7);
-  padding: 12px;
-  border-radius: 8px;
-}
-
-.detection-tips ul {
-  margin: 8px 0 0 20px;
-  padding: 0;
-}
-
-.detection-tips li {
-  margin: 4px 0;
-  color: #666;
-  font-size: 14px;
-}
-
-.live-reading {
-  background: #e3f2fd;
-  border: 1px solid #bbdefb;
-  border-radius: 8px;
-  padding: 8px 16px;
-  margin: 10px 0;
-  font-weight: 600;
-  color: #1976d2;
-  font-size: 18px;
-}
-
-.detection-warning {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-@keyframes pulseWarning {
-  0% { opacity: 1; }
-  50% { opacity: 0.8; }
-  100% { opacity: 1; }
-}
-
 /* Measurement Controls */
 .measurement-controls {
   flex-shrink: 0;
   margin: 12px 0 8px 0;
-}
-
-.waiting-prompt {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-}
-
-.waiting-prompt span {
-  font-size: 0.9rem;
-  color: #666;
-  font-weight: 600;
 }
 
 .measure-button {
@@ -587,9 +446,10 @@
   width: 24px;
   height: 24px;
   border: 2px solid transparent;
-  border-top: 2px solid #dc3545;
+  border-top: 2px solid white;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  margin-right: 10px;
 }
 
 @keyframes spin {
@@ -597,25 +457,10 @@
   100% { transform: rotate(360deg); }
 }
 
-.measurement-complete {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-}
-
 .success-text {
   color: #dc3545;
   font-weight: 600;
   font-size: 1rem;
-}
-
-.complete-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
 }
 
 .retry-button {
@@ -640,92 +485,6 @@
 
 .retry-button:active {
   transform: translateY(0);
-}
-
-.button-icon {
-  font-size: 1.7rem;
-}
-
-/* Educational Content */
-.educational-content {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border-radius: 12px;
-  padding: 16px;
-  margin: 8px 0;
-  transition: opacity 0.5s ease;
-  flex-shrink: 0;
-  flex: 0.9;
-  border: 2px solid #e9ecef;
-}
-
-.education-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: #333;
-  text-align: center;
-}
-
-.education-points {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.education-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px;
-  background: white;
-  border-radius: 10px;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-}
-
-.education-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
-  border-color: #dc3545;
-}
-
-.education-card:active {
-  transform: translateY(0);
-}
-
-.card-icon {
-  font-size: 1.7rem;
-  min-width: 45px;
-  height: 45px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 10px;
-  flex-shrink: 0;
-  color: white;
-}
-
-.card-content {
-  flex: 1;
-  text-align: left;
-}
-
-.card-content h4 {
-  color: #333;
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin: 0 0 6px 0;
-  line-height: 1.2;
-}
-
-.card-content p {
-  color: #666;
-  font-size: 0.8rem;
-  line-height: 1.3;
-  margin: 0;
 }
 
 /* Continue Button */
@@ -791,11 +550,11 @@
 
 /* 768x1366 specific optimization */
 @media (max-width: 768px) and (max-height: 1366px) {
-  .bloodpressure-container {
+  .bmi-container {
     padding: 8px;
   }
   
-  .bloodpressure-content {
+  .bmi-content {
     padding: 18px;
     max-width: 100%;
     min-height: 88vh;
@@ -803,33 +562,37 @@
     border-radius: 14px;
   }
   
-  .bloodpressure-title {
+  .bmi-title {
     font-size: 1.5rem;
   }
   
-  .bloodpressure-subtitle {
+  .bmi-subtitle {
     font-size: 0.8rem;
   }
   
-  .bp-main-icon {
-    width: 70px;
-    height: 70px;
-  }
-  
-  .bp-cards-container {
+  .bmi-cards-container {
     gap: 12px;
   }
   
-  .measurement-card.bp-card {
+  .measurement-card.bmi-card {
     min-width: 120px;
     max-width: 160px;
-    min-height: 130px;
+    min-height: 140px;
     padding: 16px 12px;
   }
   
-  .measurement-card.bp-card .value,
-  .measurement-card.bp-card .placeholder {
+  .measurement-card.bmi-card .measurement-icon {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .measurement-card.bmi-card .value,
+  .measurement-card.bmi-card .placeholder {
     font-size: 1.5rem;
+  }
+  
+  .bmi-value {
+    font-size: 2rem;
   }
   
   .measure-button,
@@ -838,57 +601,47 @@
     font-size: 1.2rem;
     min-height: 65px;
   }
-  
-  .educational-content {
-    padding: 14px;
-  }
-  
-  .education-card {
-    padding: 12px;
-  }
-  
-  .card-icon {
-    min-width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
-  }
 }
 
 /* Small mobile optimization */
 @media (max-width: 480px) {
-  .bloodpressure-container {
+  .bmi-container {
     padding: 5px;
   }
   
-  .bloodpressure-content {
+  .bmi-content {
     padding: 15px;
     min-height: 85vh;
     max-height: 90vh;
   }
   
-  .bloodpressure-title {
+  .bmi-title {
     font-size: 1.4rem;
   }
   
-  .bp-main-icon {
-    width: 60px;
-    height: 60px;
-  }
-  
-  .bp-cards-container {
+  .bmi-cards-container {
     gap: 10px;
   }
   
-  .measurement-card.bp-card {
+  .measurement-card.bmi-card {
     min-width: 100px;
     max-width: 140px;
     min-height: 120px;
     padding: 14px 10px;
   }
   
-  .measurement-card.bp-card .value,
-  .measurement-card.bp-card .placeholder {
+  .measurement-card.bmi-card .measurement-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .measurement-card.bmi-card .value,
+  .measurement-card.bmi-card .placeholder {
     font-size: 1.3rem;
+  }
+  
+  .bmi-value {
+    font-size: 1.8rem;
   }
   
   .measure-button,
@@ -896,19 +649,5 @@
     padding: 16px 12px;
     font-size: 1.1rem;
     min-height: 60px;
-  }
-  
-  .educational-content {
-    padding: 12px;
-  }
-  
-  .education-card {
-    padding: 10px;
-  }
-  
-  .card-icon {
-    min-width: 35px;
-    height: 35px;
-    font-size: 1.3rem;
   }
 }
