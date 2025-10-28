@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Role.css";
-import adminIcon from "../../assets/icons/admin-icon.png";
-import medicalIcon from "../../assets/icons/medical-icon.png";
-import employeeIcon from "../../assets/icons/employee-icon.png";
-import studentIcon from "../../assets/icons/student-icon.png";
+import adminIcon from "../assets/icons/admin-icon.png";
+import medicalIcon from "../assets/icons/medical-icon.png";
+import employeeIcon from "../assets/icons/employee-icon.png";
+import studentIcon from "../assets/icons/student-icon.png";
 
 export default function Role() {
   const navigate = useNavigate();

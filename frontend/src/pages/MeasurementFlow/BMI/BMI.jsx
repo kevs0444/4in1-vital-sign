@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BMI.css";
-import weightIcon from "../../assets/icons/weight-icon.png";
-import heightIcon from "../../assets/icons/height-icon.png";
+import weightIcon from "../../../assets/icons/weight-icon.png";
+import heightIcon from "../../../assets/icons/height-icon.png";
 import { sensorAPI } from "../../../utils/api";
 
 export default function BMI() {

@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Row, Col, Button, Modal, Form } from "react-bootstrap";
 import { motion } from "framer-motion";
-import "./Welcome.css";
-import logo from "../../assets/images/welcome.png";
+import "./MeasurementWelcome.css"; // ✅ Updated to match actual file name
+import logo from "../../../assets/images/welcome.png";
 
 export default function Welcome() {
   const navigate = useNavigate();

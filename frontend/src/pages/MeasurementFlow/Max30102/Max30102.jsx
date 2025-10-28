@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Max30102.css";
-import heartRateIcon from "../../assets/icons/heart-rate-icon.png";
-import spo2Icon from "../../assets/icons/spo2-icon.png";
-import respiratoryIcon from "../../assets/icons/respiratory-icon.png";
+import heartRateIcon from "../../../assets/icons/heart-rate-icon.png";
+import spo2Icon from "../../../assets/icons/spo2-icon.png";
+import respiratoryIcon from "../../../assets/icons/respiratory-icon.png";
 import { sensorAPI } from "../../../utils/api";
 
 export default function Max30102() {

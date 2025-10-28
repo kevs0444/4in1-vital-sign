@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./AILoading.css";
-import aiLoadingIcon from "../../assets/icons/ai-icon.png";
+import aiLoadingIcon from "../../../assets/icons/ai-icon.png";
 
 export default function AILoading() {
   const navigate = useNavigate();

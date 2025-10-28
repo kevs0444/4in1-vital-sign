@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Saving.css";
-import savingIcon from "../../assets/icons/saving-icon.png";
+import savingIcon from "../../../assets/icons/saving-icon.png";
 
 export default function Saving() {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BloodPressure.css";
-import bpIcon from "../../assets/icons/bp-icon.png";
+import bpIcon from "../../../assets/icons/bp-icon.png";
 import { sensorAPI } from "../../../utils/api";
 
 export default function BloodPressure() {

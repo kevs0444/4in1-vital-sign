@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./RegisterPersonalInfo.css";
-import nameImage from "../../assets/images/name.png";
-import ageImage from "../../assets/images/age.png";
-import maleIcon from "../../assets/icons/male-icon.png";
-import femaleIcon from "../../assets/icons/female-icon.png";
+import nameImage from "../../../assets/images/name.png";
+import ageImage from "../../../assets/images/age.png";
+import maleIcon from "../../../assets/icons/male-icon.png";
+import femaleIcon from "../../../assets/icons/female-icon.png";
 
 export default function RegisterPersonalInfo() {
   const navigate = useNavigate();

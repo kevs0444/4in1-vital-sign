@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Starting.css";
-import logo from "../../assets/images/logo.png";
+import logo from "../../../assets/images/logo.png";
 
 export default function Starting() {
   const navigate = useNavigate();

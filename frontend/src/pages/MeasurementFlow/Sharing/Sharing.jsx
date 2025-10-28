@@ -1,8 +1,8 @@
 // Share.jsx - Custom Print Dialog UI
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import "./Share.css";
-import shareIcon from "../../assets/icons/share-icon.png";
+import "./Sharing.css"; // This should exist in the same directory
+import shareIcon from "../../../assets/icons/share-icon.png";
 
 export default function Share() {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BodyTemp.css";
-import tempIcon from "../../assets/icons/temp-icon.png";
+import tempIcon from "../../../assets/icons/temp-icon.png";
 import { sensorAPI } from "../../../utils/api";
 
 export default function BodyTemp() {
