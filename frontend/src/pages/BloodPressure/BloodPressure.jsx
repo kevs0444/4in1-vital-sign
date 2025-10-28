@@ -189,7 +189,7 @@ export default function BloodPressure() {
     
     stopMonitoring();
     
-    navigate("/results", {
+    navigate("/ai-loading", {
       state: { 
         ...location.state, 
         weight: location.state?.weight,
@@ -197,6 +197,7 @@ export default function BloodPressure() {
         temperature: location.state?.temperature,
         heartRate: location.state?.heartRate,
         spo2: location.state?.spo2,
+        respiratoryRate: location.state?.respiratoryRate,
         systolic: parseFloat(systolic),
         diastolic: parseFloat(diastolic)
       },
@@ -335,10 +336,14 @@ export default function BloodPressure() {
             onClick={handleContinue} 
             disabled={!measurementComplete || !systolic || !diastolic}
           >
-            View Complete Results
+            <span className="button-icon">🤖</span>
+            View Complete AI Results
+            <span style={{fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
+              BP: {systolic}/{diastolic} mmHg
+            </span>
           </button>
         </div>
       </div>
     </div>
   );
-}
+}       

@@ -342,7 +342,7 @@ export default function Max30102() {
     };
     
     console.log("🚀 Continuing with data:", finalData);
-    navigate("/ai-loading", { state: finalData });
+    navigate("/bloodpressure", { state: finalData });
   };
 
   const getStatusColor = (type, value) => {
@@ -394,9 +394,9 @@ export default function Max30102() {
       <div className={`max30102-content ${isVisible ? 'visible' : ''}`}>
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{ width: "100%" }}></div>
+            <div className="progress-fill" style={{ width: "75%" }}></div>
           </div>
-          <span className="progress-step">Step 4 of 4 - Vital Signs</span>
+          <span className="progress-step">Step 3 of 4 - Vital Signs</span>
         </div>
 
         <div className="max30102-header">
@@ -540,8 +540,8 @@ export default function Max30102() {
           >
             {measurementComplete ? (
               <>
-                <span className="button-icon">📊</span>
-                View AI Results
+                <span className="button-icon">🩺</span>
+                Continue to Blood Pressure
                 <span style={{fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
                   HR: {measurements.heartRate} BPM • SpO2: {measurements.spo2}%
                 </span>

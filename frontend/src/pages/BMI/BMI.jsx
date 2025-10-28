@@ -240,14 +240,6 @@ export default function BMI() {
     }
   };
 
-  const convertToFeetInches = (cm) => {
-    if (!cm || cm === "--.--") return "--'--\"";
-    const totalInches = parseFloat(cm) / 2.54;
-    const feet = Math.floor(totalInches / 12);
-    const inches = Math.round(totalInches % 12);
-    return `${feet}'${inches}"`;
-  };
-
   const handleContinue = () => {
     if (!measurementComplete || !weight || !height) return;
     
@@ -276,7 +268,7 @@ export default function BMI() {
         </div>
 
         <div className="bmi-header">
-          <h1 className="bmi-title">Body Measurements</h1>
+          <h1 className="bmi-title">Body Mass Index (BMI)</h1>
           <p className="bmi-subtitle">{statusMessage}</p>
           {retryCount > 0 && (
             <div className="retry-indicator">
@@ -296,65 +288,73 @@ export default function BMI() {
           )}
         </div>
 
-        <div className="bmi-cards-container">
-          {/* Weight Card */}
-          <div className="measurement-card bmi-card">
-            <img src={weightIcon} alt="Weight Icon" className="measurement-icon"/>
-            <div className="measurement-info">
-              <h3 className="measurement-title">Weight</h3>
-              <div className="measurement-value">
-                <span className={weight ? "value" : "placeholder"}>
-                  {weight || "--.--"}
+        <div className="sensor-display-section">
+          {/* Measurement Cards */}
+          <div className="bmi-cards-container">
+            {/* Weight Card */}
+            <div className="measurement-card bmi-card">
+              <img src={weightIcon} alt="Weight Icon" className="measurement-icon"/>
+              <div className="measurement-info">
+                <h3>Weight</h3>
+                <div className="measurement-value">
+                  <span className="value">
+                    {weight || "--.--"}
+                  </span>
+                  <span className="unit">kg</span>
+                </div>
+                <span className={`measurement-status ${
+                  currentMeasurement === "weight" ? "measuring" : 
+                  weight ? "complete" : "default"
+                }`}>
+                  {currentMeasurement === "weight" ? "Measuring..." : 
+                   weight ? "Measured" : "Waiting"}
                 </span>
-                <span className="unit">kg</span>
               </div>
-              <span className={`measurement-status ${
-                currentMeasurement === "weight" ? "measuring" : 
-                weight ? "complete" : "waiting"
-              }`}>
-                {currentMeasurement === "weight" ? "Measuring..." : 
-                 weight ? "Complete" : "Waiting"}
-              </span>
+            </div>
+
+            {/* Height Card */}
+            <div className="measurement-card bmi-card">
+              <img src={heightIcon} alt="Height Icon" className="measurement-icon"/>
+              <div className="measurement-info">
+                <h3>Height</h3>
+                <div className="measurement-value">
+                  <span className="value">
+                    {height || "--.--"}
+                  </span>
+                  <span className="unit">cm</span>
+                </div>
+                <span className={`measurement-status ${
+                  currentMeasurement === "height" ? "measuring" : 
+                  height ? "complete" : "default"
+                }`}>
+                  {currentMeasurement === "height" ? "Measuring..." : 
+                   height ? "Measured" : "Waiting"}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Height Card */}
-          <div className="measurement-card bmi-card">
-            <img src={heightIcon} alt="Height Icon" className="measurement-icon"/>
-            <div className="measurement-info">
-              <h3 className="measurement-title">Height</h3>
-              <div className="measurement-value">
-                <span className={height ? "value" : "placeholder"}>
-                  {height || "--.--"}
-                </span>
-                <span className="unit">cm</span>
+          {/* BMI Result Card */}
+          {bmi && (
+            <div className="bmi-result-card">
+              <div className="bmi-result-header">
+                <h3>BMI Result</h3>
               </div>
-              <div className="height-conversion">
-                {height ? convertToFeetInches(height) : "--'--\""}
+              <div className="bmi-result-content">
+                <div className="bmi-value-display">
+                  <span className="bmi-value">{bmi}</span>
+                  <span className="bmi-unit">kg/m²</span>
+                </div>
+                <div className={`bmi-category ${bmiCategory.class}`}>
+                  {bmiCategory.category}
+                </div>
+                <div className="bmi-description">
+                  {bmiCategory.description}
+                </div>
               </div>
-              <span className={`measurement-status ${
-                currentMeasurement === "height" ? "measuring" : 
-                height ? "complete" : "waiting"
-              }`}>
-                {currentMeasurement === "height" ? "Measuring..." : 
-                 height ? "Complete" : "Waiting"}
-              </span>
             </div>
-          </div>
+          )}
         </div>
-
-        {/* BMI Result Section */}
-        {bmi && (
-          <div className={`bmi-result-section ${bmi ? 'has-result' : ''}`}>
-            <div className="bmi-value">BMI: {bmi}</div>
-            <div className={`bmi-category ${bmiCategory.class}`}>
-              {bmiCategory.category}
-            </div>
-            <div className="bmi-description">
-              {bmiCategory.description}
-            </div>
-          </div>
-        )}
 
         <div className="measurement-controls">
           {!isMeasuring && !measurementComplete && (
@@ -394,9 +394,7 @@ export default function BMI() {
           )}
           
           {measurementComplete && (
-            <div className="success-text">
-              ✓ All measurements complete!
-            </div>
+            <span className="success-text">✓ BMI Measurement Complete</span>
           )}
         </div>
 

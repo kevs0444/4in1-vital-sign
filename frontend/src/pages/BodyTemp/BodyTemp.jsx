@@ -210,9 +210,9 @@ export default function BodyTemp() {
       <div className={`bodytemp-content ${isVisible ? 'visible' : ''}`}>
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `75%` }}></div>
+            <div className="progress-fill" style={{ width: `50%` }}></div>
           </div>
-          <span className="progress-step">Step 3 of 4 - Vital Signs</span>
+          <span className="progress-step">Step 2 of 4 - Vital Signs</span>
         </div>
 
         <div className="bodytemp-header">

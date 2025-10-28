@@ -28,7 +28,7 @@ export default function Starting() {
   }, [location.state]);
 
   const handleStartMeasurements = () => {
-    navigate("/weight", { state: userData });
+    navigate("/bmi", { state: userData });
   };
 
   const getSexDisplay = (sex) => {
@@ -82,15 +82,8 @@ export default function Starting() {
             <div className="instruction-item">
               <div className="instruction-icon">⚖️</div>
               <div className="instruction-text">
-                <strong>Weight Measurement</strong>
-                <span>Step on the scale for accurate weight reading</span>
-              </div>
-            </div>
-            <div className="instruction-item">
-              <div className="instruction-icon">📏</div>
-              <div className="instruction-text">
-                <strong>Height Measurement</strong>
-                <span>Stand straight for height detection</span>
+                <strong>BMI Calculation</strong>
+                <span>We'll measure your weight and height for BMI</span>
               </div>
             </div>
             <div className="instruction-item">
@@ -105,6 +98,13 @@ export default function Starting() {
               <div className="instruction-text">
                 <strong>Pulse Oximeter</strong>
                 <span>Finger sensor for Heart Rate, spO2 and Respiratory Rate</span>
+              </div>
+            </div>
+            <div className="instruction-item">
+              <div className="instruction-icon">🩺</div>
+              <div className="instruction-text">
+                <strong>Blood Pressure</strong>
+                <span>Cuff measurement for systolic and diastolic pressure</span>
               </div>
             </div>
           </div>

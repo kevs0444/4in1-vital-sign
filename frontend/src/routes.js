@@ -8,16 +8,15 @@ import Name from "./pages/Name/Name.jsx";
 import Sex from "./pages/Sex/Sex.jsx";
 import Age from "./pages/Age/Age.jsx";
 import Starting from "./pages/Starting/Starting.jsx";
-import Weight from "./pages/Weight/Weight.jsx";
-import Height from "./pages/Height/Height.jsx";
+import BMI from "./pages/BMI/BMI.jsx"; // ✅ Replaced Weight + Height with BMI
 import BodyTemp from "./pages/BodyTemp/BodyTemp.jsx";
 import Max30102 from "./pages/Max30102/Max30102.jsx";
 import BloodPressure from "./pages/BloodPressure/BloodPressure.jsx";
+import AILoading from "./pages/AILoading/AILoading.jsx";
+import Result from "./pages/Result/Result.jsx";
 import Saving from "./pages/Saving/Saving.jsx";
 import Share from "./pages/Share/Share.jsx";
-import Result from "./pages/Result/Result.jsx";
 import Dashboard from "./pages/Dashboard/Dashboard.jsx";
-import AILoading from "./pages/AILoading/AILoading.jsx"; // ADD THIS IMPORT
 
 function AppRoutes() {
   return (
@@ -31,8 +30,7 @@ function AppRoutes() {
       <Route path="/sex" element={<Sex />} />
       <Route path="/age" element={<Age />} /> 
       <Route path="/starting" element={<Starting />} />
-      <Route path="/weight" element={<Weight />} />
-      <Route path="/height" element={<Height />} />
+      <Route path="/bmi" element={<BMI />} /> {/* ✅ Added BMI route */}
       <Route path="/bodytemp" element={<BodyTemp />} />
       <Route path="/max30102" element={<Max30102 />} />
       <Route path="/bloodpressure" element={<BloodPressure />} />
