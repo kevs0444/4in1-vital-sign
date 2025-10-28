@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "./BMI.css";
 import weightIcon from "../../assets/icons/weight-icon.png";
 import heightIcon from "../../assets/icons/height-icon.png";
-import { sensorAPI } from "../../utils/api";
+import { sensorAPI } from "../../../utils/api";
 
 export default function BMI() {
   const navigate = useNavigate();

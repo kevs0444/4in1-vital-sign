@@ -4,7 +4,7 @@ import "./Max30102.css";
 import heartRateIcon from "../../assets/icons/heart-rate-icon.png";
 import spo2Icon from "../../assets/icons/spo2-icon.png";
 import respiratoryIcon from "../../assets/icons/respiratory-icon.png";
-import { sensorAPI } from "../../utils/api";
+import { sensorAPI } from "../../../utils/api";
 
 export default function Max30102() {
   const navigate = useNavigate();

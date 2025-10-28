@@ -1,0 +1,740 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Color Palette - Red Theme */
+  --primary-red: #dc2626;
+  --primary-red-dark: #b91c1c;
+  --primary-red-light: #fef2f2;
+  --text-dark: #0a0908;
+  --text-gray: #4b5563;
+  --text-light: #6b7280;
+  --border-light: #e5e7eb;
+  --border-red: #fecaca;
+  --background-white: #ffffff;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-red: 0 4px 12px rgba(220, 38, 38, 0.15);
+  --shadow-large: 0 20px 40px rgba(220, 38, 38, 0.1);
+  --border-radius: 12px;
+  --border-radius-lg: 20px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--background-white);
+  overflow: hidden;
+}
+
+/* Main Container with dynamic height */
+.register-container {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #fef2f2 0%, #ffffff 50%, #fef2f2 100%);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Content Area - Dynamic height based on step */
+.register-content-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+/* Content Wrapper */
+.register-content {
+  width: 100%;
+  max-width: 520px;
+  background: var(--background-white);
+  border-radius: var(--border-radius-lg);
+  padding: 2.5rem;
+  box-shadow: var(--shadow-large);
+  border: 1px solid rgba(220, 38, 38, 0.1);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.5s ease;
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0;
+}
+
+.register-content.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Progress Section */
+.register-progress-section {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.register-progress-bar {
+  width: 100%;
+  height: 10px;
+  background: var(--border-light);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.register-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-red), var(--primary-red-dark));
+  border-radius: 5px;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.register-progress-step {
+  font-size: 1.1rem;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.register-back-btn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--primary-red);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  transition: all 0.3s ease;
+}
+
+.register-back-btn:hover {
+  background: var(--primary-red-light);
+}
+
+/* Image Section */
+.register-image-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+  flex-shrink: 0;
+}
+
+.register-logo {
+  width: 200px;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Header Section */
+.register-header-section {
+  text-align: center;
+  margin-bottom: 3rem;
+  flex-shrink: 0;
+}
+
+.register-main-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.register-subtitle {
+  font-size: 1.4rem;
+  color: var(--text-gray);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* Form Section */
+.register-form-section {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+/* Name Input Group */
+.register-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.register-input-field {
+  width: 100%;
+}
+
+.register-input-label {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 1rem;
+  text-align: left;
+  padding-left: 0.5rem;
+}
+
+.register-text-input {
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  border: 2px solid var(--border-light);
+  border-radius: var(--border-radius);
+  font-size: 1.3rem;
+  background: var(--background-white);
+  transition: all 0.3s ease;
+  outline: none;
+  color: var(--text-dark);
+  min-height: 70px;
+  line-height: 1.5;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: none;
+}
+
+.register-text-input:focus {
+  border-color: var(--primary-red);
+  background: var(--primary-red-light);
+  box-shadow: var(--shadow-red);
+  transform: translateY(-1px);
+}
+
+.register-text-input:hover {
+  border-color: var(--primary-red);
+}
+
+.register-text-input::placeholder {
+  color: var(--text-light);
+  font-size: 1.3rem;
+}
+
+/* Age Display */
+.register-age-display-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.register-age-display {
+  width: 140px;
+  height: 140px;
+  font-size: 4rem;
+  font-weight: 800;
+  border-radius: 8px;
+  border: 4px solid var(--border-light);
+  background: var(--background-white);
+  color: var(--text-dark);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.5rem;
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.1),
+    inset 0 2px 4px rgba(255, 255, 255, 0.9);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  letter-spacing: 2px;
+}
+
+.register-age-display.filled {
+  border: 4px solid var(--primary-red);
+  background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%);
+  box-shadow: 
+    0 10px 25px rgba(220, 38, 38, 0.2),
+    inset 0 2px 4px rgba(255, 255, 255, 0.9);
+  transform: translateY(-3px);
+}
+
+.register-age-display.filled[data-digits="2"] {
+  letter-spacing: 4px;
+}
+
+.register-placeholder-text {
+  color: #9ca3af;
+  font-style: italic;
+  font-weight: 500;
+  opacity: 0.6;
+  font-size: 3.5rem;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Sex Selection */
+.register-sex-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+}
+
+.register-sex-options {
+  display: flex;
+  gap: 2rem;
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.register-sex-option {
+  flex: 1;
+  max-width: 375px;
+  height: 468px;
+  padding: 3.75rem 1.5rem;
+  border: 2px solid var(--border-light);
+  border-radius: 28px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: #fff;
+}
+
+.register-sex-option:hover {
+  border-color: var(--primary-red);
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 2px var(--primary-red), 0 4px 12px rgba(220, 38, 38, 0.15);
+}
+
+.register-sex-option.selected {
+  border-color: var(--primary-red);
+  box-shadow: 0 0 0 3px var(--primary-red), 0 6px 18px rgba(220, 38, 38, 0.25);
+  transform: translateY(-2px);
+}
+
+.register-sex-icon {
+  width: 225px;
+  height: 225px;
+}
+
+.register-sex-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.register-sex-label {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  text-align: center;
+}
+
+.register-disclaimer {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+  padding: 0 1rem;
+}
+
+/* Actions */
+.register-actions {
+  flex-shrink: 0;
+  margin-top: 2rem;
+}
+
+.register-continue-btn {
+  width: 100%;
+  padding: 1.25rem 2rem;
+  background: linear-gradient(135deg, var(--primary-red), var(--primary-red-dark));
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 1.3rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-red);
+  min-height: 70px;
+  line-height: 1.5;
+}
+
+.register-continue-btn:not(.disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.35);
+  background: linear-gradient(135deg, var(--primary-red-dark), #991b1b);
+}
+
+.register-continue-btn:not(.disabled):active {
+  transform: translateY(0);
+}
+
+.register-continue-btn.disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Keyboard */
+.register-keyboard {
+  width: 100%;
+  height: 30vh;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-top: 2px solid #e5e7eb;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.register-keyboard-row {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.register-keyboard-key {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 12px;
+  padding: 1rem 1.4rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #111827;
+  cursor: pointer;
+  min-width: 60px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.15s ease-in-out;
+  text-transform: uppercase;
+}
+
+.register-keyboard-key:hover {
+  background: #fee2e2;
+  transform: translateY(-2px);
+}
+
+.register-keyboard-key:active {
+  background: #fee2e2;
+  transform: translateY(0);
+}
+
+.shift-key.active {
+  background: #fee2e2;
+  color: white;
+}
+
+.delete-key {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.delete-key:hover {
+  background: #fca5a5;
+}
+
+.space-key {
+  flex: 1;
+  min-width: 250px;
+  background: #f3f4f6;
+  border-radius: 12px;
+  padding: 1rem 3rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.15s ease-in-out;
+}
+
+.space-key:hover {
+  background: #fee2e2;
+  transform: translateY(-2px);
+}
+
+/* Numpad */
+.register-numpad {
+  background: #ffffff;
+  padding: 1.2rem 1.5rem 1.5rem;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -6px 20px rgba(220, 38, 38, 0.08);
+  border-top: 3px solid rgba(220, 38, 38, 0.05);
+}
+
+.register-numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.register-numpad-btn {
+  background: #f8fafc;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.8rem;
+  font-weight: 600;
+  padding: 1rem 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.05),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  border: 2px solid transparent;
+}
+
+.register-numpad-btn:hover {
+  background: #fef2f2;
+  border-color: rgba(220, 38, 38, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 4px 12px rgba(220, 38, 38, 0.1),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.register-numpad-btn.clear,
+.register-numpad-btn.delete {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 2px solid rgba(220, 38, 38, 0.2);
+}
+
+.register-numpad-btn.clear:hover,
+.register-numpad-btn.delete:hover {
+  background: #fee2e2;
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.register-numpad-btn:active {
+  transform: scale(0.95);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .register-content-area {
+    padding: 0.75rem;
+  }
+
+  .register-content {
+    max-width: 100%;
+    padding: 2rem;
+  }
+
+  .register-main-title {
+    font-size: 2rem;
+  }
+
+  .register-subtitle {
+    font-size: 1.1rem;
+  }
+
+  .register-logo {
+    width: 160px;
+  }
+
+  .register-input-label {
+    font-size: 1.1rem;
+  }
+
+  .register-text-input {
+    padding: 1rem 1.25rem;
+    font-size: 1.1rem;
+    min-height: 60px;
+  }
+
+  .register-text-input::placeholder {
+    font-size: 1.1rem;
+  }
+
+  .register-continue-btn {
+    padding: 1rem 1.75rem;
+    font-size: 1.1rem;
+    min-height: 60px;
+  }
+
+  .register-age-display {
+    width: 120px;
+    height: 120px;
+    font-size: 3.5rem;
+  }
+
+  .register-placeholder-text {
+    font-size: 3rem;
+  }
+
+  .register-sex-option {
+    max-width: 281px;
+    height: 375px;
+  }
+
+  .register-sex-icon {
+    width: 170px;
+    height: 170px;
+  }
+
+  .register-sex-label {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-content {
+    padding: 1.5rem;
+  }
+
+  .register-main-title {
+    font-size: 1.8rem;
+  }
+
+  .register-subtitle {
+    font-size: 1rem;
+  }
+
+  .register-logo {
+    width: 140px;
+  }
+
+  .register-input-group {
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .register-input-label {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    padding-left: 0.25rem;
+  }
+
+  .register-text-input {
+    padding: 0.9rem 1.125rem;
+    font-size: 1rem;
+    min-height: 55px;
+  }
+
+  .register-text-input::placeholder {
+    font-size: 1rem;
+  }
+
+  .register-continue-btn {
+    padding: 0.9rem 1.5rem;
+    font-size: 1rem;
+    min-height: 55px;
+  }
+
+  .register-progress-section {
+    margin-bottom: 2rem;
+  }
+
+  .register-header-section {
+    margin-bottom: 2rem;
+  }
+
+  .register-sex-options {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .register-sex-option {
+    max-width: 338px;
+    height: 375px;
+  }
+
+  .register-sex-icon {
+    width: 150px;
+    height: 150px;
+  }
+
+  .register-sex-label {
+    font-size: 2rem;
+  }
+}
+
+/* Landscape mode adjustments */
+@media (max-height: 700px) and (orientation: landscape) {
+  .register-content-area {
+    height: 70vh;
+    height: 70dvh;
+  }
+
+  .register-content {
+    padding: 1.5rem;
+  }
+
+  .register-image-section {
+    margin-bottom: 1rem;
+  }
+
+  .register-logo {
+    width: 120px;
+  }
+
+  .register-header-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .register-main-title {
+    font-size: 1.6rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .register-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .register-input-group {
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .register-input-label {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    padding-left: 0.25rem;
+  }
+
+  .register-text-input {
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+    min-height: 50px;
+  }
+
+  .register-text-input::placeholder {
+    font-size: 0.9rem;
+  }
+
+  .register-continue-btn {
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+    min-height: 50px;
+  }
+
+  .register-progress-section {
+    margin-bottom: 1.5rem;
+  }
+}

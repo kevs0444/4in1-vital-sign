@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BodyTemp.css";
-import bodyTempIcon from "../../assets/icons/temp-icon.png";
-import { sensorAPI } from "../../utils/api";
+import tempIcon from "../../assets/icons/temp-icon.png";
+import { sensorAPI } from "../../../utils/api";
 
 export default function BodyTemp() {
   const navigate = useNavigate();
@@ -239,7 +239,7 @@ export default function BodyTemp() {
         <div className="sensor-display-section">
           <div className="temperature-card-container">
             <div className="measurement-card temperature-card">
-              <img src={bodyTempIcon} alt="Temperature Icon" className="measurement-icon"/>
+              <img src={tempIcon} alt="Temperature Icon" className="measurement-icon"/>
               <div className="measurement-info">
                 <h3>Temperature</h3>
                 <div className="measurement-value">

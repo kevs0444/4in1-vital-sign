@@ -6,7 +6,7 @@ import { Circle, CheckCircle, Error, Warning } from '@mui/icons-material';
 import logo from '../../assets/images/juan.png';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Standby.css';
-import { sensorAPI } from '../../utils/api';
+import { sensorAPI } from '../../../utils/api';
 
 export default function Standby() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -71,8 +71,8 @@ export default function Standby() {
     setTimeout(() => {
       setIsPressed(false);
       
-      // Pass backend availability state to the next page
-      navigate('/welcome', { 
+      // Navigate directly to MeasurementTapID instead of Welcome
+      navigate('/measurement-tap-id', { 
         state: { 
           backendAvailable,
           systemStatus 
