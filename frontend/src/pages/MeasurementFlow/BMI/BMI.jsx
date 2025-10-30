@@ -240,18 +240,24 @@ export default function BMI() {
     }
   };
 
-  // ✅ Fixed navigation path to match routes.js
+  // ✅ CORRECTED: Navigation to BodyTemp with proper path
   const handleContinue = () => {
     if (!measurementComplete || !weight || !height) return;
     
     stopMonitoring();
     
+    // Prepare data to pass to BodyTemp
+    const bmiData = {
+      ...location.state, // User personal info from Starting page
+      weight: parseFloat(weight),
+      height: parseFloat(height),
+      bmi: calculateBMI()
+    };
+    
+    console.log("Navigating to BodyTemp with data:", bmiData);
+    
     navigate("/measure/bodytemp", {
-      state: { 
-        ...location.state, 
-        weight: parseFloat(weight),
-        height: parseFloat(height)
-      },
+      state: bmiData
     });
   };
 
@@ -406,7 +412,29 @@ export default function BMI() {
             disabled={!measurementComplete || !weight || !height}
           >
             Continue to Temperature
+            {measurementComplete && (
+              <span style={{fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
+                Weight: {weight}kg • Height: {height}cm
+              </span>
+            )}
           </button>
+          
+          {/* Debug info */}
+          <div style={{ 
+            marginTop: '10px', 
+            fontSize: '0.7rem', 
+            color: '#666',
+            textAlign: 'center',
+            padding: '5px',
+            background: '#f5f5f5',
+            borderRadius: '5px',
+            fontFamily: 'monospace'
+          }}>
+            Status: {measurementComplete ? '✅ COMPLETE' : '⏳ MEASURING'} | 
+            Weight: {weight || '--'} | 
+            Height: {height || '--'} |
+            Path: /measure/bodytemp
+          </div>
         </div>
       </div>
     </div>

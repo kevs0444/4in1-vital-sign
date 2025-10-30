@@ -184,23 +184,54 @@ export default function BloodPressure() {
     }
   };
 
+  // ✅ CORRECTED: Navigation to AILoading with proper path
   const handleContinue = () => {
-    if (!measurementComplete || !systolic || !diastolic) return;
-    
     stopMonitoring();
     
-    navigate("/ai-loading", {
-      state: { 
-        ...location.state, 
-        weight: location.state?.weight,
-        height: location.state?.height,
-        temperature: location.state?.temperature,
-        heartRate: location.state?.heartRate,
-        spo2: location.state?.spo2,
-        respiratoryRate: location.state?.respiratoryRate,
-        systolic: parseFloat(systolic),
-        diastolic: parseFloat(diastolic)
-      },
+    // Prepare complete data to pass to AILoading
+    const completeVitalSignsData = {
+      ...location.state, // This includes all previous data (BMI, temperature, pulse oximeter)
+      weight: location.state?.weight,
+      height: location.state?.height,
+      temperature: location.state?.temperature,
+      heartRate: location.state?.heartRate,
+      spo2: location.state?.spo2,
+      respiratoryRate: location.state?.respiratoryRate,
+      systolic: systolic ? parseFloat(systolic) : 120, // Default values for testing
+      diastolic: diastolic ? parseFloat(diastolic) : 80, // Default values for testing
+      measurementTimestamp: new Date().toISOString()
+    };
+    
+    console.log("🚀 Continuing to AI Loading with complete data:", completeVitalSignsData);
+    
+    // ✅ Navigate to AILoading component
+    navigate("/measure/ai-loading", { 
+      state: completeVitalSignsData 
+    });
+  };
+
+  // ✅ NEW: Manual test button handler
+  const handleTestNavigation = () => {
+    console.log("🧪 Testing navigation to AILoading...");
+    
+    // Create test data with all required fields
+    const testData = {
+      ...location.state,
+      weight: location.state?.weight || 70,
+      height: location.state?.height || 170,
+      temperature: location.state?.temperature || 36.5,
+      heartRate: location.state?.heartRate || 75,
+      spo2: location.state?.spo2 || 98.0,
+      respiratoryRate: location.state?.respiratoryRate || 16,
+      systolic: 120,
+      diastolic: 80,
+      measurementTimestamp: new Date().toISOString()
+    };
+    
+    console.log("🧪 Test data for AILoading:", testData);
+    
+    navigate("/measure/ai-loading", { 
+      state: testData 
     });
   };
 
@@ -331,6 +362,7 @@ export default function BloodPressure() {
         </div>
 
         <div className="continue-button-container">
+          {/* Main Continue Button */}
           <button 
             className="continue-button" 
             onClick={handleContinue} 
@@ -339,9 +371,53 @@ export default function BloodPressure() {
             <span className="button-icon">🤖</span>
             View Complete AI Results
             <span style={{fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
-              BP: {systolic}/{diastolic} mmHg
+              BP: {systolic || '--'}/{diastolic || '--'} mmHg
             </span>
           </button>
+
+          {/* ✅ NEW: Test Navigation Button - Always Enabled */}
+          <button 
+            className="test-button" 
+            onClick={handleTestNavigation}
+            style={{
+              marginTop: '15px',
+              backgroundColor: '#8B5CF6',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              fontSize: '1rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              width: '100%',
+              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#7C3AED'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#8B5CF6'}
+          >
+            <span className="button-icon">🧪</span>
+            Test Navigation to AI Loading
+            <span style={{fontSize: '0.7rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
+              Click to test if navigation works
+            </span>
+          </button>
+          
+          {/* Debug info */}
+          <div style={{ 
+            marginTop: '10px', 
+            fontSize: '0.7rem', 
+            color: '#666',
+            textAlign: 'center',
+            padding: '5px',
+            background: '#f5f5f5',
+            borderRadius: '5px',
+            fontFamily: 'monospace'
+          }}>
+            Status: {measurementComplete ? '✅ COMPLETE' : '⏳ MEASURING'} | 
+            Next: /measure/ai-loading |
+            Test Button: 🟢 ENABLED
+          </div>
         </div>
       </div>
     </div>

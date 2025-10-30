@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Saving.css";
@@ -41,7 +40,8 @@ export default function Saving() {
       setSaveComplete(true);
       
       setTimeout(() => {
-        navigate("/share", { 
+        // ✅ CORRECTED: Fixed navigation path to match routes.js
+        navigate("/measure/sharing", { 
           state: {
             userData: userData,
             riskData: riskData
@@ -140,6 +140,21 @@ export default function Saving() {
             <strong>Your health data is secure</strong>
             <span>All information is encrypted and protected by healthcare privacy standards</span>
           </div>
+        </div>
+
+        {/* Debug info */}
+        <div style={{ 
+          marginTop: '20px', 
+          fontSize: '0.7rem', 
+          color: '#666',
+          textAlign: 'center',
+          padding: '5px',
+          background: '#f5f5f5',
+          borderRadius: '5px',
+          fontFamily: 'monospace'
+        }}>
+          Status: {saveComplete ? '✅ COMPLETE' : '⏳ SAVING'} | 
+          Next: /measure/sharing
         </div>
       </div>
     </div>

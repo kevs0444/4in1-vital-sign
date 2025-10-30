@@ -323,13 +323,15 @@ export default function Max30102() {
     measurementStartTimeRef.current = null;
   };
 
+  // ✅ CORRECTED: Navigation to Blood Pressure with proper path
   const handleContinue = () => {
     if (!measurementComplete) return;
     
     stopMonitoring();
     
-    const finalData = {
-      ...location.state,
+    // Prepare all collected data to pass to Blood Pressure
+    const vitalSignsData = {
+      ...location.state, // This includes BMI data + temperature
       weight: location.state?.weight,
       height: location.state?.height,
       temperature: location.state?.temperature,
@@ -341,8 +343,10 @@ export default function Max30102() {
       perSecondData: perSecondData
     };
     
-    console.log("🚀 Continuing with data:", finalData);
-    navigate("/bloodpressure", { state: finalData });
+    console.log("🚀 Continuing to Blood Pressure with data:", vitalSignsData);
+    
+    // ✅ Navigate to Blood Pressure component
+    navigate("/measure/bloodpressure", { state: vitalSignsData });
   };
 
   const getStatusColor = (type, value) => {
@@ -564,7 +568,7 @@ export default function Max30102() {
           }}>
             Status: {measurementComplete ? '✅ COMPLETE' : '⏳ MEASURING'} | 
             Button: {measurementComplete ? '🟢 ENABLED' : '🔴 DISABLED'} | 
-            Data: {dataReceivedRef.current ? '📊 RECEIVED' : '❌ WAITING'}
+            Next: /measure/bloodpressure
           </div>
         </div>
       </div>

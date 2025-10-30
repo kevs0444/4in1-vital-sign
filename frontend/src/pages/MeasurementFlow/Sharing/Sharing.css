@@ -1,11 +1,11 @@
-/* Share.css - Focused on Receipt Testing */
+/* Sharing.css - Focused on Receipt Testing */
 .share-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  font-family: var(--font-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   padding: 2rem;
   box-sizing: border-box;
 }
@@ -46,20 +46,18 @@
 }
 
 .share-title {
-  font-family: var(--font-primary);
   font-size: 2.2rem;
   color: #333;
-  font-weight: var(--font-bold);
+  font-weight: 700;
   margin-bottom: 0.5rem;
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
 
 .share-subtitle {
-  font-family: var(--font-primary);
   font-size: 1.1rem;
   color: #666;
-  font-weight: var(--font-regular);
+  font-weight: 400;
   margin: 0;
   line-height: 1.4;
 }
@@ -83,9 +81,8 @@
 }
 
 .testing-banner .banner-text {
-  font-family: var(--font-primary);
   font-size: 1rem;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
 }
 
 /* Receipt Preview Styles */
@@ -98,10 +95,9 @@
 }
 
 .receipt-preview-content h4 {
-  font-family: var(--font-primary);
   font-size: 1.3rem;
   color: #333;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
   margin-bottom: 1.5rem;
   text-align: center;
 }
@@ -130,7 +126,6 @@
 }
 
 .receipt-notice {
-  font-family: var(--font-primary);
   font-size: 0.9rem;
   color: #666;
   text-align: center;
@@ -161,9 +156,8 @@
 }
 
 .printer-text {
-  font-family: var(--font-primary);
   font-size: 1rem;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
   color: #2e7d32;
 }
 
@@ -186,9 +180,8 @@
   border-radius: 0.8rem;
   background: transparent;
   color: #007bff;
-  font-family: var(--font-primary);
   font-size: 1rem;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 140px;
@@ -206,9 +199,8 @@
   border-radius: 0.8rem;
   background: linear-gradient(135deg, #dc3545, #c82333);
   color: white;
-  font-family: var(--font-primary);
   font-size: 1.1rem;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
@@ -273,15 +265,13 @@
 }
 
 .status-text {
-  font-family: var(--font-primary);
   font-size: 1.1rem;
   color: #666;
-  font-weight: var(--font-medium);
+  font-weight: 500;
   margin-bottom: 0.5rem;
 }
 
 .status-subtext {
-  font-family: var(--font-primary);
   font-size: 0.9rem;
   color: #888;
   display: block;
@@ -314,6 +304,14 @@
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 2;
+}
+
+.success-rings {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .ring {
@@ -351,15 +349,13 @@
 }
 
 .complete-message h3 {
-  font-family: var(--font-primary);
   font-size: 1.5rem;
   color: #28a745;
-  font-weight: var(--font-bold);
+  font-weight: 700;
   margin-bottom: 0.5rem;
 }
 
 .complete-message p {
-  font-family: var(--font-primary);
   font-size: 1rem;
   color: #666;
   margin: 0;
@@ -382,9 +378,8 @@
   border-radius: 0.8rem;
   background: transparent;
   color: #6c757d;
-  font-family: var(--font-primary);
   font-size: 1.1rem;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 120px;
@@ -402,9 +397,8 @@
   border-radius: 0.8rem;
   background: linear-gradient(135deg, #28a745, #20c997);
   color: white;
-  font-family: var(--font-primary);
   font-size: 1.1rem;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
@@ -424,9 +418,8 @@
   border-radius: 0.8rem;
   background: transparent;
   color: #007bff;
-  font-family: var(--font-primary);
   font-size: 1.1rem;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 120px;
@@ -447,10 +440,9 @@
 }
 
 .test-results h4 {
-  font-family: var(--font-primary);
   font-size: 1.1rem;
   color: #333;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
   margin-bottom: 1rem;
   text-align: center;
 }
@@ -474,69 +466,6 @@
   word-wrap: break-word;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .share-container {
-    padding: 1.5rem;
-  }
-  
-  .share-content {
-    padding: 2.5rem 2rem;
-    max-width: 90%;
-  }
-  
-  .share-title {
-    font-size: 2rem;
-  }
-  
-  .print-controls,
-  .action-buttons {
-    flex-direction: column;
-  }
-  
-  .test-button,
-  .print-button,
-  .back-button,
-  .return-home-button,
-  .retry-button {
-    flex: none;
-    width: 100%;
-  }
-  
-  .receipt-content {
-    font-size: 0.75rem;
-    max-height: 250px;
-  }
-}
-
-@media (max-width: 480px) {
-  .share-container {
-    padding: 1rem;
-  }
-  
-  .share-content {
-    padding: 2rem 1.5rem;
-    max-width: 100%;
-    border-radius: 1.5rem;
-  }
-  
-  .share-title {
-    font-size: 1.8rem;
-  }
-  
-  .receipt-preview {
-    padding: 1.5rem;
-  }
-  
-  .receipt-content {
-    font-size: 0.7rem;
-    max-height: 200px;
-    padding: 1rem;
-  }
-}
-
-/* Add these to your Share.css */
-
 /* Print Dialog Styles */
 .print-dialog {
   background: #f8f9fa;
@@ -553,15 +482,13 @@
 }
 
 .dialog-header h3 {
-  font-family: var(--font-primary);
   font-size: 1.5rem;
   color: #333;
-  font-weight: var(--font-bold);
+  font-weight: 700;
   margin-bottom: 0.5rem;
 }
 
 .dialog-header p {
-  font-family: var(--font-primary);
   font-size: 1rem;
   color: #666;
   margin: 0;
@@ -580,10 +507,9 @@
 }
 
 .setting-label {
-  font-family: var(--font-primary);
   font-size: 0.9rem;
   color: #333;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
 }
 
 /* Printer Selection */
@@ -609,18 +535,16 @@
 }
 
 .printer-name {
-  font-family: var(--font-primary);
   font-size: 1rem;
   color: #333;
-  font-weight: var(--font-medium);
+  font-weight: 500;
 }
 
 .printer-status-badge {
-  font-family: var(--font-primary);
   font-size: 0.8rem;
   padding: 0.3rem 0.8rem;
   border-radius: 1rem;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
 }
 
 .printer-status-badge.online {
@@ -678,9 +602,8 @@
 }
 
 .copies-count {
-  font-family: var(--font-primary);
   font-size: 1.2rem;
-  font-weight: var(--font-bold);
+  font-weight: 700;
   color: #333;
   min-width: 2rem;
   text-align: center;
@@ -701,13 +624,11 @@
 }
 
 .paper-type {
-  font-family: var(--font-primary);
   font-size: 1rem;
   color: #333;
 }
 
 .paper-size {
-  font-family: var(--font-primary);
   font-size: 0.9rem;
   color: #666;
   background: #f8f9fa;
@@ -749,9 +670,8 @@
   padding: 1rem 2rem;
   border: none;
   border-radius: 0.8rem;
-  font-family: var(--font-primary);
   font-size: 1rem;
-  font-weight: var(--font-semi-bold);
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 120px;
@@ -788,6 +708,38 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .share-container {
+    padding: 1.5rem;
+  }
+  
+  .share-content {
+    padding: 2.5rem 2rem;
+    max-width: 90%;
+  }
+  
+  .share-title {
+    font-size: 2rem;
+  }
+  
+  .print-controls,
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .test-button,
+  .print-button,
+  .back-button,
+  .return-home-button,
+  .retry-button {
+    flex: none;
+    width: 100%;
+  }
+  
+  .receipt-content {
+    font-size: 0.75rem;
+    max-height: 250px;
+  }
+  
   .print-dialog {
     padding: 1.5rem;
     margin: 1rem 0;
@@ -804,5 +756,31 @@
   .copies-selector {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .share-container {
+    padding: 1rem;
+  }
+  
+  .share-content {
+    padding: 2rem 1.5rem;
+    max-width: 100%;
+    border-radius: 1.5rem;
+  }
+  
+  .share-title {
+    font-size: 1.8rem;
+  }
+  
+  .receipt-preview {
+    padding: 1.5rem;
+  }
+  
+  .receipt-content {
+    font-size: 0.7rem;
+    max-height: 200px;
+    padding: 1rem;
   }
 }

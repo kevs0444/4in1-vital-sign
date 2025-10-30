@@ -1,10 +1,8 @@
-// Share.jsx - Custom Print Dialog UI
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import "./Sharing.css"; // This should exist in the same directory
-import shareIcon from "../../../assets/icons/share-icon.png";
+import "./Sharing.css";
 
-export default function Share() {
+export default function Sharing() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
@@ -193,11 +191,11 @@ Thank you for using our service!
   };
 
   const handleBack = () => {
-    navigate("/saving");
+    navigate("/measure/saving");
   };
 
   const handleReturnHome = () => {
-    window.location.href = "http://localhost:3000";
+    navigate("/");
   };
 
   const handleRetry = () => {
@@ -222,7 +220,8 @@ Thank you for using our service!
         {/* Header */}
         <div className="share-header">
           <div className="share-icon">
-            <img src={shareIcon} alt="Receipt Printer" />
+            {/* Using emoji as fallback if image doesn't load */}
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🖨️</div>
           </div>
           <h1 className="share-title">Print Health Report</h1>
           <p className="share-subtitle">
@@ -382,6 +381,23 @@ Thank you for using our service!
               </button>
             </>
           )}
+        </div>
+
+        {/* Debug info */}
+        <div style={{ 
+          marginTop: '20px', 
+          fontSize: '0.7rem', 
+          color: '#666',
+          textAlign: 'center',
+          padding: '5px',
+          background: '#f5f5f5',
+          borderRadius: '5px',
+          fontFamily: 'monospace'
+        }}>
+          Status: {printComplete ? '✅ COMPLETE' : isPrinting ? '⏳ PRINTING' : '🔄 READY'} | 
+          Current: /measure/sharing | 
+          Back: /measure/saving | 
+          Home: /
         </div>
       </div>
     </div>

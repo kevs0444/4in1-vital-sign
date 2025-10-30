@@ -11,7 +11,6 @@ export default function Result() {
   const [suggestions, setSuggestions] = useState([]);
   const [preventions, setPreventions] = useState([]);
   const [isVisible, setIsVisible] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false); // Changed to false since AILoading is separate
   const [expandedSections, setExpandedSections] = useState({
     recommendations: false,
     prevention: false,
@@ -45,8 +44,7 @@ export default function Result() {
       return () => clearTimeout(timer);
     } else {
       console.error("❌ No data received in Result page!");
-      // If no data, redirect back
-      navigate("/max30102");
+      navigate("/measure/max30102");
     }
   }, [location.state, navigate]);
 
@@ -136,6 +134,33 @@ export default function Result() {
           riskScore += 60;
           calculatedSuggestions.push("Significantly low oxygen level - urgent medical evaluation recommended");
           calculatedPreventions.push("Avoid strenuous activities and seek immediate care if symptoms worsen");
+        }
+      }
+    }
+
+    // Blood Pressure Analysis
+    if (data.systolic && data.diastolic) {
+      console.log("🩸 Blood Pressure:", `${data.systolic}/${data.diastolic}`);
+      const systolicNum = parseFloat(data.systolic);
+      const diastolicNum = parseFloat(data.diastolic);
+      
+      if (!isNaN(systolicNum) && !isNaN(diastolicNum)) {
+        if (systolicNum >= 180 || diastolicNum >= 120) {
+          riskScore += 60;
+          calculatedSuggestions.push("Hypertensive crisis detected - seek immediate medical attention");
+          calculatedPreventions.push("Emergency evaluation required for blood pressure management");
+        } else if (systolicNum >= 140 || diastolicNum >= 90) {
+          riskScore += 40;
+          calculatedSuggestions.push("Stage 2 hypertension - consult healthcare provider urgently");
+          calculatedPreventions.push("Monitor blood pressure regularly and follow medical advice");
+        } else if (systolicNum >= 130 || diastolicNum >= 80) {
+          riskScore += 30;
+          calculatedSuggestions.push("Stage 1 hypertension - lifestyle modifications recommended");
+          calculatedPreventions.push("Reduce sodium intake and increase physical activity");
+        } else if (systolicNum >= 120) {
+          riskScore += 15;
+          calculatedSuggestions.push("Elevated blood pressure - monitor regularly");
+          calculatedPreventions.push("Maintain healthy diet and exercise routine");
         }
       }
     }
@@ -279,6 +304,24 @@ export default function Result() {
     return { status: 'Normal', color: '#10b981', range: '12 - 20 BPM' };
   };
 
+  const getBloodPressureStatus = (sys, dia) => {
+    if (!sys || !dia || sys === '--' || dia === '--') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
+    const systolicValue = parseFloat(sys);
+    const diastolicValue = parseFloat(dia);
+    
+    if (systolicValue >= 180 || diastolicValue >= 120) {
+      return { status: 'Crisis', color: '#dc2626', range: '≥ 180/120 mmHg' };
+    } else if (systolicValue >= 140 || diastolicValue >= 90) {
+      return { status: 'Stage 2', color: '#ef4444', range: '140-179/90-119 mmHg' };
+    } else if (systolicValue >= 130 || diastolicValue >= 80) {
+      return { status: 'Stage 1', color: '#f59e0b', range: '130-139/80-89 mmHg' };
+    } else if (systolicValue >= 120) {
+      return { status: 'Elevated', color: '#fbbf24', range: '120-129/<80 mmHg' };
+    } else {
+      return { status: 'Normal', color: '#10b981', range: '< 120/<80 mmHg' };
+    }
+  };
+
   const getDoctorRecommendation = () => {
     if (riskLevel < 20) {
       return "Routine health maintenance recommended. Schedule annual check-up within 6 months.";
@@ -312,6 +355,15 @@ export default function Result() {
       tips.push("Ensure proper ventilation in living and sleeping areas");
       tips.push("Consider indoor air quality assessment if symptoms persist");
     }
+
+    if (userData.systolic && userData.diastolic) {
+      const bpStatus = getBloodPressureStatus(userData.systolic, userData.diastolic);
+      if (bpStatus.status !== 'Normal') {
+        tips.push("Reduce sodium intake to less than 2,300mg daily");
+        tips.push("Incorporate potassium-rich foods like bananas and leafy greens");
+        tips.push("Practice stress management techniques like deep breathing");
+      }
+    }
     
     // General wellness tips
     tips.push("Maintain consistent sleep schedule of 7-9 hours nightly");
@@ -328,13 +380,15 @@ export default function Result() {
 
   const handleSaveResults = () => {
     console.log("💾 Saving results and navigating to Saving page...");
-    navigate("/saving", { state: { 
-      userData, 
-      riskLevel, 
-      riskCategory, 
-      suggestions, 
-      preventions 
-    }});
+    navigate("/measure/saving", { 
+      state: { 
+        userData, 
+        riskLevel, 
+        riskCategory, 
+        suggestions, 
+        preventions 
+      }
+    });
   };
 
   const toggleSection = (section) => {
@@ -349,6 +403,7 @@ export default function Result() {
   const hrData = getHeartRateStatus(userData.heartRate);
   const spo2Data = getSPO2Status(userData.spo2);
   const respData = getRespiratoryStatus(userData.respiratoryRate);
+  const bpData = getBloodPressureStatus(userData.systolic, userData.diastolic);
 
   return (
     <div className="result-container" style={{background: getRiskGradient(riskLevel)}}>
@@ -396,11 +451,10 @@ export default function Result() {
             </div>
           </div>
 
-          {/* Risk Ranges Subtitle - Organized Layout */}
+          {/* Risk Ranges Subtitle */}
           <div className="risk-ranges-subtitle">
             <h3>Risk Level Interpretation</h3>
             <div className="risk-ranges-mini">
-              {/* Low Risk */}
               <div className="risk-range-mini-card low-risk">
                 <div className="mini-risk-header">
                   <div className="mini-risk-color"></div>
@@ -409,7 +463,6 @@ export default function Result() {
                 <span className="mini-risk-value">0-19%</span>
               </div>
               
-              {/* Moderate Risk */}
               <div className="risk-range-mini-card moderate-risk">
                 <div className="mini-risk-header">
                   <div className="mini-risk-color"></div>
@@ -418,7 +471,6 @@ export default function Result() {
                 <span className="mini-risk-value">20-49%</span>
               </div>
               
-              {/* High Risk */}
               <div className="risk-range-mini-card high-risk">
                 <div className="mini-risk-header">
                   <div className="mini-risk-color"></div>
@@ -427,7 +479,6 @@ export default function Result() {
                 <span className="mini-risk-value">50-74%</span>
               </div>
               
-              {/* Critical Risk */}
               <div className="risk-range-mini-card critical-risk">
                 <div className="mini-risk-header">
                   <div className="mini-risk-color"></div>
@@ -471,10 +522,11 @@ export default function Result() {
           </div>
         </div>
 
-        {/* Health Assessment - Main 4 Vital Signs */}
+        {/* Health Assessment - Updated Vital Signs */}
         <div className="health-assessment-section">
-          <h2 className="section-title">4 Vital Signs Assessment</h2>
+          <h2 className="section-title">Vital Signs Assessment</h2>
           <div className="vital-signs-grid">
+            {/* Body Temperature */}
             <div className="vital-sign-card">
               <div className="vital-sign-header">
                 <div className="vital-sign-icon">🌡️</div>
@@ -487,6 +539,7 @@ export default function Result() {
               <div className="vital-sign-range">Normal: 36.0 - 37.5°C</div>
             </div>
 
+            {/* Heart Rate */}
             <div className="vital-sign-card">
               <div className="vital-sign-header">
                 <div className="vital-sign-icon">💓</div>
@@ -499,28 +552,41 @@ export default function Result() {
               <div className="vital-sign-range">Normal: 60 - 100 BPM</div>
             </div>
 
-            <div className="vital-sign-card">
-              <div className="vital-sign-header">
-                <div className="vital-sign-icon">🫁</div>
-                <h3>Oxygen Level</h3>
-              </div>
-              <div className="vital-sign-value">{userData.spo2 || 'N/A'}%</div>
-              <div className="vital-sign-status" style={{ color: spo2Data.color }}>
-                {spo2Data.status}
-              </div>
-              <div className="vital-sign-range">Normal: ≥ 95%</div>
-            </div>
-
+            {/* Respiratory Rate with SPO2 */}
             <div className="vital-sign-card">
               <div className="vital-sign-header">
                 <div className="vital-sign-icon">🌬️</div>
-                <h3>Respiratory Rate</h3>
+                <div>
+                  <h3>Respiratory Rate</h3>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
+                    SpO2: {userData.spo2 || 'N/A'}% 
+                    <span style={{ color: spo2Data.color, marginLeft: '4px' }}>
+                      ({spo2Data.status})
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="vital-sign-value">{userData.respiratoryRate || 'N/A'} BPM</div>
               <div className="vital-sign-status" style={{ color: respData.color }}>
                 {respData.status}
               </div>
               <div className="vital-sign-range">Normal: 12 - 20 BPM</div>
+            </div>
+
+            {/* Blood Pressure */}
+            <div className="vital-sign-card">
+              <div className="vital-sign-header">
+                <div className="vital-sign-icon">🩸</div>
+                <h3>Blood Pressure</h3>
+              </div>
+              <div className="vital-sign-value">
+                {userData.systolic && userData.diastolic ? 
+                  `${userData.systolic}/${userData.diastolic}` : 'N/A'}
+              </div>
+              <div className="vital-sign-status" style={{ color: bpData.color }}>
+                {bpData.status}
+              </div>
+              <div className="vital-sign-range">Normal: &lt; 120/&lt;80 mmHg</div>
             </div>
           </div>
         </div>
@@ -645,7 +711,7 @@ export default function Result() {
           </div>
         </div>
 
-        {/* Save Button - Larger and More Emphasized */}
+        {/* Save Button */}
         <div className="result-actions">
           <button 
             className="save-results-btn"

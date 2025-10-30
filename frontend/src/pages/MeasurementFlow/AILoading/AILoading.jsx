@@ -25,8 +25,8 @@ export default function AILoading() {
       console.log("🧠 AI Loading page received RAW DATA:", location.state);
     } else {
       console.error("❌ No data received in AI Loading page!");
-      // If no data, redirect back to max30102
-      navigate("/max30102");
+      // ✅ CORRECTED: Fixed navigation path
+      navigate("/measure/max30102");
       return;
     }
     
@@ -69,7 +69,8 @@ export default function AILoading() {
       // Auto navigate to result page after 3 seconds
       setTimeout(() => {
         console.log("🧠 AI Thinking Complete - Navigating to Result with RAW DATA:", location.state);
-        navigate("/result", { 
+        // ✅ CORRECTED: Fixed navigation path to match routes.js
+        navigate("/measure/result", { 
           state: location.state // Pass the original data directly
         });
       }, 3000);
@@ -200,6 +201,22 @@ export default function AILoading() {
         <div className="testing-badge-768">
           <span className="badge-icon-768">🔬</span>
           <span className="badge-text-768">Juan AI Capstone Testing Phase</span>
+        </div>
+
+        {/* Debug info */}
+        <div style={{ 
+          marginTop: '20px', 
+          fontSize: '0.7rem', 
+          color: '#666',
+          textAlign: 'center',
+          padding: '5px',
+          background: '#f5f5f5',
+          borderRadius: '5px',
+          fontFamily: 'monospace'
+        }}>
+          Status: {analysisComplete ? '✅ COMPLETE' : '⏳ ANALYZING'} | 
+          Next: /measure/result | 
+          Data: {location.state ? '📊 RECEIVED' : '❌ MISSING'}
         </div>
       </div>
     </div>
