@@ -23,8 +23,9 @@ export default function Max30102() {
   const [progressPercent, setProgressPercent] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
   const [sensorReady, setSensorReady] = useState(false);
+  const [measurementStep, setMeasurementStep] = useState(0);
+  const [countdown, setCountdown] = useState(0);
   
-  // Store per-second data for final average calculation
   const [perSecondData, setPerSecondData] = useState({
     heartRate: Array(10).fill(null),
     spo2: Array(10).fill(null),
@@ -36,6 +37,7 @@ export default function Max30102() {
   const initializationRef = useRef(false);
   const measurementStartTimeRef = useRef(null);
   const dataReceivedRef = useRef(false);
+  const countdownRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -45,8 +47,30 @@ export default function Max30102() {
       clearTimeout(timer);
       stopMonitoring();
       if (fingerCheckRef.current) clearInterval(fingerCheckRef.current);
+      stopCountdown();
     };
   }, []);
+
+  const startCountdown = (seconds) => {
+    setCountdown(seconds);
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const stopCountdown = () => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+    setCountdown(0);
+  };
 
   const initializeMax30102Sensor = async () => {
     if (initializationRef.current) return;
@@ -54,8 +78,8 @@ export default function Max30102() {
 
     try {
       setStatusMessage("🔄 Powering up pulse oximeter...");
+      setMeasurementStep(1);
       
-      // Only prepare the sensor when we reach this phase
       const prepareResult = await sensorAPI.prepareMax30102();
       
       if (prepareResult.error) {
@@ -66,8 +90,9 @@ export default function Max30102() {
       
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      setStatusMessage("✅ Pulse oximeter ready. Place finger on sensor...");
+      setStatusMessage("✅ Pulse oximeter ready. Insert finger into the device...");
       setSensorReady(true);
+      setMeasurementStep(2);
       
       startFingerMonitoring();
       
@@ -89,7 +114,7 @@ export default function Max30102() {
         setSensorReady(data.sensor_prepared || false);
         
         if (data.finger_detected && data.sensor_prepared && !data.measurement_active && !measurementComplete) {
-          setStatusMessage("✅ Finger detected. Starting measurement...");
+          setStatusMessage("✅ Finger detected correctly. Starting measurement...");
           clearInterval(fingerCheckRef.current);
           setTimeout(() => {
             startMeasurement();
@@ -100,9 +125,9 @@ export default function Max30102() {
           if (data.finger_detected) {
             setStatusMessage("✅ Finger detected. Starting measurement...");
           } else if (data.sensor_prepared) {
-            setStatusMessage("👆 Place finger on the sensor to begin...");
+            setStatusMessage("👆 Insert your finger fully into the pulse oximeter...");
           } else {
-            setStatusMessage("🔄 Sensor initializing...");
+            setStatusMessage("🔄 Device initializing...");
           }
         }
         
@@ -124,18 +149,9 @@ export default function Max30102() {
       try {
         const data = await sensorAPI.getMax30102Status();
         
-        console.log("📊 Sensor Status:", {
-          measurement_active: data.measurement_active,
-          elapsed_time: data.elapsed_time,
-          heart_rate: data.heart_rate,
-          spo2: data.spo2,
-          finger_detected: data.finger_detected
-        });
-        
         setIsMeasuring(data.measurement_active);
         setSensorReady(data.sensor_prepared || false);
         
-        // Update progress for 10-second measurement
         if (data.measurement_active && measurementStartTimeRef.current) {
           const elapsed = Math.floor((Date.now() - measurementStartTimeRef.current) / 1000);
           const total = 10;
@@ -144,13 +160,12 @@ export default function Max30102() {
           setProgressSeconds(elapsed);
           
           if (elapsed < total) {
-            setStatusMessage(`📊 Measuring... ${total - elapsed}s remaining`);
+            setStatusMessage(`📊 Measuring... Keep finger still (${total - elapsed}s)`);
           } else {
             setStatusMessage("✅ Measurement complete! Processing data...");
           }
         }
         
-        // Update current measurements in real-time from sensor data
         if (data.heart_rate !== null && data.heart_rate !== undefined && data.heart_rate > 0) {
           updateCurrentMeasurement('heartRate', data.heart_rate);
           dataReceivedRef.current = true;
@@ -164,14 +179,12 @@ export default function Max30102() {
           dataReceivedRef.current = true;
         }
 
-        // Store per-second data for final average
         if (data.measurement_active && data.elapsed_time > 0 && data.elapsed_time <= 10) {
           updatePerSecondData(data);
         }
 
-        // Check if measurement should be complete
         if (measurementStartTimeRef.current && 
-            Date.now() - measurementStartTimeRef.current >= 11000 && // 11 seconds to ensure backend completes
+            Date.now() - measurementStartTimeRef.current >= 11000 && 
             !measurementComplete) {
           checkMeasurementCompletion();
         }
@@ -186,25 +199,16 @@ export default function Max30102() {
   const checkMeasurementCompletion = async () => {
     try {
       const data = await sensorAPI.getMax30102Status();
-      console.log("✅ Checking completion:", {
-        measurement_active: data.measurement_active,
-        heart_rate: data.heart_rate,
-        spo2: data.spo2,
-        dataReceived: dataReceivedRef.current
-      });
 
-      // If measurement is no longer active OR we have data, consider it complete
       if (!data.measurement_active || dataReceivedRef.current) {
         finalizeMeasurement();
       } else {
-        // If no data after 11 seconds, try to force completion
         setTimeout(() => {
           finalizeMeasurement();
         }, 2000);
       }
     } catch (error) {
       console.error("Error checking completion:", error);
-      // Force completion on error
       finalizeMeasurement();
     }
   };
@@ -237,9 +241,10 @@ export default function Max30102() {
 
   const startMeasurement = async () => {
     try {
-      setStatusMessage("🎬 Starting 10-second vital signs monitoring...");
+      setStatusMessage("🎬 Starting 10-second vital signs measurement...");
+      setMeasurementStep(3);
+      startCountdown(10);
       
-      // Reset all data
       setMeasurements({
         heartRate: "--",
         spo2: "--.-",
@@ -265,7 +270,7 @@ export default function Max30102() {
           startFingerMonitoring();
         }
       } else {
-        setStatusMessage("📊 10-second measurement started. Keep finger steady...");
+        setStatusMessage("📊 Measurement started. Do not move your finger...");
       }
     } catch (error) {
       console.error("Start MAX30102 error:", error);
@@ -278,15 +283,16 @@ export default function Max30102() {
     console.log("🎯 Finalizing measurement with data:", measurements);
     
     setMeasurementComplete(true);
-    setStatusMessage("✅ 10-Second Measurement Complete!");
+    setMeasurementStep(4);
+    setStatusMessage("✅ Measurement Complete! You can remove your finger.");
     setProgressPercent(100);
     stopMonitoring();
+    stopCountdown();
     
-    // Ensure we have at least some data to display
     if (measurements.heartRate === "--" && measurements.spo2 === "--.-") {
       setMeasurements(prev => ({
         ...prev,
-        heartRate: "75", // Fallback values
+        heartRate: "75",
         spo2: "98.0",
         respiratoryRate: "16"
       }));
@@ -304,8 +310,7 @@ export default function Max30102() {
         initializeMax30102Sensor();
       }, 3000);
     } else {
-      setStatusMessage("❌ Maximum retries reached. Please check the sensor.");
-      // Force completion to allow user to continue
+      setStatusMessage("❌ Maximum retries reached. Please check the device.");
       setMeasurementComplete(true);
       setStatusMessage("⚠️ Using available data despite measurement issues");
     }
@@ -323,15 +328,14 @@ export default function Max30102() {
     measurementStartTimeRef.current = null;
   };
 
-  // ✅ CORRECTED: Navigation to Blood Pressure with proper path
   const handleContinue = () => {
     if (!measurementComplete) return;
     
     stopMonitoring();
+    stopCountdown();
     
-    // Prepare all collected data to pass to Blood Pressure
     const vitalSignsData = {
-      ...location.state, // This includes BMI data + temperature
+      ...location.state,
       weight: location.state?.weight,
       height: location.state?.height,
       temperature: location.state?.temperature,
@@ -339,13 +343,9 @@ export default function Max30102() {
       spo2: parseFloat(measurements.spo2) || 98.0,
       respiratoryRate: parseInt(measurements.respiratoryRate) || 16,
       measurementTimestamp: new Date().toISOString(),
-      // Include per-second data for analysis
       perSecondData: perSecondData
     };
     
-    console.log("🚀 Continuing to Blood Pressure with data:", vitalSignsData);
-    
-    // ✅ Navigate to Blood Pressure component
     navigate("/measure/bloodpressure", { state: vitalSignsData });
   };
 
@@ -391,14 +391,49 @@ export default function Max30102() {
     }
   };
 
+  const getButtonText = () => {
+    if (isMeasuring) {
+      return "Measuring Vital Signs...";
+    }
+    
+    switch (measurementStep) {
+      case 0:
+        return "Start Vital Signs Measurement";
+      case 1:
+        return "Initializing Device...";
+      case 2:
+        return "Insert Finger to Begin";
+      case 3:
+        return "Measuring... Do Not Move";
+      case 4:
+        return "Continue to Blood Pressure";
+      default:
+        return "Start Vital Signs Measurement";
+    }
+  };
+
+  const getButtonDisabled = () => {
+    return isMeasuring || (measurementStep === 4 && (!measurements.heartRate || !measurements.spo2));
+  };
+
+  // Get sensor state for modern styling
+  const getSensorState = () => {
+    if (measurementComplete) return "complete";
+    if (isMeasuring) return "active";
+    if (fingerDetected) return "active";
+    if (sensorReady) return "ready";
+    return "initializing";
+  };
+
   const MAX_RETRIES = 3;
 
   return (
     <div className="max30102-container">
       <div className={`max30102-content ${isVisible ? 'visible' : ''}`}>
+        
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{ width: "75%" }}></div>
+            <div className="progress-fill" style={{ width: `75%` }}></div>
           </div>
           <span className="progress-step">Step 3 of 4 - Vital Signs</span>
         </div>
@@ -411,12 +446,7 @@ export default function Max30102() {
               Retry attempt: {retryCount}/{MAX_RETRIES}
             </div>
           )}
-          {!sensorReady && (
-            <div className="sensor-status">
-              🔄 Sensor Initializing...
-            </div>
-          )}
-          {isMeasuring && (
+          {isMeasuring && progressPercent > 0 && (
             <div className="measurement-progress">
               <div className="progress-bar-horizontal">
                 <div 
@@ -424,138 +454,188 @@ export default function Max30102() {
                   style={{ width: `${progressPercent}%` }}
                 ></div>
               </div>
-              <span className="progress-text">
-                {progressSeconds > 0 ? `${10 - progressSeconds}s remaining` : "10-second measurement"}
-              </span>
+              <span className="progress-text">{Math.round(progressPercent)}% - {10 - progressSeconds}s left</span>
             </div>
           )}
         </div>
 
         <div className="sensor-display-section">
-          <div className="sensor-visual-area">
-            <div className={`finger-sensor ${fingerDetected ? 'active' : ''} ${sensorReady ? 'ready' : 'initializing'}`}>
+          
+          {/* MODERN: Interactive Pulse Oximeter Display */}
+          <div className="finger-sensor-container">
+            <div className={`finger-sensor ${getSensorState()}`}>
               <div className="sensor-light"></div>
               <div className="finger-placeholder">
                 {fingerDetected ? "👆" : "👇"}
               </div>
-              <div className="finger-status">
-                {!sensorReady && "Initializing..."}
-                {sensorReady && !fingerDetected && "Place Finger"}
-                {sensorReady && fingerDetected && "Finger Detected"}
+            </div>
+          </div>
+
+          <div className="vital-signs-cards-container">
+            <div className={`measurement-card vital-sign-card ${
+              isMeasuring ? 'measuring-active' : 
+              measurementComplete ? 'measurement-complete' : ''
+            }`}>
+              <img src={heartRateIcon} alt="Heart Rate Icon" className="measurement-icon"/>
+              <div className="measurement-info">
+                <h3 className="measurement-title">Heart Rate</h3>
+                <div className="measurement-value">
+                  <span className={`value ${
+                    isMeasuring ? 'measuring-live' : ''
+                  }`}>
+                    {measurements.heartRate || "--"}
+                  </span>
+                  <span className="unit">BPM</span>
+                </div>
+                <span className={`measurement-status ${getStatusColor('heartRate', measurements.heartRate)}`}>
+                  {getStatusText('heartRate', measurements.heartRate)}
+                </span>
+              </div>
+            </div>
+
+            <div className={`measurement-card vital-sign-card ${
+              isMeasuring ? 'measuring-active' : 
+              measurementComplete ? 'measurement-complete' : ''
+            }`}>
+              <img src={spo2Icon} alt="SpO2 Icon" className="measurement-icon"/>
+              <div className="measurement-info">
+                <h3 className="measurement-title">Blood Oxygen</h3>
+                <div className="measurement-value">
+                  <span className={`value ${
+                    isMeasuring ? 'measuring-live' : ''
+                  }`}>
+                    {measurements.spo2 || "--.-"}
+                  </span>
+                  <span className="unit">%</span>
+                </div>
+                <span className={`measurement-status ${getStatusColor('spo2', measurements.spo2)}`}>
+                  {getStatusText('spo2', measurements.spo2)}
+                </span>
+              </div>
+            </div>
+
+            <div className={`measurement-card vital-sign-card ${
+              isMeasuring ? 'measuring-active' : 
+              measurementComplete ? 'measurement-complete' : ''
+            }`}>
+              <img src={respiratoryIcon} alt="Respiratory Rate Icon" className="measurement-icon"/>
+              <div className="measurement-info">
+                <h3 className="measurement-title">Respiratory Rate</h3>
+                <div className="measurement-value">
+                  <span className={`value ${
+                    isMeasuring ? 'measuring-live' : ''
+                  }`}>
+                    {measurements.respiratoryRate || "--"}
+                  </span>
+                  <span className="unit">/min</span>
+                </div>
+                <span className={`measurement-status ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
+                  {getStatusText('respiratoryRate', measurements.respiratoryRate)}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Real-time Measurements Display */}
-          <div className="real-time-measurements">
-            <div className="measurements-grid">
-              <div className="measurement-card">
-                <img src={heartRateIcon} alt="Heart Rate Icon" className="measurement-icon"/>
-                <div className="measurement-info">
-                  <h3>Heart Rate</h3>
-                  <div className="measurement-value">
-                    {measurements.heartRate === "--" ? (
-                      <span className="placeholder">--</span>
-                    ) : (
-                      <span className="value">{measurements.heartRate}</span>
-                    )}
-                    <span className="unit">BPM</span>
-                  </div>
-                  <span className={`measurement-status ${getStatusColor('heartRate', measurements.heartRate)}`}>
-                    {getStatusText('heartRate', measurements.heartRate)}
-                  </span>
+          <div className="instruction-container">
+            <div className="instruction-cards-horizontal">
+              <div className={`instruction-card-step ${
+                measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''
+              }`}>
+                <div className="step-number-circle">1</div>
+                <div className="step-icon">👆</div>
+                <h4 className="step-title">Insert Finger</h4>
+                <p className="step-description">
+                  Place your finger fully inside the pulse oximeter device
+                </p>
+                <div className={`step-status ${
+                  measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
+                }`}>
+                  {measurementStep >= 1 ? (measurementStep > 1 ? 'Completed' : 'Active') : 'Pending'}
                 </div>
               </div>
-              
-              <div className="measurement-card">
-                <img src={spo2Icon} alt="SpO2 Icon" className="measurement-icon"/>
-                <div className="measurement-info">
-                  <h3>Blood Oxygen</h3>
-                  <div className="measurement-value">
-                    {measurements.spo2 === "--.-" ? (
-                      <span className="placeholder">--.-</span>
-                    ) : (
-                      <span className="value">{measurements.spo2}</span>
-                    )}
-                    <span className="unit">%</span>
+
+              <div className={`instruction-card-step ${
+                measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''
+              }`}>
+                <div className="step-number-circle">2</div>
+                <div className="step-icon">✋</div>
+                <h4 className="step-title">Hold Steady</h4>
+                <p className="step-description">
+                  {isMeasuring 
+                    ? "Keep your finger completely still - do not move"
+                    : "Keep hand relaxed and finger firmly in place"
+                  }
+                </p>
+                {isMeasuring && countdown > 0 && (
+                  <div className="countdown-mini">
+                    <div className="countdown-mini-circle">
+                      <span className="countdown-mini-number">{countdown}</span>
+                    </div>
+                    <span className="countdown-mini-text">seconds left</span>
                   </div>
-                  <span className={`measurement-status ${getStatusColor('spo2', measurements.spo2)}`}>
-                    {getStatusText('spo2', measurements.spo2)}
-                  </span>
+                )}
+                <div className={`step-status ${
+                  measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : 'pending'
+                }`}>
+                  {measurementStep >= 2 ? (measurementStep > 2 ? 'Completed' : 'Active') : 'Pending'}
                 </div>
               </div>
-              
-              <div className="measurement-card">
-                <img src={respiratoryIcon} alt="Respiratory Rate Icon" className="measurement-icon"/>
-                <div className="measurement-info">
-                  <h3>Respiratory Rate</h3>
-                  <div className="measurement-value">
-                    {measurements.respiratoryRate === "--" ? (
-                      <span className="placeholder">--</span>
-                    ) : (
-                      <span className="value">{measurements.respiratoryRate}</span>
-                    )}
-                    <span className="unit">/min</span>
-                  </div>
-                  <span className={`measurement-status ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
-                    {getStatusText('respiratoryRate', measurements.respiratoryRate)}
-                  </span>
+
+              <div className={`instruction-card-step ${
+                measurementStep >= 3 ? (measurementStep > 3 ? 'completed' : 'active') : ''
+              }`}>
+                <div className="step-number-circle">3</div>
+                <div className="step-icon">⏱️</div>
+                <h4 className="step-title">Wait for Results</h4>
+                <p className="step-description">
+                  {measurementComplete 
+                    ? "Measurement complete! Results are ready" 
+                    : "10-second measurement in progress"
+                  }
+                </p>
+                <div className={`step-status ${
+                  measurementStep >= 3 ? (measurementStep > 3 ? 'completed' : 'active') : 'pending'
+                }`}>
+                  {measurementStep >= 3 ? (measurementStep > 3 ? 'Completed' : 'Active') : 'Pending'}
                 </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="measurement-controls">
-          {!sensorReady && (
-            <div className="waiting-prompt">
-              <div className="spinner"></div>
-              <span>Initializing pulse oximeter...</span>
-            </div>
-          )}
-          {sensorReady && !fingerDetected && !isMeasuring && !measurementComplete && (
-            <div className="waiting-prompt">
-              <div className="finger-pulse"></div>
-              <span>Place finger on sensor to begin 10-second measurement</span>
-            </div>
-          )}
-          {sensorReady && fingerDetected && !isMeasuring && !measurementComplete && (
-            <div className="ready-prompt">
-              <div className="checkmark">✓</div>
-              <span>Finger detected! Starting 10-second measurement...</span>
-            </div>
-          )}
-          {isMeasuring && (
-            <div className="measuring-prompt">
-              <div className="pulse-animation"></div>
-              <span>10-second measurement in progress... Keep finger steady</span>
-            </div>
-          )}
-          {measurementComplete && (
-            <span className="success-text">✅ 10-Second Measurement Complete</span>
-          )}
         </div>
 
         <div className="continue-button-container">
           <button 
             className="continue-button" 
             onClick={handleContinue} 
-            disabled={!measurementComplete}
+            disabled={getButtonDisabled()}
           >
-            {measurementComplete ? (
-              <>
-                <span className="button-icon">🩺</span>
-                Continue to Blood Pressure
-                <span style={{fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
-                  HR: {measurements.heartRate} BPM • SpO2: {measurements.spo2}%
-                </span>
-              </>
-            ) : (
-              "Measuring... (10s)"
+            {isMeasuring && (
+              <div className="spinner"></div>
+            )}
+            {getButtonText()}
+            {measurementComplete && (
+              <span style={{fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
+                HR: {measurements.heartRate} BPM • SpO2: {measurements.spo2}% • RR: {measurements.respiratoryRate}/min
+              </span>
             )}
           </button>
           
-          {/* Debug info */}
+          {isMeasuring && (
+            <div style={{ 
+              marginTop: '10px', 
+              fontSize: '0.75rem', 
+              color: '#dc3545',
+              textAlign: 'center',
+              padding: '8px',
+              background: '#fff5f5',
+              borderRadius: '8px',
+              border: '1px solid #ffcccc',
+              fontWeight: '600'
+            }}>
+              ⚠️ Important: Keep your finger completely still for accurate results
+            </div>
+          )}
+          
           <div style={{ 
             marginTop: '10px', 
             fontSize: '0.7rem', 
@@ -566,9 +646,11 @@ export default function Max30102() {
             borderRadius: '5px',
             fontFamily: 'monospace'
           }}>
+            Step: {measurementStep} | 
             Status: {measurementComplete ? '✅ COMPLETE' : '⏳ MEASURING'} | 
-            Button: {measurementComplete ? '🟢 ENABLED' : '🔴 DISABLED'} | 
-            Next: /measure/bloodpressure
+            HR: {measurements.heartRate || '--'} | 
+            SpO2: {measurements.spo2 || '--'} |
+            Path: /measure/bloodpressure
           </div>
         </div>
       </div>

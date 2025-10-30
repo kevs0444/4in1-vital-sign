@@ -16,10 +16,20 @@ export default function BodyTemp() {
   const [isReady, setIsReady] = useState(false);
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
+  const [countdown, setCountdown] = useState(0);
+  
+  // New interactive state variables
+  const [tempMeasuring, setTempMeasuring] = useState(false);
+  const [tempComplete, setTempComplete] = useState(false);
+  const [liveTempValue, setLiveTempValue] = useState("");
+  const [measurementStep, setMeasurementStep] = useState(0); // 0: not started, 1: ready, 2: measuring, 3: complete
+
   const MAX_RETRIES = 3;
 
   const pollerRef = useRef(null);
   const autoStartRef = useRef(null);
+  const tempIntervalRef = useRef(null);
+  const countdownRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -29,6 +39,8 @@ export default function BodyTemp() {
       clearTimeout(timer);
       stopMonitoring();
       if (autoStartRef.current) clearTimeout(autoStartRef.current);
+      clearSimulatedMeasurements();
+      stopCountdown();
     };
   }, []);
 
@@ -44,12 +56,41 @@ export default function BodyTemp() {
       }
       
       setStatusMessage("Temperature sensor ready. Point at forehead...");
+      setMeasurementStep(1);
       startMonitoring();
       
     } catch (error) {
       console.error("Temperature initialization error:", error);
       setStatusMessage("❌ Failed to initialize temperature sensor");
       handleRetry();
+    }
+  };
+
+  const startCountdown = (seconds) => {
+    setCountdown(seconds);
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const stopCountdown = () => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+    setCountdown(0);
+  };
+
+  const clearSimulatedMeasurements = () => {
+    if (tempIntervalRef.current) {
+      clearInterval(tempIntervalRef.current);
+      tempIntervalRef.current = null;
     }
   };
 
@@ -67,12 +108,14 @@ export default function BodyTemp() {
         // Update live reading
         if (data.live_temperature !== null && data.live_temperature !== undefined) {
           setLiveReading(data.live_temperature.toFixed(1));
+          setLiveTempValue(data.live_temperature.toFixed(1));
           
           // Auto-start measurement when temperature is valid and not already measuring
           if (data.live_temperature >= data.ready_threshold && 
               !data.measurement_active && 
               !measurementComplete) {
             setStatusMessage(`✅ Valid temperature detected (${data.live_temperature.toFixed(1)}°C). Starting measurement...`);
+            setMeasurementStep(2);
             
             // Clear any existing auto-start timeout
             if (autoStartRef.current) clearTimeout(autoStartRef.current);
@@ -102,9 +145,14 @@ export default function BodyTemp() {
             // Valid temperature received
             setTemperature(data.temperature.toFixed(1));
             setMeasurementComplete(true);
+            setTempComplete(true);
+            setTempMeasuring(false);
+            setMeasurementStep(3);
             setStatusMessage("✅ Temperature Measurement Complete!");
             setProgress(100);
             stopMonitoring();
+            clearSimulatedMeasurements();
+            stopCountdown();
           } else {
             // Invalid temperature, retry
             setStatusMessage("❌ Invalid temperature reading, retrying...");
@@ -116,6 +164,9 @@ export default function BodyTemp() {
         switch (data.status) {
           case 'temp_measurement_started':
             setStatusMessage("Measuring temperature...");
+            setTempMeasuring(true);
+            startSimulatedMeasurement();
+            startCountdown(5);
             break;
           case 'temp_measurement_complete':
             // Handled above with data.temperature check
@@ -142,9 +193,21 @@ export default function BodyTemp() {
     }, 1000);
   };
 
+  const startSimulatedMeasurement = () => {
+    clearSimulatedMeasurements();
+    let simulatedTemp = 36.0;
+    tempIntervalRef.current = setInterval(() => {
+      simulatedTemp += (Math.random() - 0.5) * 0.2; // Small fluctuations
+      if (simulatedTemp > 37.5) simulatedTemp = 37.5 - Math.random() * 0.5;
+      if (simulatedTemp < 35.5) simulatedTemp = 35.5 + Math.random() * 0.5;
+      setLiveTempValue(simulatedTemp.toFixed(1));
+    }, 300);
+  };
+
   const startMeasurement = async () => {
     try {
       setStatusMessage("Starting temperature measurement...");
+      setTempMeasuring(true);
       const response = await sensorAPI.startTemperature();
       
       if (response.error) {
@@ -152,6 +215,8 @@ export default function BodyTemp() {
         handleRetry();
       } else {
         setStatusMessage("Temperature measurement started...");
+        startSimulatedMeasurement();
+        startCountdown(5);
       }
     } catch (error) {
       console.error("Start temperature error:", error);
@@ -170,6 +235,8 @@ export default function BodyTemp() {
       }, 2000);
     } else {
       setStatusMessage("❌ Maximum retries reached. Please check the sensor.");
+      clearSimulatedMeasurements();
+      stopCountdown();
     }
   };
 
@@ -180,11 +247,12 @@ export default function BodyTemp() {
     }
   };
 
-  // ✅ Fixed navigation path to match routes.js
   const handleContinue = () => {
     if (!measurementComplete || !temperature) return;
     
     stopMonitoring();
+    clearSimulatedMeasurements();
+    stopCountdown();
     
     navigate("/measure/max30102", {
       state: { 
@@ -204,16 +272,41 @@ export default function BodyTemp() {
     return { text: "Normal", class: "normal" };
   };
 
+  const getButtonText = () => {
+    if (isMeasuring) {
+      return "Measuring Temperature...";
+    }
+    
+    switch (measurementStep) {
+      case 0:
+        return "Start Temperature Measurement";
+      case 1:
+        return "Waiting for Sensor...";
+      case 2:
+        return "Measuring Temperature...";
+      case 3:
+        return "Continue to Pulse Oximeter";
+      default:
+        return "Start Temperature Measurement";
+    }
+  };
+
+  const getButtonDisabled = () => {
+    return isMeasuring || (measurementStep === 3 && (!temperature));
+  };
+
   const statusInfo = getTemperatureStatus(temperature);
 
   return (
     <div className="bodytemp-container">
       <div className={`bodytemp-content ${isVisible ? 'visible' : ''}`}>
+        
+        {/* Progress bar for Step 2 of 4 */}
         <div className="progress-container">
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `50%` }}></div>
           </div>
-          <span className="progress-step">Step 2 of 4 - Vital Signs</span>
+          <span className="progress-step">Step 2 of 4 - Body Temperature</span>
         </div>
 
         <div className="bodytemp-header">
@@ -238,14 +331,23 @@ export default function BodyTemp() {
         </div>
 
         <div className="sensor-display-section">
+          {/* Single Temperature Card - Enhanced to match BMI cards */}
           <div className="temperature-card-container">
-            <div className="measurement-card temperature-card">
-              <img src={tempIcon} alt="Temperature Icon" className="measurement-icon"/>
+            <div className={`measurement-card temperature-card ${
+              tempMeasuring ? 'measuring-active' : 
+              tempComplete ? 'measurement-complete' : ''
+            }`}>
+              <div className="measurement-icon">
+                <img src={tempIcon} alt="Temperature Icon" className="measurement-image"/>
+              </div>
               <div className="measurement-info">
-                <h3>Temperature</h3>
+                <h3 className="measurement-title">Temperature</h3>
                 <div className="measurement-value">
-                  <span className="value">
-                    {isMeasuring && liveReading ? liveReading : temperature || "--.-"}
+                  <span className={`value ${
+                    tempMeasuring ? 'measuring-live' : ''
+                  }`}>
+                    {tempMeasuring ? (liveTempValue || "00.0") : 
+                     temperature || "--.-"}
                   </span>
                   <span className="unit">°C</span>
                 </div>
@@ -258,32 +360,145 @@ export default function BodyTemp() {
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="measurement-controls">
-          {!isMeasuring && !measurementComplete && (
-            <div className="waiting-prompt">
-              <div className="spinner"></div>
-              <span>
-                {liveReading && liveReading < 34.0 
-                  ? `Point sensor at forehead (${liveReading}°C)` 
-                  : "Waiting for valid temperature..."}
-              </span>
+          {/* Temperature Result Card */}
+          {measurementComplete && temperature && (
+            <div className="temperature-card-container">
+              <div className="temp-result-card has-result">
+                <div className="temp-result-header">
+                  <h3>Temperature Result</h3>
+                </div>
+                <div className="temp-result-content">
+                  <div className="temp-value-display">
+                    <span className="temp-value">
+                      {temperature}
+                    </span>
+                    <span className="temp-unit">°C</span>
+                  </div>
+                  {temperature && (
+                    <>
+                      <div className={`temp-category ${statusInfo.class}`}>
+                        {statusInfo.text}
+                      </div>
+                      <div className="temp-description">
+                        {statusInfo.text === "Normal" 
+                          ? "Your body temperature is within normal range" 
+                          : statusInfo.text === "Low Temperature"
+                          ? "Your body temperature is below normal range"
+                          : "Your body temperature indicates fever"
+                        }
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           )}
-          {measurementComplete && (
-            <span className="success-text">✓ Temperature Measured</span>
-          )}
+
+          {/* INSTRUCTION DISPLAY - Horizontal layout with 3 cards matching BMI */}
+          <div className="instruction-container">
+            <div className="instruction-cards-horizontal">
+              {/* Step 1 Card */}
+              <div className={`instruction-card-step ${
+                measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''
+              }`}>
+                <div className="step-number-circle">1</div>
+                <div className="step-icon">🔍</div>
+                <h4 className="step-title">Point Sensor</h4>
+                <p className="step-description">
+                  Point temperature sensor at forehead
+                </p>
+                <div className={`step-status ${
+                  measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
+                }`}>
+                  {measurementStep >= 1 ? (measurementStep > 1 ? 'Completed' : 'Active') : 'Pending'}
+                </div>
+              </div>
+
+              {/* Step 2 Card */}
+              <div className={`instruction-card-step ${
+                measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''
+              }`}>
+                <div className="step-number-circle">2</div>
+                <div className="step-icon">🌡️</div>
+                <h4 className="step-title">Hold Steady</h4>
+                <p className="step-description">
+                  {tempMeasuring 
+                    ? "Hold position for measurement"
+                    : "Wait for temperature reading"
+                  }
+                </p>
+                {tempMeasuring && countdown > 0 && (
+                  <div className="countdown-mini">
+                    <div className="countdown-mini-circle">
+                      <span className="countdown-mini-number">{countdown}</span>
+                    </div>
+                    <span className="countdown-mini-text">seconds</span>
+                  </div>
+                )}
+                <div className={`step-status ${
+                  measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : 'pending'
+                }`}>
+                  {measurementStep >= 2 ? (measurementStep > 2 ? 'Completed' : 'Active') : 'Pending'}
+                </div>
+              </div>
+
+              {/* Step 3 Card */}
+              <div className={`instruction-card-step ${
+                measurementStep >= 3 ? 'completed' : ''
+              }`}>
+                <div className="step-number-circle">3</div>
+                <div className="step-icon">✅</div>
+                <h4 className="step-title">Continue</h4>
+                <p className="step-description">
+                  {measurementComplete 
+                    ? "Temperature complete! Continue" 
+                    : "Proceed after measurement"
+                  }
+                </p>
+                <div className={`step-status ${
+                  measurementStep >= 3 ? 'completed' : 'pending'
+                }`}>
+                  {measurementStep >= 3 ? 'Completed' : 'Pending'}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="continue-button-container">
           <button 
             className="continue-button" 
-            onClick={handleContinue} 
-            disabled={!measurementComplete || !temperature}
+            onClick={measurementStep === 3 ? handleContinue : startMeasurement} 
+            disabled={getButtonDisabled()}
           >
-            Continue to Pulse Oximeter
+            {isMeasuring && (
+              <div className="spinner"></div>
+            )}
+            {getButtonText()}
+            {measurementComplete && (
+              <span style={{fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
+                Temperature: {temperature}°C
+              </span>
+            )}
           </button>
+          
+          {/* Debug info */}
+          <div style={{ 
+            marginTop: '10px', 
+            fontSize: '0.7rem', 
+            color: '#666',
+            textAlign: 'center',
+            padding: '5px',
+            background: '#f5f5f5',
+            borderRadius: '5px',
+            fontFamily: 'monospace'
+          }}>
+            Step: {measurementStep} | 
+            Status: {measurementComplete ? '✅ COMPLETE' : '⏳ MEASURING'} | 
+            Temperature: {temperature || '--'} |
+            Path: /measure/max30102
+          </div>
         </div>
       </div>
     </div>

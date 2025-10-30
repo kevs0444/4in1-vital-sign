@@ -10,6 +10,7 @@ export default function AILoading() {
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("Initializing AI Analysis..."); // Added this line
 
   const analysisSteps = [
     "Analyzing Vital Signs",
@@ -21,12 +22,24 @@ export default function AILoading() {
 
   useEffect(() => {
     // Get user data from location state
+    console.log("🧠 AI Loading page received location.state:", location.state);
+    
     if (location.state) {
-      console.log("🧠 AI Loading page received RAW DATA:", location.state);
+      console.log("✅ Data received in AI Loading:", {
+        hasWeight: !!location.state.weight,
+        hasHeight: !!location.state.height,
+        hasTemperature: !!location.state.temperature,
+        hasHeartRate: !!location.state.heartRate,
+        hasSpo2: !!location.state.spo2,
+        hasBloodPressure: !!location.state.bloodPressure,
+        hasSystolic: !!location.state.systolic,
+        hasDiastolic: !!location.state.diastolic,
+        fullData: location.state
+      });
+      setStatusMessage("AI analysis starting...");
     } else {
       console.error("❌ No data received in AI Loading page!");
-      // ✅ CORRECTED: Fixed navigation path
-      navigate("/measure/max30102");
+      setStatusMessage("No data received. Please start over.");
       return;
     }
     
@@ -43,10 +56,11 @@ export default function AILoading() {
       clearTimeout(timer);
       document.body.classList.remove('ai-loading-active-768');
     };
-  }, [location.state, navigate]);
+  }, [location.state]);
 
   const simulateAIThinkingProcess = () => {
     setIsAnalyzing(true);
+    setStatusMessage("Juan AI is analyzing your health data...");
     
     // Simulate AI thinking steps
     const stepInterval = setInterval(() => {
@@ -65,16 +79,25 @@ export default function AILoading() {
       setIsAnalyzing(false);
       setAnalysisComplete(true);
       setCurrentStep(analysisSteps.length - 1);
+      setStatusMessage("Analysis complete! Redirecting to results...");
       
       // Auto navigate to result page after 3 seconds
       setTimeout(() => {
-        console.log("🧠 AI Thinking Complete - Navigating to Result with RAW DATA:", location.state);
-        // ✅ CORRECTED: Fixed navigation path to match routes.js
+        console.log("🧠 AI Thinking Complete - Navigating to Result with data:", location.state);
+        // ✅ FIXED: Navigate to result with the received data
         navigate("/measure/result", { 
           state: location.state // Pass the original data directly
         });
       }, 3000);
     }, 5000);
+  };
+
+  // Manual navigation function in case auto-navigation fails
+  const handleManualNavigate = () => {
+    console.log("🔄 Manual navigation triggered");
+    navigate("/measure/result", { 
+      state: location.state || {} 
+    });
   };
 
   return (
@@ -97,6 +120,17 @@ export default function AILoading() {
                 : "Starting Juan AI analysis engine..."
             }
           </p>
+        </div>
+
+        {/* Status Message Display */}
+        <div style={{
+          padding: '10px',
+          margin: '10px 0',
+          background: '#f8f9fa',
+          borderRadius: '8px',
+          border: '1px solid #e9ecef'
+        }}>
+          <strong>Status:</strong> {statusMessage}
         </div>
 
         {/* AI Thinking Animation */}
@@ -182,9 +216,27 @@ export default function AILoading() {
         {/* Auto Navigation */}
         <div className="ai-auto-navigate-768">
           {analysisComplete && (
-            <span className="ai-navigate-text-768">
-              Preparing your comprehensive health results...
-            </span>
+            <div style={{textAlign: 'center'}}>
+              <span className="ai-navigate-text-768">
+                Preparing your comprehensive health results...
+              </span>
+              <br />
+              <button 
+                onClick={handleManualNavigate}
+                style={{
+                  marginTop: '10px',
+                  padding: '8px 16px',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Click here if not automatically redirected
+              </button>
+            </div>
           )}
         </div>
 
@@ -216,8 +268,29 @@ export default function AILoading() {
         }}>
           Status: {analysisComplete ? '✅ COMPLETE' : '⏳ ANALYZING'} | 
           Next: /measure/result | 
-          Data: {location.state ? '📊 RECEIVED' : '❌ MISSING'}
+          Data: {location.state ? '📊 RECEIVED' : '❌ MISSING'} |
+          Steps: {currentStep + 1}/{analysisSteps.length}
         </div>
+
+        {/* Manual navigation button for debugging */}
+        {!isAnalyzing && !analysisComplete && (
+          <div style={{textAlign: 'center', marginTop: '15px'}}>
+            <button 
+              onClick={handleManualNavigate}
+              style={{
+                padding: '10px 20px',
+                background: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '0.9rem'
+              }}
+            >
+              Manual Navigate to Results
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

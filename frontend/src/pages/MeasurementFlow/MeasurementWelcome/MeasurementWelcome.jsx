@@ -126,18 +126,18 @@ export default function MeasurementWelcome() { // ✅ Changed from 'Welcome' to 
             <p className="text-justify"><strong>Last Updated: {new Date().toLocaleDateString()}</strong></p>
 
             <h5>1. Acceptance of Terms</h5>
-            <p className="text-justify">By using the 4 in Juan Vital Kiosk, you agree to these Terms and Conditions. If you do not agree, please do not use this service.</p>
+            <p className="text-justify">By using the 4 in Juan Vital Sign Kiosk, you agree to these Terms and Conditions. If you do not agree, please do not use this service.</p>
 
             <h5>2. Health Information Collection</h5>
             <p className="text-justify">This kiosk collects the following health information:</p>
             <ul>
-              <li className="text-justify">Personal identification (name, age)</li>
+              <li className="text-justify">Personal identification (name, age, seqaxx)</li>
               <li className="text-justify">4 Vital Signs:
                 <ul>
                   <li className="text-justify">Body Temperature</li>
                   <li className="text-justify">Heart Rate (BPM)</li>
-                  <li className="text-justify">Blood Oxygen (SpO2%)</li>
                   <li className="text-justify">Respiratory Rate</li>
+                  <li className="text-justify">Blood Pressure</li>
                 </ul>
               </li>
               <li className="text-justify">Additional measurements (weight, height)</li>
@@ -167,7 +167,7 @@ export default function MeasurementWelcome() { // ✅ Changed from 'Welcome' to 
             </ul>
 
             <h5>6. Limitation of Liability</h5>
-            <p className="text-justify">The 4 in Juan Vital Kiosk and its operators are not liable for:</p>
+            <p className="text-justify">The 4 in Juan Vital Sign Kiosk and its operators are not liable for:</p>
             <ul>
               <li className="text-justify">Any health decisions made based on the information provided</li>
               <li className="text-justify">Technical errors or interruptions in service</li>

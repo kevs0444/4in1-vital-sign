@@ -26,11 +26,11 @@
   background: white;
   border-radius: 16px;
   width: 100%;
-  max-width: 650px;
+  max-width: 800px;
   height: auto;
   min-height: 90vh;
   max-height: 95vh;
-  padding: 20px;
+  padding: 25px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   text-align: center;
   transition: all 0.8s ease;
@@ -49,7 +49,7 @@
 
 /* Progress bar - More compact */
 .progress-container {
-  margin-bottom: 12px;
+  margin-bottom: 15px;
   flex-shrink: 0;
 }
 
@@ -79,7 +79,7 @@
 /* Header - More compact */
 .bmi-header {
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 15px;
   flex-shrink: 0;
 }
 
@@ -105,57 +105,133 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 180px;
+  min-height: 220px;
 }
 
-/* BMI Cards Container */
+/* BMI Cards Container - UPDATED for 2 cards layout */
 .bmi-cards-container {
   display: flex;
-  justify-content: center;
-  gap: 15px;
+  flex-direction: column;
+  gap: 25px;
   width: 100%;
-  margin: 20px 0;
-  flex-wrap: wrap;
+  margin: 25px 0;
 }
 
-/* Measurement Cards */
+/* Top Row - Weight and Height Cards */
+.bmi-cards-top-row {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+}
+
+/* Bottom Row - BMI Result Card */
+.bmi-cards-bottom-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Measurement Cards - 10% LARGER with enhanced interactivity */
 .measurement-card.bmi-card {
   flex: 1;
-  min-width: 140px;
-  max-width: 200px;
-  min-height: 160px;
-  padding: 20px 15px;
+  min-width: 242px;
+  max-width: 330px;
+  min-height: 264px;
+  padding: 28px 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: white;
-  border-radius: 12px;
+  border-radius: 18px;
   border: 2px solid #e9ecef;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
+  position: relative;
+  overflow: hidden;
+}
+
+.measurement-card.bmi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
+  transition: left 0.6s ease;
+}
+
+.measurement-card.bmi-card:hover::before {
+  left: 100%;
 }
 
 .measurement-card.bmi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
   border-color: #dc3545;
 }
 
+/* Active measurement state */
+.measurement-card.bmi-card.measuring-active {
+  border-color: #17a2b8;
+  background: linear-gradient(135deg, #f8fdff, #ffffff);
+  animation: measuringPulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.measurement-card.bmi-card.measuring-active .measurement-icon {
+  animation: iconBounce 1.5s ease-in-out infinite;
+}
+
+.measurement-card.bmi-card.measuring-active .value {
+  animation: numberPulse 1s ease-in-out infinite;
+}
+
+.measurement-card.bmi-card.measurement-complete {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #f8fff9, #ffffff);
+  animation: completeCelebrate 0.6s ease-out;
+}
+
+.measurement-card.bmi-card.measurement-complete .measurement-icon {
+  animation: iconCelebrate 0.8s ease-out;
+}
+
 .measurement-card.bmi-card .measurement-icon {
-  width: 50px;
-  height: 50px;
+  width: 77px;
+  height: 77px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 12px;
+  margin-bottom: 17px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.measurement-card.bmi-card.measuring-active .measurement-icon::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border: 2px solid #17a2b8;
+  border-radius: 50%;
+  animation: ripple 1.5s linear infinite;
 }
 
 .measurement-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.measurement-card.bmi-card:hover .measurement-image {
+  transform: scale(1.1);
 }
 
 .measurement-info {
@@ -164,165 +240,738 @@
 }
 
 .measurement-card.bmi-card .measurement-title {
-  font-size: 1rem;
+  font-size: 1.43rem;
   color: #333;
   font-weight: 700;
-  margin: 0 0 12px 0;
+  margin: 0 0 17px 0;
   line-height: 1.1;
+  transition: color 0.3s ease;
+}
+
+.measurement-card.bmi-card.measuring-active .measurement-title {
+  color: #17a2b8;
+}
+
+.measurement-card.bmi-card.measurement-complete .measurement-title {
+  color: #28a745;
 }
 
 .measurement-value {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: 7px;
+  margin-bottom: 13px;
+  position: relative;
 }
 
 .measurement-card.bmi-card .value,
 .measurement-card.bmi-card .placeholder {
-  font-size: 1.8rem;
+  font-size: 2.64rem;
   font-weight: 800;
   line-height: 1;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
 .measurement-card.bmi-card .value {
   color: #333;
 }
 
+.measurement-card.bmi-card.measuring-active .value {
+  color: #17a2b8;
+}
+
+.measurement-card.bmi-card.measurement-complete .value {
+  color: #28a745;
+}
+
 .measurement-card.bmi-card .placeholder {
   color: #ccc;
 }
 
+/* Real-time measurement animation */
+.measurement-card.bmi-card .value.measuring-live {
+  animation: liveMeasurement 0.8s ease-in-out infinite alternate;
+  position: relative;
+}
+
+.measurement-card.bmi-card .value.measuring-live::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #17a2b8, transparent);
+  animation: scanningLine 1.2s ease-in-out infinite;
+}
+
 .measurement-card.bmi-card .unit {
-  font-size: 1rem;
+  font-size: 1.43rem;
   color: #666;
   font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.measurement-card.bmi-card.measuring-active .unit {
+  color: #17a2b8;
+}
+
+.measurement-card.bmi-card.measurement-complete .unit {
+  color: #28a745;
 }
 
 .measurement-status {
-  font-size: 0.85rem;
+  font-size: 0.99rem;
   font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 15px;
+  padding: 9px 18px;
+  border-radius: 18px;
   display: inline-block;
-  min-width: 80px;
+  min-width: 110px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.measurement-status::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.measurement-status:hover::before {
+  left: 100%;
 }
 
 .measurement-card.bmi-card .measurement-status {
-  font-size: 0.8rem;
-  padding: 6px 12px;
-  min-width: 90px;
+  font-size: 0.94rem;
+  padding: 9px 18px;
+  min-width: 121px;
 }
 
-/* Status colors */
+/* Status colors with enhanced animations */
 .measurement-status.measuring {
   background: #17a2b8;
   color: white;
+  animation: statusPulse 2s ease-in-out infinite;
+  box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
 }
 
 .measurement-status.complete {
   background: #28a745;
   color: white;
+  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+  animation: completePop 0.5s ease-out;
 }
 
 .measurement-status.default {
   background: #6c757d;
   color: white;
-}
-
-/* BMI Result Card */
-.bmi-result-card {
-  margin-top: 20px;
-  padding: 20px;
-  background: white;
-  border-radius: 12px;
-  border: 2px solid #e9ecef;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
 }
 
+.measurement-status.default:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+}
+
+/* BMI Result Card - 10% LARGER with enhanced interactivity */
+.bmi-result-card {
+  min-width: 352px;
+  max-width: 605px;
+  min-height: 198px;
+  padding: 28px;
+  background: white;
+  border-radius: 18px;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+
+.bmi-result-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
+  transition: left 0.6s ease;
+}
+
+.bmi-result-card:hover::before {
+  left: 100%;
+}
+
 .bmi-result-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
   border-color: #dc3545;
 }
 
+.bmi-result-card.has-result {
+  border-color: #dc3545;
+  background: linear-gradient(135deg, #fff5f5, #ffffff);
+  animation: resultCelebrate 0.8s ease-out;
+}
+
 .bmi-result-header {
-  margin-bottom: 15px;
+  margin-bottom: 22px;
 }
 
 .bmi-result-header h3 {
-  font-size: 1.1rem;
+  font-size: 1.54rem;
   color: #333;
   font-weight: 700;
   margin: 0;
+  transition: color 0.3s ease;
+}
+
+.bmi-result-card.has-result .bmi-result-header h3 {
+  color: #dc3545;
 }
 
 .bmi-result-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 13px;
 }
 
 .bmi-value-display {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 11px;
+  margin-bottom: 13px;
+  position: relative;
 }
 
 .bmi-value {
-  font-size: 2.2rem;
+  font-size: 2.86rem;
   font-weight: 800;
   color: #333;
   line-height: 1;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.bmi-result-card.has-result .bmi-value {
+  color: #dc3545;
+  animation: valueReveal 1s ease-out;
 }
 
 .bmi-unit {
-  font-size: 1rem;
+  font-size: 1.43rem;
   color: #666;
   font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.bmi-result-card.has-result .bmi-unit {
+  color: #dc3545;
 }
 
 .bmi-category {
-  font-size: 0.9rem;
+  font-size: 1.21rem;
   font-weight: 700;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 11px 22px;
+  border-radius: 22px;
   display: inline-block;
-  min-width: 120px;
+  min-width: 154px;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+
+.bmi-category::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.bmi-category:hover::before {
+  left: 100%;
+}
+
+.bmi-category:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .bmi-description {
-  font-size: 0.8rem;
+  font-size: 0.99rem;
   color: #666;
-  line-height: 1.3;
+  line-height: 1.4;
   text-align: center;
-  max-width: 250px;
+  max-width: 308px;
+  transition: all 0.3s ease;
 }
 
-/* BMI Category Colors */
+.bmi-result-card.has-result .bmi-description {
+  color: #555;
+  animation: fadeInUp 0.8s ease-out 0.3s both;
+}
+
+/* BMI Category Colors with enhanced effects */
 .bmi-category.underweight {
   background: #17a2b8;
   color: white;
+  box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
+}
+
+.bmi-category.underweight:hover {
+  box-shadow: 0 4px 20px rgba(23, 162, 184, 0.4);
 }
 
 .bmi-category.normal {
   background: #28a745;
   color: white;
+  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+}
+
+.bmi-category.normal:hover {
+  box-shadow: 0 4px 20px rgba(40, 167, 69, 0.4);
 }
 
 .bmi-category.overweight {
   background: #ffc107;
   color: #212529;
+  box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+}
+
+.bmi-category.overweight:hover {
+  box-shadow: 0 4px 20px rgba(255, 193, 7, 0.4);
 }
 
 .bmi-category.obese {
   background: #dc3545;
   color: white;
+  box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
+}
+
+.bmi-category.obese:hover {
+  box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4);
+}
+
+/* Animation Keyframes */
+@keyframes measuringPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+@keyframes iconBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes numberPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes liveMeasurement {
+  0% {
+    transform: translateY(0px);
+    text-shadow: 0 0 5px rgba(23, 162, 184, 0.5);
+  }
+  100% {
+    transform: translateY(-2px);
+    text-shadow: 0 0 15px rgba(23, 162, 184, 0.8);
+  }
+}
+
+@keyframes scanningLine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes statusPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.5);
+  }
+}
+
+@keyframes completePop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes completeCelebrate {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.05) rotate(1deg);
+  }
+  50% {
+    transform: scale(1.03) rotate(-1deg);
+  }
+  75% {
+    transform: scale(1.05) rotate(1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes iconCelebrate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.2) rotate(10deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(-5deg);
+  }
+  75% {
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes resultCelebrate {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes valueReveal {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Instruction Container - HORIZONTAL LAYOUT with 3 cards */
+.instruction-container {
+  margin-top: 25px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.instruction-cards-horizontal {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  width: 100%;
+  max-width: 650px;
+  flex-wrap: wrap;
+}
+
+.instruction-card-step {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 14px;
+  padding: 20px;
+  min-width: 175px;
+  max-width: 200px;
+  flex: 1;
+  text-align: center;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.instruction-card-step::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
+  transition: left 0.6s ease;
+}
+
+.instruction-card-step:hover::before {
+  left: 100%;
+}
+
+.instruction-card-step:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  border-color: #dc3545;
+}
+
+.instruction-card-step.active {
+  border-color: #dc3545;
+  background: linear-gradient(135deg, #fff5f5, #ffffff);
+  animation: instructionPulse 2s ease-in-out infinite;
+}
+
+.instruction-card-step.completed {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #f0fff4, #ffffff);
+}
+
+.step-number-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #dc3545;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 auto 12px auto;
+  border: 2px solid #dc3545;
+  transition: all 0.3s ease;
+}
+
+.instruction-card-step.active .step-number-circle {
+  background: white;
+  color: #dc3545;
+  animation: stepPulse 2s ease-in-out infinite;
+}
+
+.instruction-card-step.completed .step-number-circle {
+  background: #28a745;
+  border-color: #28a745;
+  animation: none;
+}
+
+.step-icon {
+  font-size: 1.7rem;
+  margin-bottom: 10px;
+  color: #666;
+  transition: all 0.3s ease;
+}
+
+.instruction-card-step.active .step-icon {
+  color: #dc3545;
+  animation: iconFloat 2s ease-in-out infinite;
+}
+
+.instruction-card-step.completed .step-icon {
+  color: #28a745;
+}
+
+.step-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+  transition: color 0.3s ease;
+}
+
+.instruction-card-step.active .step-title {
+  color: #dc3545;
+}
+
+.instruction-card-step.completed .step-title {
+  color: #28a745;
+}
+
+.step-description {
+  font-size: 0.8rem;
+  color: #666;
+  line-height: 1.4;
+  margin: 0;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.instruction-card-step.active .step-description {
+  color: #555;
+}
+
+.step-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 12px;
+  margin-top: 10px;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.step-status.pending {
+  background: #6c757d;
+  color: white;
+}
+
+.step-status.active {
+  background: #dc3545;
+  color: white;
+  animation: statusGlow 2s ease-in-out infinite;
+}
+
+.step-status.completed {
+  background: #28a745;
+  color: white;
+}
+
+.countdown-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.countdown-mini-circle {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #dc3545;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  animation: countdownPulse 1s ease-in-out infinite alternate;
+}
+
+.countdown-mini-number {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #dc3545;
+}
+
+.countdown-mini-text {
+  font-size: 0.7rem;
+  color: #666;
+  font-weight: 600;
+}
+
+/* Additional animation keyframes */
+@keyframes instructionPulse {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
+  }
+  50% {
+    box-shadow: 0 6px 25px rgba(220, 53, 69, 0.2);
+  }
+}
+
+@keyframes stepPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 5px rgba(220, 53, 69, 0.1);
+  }
+}
+
+@keyframes iconFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes statusGlow {
+  0%, 100% {
+    box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 15px rgba(220, 53, 69, 0.6);
+  }
+}
+
+@keyframes countdownPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+  100% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 4px rgba(220, 53, 69, 0);
+  }
 }
 
 /* Measurement Progress */
@@ -331,7 +980,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 15px;
 }
 
 .progress-bar-horizontal {
@@ -365,26 +1014,33 @@
 .error-message {
   background: #f8d7da;
   border: 1px solid #f5c6cb;
-  border-radius: 12px;
-  padding: 16px;
-  margin: 20px 0;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 15px 0;
   text-align: center;
   color: #721c24;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+  animation: errorShake 0.5s ease-in-out;
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
 .retry-button-small {
   background: #dc3545;
   color: white;
   border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 5px 10px;
+  border-radius: 3px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   transition: all 0.3s ease;
 }
 
@@ -393,40 +1049,55 @@
   transform: translateY(-1px);
 }
 
-/* Measurement Controls */
-.measurement-controls {
+/* Continue Button */
+.continue-button-container {
   flex-shrink: 0;
-  margin: 12px 0 8px 0;
+  margin-top: 8px;
 }
 
-.measure-button {
+.continue-button {
   width: 100%;
-  padding: 20px 16px;
+  padding: 18px 14px;
   border: none;
-  border-radius: 16px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #dc3545, #c82333);
   color: white;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 70px;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  min-height: 65px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35);
+  animation: redGlow 2s ease-in-out infinite alternate;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
-  animation: redGlow 2s ease-in-out infinite alternate;
+  gap: 10px;
 }
 
-.measure-button:hover:not(:disabled) {
-  transform: translateY(-3px);
+.continue-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s ease;
+}
+
+.continue-button:hover::before {
+  left: 100%;
+}
+
+.continue-button:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02);
   animation: redStrongGlow 1s ease-in-out infinite alternate;
 }
 
-.measure-button:disabled {
+.continue-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -437,53 +1108,32 @@
 /* Glow Animations */
 @keyframes redGlow {
   from {
-    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4),
-                0 0 8px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35),
+                0 0 6px rgba(220, 53, 69, 0.25);
   }
   to {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.5),
-                0 0 25px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
+                0 0 12px rgba(220, 53, 69, 0.4),
+                0 0 20px rgba(220, 53, 69, 0.25);
   }
 }
 
 @keyframes redStrongGlow {
   from {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.6),
-                0 0 25px rgba(220, 53, 69, 0.4);
+    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
+                0 0 12px rgba(220, 53, 69, 0.5),
+                0 0 20px rgba(220, 53, 69, 0.35);
   }
   to {
-    box-shadow: 0 12px 28px rgba(220, 53, 69, 0.6),
-                0 0 20px rgba(220, 53, 69, 0.8),
-                0 0 35px rgba(220, 53, 69, 0.5);
+    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.55),
+                0 0 16px rgba(220, 53, 69, 0.7),
+                0 0 28px rgba(220, 53, 69, 0.4);
   }
-}
-
-/* Shimmer effect */
-.measure-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-.measure-button:hover::before {
-  left: 100%;
 }
 
 .spinner {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border: 2px solid transparent;
   border-top: 2px solid white;
   border-radius: 50%;
@@ -498,102 +1148,91 @@
 .success-text {
   color: #dc3545;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .retry-button {
   border: 2px solid #dc3545;
   background: transparent;
   color: #dc3545;
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-size: 0.95rem;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-height: 45px;
-  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.2);
+  min-height: 40px;
+  box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
 }
 
 .retry-button:hover {
   background: #fff0f0;
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
+  box-shadow: 0 3px 8px rgba(220, 53, 69, 0.25);
 }
 
 .retry-button:active {
   transform: translateY(0);
 }
 
-/* Continue Button */
-.continue-button-container {
-  flex-shrink: 0;
-  margin-top: 8px;
+/* Responsive design */
+@media (max-width: 768px) {
+  .instruction-cards-horizontal {
+    gap: 10px;
+    max-width: 100%;
+  }
+  
+  .instruction-card-step {
+    min-width: 150px;
+    max-width: 170px;
+    padding: 16px;
+  }
+  
+  .step-number-circle {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+  
+  .step-icon {
+    font-size: 1.5rem;
+  }
+  
+  .step-title {
+    font-size: 0.85rem;
+  }
+  
+  .step-description {
+    font-size: 0.75rem;
+  }
 }
 
-.continue-button {
-  width: 100%;
-  padding: 20px 16px;
-  border: none;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
-  font-size: 1.3rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 70px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
-  animation: redGlow 2s ease-in-out infinite alternate;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.continue-button:hover:not(:disabled) {
-  transform: translateY(-3px);
-  animation: redStrongGlow 1s ease-in-out infinite alternate;
-}
-
-.continue-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  animation: none;
-}
-
-.continue-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-.continue-button:hover::before {
-  left: 100%;
+@media (max-width: 480px) {
+  .instruction-cards-horizontal {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .instruction-card-step {
+    min-width: 220px;
+    max-width: 240px;
+    padding: 14px;
+  }
+  
+  .instruction-card-step {
+    flex: none;
+  }
 }
 
 /* 768x1366 specific optimization */
 @media (max-width: 768px) and (max-height: 1366px) {
   .bmi-container {
-    padding: 8px;
+    padding: 6px;
   }
   
   .bmi-content {
-    padding: 18px;
+    padding: 20px;
     max-width: 100%;
     min-height: 88vh;
     max-height: 92vh;
@@ -601,55 +1240,87 @@
   }
   
   .bmi-title {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
   }
   
   .bmi-subtitle {
     font-size: 0.8rem;
   }
   
-  .bmi-cards-container {
-    gap: 12px;
+  .bmi-cards-top-row {
+    gap: 15px;
   }
   
   .measurement-card.bmi-card {
-    min-width: 120px;
-    max-width: 160px;
-    min-height: 140px;
-    padding: 16px 12px;
+    min-width: 200px;
+    max-width: 260px;
+    min-height: 220px;
+    padding: 22px 18px;
   }
   
   .measurement-card.bmi-card .measurement-icon {
-    width: 45px;
-    height: 45px;
+    width: 65px;
+    height: 65px;
   }
   
   .measurement-card.bmi-card .value,
   .measurement-card.bmi-card .placeholder {
-    font-size: 1.5rem;
+    font-size: 2.2rem;
   }
   
   .bmi-result-card {
-    padding: 16px;
-    margin-top: 15px;
+    min-width: 280px;
+    max-width: 460px;
+    padding: 22px;
+    min-height: 165px;
   }
   
   .bmi-value {
-    font-size: 1.8rem;
+    font-size: 2.3rem;
   }
   
-  .measure-button,
+  .instruction-card-step {
+    padding: 16px;
+  }
+  
+  .step-number-circle {
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+  }
+  
+  .step-icon {
+    font-size: 1.4rem;
+  }
+  
+  .step-title {
+    font-size: 0.8rem;
+  }
+  
+  .step-description {
+    font-size: 0.7rem;
+  }
+  
+  .countdown-mini-circle {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .countdown-mini-number {
+    font-size: 0.8rem;
+  }
+  
   .continue-button {
-    padding: 18px 14px;
-    font-size: 1.2rem;
-    min-height: 65px;
+    padding: 16px 12px;
+    font-size: 1.1rem;
+    min-height: 60px;
   }
 }
 
 /* Small mobile optimization */
 @media (max-width: 480px) {
   .bmi-container {
-    padding: 5px;
+    padding: 4px;
   }
   
   .bmi-content {
@@ -659,43 +1330,77 @@
   }
   
   .bmi-title {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
   }
   
-  .bmi-cards-container {
+  .bmi-cards-top-row {
     gap: 10px;
+    flex-direction: column;
+    align-items: center;
   }
   
   .measurement-card.bmi-card {
-    min-width: 100px;
-    max-width: 140px;
-    min-height: 120px;
-    padding: 14px 10px;
+    min-width: 160px;
+    max-width: 200px;
+    min-height: 180px;
+    padding: 18px 14px;
   }
   
   .measurement-card.bmi-card .measurement-icon {
-    width: 40px;
-    height: 40px;
+    width: 55px;
+    height: 55px;
   }
   
   .measurement-card.bmi-card .value,
   .measurement-card.bmi-card .placeholder {
-    font-size: 1.3rem;
+    font-size: 1.8rem;
   }
   
   .bmi-result-card {
-    padding: 14px;
-    margin-top: 12px;
+    min-width: 220px;
+    max-width: 350px;
+    padding: 18px;
+    min-height: 145px;
   }
   
   .bmi-value {
-    font-size: 1.6rem;
+    font-size: 1.9rem;
   }
   
-  .measure-button,
+  .instruction-card-step {
+    padding: 14px;
+  }
+  
+  .step-number-circle {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+  
+  .step-icon {
+    font-size: 1.3rem;
+  }
+  
+  .step-title {
+    font-size: 0.8rem;
+  }
+  
+  .step-description {
+    font-size: 0.7rem;
+  }
+  
+  .countdown-mini-circle {
+    width: 26px;
+    height: 26px;
+  }
+  
+  .countdown-mini-number {
+    font-size: 0.75rem;
+  }
+  
   .continue-button {
-    padding: 16px 12px;
-    font-size: 1.1rem;
-    min-height: 60px;
+    padding: 14px 10px;
+    font-size: 1rem;
+    min-height: 55px;
   }
 }

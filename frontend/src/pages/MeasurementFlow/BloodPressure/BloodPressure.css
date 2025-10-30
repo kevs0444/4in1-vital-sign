@@ -26,11 +26,11 @@
   background: white;
   border-radius: 16px;
   width: 100%;
-  max-width: 650px;
+  max-width: 800px;
   height: auto;
   min-height: 90vh;
   max-height: 95vh;
-  padding: 20px;
+  padding: 25px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   text-align: center;
   transition: all 0.8s ease;
@@ -49,7 +49,7 @@
 
 /* Progress bar - More compact */
 .progress-container {
-  margin-bottom: 12px;
+  margin-bottom: 15px;
   flex-shrink: 0;
 }
 
@@ -79,7 +79,7 @@
 /* Header - More compact */
 .bloodpressure-header {
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 15px;
   flex-shrink: 0;
 }
 
@@ -98,60 +98,6 @@
   padding: 0 10px;
 }
 
-/* Single BP Icon Styles */
-.bp-icon-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 15px 0 25px 0;
-}
-
-.bp-main-icon {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-  margin-bottom: 10px;
-}
-
-.bp-icon-label {
-  font-size: 0.9rem;
-  color: #666;
-  font-weight: 600;
-  text-align: center;
-}
-
-/* Connection Status */
-.connection-status-error {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin: 10px 0;
-  text-align: center;
-  color: #856404;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.retry-connection {
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.retry-connection:hover {
-  background: #c82333;
-  transform: translateY(-1px);
-}
-
 /* Display Section */
 .sensor-display-section {
   margin: 8px 0;
@@ -159,51 +105,115 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 180px;
+  min-height: 280px;
 }
 
-/* Dual Blood Pressure Cards */
-.bp-cards-container {
+/* Blood Pressure Card - 20% LARGER like BodyTemp */
+.bloodpressure-card-container {
   display: flex;
   justify-content: center;
-  gap: 15px;
   width: 100%;
-  margin: 20px 0;
-  flex-wrap: wrap;
+  margin: 25px 0;
 }
 
-.measurement-card.bp-card {
-  flex: 1;
-  min-width: 140px;
-  max-width: 200px;
-  min-height: 140px;
-  padding: 20px 15px;
+.measurement-card.bloodpressure-card {
+  min-width: 290px;
+  max-width: 396px;
+  min-height: 317px;
+  padding: 34px 26px;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: white;
-  border-radius: 12px;
+  border-radius: 18px;
   border: 2px solid #e9ecef;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
+  position: relative;
+  overflow: hidden;
 }
 
-.measurement-card.bp-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+.measurement-card.bloodpressure-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
+  transition: left 0.6s ease;
+}
+
+.measurement-card.bloodpressure-card:hover::before {
+  left: 100%;
+}
+
+.measurement-card.bloodpressure-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
   border-color: #dc3545;
 }
 
-/* Remove individual card icons */
-.measurement-card.bp-card .measurement-icon {
-  display: none;
+/* Active measurement state */
+.measurement-card.bloodpressure-card.measuring-active {
+  border-color: #17a2b8;
+  background: linear-gradient(135deg, #f8fdff, #ffffff);
+  animation: measuringPulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.measurement-card.bloodpressure-card.measuring-active .measurement-icon {
+  animation: iconBounce 1.5s ease-in-out infinite;
+}
+
+.measurement-card.bloodpressure-card.measuring-active .value {
+  animation: numberPulse 1s ease-in-out infinite;
+}
+
+.measurement-card.bloodpressure-card.measurement-complete {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #f8fff9, #ffffff);
+  animation: completeCelebrate 0.6s ease-out;
+}
+
+.measurement-card.bloodpressure-card.measurement-complete .measurement-icon {
+  animation: iconCelebrate 0.8s ease-out;
+}
+
+.measurement-card.bloodpressure-card .measurement-icon {
+  width: 92px;
+  height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.measurement-card.bloodpressure-card.measuring-active .measurement-icon::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  right: -6px;
+  bottom: -6px;
+  border: 2px solid #17a2b8;
+  border-radius: 50%;
+  animation: ripple 1.5s linear infinite;
 }
 
 .measurement-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.measurement-card.bloodpressure-card:hover .measurement-image {
+  transform: scale(1.1);
 }
 
 .measurement-info {
@@ -211,109 +221,519 @@
   width: 100%;
 }
 
-.measurement-card.bp-card .measurement-title {
-  font-size: 1rem;
+.measurement-card.bloodpressure-card .measurement-title {
+  font-size: 1.72rem;
   color: #333;
   font-weight: 700;
-  margin: 0 0 12px 0;
+  margin: 0 0 20px 0;
   line-height: 1.1;
+  transition: color 0.3s ease;
+}
+
+.measurement-card.bloodpressure-card.measuring-active .measurement-title {
+  color: #17a2b8;
+}
+
+.measurement-card.bloodpressure-card.measurement-complete .measurement-title {
+  color: #28a745;
 }
 
 .measurement-value {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 16px;
+  position: relative;
 }
 
-.measurement-card.bp-card .value,
-.measurement-card.bp-card .placeholder {
-  font-size: 1.8rem;
+.measurement-card.bloodpressure-card .value,
+.measurement-card.bloodpressure-card .placeholder {
+  font-size: 3.17rem;
   font-weight: 800;
   line-height: 1;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
-.measurement-card.bp-card .value {
+.measurement-card.bloodpressure-card .value {
   color: #333;
 }
 
-.measurement-card.bp-card .placeholder {
+.measurement-card.bloodpressure-card.measuring-active .value {
+  color: #17a2b8;
+}
+
+.measurement-card.bloodpressure-card.measurement-complete .value {
+  color: #28a745;
+}
+
+.measurement-card.bloodpressure-card .placeholder {
   color: #ccc;
 }
 
-.measurement-card.bp-card .unit {
-  font-size: 1rem;
+/* Real-time measurement animation */
+.measurement-card.bloodpressure-card .value.measuring-live {
+  animation: liveMeasurement 0.8s ease-in-out infinite alternate;
+  position: relative;
+}
+
+.measurement-card.bloodpressure-card .value.measuring-live::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #17a2b8, transparent);
+  animation: scanningLine 1.2s ease-in-out infinite;
+}
+
+.measurement-card.bloodpressure-card .unit {
+  font-size: 1.72rem;
   color: #666;
   font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.measurement-card.bloodpressure-card.measuring-active .unit {
+  color: #17a2b8;
+}
+
+.measurement-card.bloodpressure-card.measurement-complete .unit {
+  color: #28a745;
 }
 
 .measurement-status {
-  font-size: 0.85rem;
+  font-size: 1.19rem;
   font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 15px;
+  padding: 11px 22px;
+  border-radius: 18px;
   display: inline-block;
-  min-width: 80px;
+  min-width: 132px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.measurement-card.bp-card .measurement-status {
-  font-size: 0.8rem;
-  padding: 6px 12px;
-  min-width: 90px;
+.measurement-status::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
 }
 
-/* Status colors for BP */
-.measurement-status.normal {
+.measurement-status:hover::before {
+  left: 100%;
+}
+
+.measurement-card.bloodpressure-card .measurement-status {
+  font-size: 1.13rem;
+  padding: 11px 22px;
+  min-width: 145px;
+}
+
+/* Status colors with enhanced effects */
+.measurement-status.measuring {
+  background: #17a2b8;
+  color: white;
+  animation: statusPulse 2s ease-in-out infinite;
+  box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
+}
+
+.measurement-status.complete {
   background: #28a745;
   color: white;
-}
-
-.measurement-status.elevated {
-  background: #ffc107;
-  color: #212529;
-}
-
-.measurement-status.hypertension-stage1 {
-  background: #fd7e14;
-  color: white;
-}
-
-.measurement-status.hypertension-stage2 {
-  background: #dc3545;
-  color: white;
-}
-
-.measurement-status.hypertensive-crisis {
-  background: #6f42c1;
-  color: white;
+  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+  animation: completePop 0.5s ease-out;
 }
 
 .measurement-status.default {
   background: #6c757d;
   color: white;
+  transition: all 0.3s ease;
 }
 
-/* BP Status Overview */
-.bp-status-overview {
-  margin-top: 15px;
-  padding: 12px;
-  background: #f8f9fa;
+.measurement-status.default:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+}
+
+.measurement-status.normal {
+  background: #28a745;
+  color: white;
+  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+}
+
+.measurement-status.low {
+  background: #ffc107;
+  color: #212529;
+  box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+}
+
+.measurement-status.fever {
+  background: #dc3545;
+  color: white;
+  box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
+}
+
+/* Blood Pressure Result Card */
+.bp-result-card {
+  min-width: 352px;
+  max-width: 605px;
+  min-height: 198px;
+  padding: 28px;
+  background: white;
+  border-radius: 18px;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+
+.bp-result-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
+  transition: left 0.6s ease;
+}
+
+.bp-result-card:hover::before {
+  left: 100%;
+}
+
+.bp-result-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+  border-color: #dc3545;
+}
+
+.bp-result-card.has-result {
+  border-color: #dc3545;
+  background: linear-gradient(135deg, #fff5f5, #ffffff);
+  animation: resultCelebrate 0.8s ease-out;
+}
+
+.bp-result-header {
+  margin-bottom: 22px;
+}
+
+.bp-result-header h3 {
+  font-size: 1.54rem;
+  color: #333;
+  font-weight: 700;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+.bp-result-card.has-result .bp-result-header h3 {
+  color: #dc3545;
+}
+
+.bp-result-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+}
+
+.bp-value-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 11px;
+  margin-bottom: 13px;
+  position: relative;
+}
+
+.bp-value {
+  font-size: 2.86rem;
+  font-weight: 800;
+  color: #333;
+  line-height: 1;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.bp-result-card.has-result .bp-value {
+  color: #dc3545;
+  animation: valueReveal 1s ease-out;
+}
+
+.bp-unit {
+  font-size: 1.43rem;
+  color: #666;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.bp-result-card.has-result .bp-unit {
+  color: #dc3545;
+}
+
+.bp-category {
+  font-size: 1.21rem;
+  font-weight: 700;
+  padding: 11px 22px;
+  border-radius: 22px;
+  display: inline-block;
+  min-width: 154px;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+
+.bp-category::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.bp-category:hover::before {
+  left: 100%;
+}
+
+.bp-category:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.bp-description {
+  font-size: 0.99rem;
+  color: #666;
+  line-height: 1.4;
+  text-align: center;
+  max-width: 308px;
+  transition: all 0.3s ease;
+}
+
+.bp-result-card.has-result .bp-description {
+  color: #555;
+  animation: fadeInUp 0.8s ease-out 0.3s both;
+}
+
+/* Blood Pressure Category Colors */
+.bp-category.normal {
+  background: #28a745;
+  color: white;
+  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+}
+
+.bp-category.low {
+  background: #ffc107;
+  color: #212529;
+  box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+}
+
+.bp-category.fever {
+  background: #dc3545;
+  color: white;
+  box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
+}
+
+/* Live Indicator */
+.live-indicator {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #dc3545;
+  color: white;
+  padding: 4px 8px;
   border-radius: 10px;
-  border: 1px solid #e9ecef;
+  font-size: 0.7rem;
+  font-weight: 600;
+  animation: liveIndicatorPulse 1.5s ease-in-out infinite;
 }
 
-.bp-overall-status {
+/* INSTRUCTION CONTAINER - Horizontal layout with 3 cards */
+.instruction-container {
+  width: 100%;
+  margin: 25px 0;
+  flex-shrink: 0;
+}
+
+.instruction-cards-horizontal {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.instruction-card-step {
+  flex: 1;
+  min-width: 180px;
+  max-width: 220px;
+  padding: 20px 15px;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.instruction-card-step::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
+  transition: left 0.6s ease;
+}
+
+.instruction-card-step:hover::before {
+  left: 100%;
+}
+
+.instruction-card-step:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  border-color: #dc3545;
+}
+
+.instruction-card-step.active {
+  border-color: #17a2b8;
+  background: linear-gradient(135deg, #f8fdff, #ffffff);
+  animation: stepActivePulse 2s ease-in-out infinite;
+}
+
+.instruction-card-step.completed {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #f8fff9, #ffffff);
+}
+
+.step-number-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #6c757d;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin: 0 auto 10px;
+  transition: all 0.3s ease;
+}
+
+.instruction-card-step.active .step-number-circle {
+  background: #17a2b8;
+  animation: numberBounce 1s ease-in-out infinite;
+}
+
+.instruction-card-step.completed .step-number-circle {
+  background: #28a745;
+}
+
+.step-icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+}
+
+.instruction-card-step.active .step-icon {
+  animation: iconBounce 1.5s ease-in-out infinite;
+}
+
+.step-title {
   font-size: 1rem;
   font-weight: 700;
-  margin-bottom: 8px;
   color: #333;
+  margin: 0 0 8px 0;
+  transition: color 0.3s ease;
 }
 
-.bp-category-info {
-  font-size: 0.85rem;
+.instruction-card-step.active .step-title {
+  color: #17a2b8;
+}
+
+.instruction-card-step.completed .step-title {
+  color: #28a745;
+}
+
+.step-description {
+  font-size: 0.8rem;
   color: #666;
   line-height: 1.3;
+  margin: 0 0 12px 0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.step-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 12px;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.step-status.pending {
+  background: #6c757d;
+  color: white;
+}
+
+.step-status.active {
+  background: #17a2b8;
+  color: white;
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+.step-status.completed {
+  background: #28a745;
+  color: white;
+}
+
+/* Countdown Mini */
+.countdown-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin: 8px 0;
+}
+
+.countdown-mini-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #17a2b8;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  animation: countdownPulse 1s ease-in-out infinite;
+}
+
+.countdown-mini-text {
+  font-size: 0.7rem;
+  color: #666;
+  font-weight: 600;
 }
 
 /* Measurement Progress */
@@ -340,26 +760,6 @@
   transition: width 0.5s ease;
 }
 
-.pulse-wave {
-  width: 80px;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #dc3545, transparent);
-  border-radius: 2px;
-  animation: wavePulse 1.5s ease-in-out infinite;
-}
-
-@keyframes wavePulse {
-  0% { transform: scaleX(0); opacity: 0; }
-  50% { transform: scaleX(1); opacity: 1; }
-  100% { transform: scaleX(0); opacity: 0; }
-}
-
-.current-measurement {
-  font-size: 0.9rem;
-  color: #666;
-  font-weight: 600;
-}
-
 .progress-text {
   font-size: 0.85rem;
   color: #666;
@@ -372,366 +772,10 @@
   font-weight: 600;
 }
 
-/* Error Message Display */
-.error-message {
-  background: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 12px;
-  padding: 16px;
-  margin: 20px 0;
-  text-align: center;
-  color: #721c24;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.retry-button-small {
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
-}
-
-.retry-button-small:hover {
-  background: #c82333;
-  transform: translateY(-1px);
-}
-
-/* User Detection Warning */
-.user-detection-warning {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 12px;
-  padding: 16px;
-  margin: 20px 0;
-  text-align: center;
-  animation: pulseWarning 2s infinite;
-}
-
-.user-detection-warning.no_user {
-  background: #f8d7da;
-  border-color: #f5c6cb;
-}
-
-.warning-icon {
-  font-size: 24px;
-  margin-right: 10px;
-}
-
-.warning-text {
-  color: #856404;
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.user-detection-warning.no_user .warning-text {
-  color: #721c24;
-}
-
-.detection-tips {
-  margin-top: 12px;
-  text-align: left;
-  background: rgba(255, 255, 255, 0.7);
-  padding: 12px;
-  border-radius: 8px;
-}
-
-.detection-tips ul {
-  margin: 8px 0 0 20px;
-  padding: 0;
-}
-
-.detection-tips li {
-  margin: 4px 0;
-  color: #666;
-  font-size: 14px;
-}
-
-.live-reading {
-  background: #e3f2fd;
-  border: 1px solid #bbdefb;
-  border-radius: 8px;
-  padding: 8px 16px;
-  margin: 10px 0;
-  font-weight: 600;
-  color: #1976d2;
-  font-size: 18px;
-}
-
-.detection-warning {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-@keyframes pulseWarning {
-  0% { opacity: 1; }
-  50% { opacity: 0.8; }
-  100% { opacity: 1; }
-}
-
-/* Measurement Controls */
-.measurement-controls {
-  flex-shrink: 0;
-  margin: 12px 0 8px 0;
-}
-
-.waiting-prompt {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-}
-
-.waiting-prompt span {
-  font-size: 0.9rem;
-  color: #666;
-  font-weight: 600;
-}
-
-.measure-button {
-  width: 100%;
-  padding: 20px 16px;
-  border: none;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
-  font-size: 1.3rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 70px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
-  animation: redGlow 2s ease-in-out infinite alternate;
-}
-
-.measure-button:hover:not(:disabled) {
-  transform: translateY(-3px);
-  animation: redStrongGlow 1s ease-in-out infinite alternate;
-}
-
-.measure-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  animation: none;
-}
-
-/* Glow Animations */
-@keyframes redGlow {
-  from {
-    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4),
-                0 0 8px rgba(220, 53, 69, 0.3);
-  }
-  to {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.5),
-                0 0 25px rgba(220, 53, 69, 0.3);
-  }
-}
-
-@keyframes redStrongGlow {
-  from {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.6),
-                0 0 25px rgba(220, 53, 69, 0.4);
-  }
-  to {
-    box-shadow: 0 12px 28px rgba(220, 53, 69, 0.6),
-                0 0 20px rgba(220, 53, 69, 0.8),
-                0 0 35px rgba(220, 53, 69, 0.5);
-  }
-}
-
-/* Shimmer effect */
-.measure-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-.measure-button:hover::before {
-  left: 100%;
-}
-
-.spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid transparent;
-  border-top: 2px solid #dc3545;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.measurement-complete {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-}
-
-.success-text {
-  color: #dc3545;
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.complete-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.retry-button {
-  border: 2px solid #dc3545;
-  background: transparent;
-  color: #dc3545;
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 45px;
-  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.2);
-}
-
-.retry-button:hover {
-  background: #fff0f0;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
-}
-
-.retry-button:active {
-  transform: translateY(0);
-}
-
-.button-icon {
-  font-size: 1.7rem;
-}
-
-/* Educational Content */
-.educational-content {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border-radius: 12px;
-  padding: 16px;
-  margin: 8px 0;
-  transition: opacity 0.5s ease;
-  flex-shrink: 0;
-  flex: 0.9;
-  border: 2px solid #e9ecef;
-}
-
-.education-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: #333;
-  text-align: center;
-}
-
-.education-points {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.education-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px;
-  background: white;
-  border-radius: 10px;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-}
-
-.education-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
-  border-color: #dc3545;
-}
-
-.education-card:active {
-  transform: translateY(0);
-}
-
-.card-icon {
-  font-size: 1.7rem;
-  min-width: 45px;
-  height: 45px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 10px;
-  flex-shrink: 0;
-  color: white;
-}
-
-.card-content {
-  flex: 1;
-  text-align: left;
-}
-
-.card-content h4 {
-  color: #333;
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin: 0 0 6px 0;
-  line-height: 1.2;
-}
-
-.card-content p {
-  color: #666;
-  font-size: 0.8rem;
-  line-height: 1.3;
-  margin: 0;
-}
-
 /* Continue Button */
 .continue-button-container {
   flex-shrink: 0;
-  margin-top: 8px;
+  margin-top: 15px;
 }
 
 .continue-button {
@@ -789,6 +833,180 @@
   left: 100%;
 }
 
+/* Button variants for different steps */
+.continue-button.measurement-action {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  animation: redGlow 2s ease-in-out infinite alternate;
+}
+
+.continue-button.measuring-action {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  animation: blueGlow 2s ease-in-out infinite alternate;
+}
+
+.continue-button.return-action {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  animation: greenGlow 2s ease-in-out infinite alternate;
+}
+
+/* Spinner */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ANIMATIONS */
+@keyframes measuringPulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  50% { 
+    box-shadow: 0 0 0 10px rgba(23, 162, 184, 0), 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+@keyframes iconBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes numberPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes completeCelebrate {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes iconCelebrate {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+@keyframes liveMeasurement {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+@keyframes scanningLine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3); }
+  50% { box-shadow: 0 2px 15px rgba(23, 162, 184, 0.6); }
+}
+
+@keyframes completePop {
+  0% { transform: scale(0.8); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes resultCelebrate {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes valueReveal {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes liveIndicatorPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes stepActivePulse {
+  0%, 100% { border-color: #17a2b8; }
+  50% { border-color: #5bc0de; }
+}
+
+@keyframes numberBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes countdownPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes redGlow {
+  from {
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4),
+                0 0 8px rgba(220, 53, 69, 0.3);
+  }
+  to {
+    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
+                0 0 15px rgba(220, 53, 69, 0.5),
+                0 0 25px rgba(220, 53, 69, 0.3);
+  }
+}
+
+@keyframes redStrongGlow {
+  from {
+    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
+                0 0 15px rgba(220, 53, 69, 0.6),
+                0 0 25px rgba(220, 53, 69, 0.4);
+  }
+  to {
+    box-shadow: 0 12px 28px rgba(220, 53, 69, 0.6),
+                0 0 20px rgba(220, 53, 69, 0.8),
+                0 0 35px rgba(220, 53, 69, 0.5);
+  }
+}
+
+@keyframes blueGlow {
+  from {
+    box-shadow: 0 6px 20px rgba(23, 162, 184, 0.4),
+                0 0 8px rgba(23, 162, 184, 0.3);
+  }
+  to {
+    box-shadow: 0 10px 25px rgba(23, 162, 184, 0.5),
+                0 0 15px rgba(23, 162, 184, 0.5),
+                0 0 25px rgba(23, 162, 184, 0.3);
+  }
+}
+
+@keyframes greenGlow {
+  from {
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4),
+                0 0 8px rgba(40, 167, 69, 0.3);
+  }
+  to {
+    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.5),
+                0 0 15px rgba(40, 167, 69, 0.5),
+                0 0 25px rgba(40, 167, 69, 0.3);
+  }
+}
+
 /* 768x1366 specific optimization */
 @media (max-width: 768px) and (max-height: 1366px) {
   .bloodpressure-container {
@@ -811,46 +1029,47 @@
     font-size: 0.8rem;
   }
   
-  .bp-main-icon {
-    width: 70px;
-    height: 70px;
+  .measurement-card.bloodpressure-card {
+    min-width: 250px;
+    max-width: 320px;
+    min-height: 280px;
+    padding: 25px 20px;
   }
   
-  .bp-cards-container {
-    gap: 12px;
+  .measurement-card.bloodpressure-card .value,
+  .measurement-card.bloodpressure-card .placeholder {
+    font-size: 2.5rem;
   }
   
-  .measurement-card.bp-card {
-    min-width: 120px;
-    max-width: 160px;
-    min-height: 130px;
-    padding: 16px 12px;
+  .bp-result-card {
+    min-width: 280px;
+    max-width: 500px;
+    min-height: 180px;
+    padding: 20px;
   }
   
-  .measurement-card.bp-card .value,
-  .measurement-card.bp-card .placeholder {
-    font-size: 1.5rem;
+  .bp-value {
+    font-size: 2.2rem;
   }
   
-  .measure-button,
+  .instruction-cards-horizontal {
+    gap: 10px;
+  }
+  
+  .instruction-card-step {
+    min-width: 150px;
+    padding: 15px 10px;
+  }
+  
+  .instruction-card-step .step-description {
+    min-height: 48px;
+    font-size: 0.75rem;
+  }
+  
   .continue-button {
     padding: 18px 14px;
     font-size: 1.2rem;
     min-height: 65px;
-  }
-  
-  .educational-content {
-    padding: 14px;
-  }
-  
-  .education-card {
-    padding: 12px;
-  }
-  
-  .card-icon {
-    min-width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
   }
 }
 
@@ -870,45 +1089,78 @@
     font-size: 1.4rem;
   }
   
-  .bp-main-icon {
-    width: 60px;
-    height: 60px;
+  .measurement-card.bloodpressure-card {
+    min-width: 220px;
+    max-width: 280px;
+    min-height: 250px;
+    padding: 20px 15px;
   }
   
-  .bp-cards-container {
-    gap: 10px;
+  .measurement-card.bloodpressure-card .value,
+  .measurement-card.bloodpressure-card .placeholder {
+    font-size: 2rem;
   }
   
-  .measurement-card.bp-card {
-    min-width: 100px;
-    max-width: 140px;
-    min-height: 120px;
-    padding: 14px 10px;
+  .bp-result-card {
+    min-width: 240px;
+    max-width: 400px;
+    min-height: 160px;
+    padding: 15px;
   }
   
-  .measurement-card.bp-card .value,
-  .measurement-card.bp-card .placeholder {
-    font-size: 1.3rem;
+  .bp-value {
+    font-size: 1.8rem;
   }
   
-  .measure-button,
+  .instruction-cards-horizontal {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .instruction-card-step {
+    min-width: 200px;
+    max-width: 250px;
+  }
+  
+  .instruction-card-step .step-description {
+    min-height: 56px;
+    font-size: 0.7rem;
+  }
+  
   .continue-button {
     padding: 16px 12px;
     font-size: 1.1rem;
     min-height: 60px;
   }
-  
-  .educational-content {
-    padding: 12px;
+}
+
+/* Add this to the button variants section in BloodPressure.css */
+
+/* Button variants for different steps */
+.continue-button.measurement-action {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  animation: redGlow 2s ease-in-out infinite alternate;
+}
+
+.continue-button.measuring-action {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  animation: blueGlow 2s ease-in-out infinite alternate;
+}
+
+.continue-button.ai-results-action {
+  background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+  animation: purpleGlow 2s ease-in-out infinite alternate;
+}
+
+/* Add the purple glow animation */
+@keyframes purpleGlow {
+  from {
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4),
+                0 0 8px rgba(139, 92, 246, 0.3);
   }
-  
-  .education-card {
-    padding: 10px;
-  }
-  
-  .card-icon {
-    min-width: 35px;
-    height: 35px;
-    font-size: 1.3rem;
+  to {
+    box-shadow: 0 10px 25px rgba(139, 92, 246, 0.5),
+                0 0 15px rgba(139, 92, 246, 0.5),
+                0 0 25px rgba(139, 92, 246, 0.3);
   }
 }

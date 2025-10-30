@@ -36,16 +36,32 @@ export default function Result() {
       // Start analysis immediately since AILoading already happened
       console.log("🔍 Starting analysis with data:", location.state);
       analyzeHealthData(location.state);
-      
-      const timer = setTimeout(() => {
-        setIsVisible(true);
-      }, 100);
-
-      return () => clearTimeout(timer);
     } else {
-      console.error("❌ No data received in Result page!");
-      navigate("/measure/max30102");
+      console.log("🧪 No data received - using sample data for testing");
+      // Use sample data for testing/design purposes
+      const sampleData = {
+        firstName: "John",
+        lastName: "Doe",
+        age: 35,
+        sex: "male",
+        weight: 75,
+        height: 175,
+        temperature: 36.8,
+        heartRate: 72,
+        spo2: 98,
+        respiratoryRate: 16,
+        systolic: 120,
+        diastolic: 80
+      };
+      setUserData(sampleData);
+      analyzeHealthData(sampleData);
     }
+    
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [location.state, navigate]);
 
   // Effect to update HTML class for scrollbar colors

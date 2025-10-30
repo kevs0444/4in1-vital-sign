@@ -30,7 +30,7 @@
   height: auto;
   min-height: 90vh;
   max-height: 95vh;
-  padding: 20px;
+  padding: 25px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   text-align: center;
   transition: all 0.8s ease;
@@ -47,9 +47,9 @@
   transform: translateY(0);
 }
 
-/* Progress Bar - More compact */
+/* Progress bar - More compact */
 .progress-container {
-  margin-bottom: 12px;
+  margin-bottom: 15px;
   flex-shrink: 0;
 }
 
@@ -65,7 +65,7 @@
   height: 100%;
   background: linear-gradient(135deg, #dc3545, #c82333);
   border-radius: 3px;
-  transition: width 0.5s ease;
+  transition: width 1s ease;
 }
 
 .progress-step {
@@ -79,7 +79,7 @@
 /* Header - More compact */
 .max30102-header {
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 15px;
   flex-shrink: 0;
 }
 
@@ -96,203 +96,128 @@
   color: #666;
   line-height: 1.3;
   padding: 0 10px;
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.retry-indicator {
-  background: #ffa500;
-  color: white;
-  padding: 5px 12px;
-  border-radius: 15px;
-  font-size: 0.8rem;
-  margin-top: 8px;
-  display: inline-block;
-  font-weight: 600;
-}
-
-.sensor-status {
-  background: #ffa500;
-  color: white;
-  padding: 5px 12px;
-  border-radius: 15px;
-  font-size: 0.8rem;
-  margin-top: 8px;
-  display: inline-block;
-  font-weight: 600;
-}
-
-/* Measurement Progress */
-.measurement-progress {
-  margin: 12px 0;
-  padding: 0 10px;
-}
-
-.progress-bar-horizontal {
-  width: 100%;
-  height: 8px;
-  background: #f0f0f0;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 6px;
-}
-
-.progress-fill-horizontal {
-  height: 100%;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 4px;
-  transition: width 0.5s ease;
-}
-
-.progress-text {
-  font-size: 0.8rem;
-  color: #666;
-  font-weight: 600;
-}
-
-/* Sensor Display Section - Optimized */
+/* Display Section */
 .sensor-display-section {
   margin: 8px 0;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 180px;
+  min-height: 220px;
 }
 
-.sensor-visual-area {
-  margin-bottom: 20px;
-}
-
-.finger-sensor {
-  width: 120px;
-  height: 120px;
-  background: linear-gradient(135deg, #333, #555);
-  border-radius: 20px;
-  margin: 0 auto 12px;
+/* Vital Signs Cards Container - UPDATED for 3 cards layout */
+.vital-signs-cards-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  position: relative;
-  border: 3px solid #666;
-  transition: all 0.3s ease;
-  padding: 10px;
+  gap: 20px;
+  width: 100%;
+  margin: 25px 0;
+  flex-wrap: wrap;
 }
 
-.finger-sensor.initializing {
-  border-color: #ffa500;
-  background: linear-gradient(135deg, #444, #666);
-  box-shadow: 0 0 15px rgba(255, 165, 0, 0.4);
-}
-
-.finger-sensor.ready {
-  border-color: #28a745;
-  background: linear-gradient(135deg, #333, #555);
-}
-
-.finger-sensor.active {
-  border-color: #dc3545;
-  box-shadow: 0 0 20px rgba(220, 53, 69, 0.6);
-  background: linear-gradient(135deg, #444, #666);
-}
-
-.sensor-light {
-  width: 30px;
-  height: 30px;
-  background: #666;
-  border-radius: 50%;
-  margin-bottom: 8px;
-  transition: all 0.3s ease;
-}
-
-.finger-sensor.initializing .sensor-light {
-  background: #ffa500;
-  animation: sensorPulse 1.5s ease-in-out infinite;
-}
-
-.finger-sensor.ready .sensor-light {
-  background: #28a745;
-}
-
-.finger-sensor.active .sensor-light {
-  background: #dc3545;
-  animation: sensorPulse 1s ease-in-out infinite;
-}
-
-@keyframes sensorPulse {
-  0%, 100% { 
-    box-shadow: 0 0 8px currentColor;
-    transform: scale(1);
-  }
-  50% { 
-    box-shadow: 0 0 20px currentColor;
-    transform: scale(1.1);
-  }
-}
-
-.finger-placeholder {
-  font-size: 2rem;
-  margin-bottom: 5px;
-}
-
-.finger-status {
-  font-size: 0.75rem;
-  color: white;
-  font-weight: 600;
-  text-align: center;
-  margin-top: 5px;
-}
-
-/* Real-time Measurements */
-.real-time-measurements {
-  margin: 15px 0;
-}
-
-/* Measurements Grid - Optimized 3 columns */
-.measurements-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin: 12px 0;
-}
-
-.measurement-card {
+/* Measurement Cards - Enhanced to match BMI cards */
+.measurement-card.vital-sign-card {
+  min-width: 200px;
+  max-width: 280px;
+  min-height: 264px;
+  padding: 28px 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 8px;
   background: white;
-  border-radius: 10px;
+  border-radius: 18px;
   border: 2px solid #e9ecef;
-  transition: all 0.3s ease;
-  min-height: 120px;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   justify-content: center;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
+  position: relative;
+  overflow: hidden;
+  flex: 1;
 }
 
-.measurement-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+.measurement-card.vital-sign-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
+  transition: left 0.6s ease;
+}
+
+.measurement-card.vital-sign-card:hover::before {
+  left: 100%;
+}
+
+.measurement-card.vital-sign-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
   border-color: #dc3545;
 }
 
-.measurement-icon {
-  width: 40px;
-  height: 40px;
+/* Active measurement state */
+.measurement-card.vital-sign-card.measuring-active {
+  border-color: #17a2b8;
+  background: linear-gradient(135deg, #f8fdff, #ffffff);
+  animation: measuringPulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.measurement-card.vital-sign-card.measuring-active .measurement-icon {
+  animation: iconBounce 1.5s ease-in-out infinite;
+}
+
+.measurement-card.vital-sign-card.measuring-active .value {
+  animation: numberPulse 1s ease-in-out infinite;
+}
+
+.measurement-card.vital-sign-card.measurement-complete {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #f8fff9, #ffffff);
+  animation: completeCelebrate 0.6s ease-out;
+}
+
+.measurement-card.vital-sign-card.measurement-complete .measurement-icon {
+  animation: iconCelebrate 0.8s ease-out;
+}
+
+.measurement-card.vital-sign-card .measurement-icon {
+  width: 77px;
+  height: 77px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 8px;
+  margin-bottom: 17px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.measurement-card.vital-sign-card.measuring-active .measurement-icon::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border: 2px solid #17a2b8;
+  border-radius: 50%;
+  animation: ripple 1.5s linear infinite;
 }
 
 .measurement-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.measurement-card.vital-sign-card:hover .measurement-image {
+  transform: scale(1.1);
 }
 
 .measurement-info {
@@ -300,302 +225,571 @@
   width: 100%;
 }
 
-.measurement-info h3 {
-  font-size: 0.8rem;
+.measurement-card.vital-sign-card .measurement-title {
+  font-size: 1.43rem;
   color: #333;
   font-weight: 700;
-  margin: 0 0 8px 0;
+  margin: 0 0 17px 0;
   line-height: 1.1;
+  transition: color 0.3s ease;
+}
+
+.measurement-card.vital-sign-card.measuring-active .measurement-title {
+  color: #17a2b8;
+}
+
+.measurement-card.vital-sign-card.measurement-complete .measurement-title {
+  color: #28a745;
 }
 
 .measurement-value {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 3px;
-  margin-bottom: 6px;
+  gap: 7px;
+  margin-bottom: 13px;
+  position: relative;
 }
 
-.value {
-  font-size: 1.3rem;
+.measurement-card.vital-sign-card .value,
+.measurement-card.vital-sign-card .placeholder {
+  font-size: 2.64rem;
   font-weight: 800;
+  line-height: 1;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.measurement-card.vital-sign-card .value {
   color: #333;
-  line-height: 1;
 }
 
-.placeholder {
-  font-size: 1.3rem;
-  font-weight: 800;
+.measurement-card.vital-sign-card.measuring-active .value {
+  color: #17a2b8;
+}
+
+.measurement-card.vital-sign-card.measurement-complete .value {
+  color: #28a745;
+}
+
+.measurement-card.vital-sign-card .placeholder {
   color: #ccc;
-  line-height: 1;
 }
 
-.unit {
-  font-size: 0.8rem;
+/* Real-time measurement animation */
+.measurement-card.vital-sign-card .value.measuring-live {
+  animation: liveMeasurement 0.8s ease-in-out infinite alternate;
+  position: relative;
+}
+
+.measurement-card.vital-sign-card .value.measuring-live::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #17a2b8, transparent);
+  animation: scanningLine 1.2s ease-in-out infinite;
+}
+
+.measurement-card.vital-sign-card .unit {
+  font-size: 1.43rem;
   color: #666;
   font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.measurement-card.vital-sign-card.measuring-active .unit {
+  color: #17a2b8;
+}
+
+.measurement-card.vital-sign-card.measurement-complete .unit {
+  color: #28a745;
 }
 
 .measurement-status {
-  font-size: 0.75rem;
+  font-size: 0.99rem;
   font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 15px;
+  padding: 9px 18px;
+  border-radius: 18px;
   display: inline-block;
-  min-width: 60px;
+  min-width: 110px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-/* Status colors */
-.measurement-card .measurement-status.normal {
+.measurement-status::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.measurement-status:hover::before {
+  left: 100%;
+}
+
+.measurement-card.vital-sign-card .measurement-status {
+  font-size: 0.94rem;
+  padding: 9px 18px;
+  min-width: 121px;
+}
+
+/* Status colors with enhanced effects */
+.measurement-status.measuring {
+  background: #17a2b8;
+  color: white;
+  animation: statusPulse 2s ease-in-out infinite;
+  box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
+}
+
+.measurement-status.complete {
   background: #28a745;
   color: white;
+  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+  animation: completePop 0.5s ease-out;
 }
 
-.measurement-card .measurement-status.low {
-  background: #ffc107;
-  color: #212529;
-}
-
-.measurement-card .measurement-status.high {
-  background: #dc3545;
-  color: white;
-}
-
-.measurement-card .measurement-status.default {
+.measurement-status.default {
   background: #6c757d;
   color: white;
-}
-
-/* Summary Section */
-.summary-section {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 15px;
-  margin: 15px 0;
-  border: 2px solid #e9ecef;
-}
-
-.summary-section h4 {
-  font-size: 1rem;
-  color: #333;
-  margin-bottom: 12px;
-  font-weight: 700;
-  text-align: center;
-}
-
-/* Averages Grid */
-.averages-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 15px;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.average-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  background: white;
-  border-radius: 6px;
-  border: 1px solid #dee2e6;
-  font-size: 0.7rem;
-}
-
-.average-time {
-  font-weight: 600;
-  color: #333;
-  min-width: 25px;
-}
-
-.average-values {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  margin: 0 8px;
-}
-
-.average-hr {
-  color: #dc3545;
-  font-weight: 600;
-  font-size: 0.65rem;
-}
-
-.average-spo2 {
-  color: #2196F3;
-  font-weight: 600;
-  font-size: 0.65rem;
-}
-
-.average-rr {
-  color: #28a745;
-  font-weight: 600;
-  font-size: 0.65rem;
-}
-
-.average-status {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.6rem;
-  font-weight: bold;
-}
-
-.average-status.valid {
-  background: #28a745;
-  color: white;
-}
-
-.average-status.invalid {
-  background: #6c757d;
-  color: white;
-}
-
-/* Summary Stats */
-.summary-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  border-top: 1px solid #dee2e6;
-  padding-top: 12px;
-}
-
-.stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 8px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  border: 1px solid #e9ecef;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: #666;
-  font-weight: 600;
-}
-
-.stat-value {
-  font-size: 0.8rem;
-  color: #333;
-  font-weight: 700;
-}
-
-/* Measurement Controls - Optimized */
-.measurement-controls {
-  flex-shrink: 0;
-  margin: 12px 0 8px 0;
-  min-height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.waiting-prompt, .ready-prompt, .measuring-prompt {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px 20px;
-  background: #f8f9fa;
-  border-radius: 25px;
-  border: 2px solid #e9ecef;
-  font-weight: 600;
   transition: all 0.3s ease;
 }
 
-.waiting-prompt {
-  color: #666;
+.measurement-status.default:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
 }
 
-.ready-prompt {
-  color: #28a745;
-  background: #f0fff4;
-  border-color: #28a745;
-}
-
-.measuring-prompt {
-  color: #2196F3;
-  background: #f0f8ff;
-  border-color: #2196F3;
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid transparent;
-  border-top: 2px solid currentColor;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.finger-pulse {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #dc3545;
-  animation: pulse 1.5s infinite;
-}
-
-.pulse-animation {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #2196F3;
-  animation: heartbeat 1.5s infinite;
-}
-
-.checkmark {
-  width: 20px;
-  height: 20px;
+.measurement-status.normal {
   background: #28a745;
   color: white;
+  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+}
+
+.measurement-status.low {
+  background: #ffc107;
+  color: #212529;
+  box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+}
+
+.measurement-status.high {
+  background: #dc3545;
+  color: white;
+  box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
+}
+
+/* Modern Pulse Oximeter Display */
+.finger-sensor-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.finger-sensor {
+  width: 160px;
+  height: 160px;
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  border-radius: 25px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 4px solid #7f8c8d;
+  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  padding: 20px;
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 2px 10px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+/* Modern Initializing State */
+.finger-sensor.initializing {
+  border-color: #f39c12;
+  background: linear-gradient(135deg, #34495e, #2c3e50);
+  box-shadow: 
+    0 10px 30px rgba(243, 156, 18, 0.3),
+    inset 0 2px 10px rgba(255, 255, 255, 0.1);
+  animation: modernPulse 2s ease-in-out infinite;
+}
+
+/* Modern Ready State */
+.finger-sensor.ready {
+  border-color: #27ae60;
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  box-shadow: 
+    0 10px 30px rgba(39, 174, 96, 0.3),
+    inset 0 2px 10px rgba(255, 255, 255, 0.1);
+}
+
+/* Modern Active State - Finger Detected */
+.finger-sensor.active {
+  border-color: #e74c3c;
+  background: linear-gradient(135deg, #c0392b, #e74c3c);
+  box-shadow: 
+    0 15px 40px rgba(231, 76, 60, 0.4),
+    inset 0 2px 15px rgba(255, 255, 255, 0.2);
+  animation: activeGlow 1.5s ease-in-out infinite;
+}
+
+/* Modern Complete State */
+.finger-sensor.complete {
+  border-color: #3498db;
+  background: linear-gradient(135deg, #2980b9, #3498db);
+  box-shadow: 
+    0 10px 30px rgba(52, 152, 219, 0.4),
+    inset 0 2px 10px rgba(255, 255, 255, 0.2);
+  animation: completeCelebrateSensor 0.6s ease-out;
+}
+
+/* Modern Sensor Light */
+.sensor-light {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+  border-radius: 50%;
+  margin-bottom: 15px;
+  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.3),
+    inset 0 2px 5px rgba(255, 255, 255, 0.2);
+}
+
+/* Initializing Light */
+.finger-sensor.initializing .sensor-light {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  animation: modernLightPulse 2s ease-in-out infinite;
+  box-shadow: 
+    0 0 20px rgba(243, 156, 18, 0.6),
+    inset 0 2px 5px rgba(255, 255, 255, 0.3);
+}
+
+/* Ready Light */
+.finger-sensor.ready .sensor-light {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  box-shadow: 
+    0 0 20px rgba(39, 174, 96, 0.5),
+    inset 0 2px 5px rgba(255, 255, 255, 0.3);
+}
+
+/* Active Light - Finger Detected */
+.finger-sensor.active .sensor-light {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  animation: heartbeat 1.2s ease-in-out infinite;
+  box-shadow: 
+    0 0 30px rgba(231, 76, 60, 0.8),
+    inset 0 2px 5px rgba(255, 255, 255, 0.3);
+}
+
+/* Complete Light */
+.finger-sensor.complete .sensor-light {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  animation: successPulse 2s ease-in-out infinite;
+  box-shadow: 
+    0 0 25px rgba(52, 152, 219, 0.6),
+    inset 0 2px 5px rgba(255, 255, 255, 0.3);
+}
+
+/* Modern Finger Placeholder */
+.finger-placeholder {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  transition: all 0.4s ease;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.finger-sensor.active .finger-placeholder {
+  animation: fingerBounce 1.5s ease-in-out infinite;
+  filter: drop-shadow(0 6px 12px rgba(231, 76, 60, 0.4));
+}
+
+.finger-sensor.complete .finger-placeholder {
+  animation: successCelebrate 0.8s ease-out;
+}
+
+/* Modern Background Effects */
+.finger-sensor::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  transition: all 0.6s ease;
+  opacity: 0;
+}
+
+.finger-sensor.active::before {
+  animation: shimmer 3s ease-in-out infinite;
+  opacity: 1;
+}
+
+/* Interactive Hover Effects */
+.finger-sensor:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    inset 0 2px 15px rgba(255, 255, 255, 0.15);
+}
+
+.finger-sensor.active:hover {
+  box-shadow: 
+    0 25px 50px rgba(231, 76, 60, 0.5),
+    inset 0 2px 20px rgba(255, 255, 255, 0.25);
+}
+
+/* Instruction Container - HORIZONTAL LAYOUT with 3 cards */
+.instruction-container {
+  margin-top: 25px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.instruction-cards-horizontal {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  width: 100%;
+  max-width: 650px;
+  flex-wrap: wrap;
+}
+
+.instruction-card-step {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 14px;
+  padding: 20px;
+  min-width: 175px;
+  max-width: 200px;
+  flex: 1;
+  text-align: center;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.instruction-card-step::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
+  transition: left 0.6s ease;
+}
+
+.instruction-card-step:hover::before {
+  left: 100%;
+}
+
+.instruction-card-step:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  border-color: #dc3545;
+}
+
+.instruction-card-step.active {
+  border-color: #dc3545;
+  background: linear-gradient(135deg, #fff5f5, #ffffff);
+  animation: instructionPulse 2s ease-in-out infinite;
+}
+
+.instruction-card-step.completed {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #f0fff4, #ffffff);
+}
+
+.step-number-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #dc3545;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 auto 12px auto;
+  border: 2px solid #dc3545;
+  transition: all 0.3s ease;
+}
+
+.instruction-card-step.active .step-number-circle {
+  background: white;
+  color: #dc3545;
+  animation: stepPulse 2s ease-in-out infinite;
+}
+
+.instruction-card-step.completed .step-number-circle {
+  background: #28a745;
+  border-color: #28a745;
+  animation: none;
+}
+
+.step-icon {
+  font-size: 1.7rem;
+  margin-bottom: 10px;
+  color: #666;
+  transition: all 0.3s ease;
+}
+
+.instruction-card-step.active .step-icon {
+  color: #dc3545;
+  animation: iconFloat 2s ease-in-out infinite;
+}
+
+.instruction-card-step.completed .step-icon {
+  color: #28a745;
+}
+
+.step-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+  transition: color 0.3s ease;
+}
+
+.instruction-card-step.active .step-title {
+  color: #dc3545;
+}
+
+.instruction-card-step.completed .step-title {
+  color: #28a745;
+}
+
+.step-description {
+  font-size: 0.8rem;
+  color: #666;
+  line-height: 1.4;
+  margin: 0;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.instruction-card-step.active .step-description {
+  color: #555;
+}
+
+.step-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 12px;
+  margin-top: 10px;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.step-status.pending {
+  background: #6c757d;
+  color: white;
+}
+
+.step-status.active {
+  background: #dc3545;
+  color: white;
+  animation: statusGlow 2s ease-in-out infinite;
+}
+
+.step-status.completed {
+  background: #28a745;
+  color: white;
+}
+
+.countdown-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.countdown-mini-circle {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #dc3545;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  font-weight: bold;
+  background: white;
+  animation: countdownPulse 1s ease-in-out infinite alternate;
 }
 
-.success-text {
-  color: #28a745;
+.countdown-mini-number {
+  font-size: 0.9rem;
   font-weight: 700;
-  font-size: 1.1rem;
-  padding: 12px 20px;
-  background: #f0fff4;
-  border-radius: 25px;
-  border: 2px solid #28a745;
+  color: #dc3545;
 }
 
-/* Animations */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.countdown-mini-text {
+  font-size: 0.7rem;
+  color: #666;
+  font-weight: 600;
 }
 
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.7; }
-  100% { transform: scale(1); opacity: 1; }
+/* Measurement Progress */
+.measurement-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
 }
 
-@keyframes heartbeat {
-  0% { transform: scale(1); }
-  25% { transform: scale(1.1); }
-  50% { transform: scale(1); }
-  75% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+.progress-bar-horizontal {
+  width: 200px;
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
-/* Continue Button - Optimized */
+.progress-fill-horizontal {
+  height: 100%;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.progress-text {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.retry-indicator {
+  font-size: 0.75rem;
+  color: #dc3545;
+  font-weight: 600;
+}
+
+/* Continue Button */
 .continue-button-container {
   flex-shrink: 0;
   margin-top: 8px;
@@ -603,28 +797,43 @@
 
 .continue-button {
   width: 100%;
-  padding: 20px 16px;
+  padding: 18px 14px;
   border: none;
-  border-radius: 16px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #dc3545, #c82333);
   color: white;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 70px;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  min-height: 65px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+  box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35);
   animation: redGlow 2s ease-in-out infinite alternate;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
+}
+
+.continue-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s ease;
+}
+
+.continue-button:hover::before {
+  left: 100%;
 }
 
 .continue-button:hover:not(:disabled) {
-  transform: translateY(-3px);
+  transform: translateY(-3px) scale(1.02);
   animation: redStrongGlow 1s ease-in-out infinite alternate;
 }
 
@@ -639,62 +848,498 @@
 /* Glow Animations */
 @keyframes redGlow {
   from {
-    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4),
-                0 0 8px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35),
+                0 0 6px rgba(220, 53, 69, 0.25);
   }
   to {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.5),
-                0 0 25px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
+                0 0 12px rgba(220, 53, 69, 0.4),
+                0 0 20px rgba(220, 53, 69, 0.25);
   }
 }
 
 @keyframes redStrongGlow {
   from {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.6),
-                0 0 25px rgba(220, 53, 69, 0.4);
+    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
+                0 0 12px rgba(220, 53, 69, 0.5),
+                0 0 20px rgba(220, 53, 69, 0.35);
   }
   to {
-    box-shadow: 0 12px 28px rgba(220, 53, 69, 0.6),
-                0 0 20px rgba(220, 53, 69, 0.8),
-                0 0 35px rgba(220, 53, 69, 0.5);
+    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.55),
+                0 0 16px rgba(220, 53, 69, 0.7),
+                0 0 28px rgba(220, 53, 69, 0.4);
   }
 }
 
-/* Shimmer effect for continue button */
-.continue-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
-  transition: left 0.5s;
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.continue-button:hover::before {
-  left: 100%;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.button-icon {
-  font-size: 1.7rem;
+.success-text {
+  color: #dc3545;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.retry-button {
+  border: 2px solid #dc3545;
+  background: transparent;
+  color: #dc3545;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 40px;
+  box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
+}
+
+.retry-button:hover {
+  background: #fff0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(220, 53, 69, 0.25);
+}
+
+.retry-button:active {
+  transform: translateY(0);
+}
+
+/* Modern Pulse Oximeter Animations */
+@keyframes modernPulse {
+  0%, 100% {
+    box-shadow: 
+      0 10px 30px rgba(243, 156, 18, 0.3),
+      inset 0 2px 10px rgba(255, 255, 255, 0.1);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 
+      0 15px 40px rgba(243, 156, 18, 0.5),
+      inset 0 2px 15px rgba(255, 255, 255, 0.15);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes modernLightPulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px rgba(243, 156, 18, 0.6),
+      inset 0 2px 5px rgba(255, 255, 255, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 
+      0 0 30px rgba(243, 156, 18, 0.8),
+      inset 0 2px 8px rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+  }
+}
+
+@keyframes activeGlow {
+  0%, 100% {
+    box-shadow: 
+      0 15px 40px rgba(231, 76, 60, 0.4),
+      inset 0 2px 15px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 20px 50px rgba(231, 76, 60, 0.6),
+      inset 0 2px 20px rgba(255, 255, 255, 0.3);
+  }
+}
+
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 
+      0 0 30px rgba(231, 76, 60, 0.8),
+      inset 0 2px 5px rgba(255, 255, 255, 0.3);
+  }
+  25% {
+    transform: scale(1.15);
+    box-shadow: 
+      0 0 40px rgba(231, 76, 60, 1),
+      inset 0 2px 8px rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 
+      0 0 35px rgba(231, 76, 60, 0.9),
+      inset 0 2px 6px rgba(255, 255, 255, 0.35);
+  }
+  75% {
+    transform: scale(1.12);
+    box-shadow: 
+      0 0 38px rgba(231, 76, 60, 0.95),
+      inset 0 2px 7px rgba(255, 255, 255, 0.38);
+  }
+}
+
+@keyframes successPulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 25px rgba(52, 152, 219, 0.6),
+      inset 0 2px 5px rgba(255, 255, 255, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 
+      0 0 35px rgba(52, 152, 219, 0.8),
+      inset 0 2px 8px rgba(255, 255, 255, 0.4);
+    transform: scale(1.08);
+  }
+}
+
+@keyframes fingerBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  25% {
+    transform: translateY(-5px) scale(1.1);
+  }
+  50% {
+    transform: translateY(0) scale(1.05);
+  }
+  75% {
+    transform: translateY(-3px) scale(1.08);
+  }
+}
+
+@keyframes successCelebrate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.2) rotate(10deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(-5deg);
+  }
+  75% {
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: rotate(45deg) translateX(-100%);
+  }
+  100% {
+    transform: rotate(45deg) translateX(100%);
+  }
+}
+
+@keyframes completeCelebrateSensor {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Additional animation keyframes from BMI */
+@keyframes measuringPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+@keyframes iconBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes numberPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes liveMeasurement {
+  0% {
+    transform: translateY(0px);
+    text-shadow: 0 0 5px rgba(23, 162, 184, 0.5);
+  }
+  100% {
+    transform: translateY(-2px);
+    text-shadow: 0 0 15px rgba(23, 162, 184, 0.8);
+  }
+}
+
+@keyframes scanningLine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes statusPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.5);
+  }
+}
+
+@keyframes completePop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes completeCelebrate {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.05) rotate(1deg);
+  }
+  50% {
+    transform: scale(1.03) rotate(-1deg);
+  }
+  75% {
+    transform: scale(1.05) rotate(1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes iconCelebrate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.2) rotate(10deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(-5deg);
+  }
+  75% {
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes instructionPulse {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
+  }
+  50% {
+    box-shadow: 0 6px 25px rgba(220, 53, 69, 0.2);
+  }
+}
+
+@keyframes stepPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 5px rgba(220, 53, 69, 0.1);
+  }
+}
+
+@keyframes iconFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes statusGlow {
+  0%, 100% {
+    box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 15px rgba(220, 53, 69, 0.6);
+  }
+}
+
+@keyframes countdownPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+  }
+  100% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 4px rgba(220, 53, 69, 0);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .instruction-cards-horizontal {
+    gap: 10px;
+    max-width: 100%;
+  }
+  
+  .instruction-card-step {
+    min-width: 150px;
+    max-width: 170px;
+    padding: 16px;
+  }
+  
+  .step-number-circle {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+  
+  .step-icon {
+    font-size: 1.5rem;
+  }
+  
+  .step-title {
+    font-size: 0.85rem;
+  }
+  
+  .step-description {
+    font-size: 0.75rem;
+  }
+  
+  .vital-signs-cards-container {
+    gap: 15px;
+  }
+  
+  .measurement-card.vital-sign-card {
+    min-width: 180px;
+    max-width: 220px;
+    min-height: 240px;
+    padding: 22px 18px;
+  }
+  
+  .finger-sensor {
+    width: 140px;
+    height: 140px;
+    border-radius: 20px;
+  }
+  
+  .sensor-light {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .finger-placeholder {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .instruction-cards-horizontal {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .instruction-card-step {
+    min-width: 220px;
+    max-width: 240px;
+    padding: 14px;
+  }
+  
+  .instruction-card-step {
+    flex: none;
+  }
+  
+  .vital-signs-cards-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .measurement-card.vital-sign-card {
+    min-width: 200px;
+    max-width: 280px;
+    min-height: 220px;
+    padding: 20px 16px;
+  }
+  
+  .finger-sensor {
+    width: 120px;
+    height: 120px;
+    border-radius: 18px;
+  }
+  
+  .sensor-light {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .finger-placeholder {
+    font-size: 2.2rem;
+  }
 }
 
 /* 768x1366 specific optimization */
 @media (max-width: 768px) and (max-height: 1366px) {
   .max30102-container {
-    padding: 8px;
+    padding: 6px;
   }
   
   .max30102-content {
-    padding: 18px;
+    padding: 20px;
     max-width: 100%;
     min-height: 88vh;
     max-height: 92vh;
@@ -702,100 +1347,41 @@
   }
   
   .max30102-title {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
   }
   
   .max30102-subtitle {
     font-size: 0.8rem;
-    min-height: 35px;
   }
   
-  .finger-sensor {
-    width: 100px;
-    height: 100px;
+  .measurement-card.vital-sign-card {
+    min-width: 160px;
+    max-width: 200px;
+    min-height: 220px;
+    padding: 22px 18px;
   }
   
-  .sensor-light {
-    width: 25px;
-    height: 25px;
+  .measurement-card.vital-sign-card .measurement-icon {
+    width: 65px;
+    height: 65px;
   }
   
-  .finger-placeholder {
-    font-size: 1.7rem;
-  }
-  
-  .measurements-grid {
-    gap: 8px;
-  }
-  
-  .measurement-card {
-    padding: 10px 6px;
-    min-height: 110px;
-  }
-  
-  .measurement-icon {
-    width: 35px;
-    height: 35px;
-    margin-bottom: 6px;
-  }
-  
-  .value, .placeholder {
-    font-size: 1.2rem;
+  .measurement-card.vital-sign-card .value,
+  .measurement-card.vital-sign-card .placeholder {
+    font-size: 2.2rem;
   }
   
   .continue-button {
-    padding: 18px 14px;
-    font-size: 1.2rem;
-    min-height: 65px;
-  }
-  
-  .summary-section {
-    padding: 12px;
-  }
-  
-  .averages-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    max-height: 120px;
-  }
-  
-  .average-item {
-    padding: 4px 6px;
-    font-size: 0.65rem;
-  }
-  
-  .average-values {
-    margin: 0 6px;
-  }
-  
-  .average-hr,
-  .average-spo2,
-  .average-rr {
-    font-size: 0.6rem;
-  }
-  
-  .summary-stats {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-  
-  .stat-item {
-    padding: 5px 6px;
-  }
-  
-  .stat-label {
-    font-size: 0.7rem;
-  }
-  
-  .stat-value {
-    font-size: 0.75rem;
+    padding: 16px 12px;
+    font-size: 1.1rem;
+    min-height: 60px;
   }
 }
 
 /* Small mobile optimization */
 @media (max-width: 480px) {
   .max30102-container {
-    padding: 5px;
+    padding: 4px;
   }
   
   .max30102-content {
@@ -805,98 +1391,33 @@
   }
   
   .max30102-title {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
   }
   
-  .finger-sensor {
-    width: 90px;
-    height: 90px;
+  .vital-signs-cards-container {
+    gap: 10px;
   }
   
-  .measurements-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+  .measurement-card.vital-sign-card {
+    min-width: 160px;
+    max-width: 180px;
+    min-height: 200px;
+    padding: 18px 14px;
   }
   
-  .measurement-card {
-    padding: 8px 4px;
-    min-height: 100px;
+  .measurement-card.vital-sign-card .measurement-icon {
+    width: 55px;
+    height: 55px;
   }
   
-  .value, .placeholder {
-    font-size: 1.1rem;
+  .measurement-card.vital-sign-card .value,
+  .measurement-card.vital-sign-card .placeholder {
+    font-size: 1.8rem;
   }
   
-  .waiting-prompt, .ready-prompt, .measuring-prompt {
-    padding: 10px 16px;
-    font-size: 0.9rem;
+  .continue-button {
+    padding: 14px 10px;
+    font-size: 1rem;
+    min-height: 55px;
   }
-  
-  .averages-grid {
-    grid-template-columns: repeat(2, 1fr);
-    max-height: 100px;
-  }
-  
-  .average-item {
-    flex-direction: column;
-    text-align: center;
-    gap: 2px;
-  }
-  
-  .average-values {
-    margin: 0;
-  }
-  
-  .summary-stats {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-}
-
-/* Tall mobile screens */
-@media (max-height: 700px) {
-  .max30102-content {
-    min-height: 82vh;
-    max-height: 88vh;
-  }
-  
-  .sensor-display-section {
-    min-height: 150px;
-  }
-  
-  .finger-sensor {
-    width: 80px;
-    height: 80px;
-  }
-  
-  .measurement-card {
-    min-height: 90px;
-  }
-  
-  .summary-section {
-    margin: 10px 0;
-  }
-  
-  .averages-grid {
-    max-height: 80px;
-  }
-}
-
-/* Scrollbar styling for averages grid */
-.averages-grid::-webkit-scrollbar {
-  width: 6px;
-}
-
-.averages-grid::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.averages-grid::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.averages-grid::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
 }

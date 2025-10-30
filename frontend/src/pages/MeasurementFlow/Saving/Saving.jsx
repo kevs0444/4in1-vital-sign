@@ -11,6 +11,14 @@ export default function Saving() {
   const [saveComplete, setSaveComplete] = useState(false);
   const [userData, setUserData] = useState({});
   const [riskData, setRiskData] = useState({});
+  const [completedSteps, setCompletedSteps] = useState([]);
+
+  const steps = [
+    "Encrypting health data",
+    "Storing risk assessment", 
+    "Saving AI recommendations",
+    "Finalizing health records"
+  ];
 
   useEffect(() => {
     if (location.state) {
@@ -34,13 +42,30 @@ export default function Saving() {
 
   const simulateSaveProcess = () => {
     setIsSaving(true);
+    setCompletedSteps([]);
     
+    // Step 1: Encrypting health data
     setTimeout(() => {
+      setCompletedSteps([steps[0]]);
+    }, 800);
+    
+    // Step 2: Storing risk assessment
+    setTimeout(() => {
+      setCompletedSteps([steps[0], steps[1]]);
+    }, 1600);
+    
+    // Step 3: Saving AI recommendations
+    setTimeout(() => {
+      setCompletedSteps([steps[0], steps[1], steps[2]]);
+    }, 2400);
+    
+    // Step 4: Finalizing health records and completion
+    setTimeout(() => {
+      setCompletedSteps([steps[0], steps[1], steps[2], steps[3]]);
       setIsSaving(false);
       setSaveComplete(true);
       
       setTimeout(() => {
-        // ✅ CORRECTED: Fixed navigation path to match routes.js
         navigate("/measure/sharing", { 
           state: {
             userData: userData,
@@ -48,7 +73,11 @@ export default function Saving() {
           }
         });
       }, 2000);
-    }, 3000);
+    }, 3200);
+  };
+
+  const isStepCompleted = (step) => {
+    return completedSteps.includes(step);
   };
 
   return (
@@ -84,22 +113,17 @@ export default function Saving() {
               </div>
             </div>
             <div className="saving-steps">
-              <div className="saving-step active">
-                <span className="step-check">✓</span>
-                <span className="step-text">Encrypting health data</span>
-              </div>
-              <div className="saving-step active">
-                <span className="step-check">✓</span>
-                <span className="step-text">Storing risk assessment</span>
-              </div>
-              <div className="saving-step active">
-                <span className="step-check">✓</span>
-                <span className="step-text">Saving AI recommendations</span>
-              </div>
-              <div className="saving-step">
-                <span className="step-check"></span>
-                <span className="step-text">Finalizing health records</span>
-              </div>
+              {steps.map((step, index) => (
+                <div 
+                  key={index} 
+                  className={`saving-step ${isStepCompleted(step) ? 'active' : ''}`}
+                >
+                  <span className="step-check">
+                    {isStepCompleted(step) ? '✓' : ''}
+                  </span>
+                  <span className="step-text">{step}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -154,6 +178,7 @@ export default function Saving() {
           fontFamily: 'monospace'
         }}>
           Status: {saveComplete ? '✅ COMPLETE' : '⏳ SAVING'} | 
+          Steps: {completedSteps.length}/{steps.length} |
           Next: /measure/sharing
         </div>
       </div>
