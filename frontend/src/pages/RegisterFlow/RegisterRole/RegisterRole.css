@@ -107,12 +107,12 @@
 .role-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  border-color: var(--role-color, #dc3545);
+  border-color: var(--role-color, #0d6efd);
 }
 
 .role-card.selected {
-  border-color: var(--role-color, #dc3545);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), 0 0 0 2px var(--role-color, #dc3545);
+  border-color: var(--role-color, #0d6efd);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), 0 0 0 2px var(--role-color, #0d6efd);
   transform: translateY(-3px);
 }
 
@@ -130,7 +130,7 @@
 }
 
 .role-card.selected .role-card-icon {
-  background: linear-gradient(135deg, var(--role-color, #dc3545), var(--role-color, #c82333));
+  background: linear-gradient(135deg, var(--role-color, #0d6efd), var(--role-color, #0b5ed7));
   transform: scale(1.1);
 }
 
@@ -164,7 +164,7 @@
 }
 
 .role-card.selected .role-card-title {
-  color: var(--role-color, #dc3545);
+  color: var(--role-color, #0d6efd);
 }
 
 .role-card-description {
@@ -192,14 +192,14 @@
 }
 
 .role-card.selected .selection-circle {
-  border-color: var(--role-color, #dc3545);
+  border-color: var(--role-color, #0d6efd);
 }
 
 .checkmark {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--role-color, #dc3545);
+  background: var(--role-color, #0d6efd);
 }
 
 /* Role Controls */
@@ -227,7 +227,7 @@
 }
 
 .selected-text strong {
-  color: var(--role-color, #dc3545);
+  color: var(--role-color, #0d6efd);
 }
 
 /* Continue Button - Consistent with BodyTemp */
@@ -240,7 +240,7 @@
   padding: 22px 20px;
   border: none;
   border-radius: 16px;
-  background: linear-gradient(135deg, #dc3545, #c82333);
+  background: linear-gradient(135deg, #0d6efd, #0b5ed7);
   color: white;
   font-size: 1.3rem;
   font-weight: 700;
@@ -249,7 +249,7 @@
   min-height: 75px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+  box-shadow: 0 6px 20px rgba(13, 110, 253, 0.4);
   animation: roleButtonGlow 2s ease-in-out infinite alternate;
   display: flex;
   align-items: center;
@@ -293,26 +293,26 @@
 /* Glow Animations */
 @keyframes roleButtonGlow {
   from {
-    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4),
-                0 0 8px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 6px 20px rgba(13, 110, 253, 0.4),
+                0 0 8px rgba(13, 110, 253, 0.3);
   }
   to {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.5),
-                0 0 25px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 10px 25px rgba(13, 110, 253, 0.5),
+                0 0 15px rgba(13, 110, 253, 0.5),
+                0 0 25px rgba(13, 110, 253, 0.3);
   }
 }
 
 @keyframes roleButtonStrongGlow {
   from {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.5),
-                0 0 15px rgba(220, 53, 69, 0.6),
-                0 0 25px rgba(220, 53, 69, 0.4);
+    box-shadow: 0 10px 25px rgba(13, 110, 253, 0.5),
+                0 0 15px rgba(13, 110, 253, 0.6),
+                0 0 25px rgba(13, 110, 253, 0.4);
   }
   to {
-    box-shadow: 0 12px 28px rgba(220, 53, 69, 0.6),
-                0 0 20px rgba(220, 53, 69, 0.8),
-                0 0 35px rgba(220, 53, 69, 0.5);
+    box-shadow: 0 12px 28px rgba(13, 110, 253, 0.6),
+                0 0 20px rgba(13, 110, 253, 0.8),
+                0 0 35px rgba(13, 110, 253, 0.5);
   }
 }
 

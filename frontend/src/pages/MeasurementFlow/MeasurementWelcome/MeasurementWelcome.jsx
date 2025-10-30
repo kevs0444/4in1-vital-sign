@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Row, Col, Button, Modal, Form } from "react-bootstrap";
 import { motion } from "framer-motion";
-import "./MeasurementWelcome.css"; // ✅ Updated to match actual file name
+import "./MeasurementWelcome.css";
 import logo from "../../../assets/images/welcome.png";
 
-export default function Welcome() {
+export default function MeasurementWelcome() { // ✅ Changed from 'Welcome' to 'MeasurementWelcome'
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -19,7 +19,7 @@ export default function Welcome() {
   }, []);
 
   const handleContinue = () => {
-    navigate("/name");
+    navigate("/measure/starting");
   };
 
   const handleShowTerms = () => setShowTerms(true);
@@ -46,7 +46,7 @@ export default function Welcome() {
               </div>
             </div>
 
-            {/* Welcome Message - UPDATED: Title matches Standby page */}
+            {/* Welcome Message */}
             <div className="welcome-message mb-3">
               <h1 className="main-title mb-2">
                 4 in <span className="juan-red">Juan</span> Vital Kiosk
@@ -65,7 +65,7 @@ export default function Welcome() {
 
             {/* Terms and Conditions & Button Container */}
             <div className="action-section">
-              {/* Terms and Conditions - FIXED ALIGNMENT */}
+              {/* Terms and Conditions */}
               <div className="terms-section mb-4">
                 <div className="terms-checkbox">
                   <input

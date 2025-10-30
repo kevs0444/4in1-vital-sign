@@ -27,8 +27,9 @@ export default function Starting() {
     return () => clearTimeout(timer);
   }, [location.state]);
 
+  // ✅ Fixed navigation path to match routes.js
   const handleStartMeasurements = () => {
-    navigate("/bmi", { state: userData });
+    navigate("/measure/bmi", { state: userData });
   };
 
   const getSexDisplay = (sex) => {

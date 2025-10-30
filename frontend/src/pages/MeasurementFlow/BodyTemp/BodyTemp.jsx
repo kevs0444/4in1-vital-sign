@@ -180,12 +180,13 @@ export default function BodyTemp() {
     }
   };
 
+  // ✅ Fixed navigation path to match routes.js
   const handleContinue = () => {
     if (!measurementComplete || !temperature) return;
     
     stopMonitoring();
     
-    navigate("/max30102", {
+    navigate("/measure/max30102", {
       state: { 
         ...location.state, 
         weight: location.state?.weight,

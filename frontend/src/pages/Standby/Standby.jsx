@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import { motion } from 'framer-motion';
 import { Circle, CheckCircle, Error, Warning } from '@mui/icons-material';
-import logo from '../../../assets/images/juan.png';
+import logo from '../../assets/images/juan.png';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Standby.css';
 import { sensorAPI } from '../../utils/api';
 
+// ✅ Make sure this is a default export
 export default function Standby() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPressed, setIsPressed] = useState(false);
@@ -71,8 +72,8 @@ export default function Standby() {
     setTimeout(() => {
       setIsPressed(false);
       
-      // Navigate directly to MeasurementTapID instead of Welcome
-      navigate('/measurement-tap-id', { 
+      // ✅ Fixed navigation path to match routes.js
+      navigate('/measure/welcome', { 
         state: { 
           backendAvailable,
           systemStatus 

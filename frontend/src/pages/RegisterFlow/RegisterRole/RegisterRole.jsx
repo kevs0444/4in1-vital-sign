@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Role.css";
-import adminIcon from "../assets/icons/admin-icon.png";
-import medicalIcon from "../assets/icons/medical-icon.png";
-import employeeIcon from "../assets/icons/employee-icon.png";
-import studentIcon from "../assets/icons/student-icon.png";
+import "./RegisterRole.css";
+import medicalIcon from "../../../assets/icons/medical-icon.png";
+import employeeIcon from "../../../assets/icons/employee-icon.png";
+import studentIcon from "../../../assets/icons/student-icon.png";
 
 export default function Role() {
   const navigate = useNavigate();
@@ -17,13 +16,6 @@ export default function Role() {
   }, []);
 
   const roles = [
-    {
-      id: "admin",
-      title: "Admin",
-      description: "System administrator with full access to all features and user management",
-      icon: adminIcon,
-      color: "#dc3545"
-    },
     {
       id: "medical",
       title: "Medical Staff",
@@ -56,9 +48,6 @@ export default function Role() {
 
     // Navigate based on selected role
     switch (selectedRole) {
-      case "admin":
-        navigate("/admin-dashboard");
-        break;
       case "medical":
         navigate("/medical-dashboard");
         break;
@@ -75,8 +64,6 @@ export default function Role() {
     if (!selectedRole) return "Select Your Role to Continue";
     
     switch (selectedRole) {
-      case "admin":
-        return "Continue to Admin Dashboard";
       case "medical":
         return "Continue to Medical Dashboard";
       case "employee":
@@ -144,8 +131,8 @@ export default function Role() {
               onClick={handleContinue} 
               disabled={!selectedRole}
               style={{
-                background: selectedRole ? `linear-gradient(135deg, ${roles.find(r => r.id === selectedRole)?.color || '#dc3545'}, ${roles.find(r => r.id === selectedRole)?.color ? adjustColor(roles.find(r => r.id === selectedRole).color, -20) : '#c82333'})` : '#6c757d',
-                boxShadow: selectedRole ? `0 6px 20px ${hexToRgba(roles.find(r => r.id === selectedRole)?.color || '#dc3545', 0.4)}` : 'none'
+                background: selectedRole ? `linear-gradient(135deg, ${roles.find(r => r.id === selectedRole)?.color || '#0d6efd'}, ${roles.find(r => r.id === selectedRole)?.color ? adjustColor(roles.find(r => r.id === selectedRole).color, -20) : '#0b5ed7'})` : '#6c757d',
+                boxShadow: selectedRole ? `0 6px 20px ${hexToRgba(roles.find(r => r.id === selectedRole)?.color || '#0d6efd', 0.4)}` : 'none'
               }}
             >
               {getButtonText()}

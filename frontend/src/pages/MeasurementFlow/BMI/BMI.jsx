@@ -240,12 +240,13 @@ export default function BMI() {
     }
   };
 
+  // ✅ Fixed navigation path to match routes.js
   const handleContinue = () => {
     if (!measurementComplete || !weight || !height) return;
     
     stopMonitoring();
     
-    navigate("/bodytemp", {
+    navigate("/measure/bodytemp", {
       state: { 
         ...location.state, 
         weight: parseFloat(weight),
