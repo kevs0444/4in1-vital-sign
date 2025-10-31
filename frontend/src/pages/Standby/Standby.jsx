@@ -1,3 +1,4 @@
+// Standby.jsx (updated)
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Button } from 'react-bootstrap';
@@ -8,11 +9,10 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './Standby.css';
 import { sensorAPI } from '../../utils/api';
 
-// ✅ Make sure this is a default export
 export default function Standby() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPressed, setIsPressed] = useState(false);
-  const [systemStatus, setSystemStatus] = useState('checking_backend'); // 'checking_backend', 'backend_down', 'connecting_arduino', 'calibrating_weight', 'ready', 'offline_mode'
+  const [systemStatus, setSystemStatus] = useState('checking_backend');
   const [backendAvailable, setBackendAvailable] = useState(false);
   const navigate = useNavigate();
 
@@ -27,21 +27,18 @@ export default function Standby() {
   useEffect(() => {
     const startStatusPolling = async () => {
       try {
-        // Try to connect to backend
         await sensorAPI.connect();
         setBackendAvailable(true);
       } catch (error) {
         console.log('Backend connection failed, entering offline mode');
         setBackendAvailable(false);
         setSystemStatus('offline_mode');
-        return; // Stop further polling if backend is not available
+        return;
       }
 
-      // Set up an interval to continuously check the system status only if backend is available
       pollerRef.current = setInterval(async () => {
         try {
           const status = await sensorAPI.getSystemStatus();
-
           if (status.connected && status.sensors_ready.weight) {
             setSystemStatus('ready');
           } else {
@@ -51,14 +48,13 @@ export default function Standby() {
           console.log('Backend polling failed, switching to offline mode');
           setBackendAvailable(false);
           setSystemStatus('offline_mode');
-          clearInterval(pollerRef.current); // Stop polling if backend becomes unavailable
+          clearInterval(pollerRef.current);
         }
-      }, 2500); // Poll every 2.5 seconds
+      }, 2500);
     };
 
     startStatusPolling();
 
-    // Cleanup function to stop the poller when the component unmounts.
     return () => {
       if (pollerRef.current) {
         clearInterval(pollerRef.current);
@@ -67,18 +63,11 @@ export default function Standby() {
   }, []);
 
   const handleStartPress = () => {
-    // Allow navigation even if backend is not available
     setIsPressed(true);
     setTimeout(() => {
       setIsPressed(false);
-      
-      // ✅ Fixed navigation path to match routes.js
-      navigate('/measure/welcome', { 
-        state: { 
-          backendAvailable,
-          systemStatus 
-        } 
-      });
+      // ✅ Navigate to login page instead of measurement welcome
+      navigate('/login');
     }, 200);
   };
 
@@ -111,13 +100,9 @@ export default function Standby() {
   };
 
   const getButtonText = () => {
-    if (systemStatus === 'offline_mode') {
-      return 'Start in Offline Mode';
-    }
-    return systemStatus === 'ready' ? 'Touch this to Start' : 'Touch to Start Anyway';
+    return 'Touch to Start';
   };
 
-  // Button is always enabled now
   const isStartButtonEnabled = true;
 
   return (
@@ -158,15 +143,6 @@ export default function Standby() {
                 {getButtonText()}
               </span>
             </Button>
-            
-            {/* Offline mode information */}
-            {systemStatus === 'offline_mode' && (
-              <div className="standby-offline-info">
-                <p style={{ color: '#666', fontSize: '0.9rem', marginTop: '1rem' }}>
-                  You can still proceed with manual measurements
-                </p>
-              </div>
-            )}
           </div>
         </Col>
       </Row>

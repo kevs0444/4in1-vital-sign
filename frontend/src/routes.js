@@ -1,4 +1,4 @@
-// src/routes.js
+// src/routes.js (FIXED)
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
@@ -30,6 +30,9 @@ import StudentDashboard from "./pages/Dashboards/Student/StudentDashboard/Studen
 import FlowTesting from "./pages/Dashboards/Admin/FlowTesting/FlowTesting";
 import Maintenance from "./pages/Dashboards/Admin/Maintenance/Maintenance";
 
+// 🔐 Login
+import LoginPage from "./pages/Login/Login"; // Changed import name
+
 // 💤 Standby & 404
 import Standby from "./pages/Standby/Standby";
 import NotFound from "./pages/NotFound/NotFound";
@@ -37,8 +40,13 @@ import NotFound from "./pages/NotFound/NotFound";
 function AppRoutes() {
   return (
     <Routes>
+      {/* 🏠 Default route */}
+      <Route path="/" element={<Standby />} />
+      
+      {/* 🔐 Login */}
+      <Route path="/login" element={<LoginPage />} /> {/* Use LoginPage component */}
+
       {/* 🩺 Measurement Flow */}
-      <Route path="/" element={<Standby />} /> {/* Default route */}
       <Route path="/measure/welcome" element={<MeasurementWelcome />} />
       <Route path="/measure/starting" element={<Starting />} />
       <Route path="/measure/ai-loading" element={<AILoading />} />

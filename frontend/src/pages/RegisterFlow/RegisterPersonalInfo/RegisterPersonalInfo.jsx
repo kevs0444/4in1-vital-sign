@@ -19,6 +19,7 @@ export default function RegisterPersonalInfo() {
   const [isVisible, setIsVisible] = useState(false);
   const [isShift, setIsShift] = useState(false);
   const [activeInput, setActiveInput] = useState("first");
+  const [touchFeedback, setTouchFeedback] = useState(null);
   
   const firstNameInputRef = useRef(null);
   const lastNameInputRef = useRef(null);
@@ -145,6 +146,16 @@ export default function RegisterPersonalInfo() {
   // Sex step functions
   const handleSexSelect = (sex) => {
     setFormData(prev => ({ ...prev, sex }));
+    setTouchFeedback(sex);
+    setTimeout(() => setTouchFeedback(null), 200);
+  };
+
+  const handleTouchStart = (item) => {
+    setTouchFeedback(item);
+  };
+
+  const handleTouchEnd = () => {
+    setTimeout(() => setTouchFeedback(null), 150);
   };
 
   const getProgressWidth = () => {
@@ -177,59 +188,51 @@ export default function RegisterPersonalInfo() {
   ];
 
   return (
-    <div className="register-container">
-      <div className="register-content-area">
-        <div className={`register-content ${isVisible ? "visible" : ""}`}>
-          {/* Progress Bar */}
-          <div className="register-progress-section">
-            <div className="register-progress-bar">
-              <div 
-                className="register-progress-fill" 
-                style={{ width: getProgressWidth() }}
-              ></div>
+    <div className="register-personal-container">
+      <div className="register-personal-content">
+        {/* Progress Steps */}
+        <div className="progress-steps">
+          {steps.map((step, index) => (
+            <div key={index} className="progress-step">
+              <div className={`step-circle ${currentStep === index ? 'active' : currentStep > index ? 'completed' : ''}`}>
+                {currentStep > index ? '✓' : index + 1}
+              </div>
+              <span className="step-label">{step.title.split('?')[0]}</span>
             </div>
-            <span className="register-progress-step">
-              Step {currentStep + 1} of 3
-            </span>
-            
-            {/* Back Button - Show except on first step */}
-            {currentStep > 0 && (
-              <button className="register-back-btn" onClick={handleBack}>
-                ← Back
-              </button>
-            )}
+          ))}
+        </div>
+
+        {/* Image */}
+        {steps[currentStep].image && (
+          <div className="register-image-section">
+            <img 
+              src={steps[currentStep].image} 
+              alt={steps[currentStep].title} 
+              className="register-logo" 
+            />
           </div>
+        )}
 
-          {/* Image */}
-          {steps[currentStep].image && (
-            <div className="register-image-section">
-              <img 
-                src={steps[currentStep].image} 
-                alt={steps[currentStep].title} 
-                className="register-logo" 
-              />
-            </div>
-          )}
+        {/* Header */}
+        <div className="register-personal-header">
+          <h1 className="register-personal-title">{steps[currentStep].title}</h1>
+          <p className="register-personal-subtitle">{steps[currentStep].subtitle}</p>
+        </div>
 
-          {/* Header */}
-          <div className="register-header-section">
-            <h1 className="register-main-title">{steps[currentStep].title}</h1>
-            <p className="register-subtitle">{steps[currentStep].subtitle}</p>
-          </div>
-
-          {/* Step Content */}
-          <div className="register-form-section">
-            {currentStep === 0 && (
-              <div className="register-input-group">
-                <div className="register-input-field">
-                  <label htmlFor="firstName" className="register-input-label">
+        {/* Step Content */}
+        <div className="form-container">
+          {currentStep === 0 && (
+            <div className="form-phase active">
+              <div className="form-groups">
+                <div className="form-group">
+                  <label htmlFor="firstName" className="form-label">
                     First Name
                   </label>
                   <input
                     ref={firstNameInputRef}
                     id="firstName"
                     type="text"
-                    className={`register-text-input ${activeInput === "first" ? "active" : ""}`}
+                    className="form-input"
                     placeholder="Juan"
                     value={formData.firstName}
                     onFocus={() => setActiveInput("first")}
@@ -237,15 +240,15 @@ export default function RegisterPersonalInfo() {
                   />
                 </div>
 
-                <div className="register-input-field">
-                  <label htmlFor="lastName" className="register-input-label">
+                <div className="form-group">
+                  <label htmlFor="lastName" className="form-label">
                     Last Name
                   </label>
                   <input
                     ref={lastNameInputRef}
                     id="lastName"
                     type="text"
-                    className={`register-text-input ${activeInput === "last" ? "active" : ""}`}
+                    className="form-input"
                     placeholder="Dela Cruz"
                     value={formData.lastName}
                     onFocus={() => setActiveInput("last")}
@@ -253,73 +256,87 @@ export default function RegisterPersonalInfo() {
                   />
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {currentStep === 1 && (
-              <div className="register-input-group">
-                <div className="register-input-field">
-                  <label className="register-input-label">Your Age</label>
-                  <div className="register-age-display-container">
+          {currentStep === 1 && (
+            <div className="form-phase active">
+              <div className="form-groups">
+                <div className="form-group full-width">
+                  <label className="form-label">Your Age</label>
+                  <div className="dob-group">
                     <div
                       ref={ageDisplayRef}
-                      className={`register-age-display ${formData.age ? "filled" : ""} ${formData.age.length === 2 ? "max-digits" : ""}`}
-                      data-digits={formData.age.length}
+                      className="age-display"
                       tabIndex={0}
                     >
-                      {formData.age ? (
-                        <span className="register-age-digits">{formData.age}</span>
-                      ) : (
-                        <span className="register-placeholder-text">21</span>
-                      )}
+                      {formData.age || "21"}
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {currentStep === 2 && (
-              <div className="register-sex-section">
-                <div className="register-sex-options">
-                  <div
-                    className={`register-sex-option ${formData.sex === "male" ? "selected" : ""}`}
-                    onClick={() => handleSexSelect("male")}
-                  >
-                    <div className="register-sex-icon">
-                      <img src={maleIcon} alt="Male" />
+          {currentStep === 2 && (
+            <div className="form-phase active">
+              <div className="form-groups">
+                <div className="form-group full-width">
+                  <label className="form-label">Biological Sex</label>
+                  <div className="sex-selection">
+                    <div
+                      className={`sex-option ${formData.sex === "male" ? "selected" : ""} ${touchFeedback === "male" ? "touch-feedback" : ""}`}
+                      onClick={() => handleSexSelect("male")}
+                      onTouchStart={() => handleTouchStart("male")}
+                      onTouchEnd={handleTouchEnd}
+                    >
+                      <div className="role-card-icon" style={{ width: '80px', height: '80px', marginBottom: '15px' }}>
+                        <img src={maleIcon} alt="Male" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      </div>
+                      <span>Male</span>
                     </div>
-                    <span className="register-sex-label">Male</span>
-                  </div>
-                  <div
-                    className={`register-sex-option ${formData.sex === "female" ? "selected" : ""}`}
-                    onClick={() => handleSexSelect("female")}
-                  >
-                    <div className="register-sex-icon">
-                      <img src={femaleIcon} alt="Female" />
+                    <div
+                      className={`sex-option ${formData.sex === "female" ? "selected" : ""} ${touchFeedback === "female" ? "touch-feedback" : ""}`}
+                      onClick={() => handleSexSelect("female")}
+                      onTouchStart={() => handleTouchStart("female")}
+                      onTouchEnd={handleTouchEnd}
+                    >
+                      <div className="role-card-icon" style={{ width: '80px', height: '80px', marginBottom: '15px' }}>
+                        <img src={femaleIcon} alt="Female" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      </div>
+                      <span>Female</span>
                     </div>
-                    <span className="register-sex-label">Female</span>
                   </div>
-                </div>
-                
-                <div className="register-disclaimer">
-                  <p>
-                    We ask for your biological sex to provide accurate BMI calculations and health assessments. 
-                    This information will not be shared publicly.
-                  </p>
                 </div>
               </div>
-            )}
-          </div>
+              
+              <div className="register-disclaimer">
+                <p style={{ fontSize: '1.1rem', color: '#666', textAlign: 'center', padding: '0 20px' }}>
+                  We ask for your biological sex to provide accurate BMI calculations and health assessments. 
+                  This information will not be shared publicly.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
-          {/* Continue Button */}
-          <div className="register-actions">
-            <button
-              className={`register-continue-btn ${!isStepValid() ? "disabled" : ""}`}
-              onClick={handleContinue}
-              disabled={!isStepValid()}
-            >
-              {getButtonText()}
+        {/* Navigation Buttons */}
+        <div className="form-navigation">
+          {currentStep > 0 && (
+            <button className="nav-button back-button" onClick={handleBack}>
+              ← Back
             </button>
-          </div>
+          )}
+          <button
+            className={`nav-button ${currentStep === 2 ? "submit-button" : "next-button"} ${!isStepValid() ? "disabled" : ""}`}
+            onClick={handleContinue}
+            disabled={!isStepValid()}
+            onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.97)'}
+            onTouchEnd={(e) => e.currentTarget.style.transform = ''}
+          >
+            {getButtonText()}
+            {isStepValid() && <span style={{ fontSize: '1.5rem' }}>→</span>}
+          </button>
         </div>
       </div>
 
@@ -341,6 +358,8 @@ export default function RegisterPersonalInfo() {
                       : ""
                   }`}
                   onClick={() => handleKeyboardPress(key)}
+                  onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                  onTouchEnd={(e) => e.currentTarget.style.transform = ''}
                 >
                   {key === "Space" ? "Space" : key}
                 </button>
@@ -358,6 +377,8 @@ export default function RegisterPersonalInfo() {
                 key={num}
                 className="register-numpad-btn"
                 onClick={() => handleNumberClick(num)}
+                onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                onTouchEnd={(e) => e.currentTarget.style.transform = ''}
               >
                 {num}
               </button>

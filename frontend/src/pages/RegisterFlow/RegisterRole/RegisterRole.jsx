@@ -1,125 +1,155 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./RegisterRole.css";
-import medicalIcon from "../../../assets/icons/medical-icon.png";
 import employeeIcon from "../../../assets/icons/employee-icon.png";
 import studentIcon from "../../../assets/icons/student-icon.png";
 
-export default function Role() {
+export default function RegisterRole() {
   const navigate = useNavigate();
-  const [isVisible, setIsVisible] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
+  const [touchFeedback, setTouchFeedback] = useState(null);
 
   const roles = [
     {
-      id: "medical",
-      title: "Medical Staff",
-      description: "Doctors and nurses with access to medical records and patient management",
-      icon: medicalIcon,
-      color: "#198754"
-    },
-    {
-      id: "employee",
-      title: "Employee",
-      description: "Company employees for routine health check-ups and wellness monitoring",
+      id: "rtu-employees",
+      title: "RTU Employees",
+      description: "Faculty, staff, and professors of Rizal Technological University",
       icon: employeeIcon,
-      color: "#0d6efd"
+      color: "#16a34a", // Green for Employees
+      route: "/register/personal-info"
     },
     {
-      id: "student",
-      title: "Student",
-      description: "Students for academic health assessments and wellness tracking",
+      id: "rtu-students",
+      title: "RTU Students",
+      description: "Currently enrolled students of Rizal Technological University",
       icon: studentIcon,
-      color: "#6f42c1"
+      color: "#0ea5e9", // Light Blue for Students
+      route: "/register/personal-info"
     }
   ];
 
   const handleRoleSelect = (roleId) => {
     setSelectedRole(roleId);
+    // Add touch feedback
+    setTouchFeedback(roleId);
+    setTimeout(() => setTouchFeedback(null), 200);
+  };
+
+  const handleTouchStart = (roleId) => {
+    setTouchFeedback(roleId);
+  };
+
+  const handleTouchEnd = () => {
+    setTimeout(() => setTouchFeedback(null), 150);
   };
 
   const handleContinue = () => {
     if (!selectedRole) return;
 
-    // Navigate based on selected role
-    switch (selectedRole) {
-      case "medical":
-        navigate("/medical-dashboard");
-        break;
-      case "employee":
-      case "student":
-        navigate("/welcome", { state: { userType: selectedRole } });
-        break;
-      default:
-        navigate("/welcome");
+    const role = roles.find(r => r.id === selectedRole);
+    if (role) {
+      navigate(role.route, { state: { userType: selectedRole } });
     }
   };
 
   const getButtonText = () => {
-    if (!selectedRole) return "Select Your Role to Continue";
+    if (!selectedRole) return "Choose your category to continue";
     
-    switch (selectedRole) {
-      case "medical":
-        return "Continue to Medical Dashboard";
-      case "employee":
-        return "Continue as Employee";
-      case "student":
-        return "Continue as Student";
-      default:
-        return "Continue";
-    }
+    const role = roles.find(r => r.id === selectedRole);
+    return `Continue as ${role?.title}`;
+  };
+
+  const getButtonClass = () => {
+    if (!selectedRole) return "continue-button";
+    return `continue-button ${selectedRole}`;
   };
 
   return (
     <div className="role-container">
-      <div className={`role-content ${isVisible ? 'visible' : ''}`}>
+      <div className="role-content">
         <div className="role-header">
-          <h1 className="role-title">Select Your Role</h1>
-          <p className="role-subtitle">Choose the category that best describes you to access the appropriate features</p>
+          <h1 className="role-title">Choose Your Category</h1>
+          <p className="role-subtitle">Select the option that best describes your relationship with Rizal Technological University</p>
         </div>
 
         <div className="role-cards-section">
-          <div className="role-cards-grid">
-            {roles.map((role) => (
-              <div
-                key={role.id}
-                className={`role-card ${selectedRole === role.id ? 'selected' : ''}`}
-                onClick={() => handleRoleSelect(role.id)}
-                style={{ 
-                  '--role-color': role.color,
-                  borderColor: selectedRole === role.id ? role.color : '#e9ecef'
-                }}
-              >
-                <div className="role-card-icon">
-                  <img src={role.icon} alt={`${role.title} Icon`} className="role-icon-image" />
-                </div>
-                <div className="role-card-content">
-                  <h3 className="role-card-title">{role.title}</h3>
-                  <p className="role-card-description">{role.description}</p>
-                </div>
-                <div className="role-selection-indicator">
-                  <div className={`selection-circle ${selectedRole === role.id ? 'selected' : ''}`}>
-                    {selectedRole === role.id && (
-                      <div className="checkmark" style={{ backgroundColor: role.color }}></div>
-                    )}
-                  </div>
-                </div>
+          {/* Left Card - RTU Employees (Green) */}
+          <div
+            className={`role-card ${selectedRole === 'rtu-employees' ? 'selected' : ''} ${touchFeedback === 'rtu-employees' ? 'touch-feedback' : ''}`}
+            onClick={() => handleRoleSelect('rtu-employees')}
+            onTouchStart={() => handleTouchStart('rtu-employees')}
+            onTouchEnd={handleTouchEnd}
+            style={{ 
+              '--role-color': roles[0].color,
+              borderColor: selectedRole === 'rtu-employees' ? roles[0].color : '#e9ecef'
+            }}
+          >
+            <div className="role-card-icon">
+              <img 
+                src={roles[0].icon} 
+                alt={`${roles[0].title} Icon`} 
+                className="role-icon-image" 
+              />
+            </div>
+            <div className="role-card-content">
+              <h3 className="role-card-title">{roles[0].title}</h3>
+              <p className="role-card-description">{roles[0].description}</p>
+            </div>
+            <div className="role-selection-indicator">
+              <div className={`selection-circle ${selectedRole === 'rtu-employees' ? 'selected' : ''}`}>
+                {selectedRole === 'rtu-employees' && (
+                  <div className="checkmark"></div>
+                )}
               </div>
-            ))}
+            </div>
+          </div>
+
+          {/* Right Card - RTU Students (Light Blue) */}
+          <div
+            className={`role-card ${selectedRole === 'rtu-students' ? 'selected' : ''} ${touchFeedback === 'rtu-students' ? 'touch-feedback' : ''}`}
+            onClick={() => handleRoleSelect('rtu-students')}
+            onTouchStart={() => handleTouchStart('rtu-students')}
+            onTouchEnd={handleTouchEnd}
+            style={{ 
+              '--role-color': roles[1].color,
+              borderColor: selectedRole === 'rtu-students' ? roles[1].color : '#e9ecef'
+            }}
+          >
+            <div className="role-card-icon">
+              <img 
+                src={roles[1].icon} 
+                alt={`${roles[1].title} Icon`} 
+                className="role-icon-image" 
+              />
+            </div>
+            <div className="role-card-content">
+              <h3 className="role-card-title">{roles[1].title}</h3>
+              <p className="role-card-description">{roles[1].description}</p>
+            </div>
+            <div className="role-selection-indicator">
+              <div className={`selection-circle ${selectedRole === 'rtu-students' ? 'selected' : ''}`}>
+                {selectedRole === 'rtu-students' && (
+                  <div className="checkmark"></div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="role-controls">
           <div className="selected-role-info">
             {selectedRole && (
-              <div className="selection-confirmation">
+              <div 
+                className="selection-confirmation"
+                style={{
+                  borderColor: roles.find(r => r.id === selectedRole)?.color,
+                  background: `linear-gradient(135deg, ${hexToRgba(roles.find(r => r.id === selectedRole)?.color, 0.1)}, ${hexToRgba(roles.find(r => r.id === selectedRole)?.color, 0.05)})`
+                }}
+              >
                 <span className="selected-text">
-                  Selected: <strong>{roles.find(r => r.id === selectedRole)?.title}</strong>
+                  You've selected: <strong style={{ color: roles.find(r => r.id === selectedRole)?.color }}>
+                    {roles.find(r => r.id === selectedRole)?.title}
+                  </strong>
                 </span>
               </div>
             )}
@@ -127,15 +157,19 @@ export default function Role() {
           
           <div className="continue-button-container">
             <button 
-              className="continue-button" 
-              onClick={handleContinue} 
+              className={getButtonClass()}
+              onClick={handleContinue}
+              onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.97)'}
+              onTouchEnd={(e) => e.currentTarget.style.transform = ''}
               disabled={!selectedRole}
               style={{
-                background: selectedRole ? `linear-gradient(135deg, ${roles.find(r => r.id === selectedRole)?.color || '#0d6efd'}, ${roles.find(r => r.id === selectedRole)?.color ? adjustColor(roles.find(r => r.id === selectedRole).color, -20) : '#0b5ed7'})` : '#6c757d',
-                boxShadow: selectedRole ? `0 6px 20px ${hexToRgba(roles.find(r => r.id === selectedRole)?.color || '#0d6efd', 0.4)}` : 'none'
+                background: selectedRole ? `linear-gradient(135deg, ${roles.find(r => r.id === selectedRole)?.color}, ${adjustColor(roles.find(r => r.id === selectedRole)?.color, -20)})` : '#6c757d',
               }}
             >
               {getButtonText()}
+              {selectedRole && (
+                <span style={{ fontSize: '2rem' }}>→</span>
+              )}
             </button>
           </div>
         </div>
@@ -146,10 +180,12 @@ export default function Role() {
 
 // Helper functions for color manipulation
 function adjustColor(color, amount) {
+  if (!color) return '#6c757d';
   return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
 }
 
 function hexToRgba(hex, alpha) {
+  if (!hex) return 'rgba(108, 117, 125, 0.1)';
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
