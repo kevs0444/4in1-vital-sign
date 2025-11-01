@@ -1,10 +1,11 @@
-/* GLOBAL RESET - Consistent with previous components */
-.register-container * {
+/* GLOBAL RESET - Consistent with RegisterRole */
+.register-personal-container * {
   box-sizing: border-box;
 }
 
-.register-container {
+.register-personal-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
@@ -22,13 +23,13 @@
   bottom: 0;
 }
 
-.register-content-area {
+.register-personal-content {
   background: white;
   border-radius: 24px;
   width: 100%;
   max-width: 700px;
-  height: 100%;
-  max-height: 1200px;
+  height: auto;
+  max-height: 95vh;
   padding: 30px 25px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   display: flex;
@@ -38,58 +39,77 @@
   position: relative;
 }
 
-/* Progress Section */
-.register-progress-section {
+/* Progress Steps - Updated to match RegisterRole theme */
+.progress-steps {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
   flex-shrink: 0;
+  padding: 0 20px;
 }
 
-.register-progress-bar {
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   flex: 1;
-  height: 8px;
+  position: relative;
+}
+
+.progress-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 25px;
+  left: 60%;
+  width: 80%;
+  height: 3px;
   background: #e9ecef;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-right: 20px;
+  z-index: 1;
 }
 
-.register-progress-fill {
-  height: 100%;
+.progress-step.completed::after {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
-  border-radius: 4px;
-  transition: width 0.3s ease;
 }
 
-.register-progress-step {
-  font-size: 1.2rem;
+.step-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #666;
+  border: 3px solid #e9ecef;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  z-index: 2;
+  position: relative;
+}
+
+.progress-step.active .step-circle {
+  background: white;
+  border-color: #dc2626;
+  color: #dc2626;
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3);
+}
+
+.progress-step.completed .step-circle {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  border-color: #dc2626;
+  color: white;
+  transform: scale(1.05);
+}
+
+.step-label {
+  font-size: 1.1rem;
   color: #666;
   font-weight: 600;
-  white-space: nowrap;
-}
-
-.register-back-btn {
-  background: #6c757d;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 10px;
-  font-size: 1.2rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-left: 20px;
-}
-
-.register-back-btn:hover {
-  background: #5a6268;
-  transform: translateY(-2px);
-}
-
-.register-back-btn:active {
-  transform: scale(0.95);
+  margin-top: 10px;
+  text-align: center;
 }
 
 /* Image Section */
@@ -105,15 +125,15 @@
   object-fit: contain;
 }
 
-/* Header Section */
-.register-header-section {
+/* Header Section - Match RegisterRole styling */
+.register-personal-header {
   text-align: center;
   margin-bottom: 30px;
   flex-shrink: 0;
   padding: 0 10px;
 }
 
-.register-main-title {
+.register-personal-title {
   font-size: 2.8rem;
   color: #333;
   font-weight: 700;
@@ -121,34 +141,51 @@
   line-height: 1.1;
 }
 
-.register-subtitle {
+.register-personal-subtitle {
   font-size: 1.5rem;
   color: #666;
   line-height: 1.3;
   padding: 0 10px;
 }
 
-/* Form Section */
-.register-form-section {
+/* Form Container */
+.form-container {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin-bottom: 20px;
+  min-height: 0;
 }
 
-.register-input-group {
+.form-phase {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.form-groups {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 25px;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.register-input-field {
+.form-group {
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
-.register-input-label {
+.form-group.full-width {
+  width: 100%;
+  min-height: 0;
+}
+
+.form-label {
   font-size: 1.3rem;
   color: #333;
   font-weight: 600;
@@ -156,99 +193,196 @@
   text-align: left;
 }
 
-.register-text-input {
+/* Form Inputs - Match RegisterRole card styling */
+.form-input {
   padding: 20px 18px;
   border: 3px solid #e9ecef;
   border-radius: 15px;
   font-size: 1.4rem;
   font-family: inherit;
   background: white;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   color: #333;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-.register-text-input:focus {
+.form-input:focus {
   outline: none;
   border-color: #dc2626;
-  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.2);
+  transform: translateY(-2px);
 }
 
-.register-text-input.active {
-  border-color: #dc2626;
-  background: #fff5f5;
-}
-
-.register-text-input::placeholder {
-  color: #999;
-}
-
-/* Age Display */
-.register-age-display-container {
+/* Birthday Selector Styles */
+.birthday-selector {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  gap: 25px;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.register-age-display {
-  width: 200px;
-  height: 200px;
-  border: 4px solid #e9ecef;
-  border-radius: 20px;
+.birthday-inputs {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 4rem;
-  font-weight: 700;
-  color: #333;
-  background: white;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+  gap: 15px;
+  justify-content: space-between;
+  height: 280px;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.register-age-display.filled {
-  border-color: #dc2626;
-  background: #fff5f5;
-  color: #dc2626;
-  transform: scale(1.05);
-}
-
-.register-age-display.max-digits {
-  font-size: 3.5rem;
-}
-
-.register-age-digits {
-  color: #dc2626;
-  font-weight: 800;
-}
-
-.register-placeholder-text {
-  color: #999;
-  font-weight: 600;
-}
-
-/* Sex Section */
-.register-sex-section {
+.birthday-column {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.register-sex-options {
+.birthday-label {
+  font-size: 1.2rem;
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 15px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.birthday-scroll {
+  flex: 1;
+  width: 100%;
+  border: 3px solid #e9ecef;
+  border-radius: 15px;
+  background: white;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  min-height: 0;
+}
+
+.birthday-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.birthday-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.birthday-scroll::-webkit-scrollbar-thumb {
+  background: #dc2626;
+  border-radius: 3px;
+}
+
+.birthday-option {
+  padding: 16px 10px;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f0f0f0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.birthday-option:last-child {
+  border-bottom: none;
+}
+
+.birthday-option:hover {
+  background: #f8f9fa;
+  color: #333;
+}
+
+.birthday-option.selected {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+  position: relative;
+}
+
+.birthday-option.selected::before {
+  content: '✓';
+  position: absolute;
+  left: 8px;
+  font-weight: bold;
+}
+
+/* Age Display Section */
+.age-display-section {
+  text-align: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 15px;
+  border: 2px solid #e9ecef;
+  min-height: 0;
+  flex-shrink: 0;
+}
+
+.age-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.age-label {
+  font-size: 1.3rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.age-value {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #dc2626;
+  background: white;
+  border-radius: 12px;
+  padding: 12px 25px;
+  min-width: 100px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: 3px solid #dc2626;
+}
+
+.birthday-confirmation {
+  background: white;
+  border-radius: 10px;
+  padding: 10px 15px;
+  border: 2px solid #dc2626;
+}
+
+.birthday-text {
+  font-size: 1.1rem;
+  color: #333;
+  font-weight: 600;
+}
+
+/* Sex Selection - LARGE UNIFORM CARDS with border-only selection */
+.sex-selection {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 25px;
+  gap: 30px;
   margin-top: 10px;
+  min-height: 0;
+  flex-shrink: 0;
+  width: 100%;
 }
 
-.register-sex-option {
-  padding: 40px 25px;
+.sex-option {
+  padding: 50px 30px;
   border: 4px solid #e9ecef;
-  border-radius: 20px;
+  border-radius: 25px;
   background: white;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -258,129 +392,195 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  justify-content: center;
+  gap: 30px;
   position: relative;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
+  min-height: 350px;
+  height: 100%;
+  width: 100%;
 }
 
-.register-sex-option:active {
-  transform: scale(0.96);
+.sex-option:active {
+  transform: scale(0.98);
   transition: transform 0.1s ease;
 }
 
-.register-sex-option:hover {
+.sex-option:hover {
   transform: translateY(-5px);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-}
-
-.register-sex-option.selected {
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
   border-color: #dc2626;
-  background: #fff5f5;
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 15px 35px rgba(220, 38, 38, 0.2);
-  animation: sexOptionPulse 2s infinite;
 }
 
-@keyframes sexOptionPulse {
-  0%, 100% {
-    box-shadow: 0 15px 35px rgba(220, 38, 38, 0.2);
-  }
-  50% {
-    box-shadow: 0 15px 35px rgba(220, 38, 38, 0.2), 0 0 20px rgba(220, 38, 38, 0.3);
-  }
+.sex-option.selected {
+  border-color: #dc2626;
+  background: white; /* Keep white background */
+  transform: translateY(-3px);
+  box-shadow: 0 25px 60px rgba(220, 38, 38, 0.25);
 }
 
-.register-sex-icon {
-  width: 120px;
-  height: 120px;
+.sex-option.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 25px;
+  right: 25px;
+  width: 45px;
+  height: 45px;
+  background: #dc2626;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: bold;
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+.role-card-icon {
+  width: 150px;
+  height: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: white;
-  padding: 25px;
+  background: white; /* Keep white background */
+  padding: 30px;
   transition: all 0.3s ease;
-  border: 4px solid #f1f3f4;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  border: 5px solid #f1f3f4;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
 }
 
-.register-sex-option.selected .register-sex-icon {
-  border-color: #dc2626;
+.role-card-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: grayscale(0.4); /* Keep some grayscale for unselected state */
+  transition: all 0.3s ease;
+}
+
+.sex-option.selected .role-card-icon {
+  background: white; /* Keep white background */
+  border-color: #dc2626; /* Only border turns red */
   transform: scale(1.1);
-  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.2);
+  box-shadow: 0 15px 40px rgba(220, 38, 38, 0.3);
 }
 
-.register-sex-option.selected .register-sex-icon img {
+.sex-option.selected .role-card-icon img {
+  filter: grayscale(0); /* Remove grayscale when selected */
   transform: scale(1.15);
 }
 
-.register-sex-label {
-  font-size: 1.8rem;
-  color: #666;
+.sex-option span {
+  font-size: 2.2rem;
   font-weight: 700;
+  color: #333;
   transition: all 0.3s ease;
 }
 
-.register-sex-option.selected .register-sex-label {
-  color: #dc2626;
+.sex-option.selected span {
+  color: #dc2626; /* Only text turns red */
   transform: scale(1.05);
 }
 
-.register-disclaimer {
-  background: #f8f9fa;
-  border-radius: 15px;
-  padding: 25px 30px;
-  text-align: center;
-  border: 2px solid #e9ecef;
-}
-
-.register-disclaimer p {
-  font-size: 1.3rem;
-  color: #666;
-  line-height: 1.4;
-  margin: 0;
-}
-
-/* Actions Section */
-.register-actions {
-  flex-shrink: 0;
-  margin-top: 30px;
-}
-
-.register-continue-btn {
+/* Sex Selection Container to match birthday selector */
+.sex-selection-container {
   width: 100%;
-  padding: 25px 20px;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+/* Updated Navigation Buttons - Stacked layout */
+.form-navigation {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 20px;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.nav-button {
   border: none;
   border-radius: 18px;
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  color: white;
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 80px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
-  animation: continueButtonGlow 2s ease-in-out infinite alternate;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 15px;
+  gap: 10px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  min-height: 70px;
+  padding: 20px;
+  width: 100%;
 }
 
-.register-continue-btn:active:not(.disabled) {
+/* Single button (first step - name) - RED THEME */
+.form-navigation.single-button .nav-button {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+  animation: continueButtonGlow 2s ease-in-out infinite alternate;
+}
+
+/* Dual buttons (age and sex steps) - STACKED VERTICALLY */
+.form-navigation.dual-buttons {
+  flex-direction: column;
+}
+
+.form-navigation.dual-buttons .back-button {
+  background: #6c757d;
+  color: white;
+  order: 2; /* Places back button below */
+  margin-top: 8px;
+}
+
+.form-navigation.dual-buttons .next-button,
+.form-navigation.dual-buttons .submit-button {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+  animation: continueButtonGlow 2s ease-in-out infinite alternate;
+  order: 1; /* Places continue button above */
+}
+
+/* Updated :has() styles for stacked layout */
+.form-navigation:has(.back-button) {
+  flex-direction: column;
+}
+
+.form-navigation:has(.back-button) .back-button {
+  order: 2;
+  margin-top: 8px;
+}
+
+.form-navigation:has(.back-button) .next-button,
+.form-navigation:has(.back-button) .submit-button {
+  order: 1;
+}
+
+.back-button:active {
   transform: scale(0.97);
-  transition: transform 0.1s ease;
+  background: #5a6268;
 }
 
-.register-continue-btn:hover:not(.disabled) {
+.next-button:active:not(.disabled), .submit-button:active:not(.disabled) {
+  transform: scale(0.97);
+}
+
+.next-button:hover:not(.disabled), .submit-button:hover:not(.disabled) {
   transform: translateY(-3px);
   animation: continueButtonStrongGlow 1s ease-in-out infinite alternate;
 }
 
-.register-continue-btn.disabled {
+.nav-button.disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
@@ -414,14 +614,34 @@
   }
 }
 
-/* Keyboard Styles */
+/* Disclaimer */
+.register-disclaimer {
+  background: #f8f9fa;
+  border-radius: 15px;
+  padding: 20px 25px;
+  text-align: center;
+  border: 2px solid #e9ecef;
+  margin-top: 15px;
+  flex-shrink: 0;
+}
+
+.register-disclaimer p {
+  font-size: 1.2rem;
+  color: #666;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Keyboard Styles - INSIDE THE CONTAINER */
 .register-keyboard {
   background: white;
   border-radius: 20px;
   padding: 20px;
   margin-top: 20px;
-  box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   border: 1px solid #e0e0e0;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 .register-keyboard-row {
@@ -448,18 +668,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 2px solid #e9ecef;
 }
 
 .register-keyboard-key:active {
   background: #dc2626;
   color: white;
   transform: scale(0.95);
+  border-color: #dc2626;
 }
 
 .register-keyboard-key.delete-key {
   background: #dc2626;
   color: white;
   font-size: 1.1rem;
+  border-color: #dc2626;
 }
 
 .register-keyboard-key.space-key {
@@ -470,80 +693,17 @@
 .register-keyboard-key.shift-key {
   background: #6c757d;
   color: white;
+  border-color: #6c757d;
 }
 
 .register-keyboard-key.shift-key.active {
   background: #dc2626;
   transform: scale(1.05);
+  border-color: #dc2626;
 }
 
-/* Numpad Styles */
-.register-numpad {
-  background: white;
-  border-radius: 20px;
-  padding: 25px;
-  margin-top: 20px;
-  box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e0e0e0;
-}
-
-.register-numpad-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  max-width: 300px;
-  margin: 0 auto;
-}
-
-.register-numpad-btn {
-  padding: 25px 10px;
-  border: none;
-  border-radius: 15px;
-  background: #f8f9fa;
-  color: #333;
-  font-size: 1.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  min-height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.register-numpad-btn:active {
-  background: #dc2626;
-  color: white;
-  transform: scale(0.95);
-}
-
-.register-numpad-btn.clear {
-  background: #6c757d;
-  color: white;
-  font-size: 1.5rem;
-}
-
-.register-numpad-btn.delete {
-  background: #dc2626;
-  color: white;
-  font-size: 1.5rem;
-}
-
-/* Content Animation */
-.register-content {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.5s ease;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.register-content.visible {
-  opacity: 1;
-  transform: translateY(0);
+.register-keyboard-key.shift-key:active {
+  transform: scale(0.96);
 }
 
 /* Touch Feedback */
@@ -554,93 +714,123 @@
 
 /* Responsive Design */
 @media (max-width: 768px) and (orientation: portrait) {
-  .register-container {
+  .register-personal-container {
     padding: 15px;
   }
   
-  .register-content-area {
+  .register-personal-content {
     max-width: 100%;
-    max-height: 100%;
-    padding: 25px 20px;
+    max-height: 95vh;
+    padding: 20px 15px;
     border-radius: 20px;
   }
   
-  .register-progress-section {
-    margin-bottom: 25px;
+  .progress-steps {
+    margin-bottom: 20px;
+    padding: 0 10px;
   }
   
-  .register-progress-step {
+  .step-circle {
+    width: 40px;
+    height: 40px;
     font-size: 1.1rem;
   }
   
-  .register-back-btn {
-    padding: 10px 16px;
-    font-size: 1.1rem;
+  .step-label {
+    font-size: 0.9rem;
   }
   
   .register-logo {
-    width: 150px;
-    height: 150px;
+    width: 120px;
+    height: 120px;
   }
   
-  .register-main-title {
-    font-size: 2.5rem;
-    margin-bottom: 12px;
+  .register-personal-title {
+    font-size: 2.2rem;
+    margin-bottom: 10px;
   }
   
-  .register-subtitle {
-    font-size: 1.3rem;
-  }
-  
-  .register-input-label {
+  .register-personal-subtitle {
     font-size: 1.2rem;
   }
   
-  .register-text-input {
-    padding: 18px 16px;
-    font-size: 1.3rem;
+  .form-label {
+    font-size: 1.1rem;
   }
   
-  .register-age-display {
-    width: 180px;
-    height: 180px;
-    font-size: 3.5rem;
+  .form-input {
+    padding: 16px 14px;
+    font-size: 1.2rem;
   }
   
-  .register-age-display.max-digits {
-    font-size: 3rem;
+  .birthday-inputs {
+    height: 220px;
+    gap: 10px;
   }
   
-  .register-sex-options {
+  .birthday-label {
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+  
+  .birthday-option {
+    padding: 14px 8px;
+    font-size: 1.1rem;
+  }
+  
+  .age-value {
+    font-size: 2.5rem;
+    padding: 10px 20px;
+    min-width: 80px;
+  }
+  
+  .age-label {
+    font-size: 1.1rem;
+  }
+  
+  .birthday-text {
+    font-size: 1rem;
+  }
+  
+  /* Sex Selection Responsive */
+  .sex-selection {
     gap: 20px;
   }
   
-  .register-sex-option {
-    padding: 30px 20px;
+  .sex-option {
+    padding: 40px 25px;
+    min-height: 300px;
+    gap: 25px;
   }
   
-  .register-sex-icon {
-    width: 100px;
-    height: 100px;
-    padding: 20px;
+  .role-card-icon {
+    width: 120px;
+    height: 120px;
+    padding: 25px;
   }
   
-  .register-sex-label {
-    font-size: 1.6rem;
+  .sex-option span {
+    font-size: 1.8rem;
   }
   
-  .register-disclaimer {
-    padding: 20px 25px;
+  .sex-option.selected::after {
+    top: 20px;
+    right: 20px;
+    width: 35px;
+    height: 35px;
+    font-size: 18px;
   }
   
-  .register-disclaimer p {
-    font-size: 1.2rem;
+  .nav-button {
+    font-size: 1.4rem;
+    min-height: 60px;
+    padding: 18px;
   }
   
-  .register-continue-btn {
-    padding: 22px 20px;
-    font-size: 1.6rem;
-    min-height: 75px;
+  .form-navigation:has(.back-button) .back-button,
+  .form-navigation:has(.back-button) .next-button,
+  .form-navigation:has(.back-button) .submit-button {
+    width: 100%;
   }
   
   .register-keyboard {
@@ -648,30 +838,60 @@
   }
   
   .register-keyboard-key {
-    padding: 18px 8px;
-    font-size: 1.2rem;
-    min-height: 55px;
-  }
-  
-  .register-numpad {
-    padding: 20px;
-  }
-  
-  .register-numpad-btn {
-    padding: 22px 10px;
-    font-size: 1.6rem;
-    min-height: 70px;
+    padding: 16px 8px;
+    font-size: 1.1rem;
+    min-height: 50px;
   }
 }
 
 @media (max-width: 600px) and (orientation: portrait) {
-  .register-sex-options {
-    grid-template-columns: 1fr;
-    gap: 15px;
+  .birthday-inputs {
+    height: 200px;
+    gap: 8px;
   }
   
-  .register-sex-option {
-    padding: 25px 20px;
+  .birthday-option {
+    padding: 12px 6px;
+    font-size: 1rem;
+  }
+  
+  .age-value {
+    font-size: 2.2rem;
+    padding: 8px 16px;
+  }
+  
+  /* Sex Selection Mobile */
+  .sex-selection {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    max-width: 450px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .sex-option {
+    padding: 45px 30px;
+    min-height: 280px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 30px;
+  }
+  
+  .role-card-icon {
+    width: 110px;
+    height: 110px;
+    padding: 22px;
+    flex-shrink: 0;
+  }
+  
+  .sex-option span {
+    font-size: 1.9rem;
+  }
+  
+  .nav-button {
+    font-size: 1.3rem;
+    min-height: 55px;
+    padding: 16px;
   }
   
   .register-keyboard-row {
@@ -679,40 +899,101 @@
   }
   
   .register-keyboard-key {
-    padding: 16px 6px;
-    font-size: 1.1rem;
-    min-height: 50px;
-  }
-  
-  .register-numpad-grid {
-    gap: 12px;
-    max-width: 250px;
-  }
-  
-  .register-numpad-btn {
-    padding: 20px 8px;
-    font-size: 1.4rem;
-    min-height: 65px;
+    padding: 14px 6px;
+    font-size: 1rem;
+    min-height: 45px;
   }
 }
 
-/* Small screen optimization */
 @media (max-width: 480px) {
-  .register-content-area {
-    padding: 20px 15px;
+  .register-personal-content {
+    padding: 15px 12px;
   }
   
-  .register-main-title {
-    font-size: 2.2rem;
+  .register-personal-title {
+    font-size: 2rem;
   }
   
-  .register-subtitle {
+  .register-personal-subtitle {
     font-size: 1.1rem;
   }
   
-  .register-age-display {
-    width: 160px;
-    height: 160px;
-    font-size: 3rem;
+  .birthday-inputs {
+    flex-direction: column;
+    height: auto;
+    max-height: 350px;
+  }
+  
+  .birthday-column {
+    flex: none;
+    height: 100px;
+  }
+  
+  .birthday-scroll {
+    height: 80px;
+  }
+  
+  /* Sex Selection Small Mobile */
+  .sex-selection {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .sex-option {
+    padding: 35px 25px;
+    min-height: 250px;
+  }
+  
+  .role-card-icon {
+    width: 100px;
+    height: 100px;
+    padding: 20px;
+  }
+  
+  .sex-option span {
+    font-size: 1.7rem;
+  }
+  
+  .sex-option.selected::after {
+    top: 15px;
+    right: 15px;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+  
+  .nav-button {
+    font-size: 1.2rem;
+    min-height: 50px;
+    padding: 14px;
+  }
+}
+
+/* Fallback for browsers that don't support :has() */
+@supports not (selector(:has(.test))) {
+  .form-navigation.single-button .nav-button {
+    width: 100%;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+    animation: continueButtonGlow 2s ease-in-out infinite alternate;
+  }
+  
+  .form-navigation.dual-buttons .back-button {
+    background: #6c757d;
+    color: white;
+    width: 100%;
+    order: 2;
+    margin-top: 8px;
+  }
+  
+  .form-navigation.dual-buttons .next-button,
+  .form-navigation.dual-buttons .submit-button {
+    width: 100%;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+    animation: continueButtonGlow 2s ease-in-out infinite alternate;
+    order: 1;
   }
 }

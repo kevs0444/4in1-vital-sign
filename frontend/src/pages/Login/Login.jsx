@@ -1,9 +1,14 @@
-// src/pages/Login/Login.jsx - PORTRAIT SPLIT LAYOUT
-import React, { useState, useEffect } from 'react';
+// src/pages/Login/Login.jsx - OPTIMIZED FOR 768x1366 TOUCH SCREEN
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, Login as LoginIcon, PersonAdd, RadioButtonChecked, TouchApp, FlashOn, Security, Speed } from '@mui/icons-material';
+import { 
+  Login as LoginIcon, 
+  PersonAdd, 
+  CreditCard,
+  Info
+} from '@mui/icons-material';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Login.css';
 
@@ -15,20 +20,65 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isVisible, setIsVisible] = useState(false);
+  const [isShift, setIsShift] = useState(false);
+  const [showSymbols, setShowSymbols] = useState(false);
+  const [activeInput, setActiveInput] = useState('userId');
   const navigate = useNavigate();
+
+  const userIdInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: value
-    }));
-    if (error) setError('');
+  useEffect(() => {
+    setTimeout(() => {
+      if (userIdInputRef.current) userIdInputRef.current.focus();
+    }, 300);
+  }, []);
+
+  const handleInputFocus = (inputName) => {
+    setActiveInput(inputName);
+  };
+
+  const handleKeyboardPress = (key) => {
+    if (key === "↑") {
+      setIsShift(!isShift);
+      return;
+    }
+
+    if (key === "Sym" || key === "ABC") {
+      setShowSymbols(!showSymbols);
+      return;
+    }
+
+    const applyFormatting = (prev, char) => {
+      let nextChar = isShift ? char.toUpperCase() : char.toLowerCase();
+      setIsShift(false);
+      return prev + nextChar;
+    };
+
+    if (key === "Del") {
+      if (activeInput === "userId") {
+        setFormData(prev => ({ ...prev, userId: prev.userId.slice(0, -1) }));
+      } else {
+        setFormData(prev => ({ ...prev, password: prev.password.slice(0, -1) }));
+      }
+    } else if (key === "Space") {
+      if (activeInput === "userId") {
+        setFormData(prev => ({ ...prev, userId: prev.userId + " " }));
+      } else {
+        setFormData(prev => ({ ...prev, password: prev.password + " " }));
+      }
+    } else {
+      if (activeInput === "userId") {
+        setFormData(prev => ({ ...prev, userId: applyFormatting(prev.userId, key) }));
+      } else {
+        setFormData(prev => ({ ...prev, password: applyFormatting(prev.password, key) }));
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -43,7 +93,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1200));
       navigate('/measure/welcome');
       
@@ -54,159 +103,187 @@ export default function LoginPage() {
     }
   };
 
-  const handleRfidTeaserClick = () => {
-    // Engaging animation/feedback for the teaser
-    console.log('RFID teaser clicked - encouraging card usage');
-  };
-
   const handleRegisterClick = () => {
     navigate('/register/welcome');
   };
 
+  const alphabetKeys = [
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+    ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+    ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+    ["↑", "Z", "X", "C", "V", "B", "N", "M", "Del"],
+    ["Sym", "Space", "-"],
+  ];
+
+  const symbolKeys = [
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+    ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")"],
+    ["-", "_", "+", "=", "{", "}", "[", "]", "|"],
+    [".", ",", "?", "!", "'", '"', ":", ";", "Del"],
+    ["ABC", "~", "`", "\\", "/", "Space"],
+  ];
+
+  const keyboardKeys = showSymbols ? symbolKeys : alphabetKeys;
+
   return (
     <Container fluid className="login-container">
-      <Row className="justify-content-center align-items-center w-100 m-0">
-        <Col xs={12} className="p-0">
+      <Row className="justify-content-center align-items-center w-100 m-0 h-100">
+        <Col xs={12} className="p-0 h-100">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="w-100 d-flex justify-content-center"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="w-100 h-100"
           >
             <div className={`login-content ${isVisible ? 'visible' : ''}`}>
               
-              {/* Top Section - RFID Teaser */}
-              <div className="login-top">
-                <div className="rfid-teaser-container">
-                  <motion.div 
-                    className="rfid-teaser-card"
-                    onClick={handleRfidTeaserClick}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <RadioButtonChecked className="rfid-icon-large" />
-                    <h3 className="rfid-teaser-title">Tap Your ID Card</h3>
-                    <p className="rfid-teaser-subtitle">
-                      Instant access with your student or employee card
-                    </p>
-                    <div className="quick-access-badge">
-                      <FlashOn style={{ fontSize: '1.1rem' }} className="me-1" />
-                      Fast & Secure
-                    </div>
-                  </motion.div>
-
-                  <div className="rfid-teaser-hint">
-                    <p className="rfid-teaser-hint-text">
-                      <TouchApp style={{ fontSize: '1.1rem' }} />
-                      Simply hold your card near the reader
-                    </p>
+              {/* TOP SECTION - ID CARD FORMAT (25%) */}
+              <div className="login-card-section">
+                <div className="card-section-content">
+                  <div className="card-icon">
+                    <CreditCard />
                   </div>
+                  
+                  <h2 className="card-title">Tap Your ID Card</h2>
+                  <p className="card-subtitle">
+                    Use the physical RFID scanner beside this monitor for instant access
+                  </p>
 
-                  <div className="benefits-list">
-                    <div className="benefit-item">
-                      <Speed style={{ fontSize: '1rem', color: '#dc2626' }} />
-                      <span>Instant</span>
-                    </div>
-                    <div className="benefit-item">
-                      <Security style={{ fontSize: '1rem', color: '#dc2626' }} />
-                      <span>Secure</span>
-                    </div>
-                    <div className="benefit-item">
-                      <CreditCard style={{ fontSize: '1rem', color: '#dc2626' }} />
-                      <span>Contactless</span>
-                    </div>
+                  <div className="physical-scanner-notice">
+                    <Info />
+                    <span>Scanner located next to this screen</span>
                   </div>
                 </div>
               </div>
 
-              {/* Bottom Section - Login Form */}
-              <div className="login-bottom">
-                <div className="login-form-container">
-                  <div className="login-header">
-                    <h2 className="login-title">Manual Login</h2>
-                    <p className="login-subtitle">Or sign in with your credentials</p>
+              {/* MIDDLE SECTION - MANUAL LOGIN (45%) */}
+              <div className="login-manual-section">
+                <div className="login-header">
+                  <h2 className="login-title">Or Login Manually</h2>
+                  <p className="login-subtitle">Enter your credentials below</p>
+                </div>
+
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Alert variant="danger" className="login-alert">
+                        {error}
+                      </Alert>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <Form onSubmit={handleSubmit} className="login-form">
+                  <div className="form-group">
+                    <label className="form-label">Student/Employee ID</label>
+                    <input
+                      ref={userIdInputRef}
+                      type="text"
+                      name="userId"
+                      value={formData.userId}
+                      onChange={(e) => setFormData(prev => ({ ...prev, userId: e.target.value }))}
+                      onFocus={() => handleInputFocus('userId')}
+                      placeholder="Enter your ID number"
+                      className={`form-input ${activeInput === 'userId' ? 'active' : ''}`}
+                      disabled={isLoading}
+                      readOnly
+                    />
                   </div>
 
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <Alert variant="danger" className="login-alert">
-                          {error}
-                        </Alert>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <Form onSubmit={handleSubmit}>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="login-label">
-                        Student/Employee ID
-                      </Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="userId"
-                        value={formData.userId}
-                        onChange={handleInputChange}
-                        placeholder="Enter your ID"
-                        className="login-input"
-                        disabled={isLoading}
-                        isInvalid={!!error}
-                      />
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                      <Form.Label className="login-label">
-                        Password
-                      </Form.Label>
-                      <Form.Control
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        placeholder="Enter your password"
-                        className="login-input"
-                        disabled={isLoading}
-                        isInvalid={!!error}
-                      />
-                    </Form.Group>
-
-                    <Button
-                      type="submit"
-                      className="login-button"
+                  <div className="form-group">
+                    <label className="form-label">Password</label>
+                    <input
+                      ref={passwordInputRef}
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      onFocus={() => handleInputFocus('password')}
+                      placeholder="Enter your password"
+                      className={`form-input ${activeInput === 'password' ? 'active' : ''}`}
                       disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <>
-                          <span className="spinner"></span>
-                          Signing In...
-                        </>
-                      ) : (
-                        <>
-                          <LoginIcon style={{ fontSize: '1.3rem' }} className="me-2" />
-                          Sign In
-                        </>
-                      )}
-                    </Button>
-                  </Form>
+                      readOnly
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="login-button"
+                    disabled={isLoading || !formData.userId || !formData.password}
+                  >
+                    {isLoading ? (
+                      <>
+                        <span className="spinner"></span>
+                        Signing In...
+                      </>
+                    ) : (
+                      <>
+                        <LoginIcon className="button-icon" />
+                        Access Vital Sign System
+                      </>
+                    )}
+                  </Button>
 
                   <div className="register-section">
                     <p className="register-text">
-                      Don't have an account yet?
+                      New to the system?
                     </p>
                     <Link 
                       to="/register/welcome" 
                       className="register-link"
                       onClick={handleRegisterClick}
                     >
-                      <PersonAdd style={{ fontSize: '1.2rem' }} className="me-2" />
-                      Create New Account
+                      <PersonAdd className="button-icon" />
+                      Register Account
                     </Link>
                   </div>
+                </Form>
+              </div>
+
+              {/* BOTTOM SECTION - KEYBOARD (30%) */}
+              <div className="login-keyboard-section">
+                <div className="login-keyboard-rows">
+                  {keyboardKeys.map((row, rowIndex) => (
+                    <div key={rowIndex} className="login-keyboard-row">
+                      {row.map((key) => (
+                        <button
+                          key={key}
+                          className={`login-keyboard-key ${
+                            key === "Del"
+                              ? "delete-key"
+                              : key === "Space"
+                              ? "space-key"
+                              : key === "↑"
+                              ? `shift-key ${isShift ? "active" : ""}`
+                              : (key === "Sym" || key === "ABC")
+                              ? `symbols-key ${showSymbols ? "active" : ""}`
+                              : ""
+                          } ${rowIndex === 0 ? 'number-key' : ''}`}
+                          onClick={() => handleKeyboardPress(key)}
+                          onTouchStart={(e) => {
+                            e.currentTarget.style.transform = 'scale(0.95)';
+                            e.currentTarget.style.backgroundColor = '#dc2626';
+                            e.currentTarget.style.color = 'white';
+                          }}
+                          onTouchEnd={(e) => {
+                            e.currentTarget.style.transform = '';
+                            e.currentTarget.style.backgroundColor = '';
+                            e.currentTarget.style.color = '';
+                          }}
+                        >
+                          {key === "Space" ? "Space" : 
+                           key === "↑" ? "⇧" : 
+                           key === "Sym" ? "Sym" :
+                           key === "ABC" ? "ABC" : key}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

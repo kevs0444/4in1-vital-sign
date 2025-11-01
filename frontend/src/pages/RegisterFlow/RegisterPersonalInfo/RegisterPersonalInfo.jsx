@@ -14,7 +14,10 @@ export default function RegisterPersonalInfo() {
     firstName: "",
     lastName: "",
     age: "",
-    sex: ""
+    sex: "",
+    birthMonth: null,
+    birthDay: null,
+    birthYear: null
   });
   const [isVisible, setIsVisible] = useState(false);
   const [isShift, setIsShift] = useState(false);
@@ -23,12 +26,14 @@ export default function RegisterPersonalInfo() {
   
   const firstNameInputRef = useRef(null);
   const lastNameInputRef = useRef(null);
-  const ageDisplayRef = useRef(null);
+  const monthScrollRef = useRef(null);
+  const dayScrollRef = useRef(null);
+  const yearScrollRef = useRef(null);
 
   const steps = [
     { title: "What's your name?", subtitle: "Great to have you here! Let's start with your name", image: nameImage },
-    { title: "How old are you?", subtitle: "Let us know your age to personalize your experience", image: ageImage },
-    { title: "What is your biological sex?", subtitle: "Required for accurate health assessment", image: null }
+    { title: "How old are you?", subtitle: "Select your birthday to calculate your age", image: ageImage },
+    { title: "What is your biological sex?", subtitle: "Required for accurate health assessments", image: null }
   ];
 
   useEffect(() => {
@@ -37,14 +42,9 @@ export default function RegisterPersonalInfo() {
   }, []);
 
   useEffect(() => {
-    // Auto-focus appropriate inputs when step changes
     if (currentStep === 0) {
       setTimeout(() => {
         if (firstNameInputRef.current) firstNameInputRef.current.focus();
-      }, 300);
-    } else if (currentStep === 1) {
-      setTimeout(() => {
-        if (ageDisplayRef.current) ageDisplayRef.current.focus();
       }, 300);
     }
   }, [currentStep]);
@@ -58,7 +58,7 @@ export default function RegisterPersonalInfo() {
       setCurrentStep(1);
     } else if (currentStep === 1) {
       if (!formData.age.trim()) {
-        alert("Please enter your age");
+        alert("Please select your birthday to calculate age");
         return;
       }
       const ageNumber = parseInt(formData.age, 10);
@@ -73,8 +73,8 @@ export default function RegisterPersonalInfo() {
         return;
       }
       
-      // All data collected, navigate to next page
-      navigate("/starting", {
+      // FIXED: Navigate to /register/tapid instead of /starting
+      navigate("/register/tapid", {
         state: {
           ...location.state,
           firstName: formData.firstName.trim(),
@@ -89,6 +89,8 @@ export default function RegisterPersonalInfo() {
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+    } else {
+      navigate(-1); // Go back to previous page (RegisterRole)
     }
   };
 
@@ -127,20 +129,38 @@ export default function RegisterPersonalInfo() {
     }
   };
 
-  // Age step functions
-  const handleNumberClick = (num) => {
-    if (formData.age.length < 2) {
-      const newAge = (formData.age + num).replace(/^0+(?=\d)/, "");
-      setFormData(prev => ({ ...prev, age: newAge }));
+  // Birthday selection functions
+  const handleBirthdaySelect = (type, value) => {
+    setFormData(prev => {
+      const newData = { ...prev, [type === 'month' ? 'birthMonth' : type === 'day' ? 'birthDay' : 'birthYear']: value };
+      
+      if (newData.birthMonth && newData.birthDay && newData.birthYear) {
+        const age = calculateAgeFromBirthday(newData.birthYear, newData.birthMonth, newData.birthDay);
+        newData.age = age.toString();
+      }
+      
+      return newData;
+    });
+  };
+
+  const calculateAgeFromBirthday = (year, month, day) => {
+    const today = new Date();
+    const birthDate = new Date(year, month - 1, day);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
     }
+    
+    return age;
   };
 
-  const handleDelete = () => {
-    setFormData(prev => ({ ...prev, age: prev.age.slice(0, -1) }));
-  };
-
-  const handleClear = () => {
-    setFormData(prev => ({ ...prev, age: "" }));
+  const calculateAge = () => {
+    if (formData.birthMonth && formData.birthDay && formData.birthYear) {
+      return calculateAgeFromBirthday(formData.birthYear, formData.birthMonth, formData.birthDay);
+    }
+    return 0;
   };
 
   // Sex step functions
@@ -158,12 +178,8 @@ export default function RegisterPersonalInfo() {
     setTimeout(() => setTouchFeedback(null), 150);
   };
 
-  const getProgressWidth = () => {
-    return `${((currentStep + 1) / 3) * 100}%`;
-  };
-
   const getButtonText = () => {
-    if (currentStep === 2) return "Complete Registration";
+    if (currentStep === 2) return "Continue to Account Setup";
     return "Continue";
   };
 
@@ -172,7 +188,7 @@ export default function RegisterPersonalInfo() {
       case 0:
         return formData.firstName.trim() && formData.lastName.trim();
       case 1:
-        return formData.age.trim() && parseInt(formData.age, 10) >= 1 && parseInt(formData.age, 10) <= 99;
+        return formData.age && parseInt(formData.age, 10) >= 1 && parseInt(formData.age, 10) <= 99;
       case 2:
         return formData.sex !== "";
       default:
@@ -193,8 +209,8 @@ export default function RegisterPersonalInfo() {
         {/* Progress Steps */}
         <div className="progress-steps">
           {steps.map((step, index) => (
-            <div key={index} className="progress-step">
-              <div className={`step-circle ${currentStep === index ? 'active' : currentStep > index ? 'completed' : ''}`}>
+            <div key={index} className={`progress-step ${currentStep === index ? 'active' : currentStep > index ? 'completed' : ''}`}>
+              <div className="step-circle">
                 {currentStep > index ? '✓' : index + 1}
               </div>
               <span className="step-label">{step.title.split('?')[0]}</span>
@@ -263,14 +279,76 @@ export default function RegisterPersonalInfo() {
             <div className="form-phase active">
               <div className="form-groups">
                 <div className="form-group full-width">
-                  <label className="form-label">Your Age</label>
-                  <div className="dob-group">
-                    <div
-                      ref={ageDisplayRef}
-                      className="age-display"
-                      tabIndex={0}
-                    >
-                      {formData.age || "21"}
+                  <label className="form-label">Select Your Birthday</label>
+                  <div className="birthday-selector">
+                    <div className="birthday-inputs">
+                      <div className="birthday-column">
+                        <label className="birthday-label">Month</label>
+                        <div className="birthday-scroll month-scroll" ref={monthScrollRef}>
+                          {Array.from({ length: 12 }, (_, i) => (
+                            <div
+                              key={i}
+                              className={`birthday-option ${formData.birthMonth === i + 1 ? 'selected' : ''}`}
+                              onClick={() => handleBirthdaySelect('month', i + 1)}
+                            >
+                              {new Date(2000, i).toLocaleString('default', { month: 'long' })}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="birthday-column">
+                        <label className="birthday-label">Day</label>
+                        <div className="birthday-scroll day-scroll" ref={dayScrollRef}>
+                          {Array.from({ length: 31 }, (_, i) => (
+                            <div
+                              key={i}
+                              className={`birthday-option ${formData.birthDay === i + 1 ? 'selected' : ''}`}
+                              onClick={() => handleBirthdaySelect('day', i + 1)}
+                            >
+                              {i + 1}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="birthday-column">
+                        <label className="birthday-label">Year</label>
+                        <div className="birthday-scroll year-scroll" ref={yearScrollRef}>
+                          {Array.from({ length: 100 }, (_, i) => {
+                            const year = new Date().getFullYear() - i;
+                            return (
+                              <div
+                                key={year}
+                                className={`birthday-option ${formData.birthYear === year ? 'selected' : ''}`}
+                                onClick={() => handleBirthdaySelect('year', year)}
+                              >
+                                {year}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="age-display-section">
+                      <div className="age-result">
+                        <span className="age-label">Your Age:</span>
+                        <div className="age-value">
+                          {calculateAge() > 0 ? calculateAge() : '--'}
+                        </div>
+                      </div>
+                      {formData.birthMonth && formData.birthDay && formData.birthYear && (
+                        <div className="birthday-confirmation">
+                          <span className="birthday-text">
+                            Born on {new Date(formData.birthYear, formData.birthMonth - 1, formData.birthDay).toLocaleDateString('en-US', { 
+                              month: 'long', 
+                              day: 'numeric', 
+                              year: 'numeric' 
+                            })}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -290,8 +368,8 @@ export default function RegisterPersonalInfo() {
                       onTouchStart={() => handleTouchStart("male")}
                       onTouchEnd={handleTouchEnd}
                     >
-                      <div className="role-card-icon" style={{ width: '80px', height: '80px', marginBottom: '15px' }}>
-                        <img src={maleIcon} alt="Male" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <div className="role-card-icon">
+                        <img src={maleIcon} alt="Male" />
                       </div>
                       <span>Male</span>
                     </div>
@@ -301,8 +379,8 @@ export default function RegisterPersonalInfo() {
                       onTouchStart={() => handleTouchStart("female")}
                       onTouchEnd={handleTouchEnd}
                     >
-                      <div className="role-card-icon" style={{ width: '80px', height: '80px', marginBottom: '15px' }}>
-                        <img src={femaleIcon} alt="Female" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <div className="role-card-icon">
+                        <img src={femaleIcon} alt="Female" />
                       </div>
                       <span>Female</span>
                     </div>
@@ -311,7 +389,7 @@ export default function RegisterPersonalInfo() {
               </div>
               
               <div className="register-disclaimer">
-                <p style={{ fontSize: '1.1rem', color: '#666', textAlign: 'center', padding: '0 20px' }}>
+                <p>
                   We ask for your biological sex to provide accurate BMI calculations and health assessments. 
                   This information will not be shared publicly.
                 </p>
@@ -320,81 +398,51 @@ export default function RegisterPersonalInfo() {
           )}
         </div>
 
-        {/* Navigation Buttons */}
-        <div className="form-navigation">
+        {/* Navigation Buttons - UPDATED STACKED LAYOUT */}
+        <div className={`form-navigation ${currentStep > 0 ? 'dual-buttons' : 'single-button'}`}>
+          <button
+            className={`nav-button ${currentStep === 2 ? "submit-button" : "next-button"} ${!isStepValid() ? "disabled" : ""}`}
+            onClick={handleContinue}
+            disabled={!isStepValid()}
+          >
+            {getButtonText()}
+            {isStepValid() && <span className="button-arrow">→</span>}
+          </button>
+          
           {currentStep > 0 && (
             <button className="nav-button back-button" onClick={handleBack}>
               ← Back
             </button>
           )}
-          <button
-            className={`nav-button ${currentStep === 2 ? "submit-button" : "next-button"} ${!isStepValid() ? "disabled" : ""}`}
-            onClick={handleContinue}
-            disabled={!isStepValid()}
-            onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.97)'}
-            onTouchEnd={(e) => e.currentTarget.style.transform = ''}
-          >
-            {getButtonText()}
-            {isStepValid() && <span style={{ fontSize: '1.5rem' }}>→</span>}
-          </button>
         </div>
-      </div>
 
-      {/* Input Methods */}
-      {currentStep === 0 && (
-        <div className="register-keyboard">
-          {keyboardKeys.map((row, rowIndex) => (
-            <div key={rowIndex} className="register-keyboard-row">
-              {row.map((key) => (
-                <button
-                  key={key}
-                  className={`register-keyboard-key ${
-                    key === "Del"
-                      ? "delete-key"
-                      : key === "Space"
-                      ? "space-key"
-                      : key === "↑"
-                      ? `shift-key ${isShift ? "active" : ""}`
-                      : ""
-                  }`}
-                  onClick={() => handleKeyboardPress(key)}
-                  onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-                  onTouchEnd={(e) => e.currentTarget.style.transform = ''}
-                >
-                  {key === "Space" ? "Space" : key}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {currentStep === 1 && (
-        <div className="register-numpad">
-          <div className="register-numpad-grid">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-              <button
-                key={num}
-                className="register-numpad-btn"
-                onClick={() => handleNumberClick(num)}
-                onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-                onTouchEnd={(e) => e.currentTarget.style.transform = ''}
-              >
-                {num}
-              </button>
+        {/* Input Methods */}
+        {currentStep === 0 && (
+          <div className="register-keyboard">
+            {keyboardKeys.map((row, rowIndex) => (
+              <div key={rowIndex} className="register-keyboard-row">
+                {row.map((key) => (
+                  <button
+                    key={key}
+                    className={`register-keyboard-key ${
+                      key === "Del"
+                        ? "delete-key"
+                        : key === "Space"
+                        ? "space-key"
+                        : key === "↑"
+                        ? `shift-key ${isShift ? "active" : ""}`
+                        : ""
+                    }`}
+                    onClick={() => handleKeyboardPress(key)}
+                  >
+                    {key === "Space" ? "Space" : key}
+                  </button>
+                ))}
+              </div>
             ))}
-            <button className="register-numpad-btn clear" onClick={handleClear}>
-              C
-            </button>
-            <button className="register-numpad-btn" onClick={() => handleNumberClick(0)}>
-              0
-            </button>
-            <button className="register-numpad-btn delete" onClick={handleDelete}>
-              ⌫
-            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

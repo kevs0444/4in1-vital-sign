@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./RegisterRole.css";
 import employeeIcon from "../../../assets/icons/employee-icon.png";
@@ -15,7 +15,7 @@ export default function RegisterRole() {
       title: "RTU Employees",
       description: "Faculty, staff, and professors of Rizal Technological University",
       icon: employeeIcon,
-      color: "#16a34a", // Green for Employees
+      color: "#16a34a",
       route: "/register/personal-info"
     },
     {
@@ -23,14 +23,13 @@ export default function RegisterRole() {
       title: "RTU Students",
       description: "Currently enrolled students of Rizal Technological University",
       icon: studentIcon,
-      color: "#0ea5e9", // Light Blue for Students
+      color: "#0ea5e9",
       route: "/register/personal-info"
     }
   ];
 
   const handleRoleSelect = (roleId) => {
     setSelectedRole(roleId);
-    // Add touch feedback
     setTouchFeedback(roleId);
     setTimeout(() => setTouchFeedback(null), 200);
   };
@@ -73,16 +72,13 @@ export default function RegisterRole() {
         </div>
 
         <div className="role-cards-section">
-          {/* Left Card - RTU Employees (Green) */}
+          {/* Left Card - RTU Employees */}
           <div
             className={`role-card ${selectedRole === 'rtu-employees' ? 'selected' : ''} ${touchFeedback === 'rtu-employees' ? 'touch-feedback' : ''}`}
             onClick={() => handleRoleSelect('rtu-employees')}
             onTouchStart={() => handleTouchStart('rtu-employees')}
             onTouchEnd={handleTouchEnd}
-            style={{ 
-              '--role-color': roles[0].color,
-              borderColor: selectedRole === 'rtu-employees' ? roles[0].color : '#e9ecef'
-            }}
+            style={{ '--role-color': roles[0].color }}
           >
             <div className="role-card-icon">
               <img 
@@ -97,23 +93,18 @@ export default function RegisterRole() {
             </div>
             <div className="role-selection-indicator">
               <div className={`selection-circle ${selectedRole === 'rtu-employees' ? 'selected' : ''}`}>
-                {selectedRole === 'rtu-employees' && (
-                  <div className="checkmark"></div>
-                )}
+                {selectedRole === 'rtu-employees' && <div className="checkmark"></div>}
               </div>
             </div>
           </div>
 
-          {/* Right Card - RTU Students (Light Blue) */}
+          {/* Right Card - RTU Students */}
           <div
             className={`role-card ${selectedRole === 'rtu-students' ? 'selected' : ''} ${touchFeedback === 'rtu-students' ? 'touch-feedback' : ''}`}
             onClick={() => handleRoleSelect('rtu-students')}
             onTouchStart={() => handleTouchStart('rtu-students')}
             onTouchEnd={handleTouchEnd}
-            style={{ 
-              '--role-color': roles[1].color,
-              borderColor: selectedRole === 'rtu-students' ? roles[1].color : '#e9ecef'
-            }}
+            style={{ '--role-color': roles[1].color }}
           >
             <div className="role-card-icon">
               <img 
@@ -128,9 +119,7 @@ export default function RegisterRole() {
             </div>
             <div className="role-selection-indicator">
               <div className={`selection-circle ${selectedRole === 'rtu-students' ? 'selected' : ''}`}>
-                {selectedRole === 'rtu-students' && (
-                  <div className="checkmark"></div>
-                )}
+                {selectedRole === 'rtu-students' && <div className="checkmark"></div>}
               </div>
             </div>
           </div>
@@ -162,14 +151,9 @@ export default function RegisterRole() {
               onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.97)'}
               onTouchEnd={(e) => e.currentTarget.style.transform = ''}
               disabled={!selectedRole}
-              style={{
-                background: selectedRole ? `linear-gradient(135deg, ${roles.find(r => r.id === selectedRole)?.color}, ${adjustColor(roles.find(r => r.id === selectedRole)?.color, -20)})` : '#6c757d',
-              }}
             >
               {getButtonText()}
-              {selectedRole && (
-                <span style={{ fontSize: '2rem' }}>→</span>
-              )}
+              {selectedRole && <span className="button-arrow">→</span>}
             </button>
           </div>
         </div>
@@ -178,12 +162,7 @@ export default function RegisterRole() {
   );
 }
 
-// Helper functions for color manipulation
-function adjustColor(color, amount) {
-  if (!color) return '#6c757d';
-  return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
-}
-
+// Helper function for color manipulation
 function hexToRgba(hex, alpha) {
   if (!hex) return 'rgba(108, 117, 125, 0.1)';
   const r = parseInt(hex.slice(1, 3), 16);
