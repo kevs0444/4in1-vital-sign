@@ -5,33 +5,46 @@ import "./RegisterTapID.css";
 export default function RegisterTapID() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentStep, setCurrentStep] = useState(0); // 0: Email, 1: SMS, 2: ID Tap
+  const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
+    idNumber: "",
+    password: "",
     email: "",
-    mobile: "09", // Pre-filled with Philippine format
+    mobile: "09",
   });
-  const [isVisible, setIsVisible] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [isShift, setIsShift] = useState(false);
   const [showSymbols, setShowSymbols] = useState(false);
-  const [activeInput, setActiveInput] = useState("email");
+  const [activeInput, setActiveInput] = useState("idNumber");
   const [showNotification, setShowNotification] = useState({ show: false, message: "", type: "" });
   const [idRegistered, setIdRegistered] = useState(false);
+  const [scannerStatus, setScannerStatus] = useState("ready");
+  const [rfidCode, setRfidCode] = useState("");
 
+  const idNumberInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
   const emailInputRef = useRef(null);
   const mobileInputRef = useRef(null);
+  const scanTimeoutRef = useRef(null);
+
+  const userType = location.state?.userType || "rtu-students";
+  const personalInfo = location.state?.personalInfo || {};
+  const isEmployee = userType === "rtu-employees";
 
   const steps = [
     { 
-      title: "Add your email", 
-      subtitle: "We'll use this for important updates and account recovery",
-      type: "email"
+      title: isEmployee ? "Enter Employee Number" : "Enter Student Number",
+      subtitle: isEmployee 
+        ? "Your official RTU employee identification number" 
+        : "Your official RTU student identification number",
+      type: "idNumber"
     },
     { 
-      title: "Enter your mobile number", 
-      subtitle: "For security and quick login with TapID",
-      type: "sms"
+      title: "Contact Information", 
+      subtitle: "We'll use these for important updates and account recovery",
+      type: "contact"
     },
     { 
       title: "Register your ID", 
@@ -40,110 +53,119 @@ export default function RegisterTapID() {
     }
   ];
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
+  // Get placeholder based on user type
+  const getIdNumberPlaceholder = () => {
+    return isEmployee ? "e.g., 2023-001" : "e.g., 2022-200901";
+  };
 
+  // Get input label based on user type
+  const getIdNumberLabel = () => {
+    return isEmployee ? "Employee Number" : "Student Number";
+  };
+
+  // Auto-focus inputs when step changes
   useEffect(() => {
-    if (currentStep === 0 && emailInputRef.current) {
+    if (currentStep === 0 && idNumberInputRef.current) {
+      setTimeout(() => idNumberInputRef.current.focus(), 300);
+    } else if (currentStep === 1 && emailInputRef.current) {
       setTimeout(() => emailInputRef.current.focus(), 300);
-    } else if (currentStep === 1 && mobileInputRef.current) {
-      setTimeout(() => mobileInputRef.current.focus(), 300);
     }
   }, [currentStep]);
 
-  // Real RFID Scanner Integration
+  // Simulate RFID scanner ready state
   useEffect(() => {
     if (currentStep === 2) {
-      // Initialize RFID scanner when on ID step
-      initializeRFIDScanner();
+      console.log("🔄 RFID Scanner UI Ready - Waiting for tap...");
+      setScannerStatus("ready");
       
+      const statusInterval = setInterval(() => {
+        setScannerStatus(prev => prev === "ready" ? "waiting" : "ready");
+      }, 2000);
+
       return () => {
-        // Cleanup scanner when leaving the component
-        cleanupRFIDScanner();
+        clearInterval(statusInterval);
+        if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
       };
     }
   }, [currentStep]);
 
-  // Real RFID Scanner Functions
-  const initializeRFIDScanner = () => {
-    console.log("Initializing RFID scanner...");
-    
-    // Simulate scanner hardware initialization
-    setTimeout(() => {
-      console.log("RFID Scanner ready - waiting for ID tap...");
-      // In a real implementation, this would set up serial port communication
-      // or WebUSB/WebSerial API connection to the RFID hardware
-    }, 500);
-  };
-
-  const cleanupRFIDScanner = () => {
-    console.log("Cleaning up RFID scanner...");
-    // In a real implementation, this would close serial port connections
-    // and clean up hardware resources
-  };
-
+  // Enhanced RFID simulation
   const simulateRFIDDetection = () => {
-    // This simulates the RFID hardware detecting a card
-    console.log("RFID Card detected - starting registration process...");
-    startIDRegistration();
-  };
-
-  const startIDRegistration = () => {
     if (isScanning || idRegistered) return;
-    
-    setIsScanning(true);
-    setScanProgress(0);
 
-    // Real registration process with progress updates
-    const progressInterval = setInterval(() => {
-      setScanProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          completeIDRegistration();
-          return 100;
-        }
-        return prev + 20; // Faster progress for real implementation
-      });
-    }, 300);
+    console.log("🎯 Simulating RFID card detection...");
+    
+    const generatedRFID = `RFID${Date.now().toString().slice(-8)}`;
+    setRfidCode(generatedRFID);
+    
+    setScannerStatus("detecting");
+    setIsScanning(true);
+    
+    // Step 1: Card detection (1 second)
+    setTimeout(() => {
+      setScannerStatus("processing");
+      setScanProgress(20);
+      
+      // Step 2: Reading card data (1.5 seconds)
+      setTimeout(() => {
+        setScanProgress(50);
+        
+        // Step 3: Writing user data (2 seconds)
+        setTimeout(() => {
+          setScanProgress(80);
+          
+          // Step 4: Finalizing (1 second)
+          setTimeout(() => {
+            setScanProgress(100);
+            setScannerStatus("complete");
+            
+            // Complete registration after brief success display
+            setTimeout(() => {
+              completeIDRegistration(generatedRFID);
+            }, 1000);
+            
+          }, 1000);
+        }, 2000);
+      }, 1500);
+    }, 1000);
   };
 
-  const completeIDRegistration = () => {
-    console.log("ID Registration completed successfully!");
+  // Complete the registration process
+  const completeIDRegistration = (rfidCode) => {
+    console.log("✅ ID Registration completed!");
     setIsScanning(false);
     setIdRegistered(true);
     
-    // Generate a real ID number based on user data
-    const generatedIdNumber = generateIDNumber();
-    
-    // Navigate directly to data saved screen with registration data
-    navigate("/register/datasaved", {
-      state: {
-        ...location.state,
-        email: formData.email,
-        mobile: formData.mobile,
-        idNumber: generatedIdNumber,
-        idRegistered: true,
-        registrationDate: new Date().toISOString(),
-        timestamp: new Date().toISOString()
-      }
-    });
+    // Navigate to data saved screen with all registration data
+    setTimeout(() => {
+      navigate("/register/saved", {
+        state: {
+          userType: userType,
+          personalInfo: personalInfo,
+          idNumber: formData.idNumber,
+          password: formData.password,
+          email: formData.email,
+          mobile: formData.mobile,
+          rfidCode: rfidCode,
+          idRegistered: true,
+          registrationDate: new Date().toISOString(),
+          timestamp: new Date().toISOString()
+        }
+      });
+    }, 2000);
   };
 
-  const generateIDNumber = () => {
-    // Generate a realistic ID number based on user data
-    const timestamp = Date.now().toString().slice(-6);
-    const mobileSuffix = formData.mobile.replace(/\s/g, '').slice(-4);
-    return `ID${timestamp}${mobileSuffix}`.toUpperCase();
-  };
+  // Auto-simulate RFID after 5 seconds on ID step (for demo purposes)
+  useEffect(() => {
+    if (currentStep === 2 && !isScanning && !idRegistered) {
+      const autoSimulate = setTimeout(() => {
+        console.log("🔄 Auto-simulating RFID detection for demo...");
+        simulateRFIDDetection();
+      }, 5000);
 
-  // Manual trigger for development/testing
-  const handleManualIDTap = () => {
-    if (!isScanning && !idRegistered) {
-      simulateRFIDDetection();
+      return () => clearTimeout(autoSimulate);
     }
-  };
+  }, [currentStep, isScanning, idRegistered]);
 
   const showAlert = (message, type = "error") => {
     setShowNotification({ show: true, message, type });
@@ -154,12 +176,20 @@ export default function RegisterTapID() {
 
   const handleContinue = () => {
     if (currentStep === 0) {
-      if (!validateEmail(formData.email)) {
-        showAlert("Please enter a valid email address", "error");
+      if (!validateIDNumber(formData.idNumber)) {
+        showAlert(`Please enter a valid ${getIdNumberLabel()} (numbers and hyphens only)`, "error");
+        return;
+      }
+      if (!validatePassword(formData.password)) {
+        showAlert("Password must be between 6 and 10 characters", "error");
         return;
       }
       setCurrentStep(1);
     } else if (currentStep === 1) {
+      if (!validateEmail(formData.email)) {
+        showAlert("Please enter a valid email address", "error");
+        return;
+      }
       if (!validateMobile(formData.mobile)) {
         showAlert("Please enter a valid Philippine mobile number (09XXXXXXXXX)", "error");
         return;
@@ -176,6 +206,16 @@ export default function RegisterTapID() {
     }
   };
 
+  const validateIDNumber = (idNumber) => {
+    // Allow only numbers and hyphens, minimum 3 characters
+    const idRegex = /^[0-9-]+$/;
+    return idRegex.test(idNumber) && idNumber.trim().length >= 3;
+  };
+
+  const validatePassword = (password) => {
+    return password.length >= 6 && password.length <= 10;
+  };
+
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -188,6 +228,10 @@ export default function RegisterTapID() {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   const formatMobileNumber = (value) => {
@@ -223,19 +267,41 @@ export default function RegisterTapID() {
     };
 
     if (key === "Del") {
-      if (activeInput === "email") {
+      if (activeInput === "idNumber") {
+        setFormData(prev => ({ ...prev, idNumber: prev.idNumber.slice(0, -1) }));
+      } else if (activeInput === "password") {
+        setFormData(prev => ({ ...prev, password: prev.password.slice(0, -1) }));
+      } else if (activeInput === "email") {
         setFormData(prev => ({ ...prev, email: prev.email.slice(0, -1) }));
       } else {
         setFormData(prev => ({ ...prev, mobile: formatMobileNumber(prev.mobile.replace(/\s/g, '').slice(0, -1)) }));
       }
     } else if (key === "Space") {
-      if (activeInput === "email") {
+      if (activeInput === "idNumber") {
+        // Don't allow spaces in ID number
+        return;
+      } else if (activeInput === "password") {
+        // Only allow space if password is less than 10 characters
+        if (formData.password.length < 10) {
+          setFormData(prev => ({ ...prev, password: prev.password + " " }));
+        }
+      } else if (activeInput === "email") {
         setFormData(prev => ({ ...prev, email: prev.email + " " }));
       } else {
         setFormData(prev => ({ ...prev, mobile: formatMobileNumber(prev.mobile.replace(/\s/g, '') + " ") }));
       }
     } else {
-      if (activeInput === "email") {
+      if (activeInput === "idNumber") {
+        // Only allow numbers and hyphens for ID number
+        if (/^[0-9-]$/.test(key)) {
+          setFormData(prev => ({ ...prev, idNumber: prev.idNumber + key }));
+        }
+      } else if (activeInput === "password") {
+        // Only allow input if password is less than 10 characters
+        if (formData.password.length < 10) {
+          setFormData(prev => ({ ...prev, password: applyFormatting(prev.password, key) }));
+        }
+      } else if (activeInput === "email") {
         setFormData(prev => ({ ...prev, email: applyFormatting(prev.email, key) }));
       } else {
         setFormData(prev => ({ 
@@ -253,9 +319,9 @@ export default function RegisterTapID() {
   const isStepValid = () => {
     switch (currentStep) {
       case 0:
-        return validateEmail(formData.email);
+        return validateIDNumber(formData.idNumber) && validatePassword(formData.password);
       case 1:
-        return validateMobile(formData.mobile);
+        return validateEmail(formData.email) && validateMobile(formData.mobile);
       case 2:
         return true;
       default:
@@ -268,12 +334,29 @@ export default function RegisterTapID() {
     return "Continue";
   };
 
+  const getScannerStatusText = () => {
+    switch (scannerStatus) {
+      case "ready":
+        return "🟢 Scanner Ready - Tap your ID";
+      case "waiting":
+        return "🔵 Scanner Active - Waiting for ID";
+      case "detecting":
+        return "🟡 Detecting ID Card...";
+      case "processing":
+        return "🟠 Processing Registration...";
+      case "complete":
+        return "✅ Registration Complete!";
+      default:
+        return "🟢 Scanner Ready";
+    }
+  };
+
   const alphabetKeys = [
     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
     ["↑", "Z", "X", "C", "V", "B", "N", "M", "Del"],
-    ["Sym", "Space", "-", "@", "."],
+    ["Sym", "Space", "-", "@", ".", "_"],
   ];
 
   const symbolKeys = [
@@ -297,7 +380,8 @@ export default function RegisterTapID() {
                 {currentStep > index ? '✓' : index + 1}
               </div>
               <span className="step-label">
-                {step.type === 'email' ? 'Email' : step.type === 'sms' ? 'SMS' : 'ID'}
+                {step.type === 'idNumber' ? (isEmployee ? 'Emp ID' : 'Stud ID') : 
+                 step.type === 'contact' ? 'Contact' : 'ID Tap'}
               </span>
             </div>
           ))}
@@ -323,9 +407,89 @@ export default function RegisterTapID() {
 
         {/* Step Content */}
         <div className="form-container">
+          {/* Step 1: Student/Employee Number & Password */}
           {currentStep === 0 && (
             <div className="form-phase active">
               <div className="form-groups">
+                <div className="form-group">
+                  <label htmlFor="idNumber" className="form-label">
+                    {getIdNumberLabel()}
+                  </label>
+                  <input
+                    ref={idNumberInputRef}
+                    id="idNumber"
+                    type="text"
+                    className={`form-input ${activeInput === 'idNumber' ? 'active' : ''}`}
+                    placeholder={getIdNumberPlaceholder()}
+                    value={formData.idNumber}
+                    onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                    onFocus={() => handleInputFocus("idNumber")}
+                    autoComplete="off"
+                    readOnly
+                  />
+                  <div className="input-hint">
+                    Numbers and hyphens only (e.g., {isEmployee ? "2023-001" : "2022-200901"})
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="password" className="form-label">
+                    Create Password
+                  </label>
+                  <div className="password-input-container">
+                    <input
+                      ref={passwordInputRef}
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      className={`form-input ${activeInput === 'password' ? 'active' : ''} ${formData.password.length >= 10 ? 'max-length' : ''}`}
+                      placeholder="Enter 6-10 characters"
+                      value={formData.password}
+                      onChange={(e) => {
+                        // Only allow input up to 10 characters
+                        if (e.target.value.length <= 10) {
+                          handleInputChange('password', e.target.value);
+                        }
+                      }}
+                      onFocus={() => handleInputFocus("password")}
+                      autoComplete="new-password"
+                      readOnly
+                      maxLength={10}
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle"
+                      onClick={togglePasswordVisibility}
+                    >
+                      {showPassword ? "👁️" : "👁️‍🗨️"}
+                    </button>
+                  </div>
+                  
+                  {/* Simple password guidelines */}
+                  <div className="password-guidelines">
+                    <span className="guideline-text">
+                      {formData.password.length > 0 ? `${formData.password.length}/10 characters` : '6-10 characters'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="security-note">
+                  <div className="security-icon">🎓</div>
+                  <p>
+                    {isEmployee 
+                      ? "Your employee number will be used for official identification and record keeping."
+                      : "Your student number will be used for official identification and academic records."
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Email & SMS in one phase */}
+          {currentStep === 1 && (
+            <div className="form-phase active">
+              <div className="form-groups">
+                {/* Email Input */}
                 <div className="form-group">
                   <label htmlFor="email" className="form-label">
                     Email Address
@@ -343,18 +507,8 @@ export default function RegisterTapID() {
                     readOnly
                   />
                 </div>
-                
-                <div className="security-note">
-                  <div className="security-icon">🔒</div>
-                  <p>Your email is encrypted and secure. We'll never share it with third parties.</p>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {currentStep === 1 && (
-            <div className="form-phase active">
-              <div className="form-groups">
+                {/* Mobile Input */}
                 <div className="form-group">
                   <label htmlFor="mobile" className="form-label">
                     Philippine Mobile Number
@@ -373,23 +527,41 @@ export default function RegisterTapID() {
                   />
                 </div>
                 
-                <div className="tapid-explanation">
-                  <h4>Philippine Mobile Format</h4>
-                  <p>Your number should start with 09 and be 11 digits total. This enables SMS verification and quick access.</p>
+                <div className="contact-explanation">
+                  <h4>Contact Information</h4>
+                  <p>We'll use your email for important updates and your mobile number for quick TapID login and security verification.</p>
+                  
+                  <div className="contact-benefits">
+                    <div className="benefit-item">
+                      <span className="benefit-icon">📧</span>
+                      <span>Email for account recovery and notifications</span>
+                    </div>
+                    <div className="benefit-item">
+                      <span className="benefit-icon">📱</span>
+                      <span>Mobile for quick TapID access and SMS verification</span>
+                    </div>
+                    <div className="benefit-item">
+                      <span className="benefit-icon">🔒</span>
+                      <span>Both are encrypted and secure</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
+          {/* Step 3: RFID Tap */}
           {currentStep === 2 && (
             <div className="form-phase active">
               <div className="form-groups">
                 <div className="id-scan-section">
+                  {/* Enhanced Scanner Animation */}
                   <div className="scanner-container">
-                    <div className="scanner-animation">
+                    <div className={`scanner-animation ${scannerStatus}`}>
                       <div className="scanner-glow"></div>
                       <div className="scanner-line"></div>
                       <div className="scanner-pulse"></div>
+                      <div className="scanner-waves"></div>
                       <div className="id-card-placeholder">
                         <div className="id-card">
                           <div className="id-chip"></div>
@@ -397,16 +569,47 @@ export default function RegisterTapID() {
                           <div className="rfid-symbol">📡</div>
                         </div>
                       </div>
+                      {scannerStatus === "processing" && (
+                        <div className="processing-overlay">
+                          <div className="spinner"></div>
+                          <p>Writing Data...</p>
+                        </div>
+                      )}
+                      {scannerStatus === "complete" && (
+                        <div className="success-overlay">
+                          <div className="success-checkmark">✓</div>
+                          <p>Success!</p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="scan-status">
-                      <div className={`status-indicator ${isScanning ? 'scanning' : idRegistered ? 'completed' : 'ready'}`}>
-                        {isScanning ? '🔄 Registering ID...' : 
-                         idRegistered ? '✅ Registration Complete' : '✅ Scanner Ready'}
+                      <div className={`status-indicator ${scannerStatus}`}>
+                        {getScannerStatusText()}
                       </div>
                     </div>
                   </div>
 
+                  {/* Progress Bar */}
+                  {isScanning && (
+                    <div className="scan-progress">
+                      <div className="progress-bar">
+                        <div 
+                          className="progress-fill" 
+                          style={{ width: `${scanProgress}%` }}
+                        ></div>
+                      </div>
+                      <p className="progress-text">
+                        {scanProgress < 20 && "Initializing scanner..."}
+                        {scanProgress >= 20 && scanProgress < 50 && "Reading ID data..."}
+                        {scanProgress >= 50 && scanProgress < 80 && "Writing user information..."}
+                        {scanProgress >= 80 && scanProgress < 100 && "Finalizing registration..."}
+                        {scanProgress === 100 && "Registration Complete!"}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Instructions */}
                   <div className="scan-instructions">
                     <h3>Tap Your ID Card on RFID Scanner</h3>
                     <p>Place your ID card on the RFID scanner to automatically save your information</p>
@@ -426,36 +629,28 @@ export default function RegisterTapID() {
                     </div>
                   </div>
 
-                  {isScanning && (
-                    <div className="scan-progress">
-                      <div className="progress-bar">
-                        <div 
-                          className="progress-fill" 
-                          style={{ width: `${scanProgress}%` }}
-                        ></div>
-                      </div>
-                      <p className="progress-text">
-                        {scanProgress < 30 && "Initializing registration..."}
-                        {scanProgress >= 30 && scanProgress < 70 && "Writing data to ID..."}
-                        {scanProgress >= 70 && scanProgress < 100 && "Finalizing registration..."}
-                        {scanProgress === 100 && "Registration Complete!"}
-                      </p>
-                    </div>
-                  )}
-
+                  {/* Manual Trigger for Testing */}
                   {!isScanning && !idRegistered && (
                     <div className="manual-trigger">
                       <p className="manual-hint">
-                        Development Mode: <button onClick={handleManualIDTap} className="manual-trigger-btn">Simulate ID Tap</button>
+                        Demo Mode: The system will auto-simulate in 5 seconds or 
+                        <button onClick={simulateRFIDDetection} className="manual-trigger-btn">
+                          Simulate ID Tap Now
+                        </button>
                       </p>
                     </div>
                   )}
 
+                  {/* Success Message */}
                   {idRegistered && (
                     <div className="registration-complete">
                       <div className="success-badge">
                         <span className="success-icon">✅</span>
-                        <span className="success-text">ID Successfully Registered! Redirecting...</span>
+                        <span className="success-text">
+                          ID Successfully Registered! 
+                          <br />
+                          <small>Redirecting to confirmation...</small>
+                        </span>
                       </div>
                     </div>
                   )}
@@ -473,7 +668,7 @@ export default function RegisterTapID() {
           )}
         </div>
 
-        {/* Custom Keyboard - Always shown for email/SMS steps */}
+        {/* Custom Keyboard - Only show for steps 0 and 1 */}
         {(currentStep === 0 || currentStep === 1) && (
           <div className="register-keyboard">
             <div className="register-keyboard-rows">

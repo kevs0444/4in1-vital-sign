@@ -73,14 +73,19 @@ export default function RegisterPersonalInfo() {
         return;
       }
       
-      // FIXED: Navigate to /register/tapid instead of /starting
+      // FIXED: Pass personal info as an object
       navigate("/register/tapid", {
         state: {
           ...location.state,
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          age: parseInt(formData.age, 10),
-          sex: formData.sex
+          personalInfo: {
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            age: parseInt(formData.age, 10),
+            sex: formData.sex,
+            birthMonth: formData.birthMonth,
+            birthDay: formData.birthDay,
+            birthYear: formData.birthYear
+          }
         }
       });
     }
