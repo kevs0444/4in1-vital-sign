@@ -1,8 +1,6 @@
 // frontend/src/utils/api.js
 const API_URL = "http://127.0.0.1:5000/api";
 
-// ... (checkBackendStatus function can remain the same)
-
 export const sensorAPI = {
   // ==================== CONNECTION & GENERAL ====================
   
@@ -64,30 +62,33 @@ export const sensorAPI = {
     }
   },
 
-  // Generic prepare/shutdown functions - FIXED to return promises
-  _prepareSensor: async (sensorName) => {
+  // Tare operation
+  performTare: async () => {
     try {
-      const response = await fetch(`${API_URL}/sensor/${sensorName}/prepare`, { 
-        method: 'POST' 
+      const response = await fetch(`${API_URL}/sensor/tare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     } catch (error) {
-      console.error(`Error preparing ${sensorName} sensor:`, error);
-      return { error: `Failed to prepare ${sensorName} sensor` };
+      console.error('Error performing tare:', error);
+      return { error: 'Failed to perform tare', details: error.message };
     }
   },
 
-  _shutdownSensor: async (sensorName) => {
+  // Auto-tare operation
+  autoTare: async () => {
     try {
-      const response = await fetch(`${API_URL}/sensor/${sensorName}/shutdown`, { 
-        method: 'POST' 
+      const response = await fetch(`${API_URL}/sensor/auto_tare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     } catch (error) {
-      console.error(`Error shutting down ${sensorName} sensor:`, error);
-      return { error: `Failed to shutdown ${sensorName} sensor` };
+      console.error('Error performing auto-tare:', error);
+      return { error: 'Failed to perform auto-tare', details: error.message };
     }
   },
 
@@ -106,8 +107,31 @@ export const sensorAPI = {
     }
   },
 
-  prepareWeight: () => sensorAPI._prepareSensor('weight'),
-  shutdownWeight: () => sensorAPI._shutdownSensor('weight'),
+  prepareWeight: async () => {
+    try {
+      const response = await fetch(`${API_URL}/sensor/weight/prepare`, { 
+        method: 'POST' 
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error preparing weight sensor:', error);
+      return { error: 'Failed to prepare weight sensor' };
+    }
+  },
+
+  shutdownWeight: async () => {
+    try {
+      const response = await fetch(`${API_URL}/sensor/weight/shutdown`, { 
+        method: 'POST' 
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error shutting down weight sensor:', error);
+      return { error: 'Failed to shutdown weight sensor' };
+    }
+  },
 
   getWeightStatus: async () => {
     try {
@@ -135,8 +159,31 @@ export const sensorAPI = {
     }
   },
 
-  prepareHeight: () => sensorAPI._prepareSensor('height'),
-  shutdownHeight: () => sensorAPI._shutdownSensor('height'),
+  prepareHeight: async () => {
+    try {
+      const response = await fetch(`${API_URL}/sensor/height/prepare`, { 
+        method: 'POST' 
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error preparing height sensor:', error);
+      return { error: 'Failed to prepare height sensor' };
+    }
+  },
+
+  shutdownHeight: async () => {
+    try {
+      const response = await fetch(`${API_URL}/sensor/height/shutdown`, { 
+        method: 'POST' 
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error shutting down height sensor:', error);
+      return { error: 'Failed to shutdown height sensor' };
+    }
+  },
 
   getHeightStatus: async () => {
     try {
@@ -146,60 +193,6 @@ export const sensorAPI = {
     } catch (error) {
       console.error('Error getting height status:', error);
       return { status: 'error', message: 'Failed to get height status' };
-    }
-  },
-
-  // ==================== TEMPERATURE SENSOR ====================
-  startTemperature: async () => {
-    try {
-      const response = await fetch(`${API_URL}/sensor/temperature/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      return { error: 'Failed to start measurement', details: error.message };
-    }
-  },
-
-  prepareTemperature: () => sensorAPI._prepareSensor('temperature'),
-  shutdownTemperature: () => sensorAPI._shutdownSensor('temperature'),
-  
-  getTemperatureStatus: async () => {
-    try {
-      const response = await fetch(`${API_URL}/sensor/temperature/status`);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      return { status: 'error', message: 'Failed to get temperature status' };
-    }
-  },
-
-  // ==================== MAX30102 SENSOR ====================
-  startMax30102: async () => {
-    try {
-      const response = await fetch(`${API_URL}/sensor/max30102/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      return { error: 'Failed to start MAX30102 measurement', details: error.message };
-    }
-  },
-
-  prepareMax30102: () => sensorAPI._prepareSensor('max30102'),
-  shutdownMax30102: () => sensorAPI._shutdownSensor('max30102'),
-
-  getMax30102Status: async () => {
-    try {
-      const response = await fetch(`${API_URL}/sensor/max30102/status`);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
-    } catch (error) {
-      return { status: 'error', message: 'Failed to get MAX30102 status' };
     }
   },
 };

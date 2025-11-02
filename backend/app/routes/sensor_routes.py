@@ -8,13 +8,14 @@ sensor_bp = Blueprint('sensor', __name__)
 
 @sensor_bp.route('/connect', methods=['POST'])
 def connect_sensors():
-    """Establishes BASIC connection to Arduino."""
+    """Establishes connection to Arduino with auto-tare."""
     connected = sensor_manager.connect()
     return jsonify({
         "connected": connected,
         "port": sensor_manager.port if connected else None,
-        "system_mode": "BASIC" if sensor_manager.basic_mode else "FULLY_INITIALIZED",
-        "message": "Basic connection established" if connected else "Connection failed"
+        "system_mode": "FULLY_INITIALIZED" if sensor_manager.auto_tare_completed else "BASIC",
+        "auto_tare_completed": sensor_manager.auto_tare_completed,
+        "message": "Connection established with auto-tare" if connected and sensor_manager.auto_tare_completed else "Connection established" if connected else "Connection failed"
     })
 
 @sensor_bp.route('/disconnect', methods=['POST'])
@@ -68,6 +69,12 @@ def tare_weight_sensor():
     result = sensor_manager.perform_tare()
     return jsonify(result)
 
+@sensor_bp.route('/auto_tare', methods=['POST'])
+def auto_tare():
+    """Perform automatic tare operation on weight sensor."""
+    result = sensor_manager.start_auto_tare()
+    return jsonify(result)
+
 @sensor_bp.route('/reset', methods=['POST'])
 def reset_measurements():
     """Resets all measurement results."""
@@ -85,7 +92,7 @@ def get_all_measurements():
     """Returns all completed measurements."""
     return jsonify(sensor_manager.get_measurements())
 
-# Individual sensor routes
+# Individual sensor routes - WEIGHT & HEIGHT ONLY
 @sensor_bp.route('/weight/start', methods=['POST'])
 def start_weight():
     result = sensor_manager.start_weight_measurement()
@@ -123,44 +130,6 @@ def shutdown_height():
 @sensor_bp.route('/height/status', methods=['GET'])
 def get_height_status():
     return jsonify(sensor_manager.get_height_status())
-
-@sensor_bp.route('/temperature/start', methods=['POST'])
-def start_temperature():
-    result = sensor_manager.start_temperature_measurement()
-    return jsonify(result)
-
-@sensor_bp.route('/temperature/prepare', methods=['POST'])
-def prepare_temperature():
-    result = sensor_manager.prepare_temperature_sensor()
-    return jsonify(result)
-
-@sensor_bp.route('/temperature/shutdown', methods=['POST'])
-def shutdown_temperature():
-    sensor_manager._power_down_sensor("temperature")
-    return jsonify({"status": "powered_down"})
-
-@sensor_bp.route('/temperature/status', methods=['GET'])
-def get_temperature_status():
-    return jsonify(sensor_manager.get_temperature_status())
-
-@sensor_bp.route('/max30102/start', methods=['POST'])
-def start_max30102():
-    result = sensor_manager.start_max30102_measurement()
-    return jsonify(result)
-
-@sensor_bp.route('/max30102/prepare', methods=['POST'])
-def prepare_max30102():
-    result = sensor_manager.prepare_max30102_sensor()
-    return jsonify(result)
-
-@sensor_bp.route('/max30102/shutdown', methods=['POST'])
-def shutdown_max30102():
-    sensor_manager._power_down_sensor("max30102")
-    return jsonify({"status": "powered_down"})
-
-@sensor_bp.route('/max30102/status', methods=['GET'])
-def get_max30102_status():
-    return jsonify(sensor_manager.get_max30102_status())
 
 @sensor_bp.route('/shutdown', methods=['POST'])
 def shutdown_sensors():

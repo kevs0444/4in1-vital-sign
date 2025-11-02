@@ -1145,12 +1145,6 @@
   100% { transform: rotate(360deg); }
 }
 
-.success-text {
-  color: #dc3545;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
 .retry-button {
   border: 2px solid #dc3545;
   background: transparent;

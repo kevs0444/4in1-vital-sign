@@ -20,7 +20,7 @@ export default function BMI() {
   const [measurementStep, setMeasurementStep] = useState(0); // 0: not started, 1: weight, 2: height, 3: complete
   const [countdown, setCountdown] = useState(0);
   
-  // New interactive state variables
+  // Interactive state variables
   const [weightMeasuring, setWeightMeasuring] = useState(false);
   const [heightMeasuring, setHeightMeasuring] = useState(false);
   const [weightComplete, setWeightComplete] = useState(false);
@@ -127,37 +127,28 @@ export default function BMI() {
       setStatusMessage("Starting weight measurement...");
       setMeasurementStep(1);
       
-      // Simulate live measurement updates
-      clearSimulatedMeasurements();
-      let simulatedWeight = 0;
-      weightIntervalRef.current = setInterval(() => {
-        simulatedWeight += Math.random() * 5;
-        if (simulatedWeight > 70) {
-          simulatedWeight = 70 + Math.random() * 20; // Final weight range 70-90kg
-          clearInterval(weightIntervalRef.current);
-        }
-        setLiveWeightValue(simulatedWeight.toFixed(1));
-      }, 200);
+      // Clear any previous weight
+      setWeight("");
+      setLiveWeightValue("");
       
+      // Start actual sensor measurement
       const response = await sensorAPI.startWeight();
       
       if (response.error) {
         setStatusMessage(`❌ ${response.error}`);
         handleRetry();
-        clearInterval(weightIntervalRef.current);
         return;
       }
       
       setStatusMessage("Please step on the scale and stand still.");
       measurementStarted.current = true;
-      startCountdown(10);
+      startCountdown(3); // 3 seconds for weight
       startMonitoring("weight");
       
     } catch (error) {
       console.error("Start weight error:", error);
       setStatusMessage("❌ Failed to start weight measurement");
       handleRetry();
-      clearInterval(weightIntervalRef.current);
     }
   };
 
@@ -169,37 +160,28 @@ export default function BMI() {
       setStatusMessage("Starting height measurement...");
       setMeasurementStep(2);
       
-      // Simulate live measurement updates
-      clearSimulatedMeasurements();
-      let simulatedHeight = 150;
-      heightIntervalRef.current = setInterval(() => {
-        simulatedHeight += Math.random() * 2;
-        if (simulatedHeight > 175) {
-          simulatedHeight = 170 + Math.random() * 15; // Final height range 170-185cm
-          clearInterval(heightIntervalRef.current);
-        }
-        setLiveHeightValue(simulatedHeight.toFixed(1));
-      }, 200);
+      // Clear any previous height
+      setHeight("");
+      setLiveHeightValue("");
       
+      // Start actual sensor measurement
       const response = await sensorAPI.startHeight();
       
       if (response.error) {
         setStatusMessage(`❌ ${response.error}`);
         handleRetry();
-        clearInterval(heightIntervalRef.current);
         return;
       }
       
       setStatusMessage("Please stand under the height sensor.");
       measurementStarted.current = true;
-      startCountdown(8);
+      startCountdown(2); // 2 seconds for height
       startMonitoring("height");
       
     } catch (error) {
       console.error("Start height error:", error);
       setStatusMessage("❌ Failed to start height measurement");
       handleRetry();
-      clearInterval(heightIntervalRef.current);
     }
   };
 
@@ -231,22 +213,25 @@ export default function BMI() {
           }
         }
         
-        // Handle measurement completion
+        // Handle measurement completion - FIXED LOGIC
         if (type === "weight" && data.weight && data.weight > 0 && !weight) {
           setWeight(data.weight.toFixed(1));
           setWeightMeasuring(false);
           setWeightComplete(true);
-          setLiveWeightValue(""); // Clear live value
-          setStatusMessage("✅ Weight measurement complete! Click the button to measure height.");
+          setStatusMessage("✅ Weight measurement complete! Starting height measurement...");
           setIsMeasuring(false);
           setCurrentMeasurement("");
           setMeasurementStep(2);
           stopMonitoring();
           stopCountdown();
-          clearSimulatedMeasurements();
           
+          // AUTOMATICALLY START HEIGHT MEASUREMENT AFTER WEIGHT
           setTimeout(() => {
             sensorAPI.shutdownWeight();
+            // Start height measurement after a short delay
+            setTimeout(() => {
+              startHeightMeasurement();
+            }, 1000);
           }, 1000);
         }
         
@@ -256,14 +241,12 @@ export default function BMI() {
           setHeightComplete(true);
           setMeasurementComplete(true);
           setBmiComplete(true);
-          setLiveHeightValue(""); // Clear live value
           setStatusMessage("✅ All measurements complete! Click the button to continue.");
           setIsMeasuring(false);
           setCurrentMeasurement("");
           setMeasurementStep(3);
           stopMonitoring();
           stopCountdown();
-          clearSimulatedMeasurements();
           
           setTimeout(() => {
             sensorAPI.shutdownHeight();
@@ -274,7 +257,6 @@ export default function BMI() {
         if (data.status === 'error' || data.status.includes('failed') || data.status.includes('invalid')) {
           setStatusMessage(`❌ ${type} measurement failed, retrying...`);
           handleRetry();
-          clearSimulatedMeasurements();
         }
 
       } catch (error) {
@@ -300,7 +282,6 @@ export default function BMI() {
       }, 2000);
     } else {
       setStatusMessage("❌ Maximum retries reached. Please check the sensors.");
-      clearSimulatedMeasurements();
     }
   };
 
@@ -351,14 +332,12 @@ export default function BMI() {
     }
   };
 
-  // ✅ CORRECTED: Navigation to BodyTemp with proper path
   const handleContinue = () => {
     if (!measurementComplete || !weight || !height) return;
     
     stopMonitoring();
-    clearSimulatedMeasurements();
     
-    // Prepare data to pass to BodyTemp
+    // Prepare data to pass to next page
     const bmiData = {
       ...location.state, // User personal info from Starting page
       weight: parseFloat(weight),
@@ -366,11 +345,13 @@ export default function BMI() {
       bmi: calculateBMI()
     };
     
-    console.log("Navigating to BodyTemp with data:", bmiData);
+    console.log("Navigating to next page with data:", bmiData);
     
-    navigate("/measure/bodytemp", {
-      state: bmiData
-    });
+    // For now, just show completion
+    setStatusMessage("✅ BMI measurement complete! Data ready for next step.");
+    
+    // Navigate to next page (you can change this to your desired route)
+    // navigate('/next-page', { state: bmiData });
   };
 
   const getButtonText = () => {
@@ -384,9 +365,9 @@ export default function BMI() {
       case 1:
         return weight ? "Start Height Measurement" : "Measuring Weight...";
       case 2:
-        return height ? "Continue to Temperature" : "Measuring Height...";
+        return height ? "Continue to Next Step" : "Measuring Height...";
       case 3:
-        return "Continue to Temperature";
+        return "Continue to Next Step";
       default:
         return "Start BMI Measurement";
     }
@@ -534,10 +515,10 @@ export default function BMI() {
                 measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''
               }`}>
                 <div className="step-number-circle">1</div>
-                <div className="step-icon">🚀</div>
-                <h4 className="step-title">Start Measurement</h4>
+                <div className="step-icon">⚖️</div>
+                <h4 className="step-title">Measure Weight</h4>
                 <p className="step-description">
-                  Click the button to begin BMI measurement process
+                  Step on scale and stand still for 3 seconds
                 </p>
                 <div className={`step-status ${
                   measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
@@ -551,14 +532,12 @@ export default function BMI() {
                 measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''
               }`}>
                 <div className="step-number-circle">2</div>
-                <div className="step-icon">⚖️</div>
-                <h4 className="step-title">Stand Still</h4>
+                <div className="step-icon">📏</div>
+                <h4 className="step-title">Measure Height</h4>
                 <p className="step-description">
-                  {isMeasuring && currentMeasurement === "weight" 
-                    ? "On scale - wait for measurement"
-                    : isMeasuring && currentMeasurement === "height"
-                    ? "Under sensor - wait for measurement"
-                    : "Follow instructions for each measurement"
+                  {isMeasuring && currentMeasurement === "height" 
+                    ? "Stand under sensor - wait for measurement"
+                    : "Stand under height sensor for measurement"
                   }
                 </p>
                 {isMeasuring && countdown > 0 && (
@@ -582,11 +561,11 @@ export default function BMI() {
               }`}>
                 <div className="step-number-circle">3</div>
                 <div className="step-icon">✅</div>
-                <h4 className="step-title">Continue</h4>
+                <h4 className="step-title">Complete</h4>
                 <p className="step-description">
                   {measurementComplete 
-                    ? "BMI complete! Continue to next step" 
-                    : "Click to proceed after measurements"
+                    ? "BMI calculated! Continue to next step" 
+                    : "BMI will be calculated automatically"
                   }
                 </p>
                 <div className={`step-status ${
@@ -609,11 +588,7 @@ export default function BMI() {
               <div className="spinner"></div>
             )}
             {getButtonText()}
-            {measurementComplete && (
-              <span style={{fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
-                Weight: {weight}kg • Height: {height}cm
-              </span>
-            )}
+            {/* REMOVED: The result text that was showing weight, height, and BMI */}
           </button>
           
           {/* Debug info */}
@@ -631,7 +606,7 @@ export default function BMI() {
             Status: {measurementComplete ? '✅ COMPLETE' : '⏳ MEASURING'} | 
             Weight: {weight || '--'} | 
             Height: {height || '--'} |
-            Path: /measure/bodytemp
+            Current: {currentMeasurement || 'none'}
           </div>
         </div>
       </div>
