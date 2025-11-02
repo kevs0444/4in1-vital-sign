@@ -98,14 +98,15 @@
   padding: 0 10px;
 }
 
-/* Display Section */
+/* Display Section - FIXED OVERLAPPING */
 .sensor-display-section {
   margin: 8px 0;
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 220px;
+  overflow: visible !important;
 }
 
 /* BMI Cards Container - UPDATED for 2 cards layout */
@@ -115,6 +116,7 @@
   gap: 25px;
   width: 100%;
   margin: 25px 0;
+  overflow: visible !important;
 }
 
 /* Top Row - Weight and Height Cards */
@@ -123,6 +125,7 @@
   justify-content: center;
   gap: 20px;
   width: 100%;
+  overflow: visible !important;
 }
 
 /* Bottom Row - BMI Result Card */
@@ -130,15 +133,16 @@
   display: flex;
   justify-content: center;
   width: 100%;
+  overflow: visible !important;
 }
 
-/* Measurement Cards - 10% LARGER with enhanced interactivity */
+/* Measurement Cards - FIXED OVERLAPPING */
 .measurement-card.bmi-card {
   flex: 1;
   min-width: 242px;
   max-width: 330px;
-  min-height: 264px;
-  padding: 28px 22px;
+  min-height: 280px; /* Increased height for additional content */
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -149,7 +153,8 @@
   justify-content: center;
   box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
   position: relative;
-  overflow: hidden;
+  overflow: visible !important;
+  z-index: 1;
 }
 
 .measurement-card.bmi-card::before {
@@ -161,6 +166,7 @@
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
   transition: left 0.6s ease;
+  z-index: -1;
 }
 
 .measurement-card.bmi-card:hover::before {
@@ -173,12 +179,13 @@
   border-color: #dc3545;
 }
 
-/* Active measurement state */
+/* Active measurement state - FIXED OVERLAPPING */
 .measurement-card.bmi-card.measuring-active {
   border-color: #17a2b8;
   background: linear-gradient(135deg, #f8fdff, #ffffff);
   animation: measuringPulse 2s ease-in-out infinite;
   box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+  z-index: 2;
 }
 
 .measurement-card.bmi-card.measuring-active .measurement-icon {
@@ -193,6 +200,7 @@
   border-color: #28a745;
   background: linear-gradient(135deg, #f8fff9, #ffffff);
   animation: completeCelebrate 0.6s ease-out;
+  z-index: 1;
 }
 
 .measurement-card.bmi-card.measurement-complete .measurement-icon {
@@ -200,15 +208,16 @@
 }
 
 .measurement-card.bmi-card .measurement-icon {
-  width: 77px;
-  height: 77px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 17px;
+  margin-bottom: 15px;
   transition: all 0.3s ease;
   position: relative;
+  z-index: 1;
 }
 
 .measurement-card.bmi-card.measuring-active .measurement-icon::after {
@@ -221,6 +230,7 @@
   border: 2px solid #17a2b8;
   border-radius: 50%;
   animation: ripple 1.5s linear infinite;
+  z-index: -1;
 }
 
 .measurement-image {
@@ -237,13 +247,15 @@
 .measurement-info {
   text-align: center;
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .measurement-card.bmi-card .measurement-title {
-  font-size: 1.43rem;
+  font-size: 1.4rem;
   color: #333;
   font-weight: 700;
-  margin: 0 0 17px 0;
+  margin: 0 0 15px 0;
   line-height: 1.1;
   transition: color 0.3s ease;
 }
@@ -261,17 +273,22 @@
   align-items: baseline;
   justify-content: center;
   gap: 7px;
-  margin-bottom: 13px;
+  margin-bottom: 10px;
   position: relative;
+  z-index: 1;
 }
 
 .measurement-card.bmi-card .value,
 .measurement-card.bmi-card .placeholder {
-  font-size: 2.64rem;
+  font-size: 2.5rem;
   font-weight: 800;
   line-height: 1;
   transition: all 0.3s ease;
   position: relative;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .measurement-card.bmi-card .value {
@@ -290,7 +307,7 @@
   color: #ccc;
 }
 
-/* Real-time measurement animation */
+/* Real-time measurement animation - FIXED */
 .measurement-card.bmi-card .value.measuring-live {
   animation: liveMeasurement 0.8s ease-in-out infinite alternate;
   position: relative;
@@ -308,7 +325,7 @@
 }
 
 .measurement-card.bmi-card .unit {
-  font-size: 1.43rem;
+  font-size: 1.3rem;
   color: #666;
   font-weight: 600;
   transition: color 0.3s ease;
@@ -322,16 +339,35 @@
   color: #28a745;
 }
 
+/* NEW: Height in feet display */
+.height-feet-display {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 12px;
+  min-height: 20px;
+  transition: all 0.3s ease;
+}
+
+.measurement-card.bmi-card.measuring-active .height-feet-display {
+  color: #17a2b8;
+}
+
+.measurement-card.bmi-card.measurement-complete .height-feet-display {
+  color: #28a745;
+}
+
 .measurement-status {
-  font-size: 0.99rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  padding: 9px 18px;
+  padding: 8px 16px;
   border-radius: 18px;
   display: inline-block;
   min-width: 110px;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  z-index: 1;
 }
 
 .measurement-status::before {
@@ -350,9 +386,9 @@
 }
 
 .measurement-card.bmi-card .measurement-status {
-  font-size: 0.94rem;
-  padding: 9px 18px;
-  min-width: 121px;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  min-width: 120px;
 }
 
 /* Status colors with enhanced animations */
@@ -381,19 +417,20 @@
   transform: translateY(-1px);
 }
 
-/* BMI Result Card - 10% LARGER with enhanced interactivity */
+/* BMI Result Card - FIXED OVERLAPPING */
 .bmi-result-card {
   min-width: 352px;
   max-width: 605px;
-  min-height: 198px;
-  padding: 28px;
+  min-height: 180px;
+  padding: 25px;
   background: white;
   border-radius: 18px;
   border: 2px solid #e9ecef;
   box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
-  overflow: hidden;
+  overflow: visible !important;
+  z-index: 1;
 }
 
 .bmi-result-card::before {
@@ -424,11 +461,11 @@
 }
 
 .bmi-result-header {
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .bmi-result-header h3 {
-  font-size: 1.54rem;
+  font-size: 1.5rem;
   color: #333;
   font-weight: 700;
   margin: 0;
@@ -443,20 +480,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
 }
 
 .bmi-value-display {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 11px;
-  margin-bottom: 13px;
+  gap: 10px;
+  margin-bottom: 12px;
   position: relative;
 }
 
 .bmi-value {
-  font-size: 2.86rem;
+  font-size: 2.6rem;
   font-weight: 800;
   color: #333;
   line-height: 1;
@@ -470,7 +509,7 @@
 }
 
 .bmi-unit {
-  font-size: 1.43rem;
+  font-size: 1.3rem;
   color: #666;
   font-weight: 600;
   transition: color 0.3s ease;
@@ -481,15 +520,16 @@
 }
 
 .bmi-category {
-  font-size: 1.21rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  padding: 11px 22px;
-  border-radius: 22px;
+  padding: 10px 20px;
+  border-radius: 20px;
   display: inline-block;
-  min-width: 154px;
+  min-width: 150px;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
   overflow: hidden;
+  z-index: 1;
 }
 
 .bmi-category::before {
@@ -513,11 +553,11 @@
 }
 
 .bmi-description {
-  font-size: 0.99rem;
+  font-size: 0.9rem;
   color: #666;
   line-height: 1.4;
   text-align: center;
-  max-width: 308px;
+  max-width: 300px;
   transition: all 0.3s ease;
 }
 
@@ -728,12 +768,14 @@
   }
 }
 
-/* Instruction Container - HORIZONTAL LAYOUT with 3 cards */
+/* Instruction Container - HORIZONTAL LAYOUT with 3 cards - FIXED OVERLAPPING */
 .instruction-container {
-  margin-top: 25px;
+  margin-top: 20px;
   width: 100%;
   display: flex;
   justify-content: center;
+  position: relative;
+  z-index: 1;
 }
 
 .instruction-cards-horizontal {
@@ -743,13 +785,15 @@
   width: 100%;
   max-width: 650px;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
 }
 
 .instruction-card-step {
   background: white;
   border: 2px solid #e9ecef;
   border-radius: 14px;
-  padding: 20px;
+  padding: 18px;
   min-width: 175px;
   max-width: 200px;
   flex: 1;
@@ -757,7 +801,8 @@
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
-  overflow: hidden;
+  overflow: visible !important;
+  z-index: 1;
 }
 
 .instruction-card-step::before {
@@ -785,27 +830,31 @@
   border-color: #dc3545;
   background: linear-gradient(135deg, #fff5f5, #ffffff);
   animation: instructionPulse 2s ease-in-out infinite;
+  z-index: 2;
 }
 
 .instruction-card-step.completed {
   border-color: #28a745;
   background: linear-gradient(135deg, #f0fff4, #ffffff);
+  z-index: 1;
 }
 
 .step-number-circle {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: #dc3545;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  margin: 0 auto 12px auto;
+  margin: 0 auto 10px auto;
   border: 2px solid #dc3545;
   transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .instruction-card-step.active .step-number-circle {
@@ -821,10 +870,12 @@
 }
 
 .step-icon {
-  font-size: 1.7rem;
-  margin-bottom: 10px;
+  font-size: 1.6rem;
+  margin-bottom: 8px;
   color: #666;
   transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .instruction-card-step.active .step-icon {
@@ -837,12 +888,14 @@
 }
 
 .step-title {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #333;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   line-height: 1.2;
   transition: color 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .instruction-card-step.active .step-title {
@@ -854,12 +907,14 @@
 }
 
 .step-description {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #666;
   line-height: 1.4;
   margin: 0;
   font-weight: 500;
   transition: color 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .instruction-card-step.active .step-description {
@@ -867,13 +922,15 @@
 }
 
 .step-status {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 12px;
-  margin-top: 10px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  margin-top: 8px;
   display: inline-block;
   transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .step-status.pending {
@@ -896,13 +953,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 5px;
+  margin-top: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .countdown-mini-circle {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: 2px solid #dc3545;
   border-radius: 50%;
   display: flex;
@@ -910,16 +969,18 @@
   justify-content: center;
   background: white;
   animation: countdownPulse 1s ease-in-out infinite alternate;
+  position: relative;
+  z-index: 1;
 }
 
 .countdown-mini-number {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: #dc3545;
 }
 
 .countdown-mini-text {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: #666;
   font-weight: 600;
 }
@@ -979,16 +1040,20 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-top: 15px;
+  gap: 6px;
+  margin-top: 12px;
+  position: relative;
+  z-index: 1;
 }
 
 .progress-bar-horizontal {
-  width: 200px;
-  height: 6px;
+  width: 180px;
+  height: 5px;
   background: #f0f0f0;
   border-radius: 3px;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 .progress-fill-horizontal {
@@ -999,13 +1064,13 @@
 }
 
 .progress-text {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #666;
   font-weight: 600;
 }
 
 .retry-indicator {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #dc3545;
   font-weight: 600;
 }
@@ -1015,8 +1080,8 @@
   background: #f8d7da;
   border: 1px solid #f5c6cb;
   border-radius: 10px;
-  padding: 14px;
-  margin: 15px 0;
+  padding: 12px;
+  margin: 12px 0;
   text-align: center;
   color: #721c24;
   display: flex;
@@ -1025,6 +1090,8 @@
   gap: 8px;
   flex-wrap: wrap;
   animation: errorShake 0.5s ease-in-out;
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes errorShake {
@@ -1037,10 +1104,10 @@
   background: #dc3545;
   color: white;
   border: none;
-  padding: 5px 10px;
+  padding: 4px 8px;
   border-radius: 3px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 10px;
   transition: all 0.3s ease;
 }
 
@@ -1053,20 +1120,22 @@
 .continue-button-container {
   flex-shrink: 0;
   margin-top: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .continue-button {
   width: 100%;
-  padding: 18px 14px;
+  padding: 16px 14px;
   border: none;
   border-radius: 14px;
   background: linear-gradient(135deg, #dc3545, #c82333);
   color: white;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  min-height: 65px;
+  min-height: 60px;
   position: relative;
   overflow: hidden;
   box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35);
@@ -1075,6 +1144,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
+  z-index: 1;
 }
 
 .continue-button::before {
@@ -1132,8 +1202,8 @@
 }
 
 .spinner {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border: 2px solid transparent;
   border-top: 2px solid white;
   border-radius: 50%;
@@ -1150,12 +1220,12 @@
   background: transparent;
   color: #dc3545;
   border-radius: 6px;
-  padding: 10px 16px;
-  font-size: 0.85rem;
+  padding: 8px 14px;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-height: 40px;
+  min-height: 36px;
   box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
 }
 
@@ -1179,25 +1249,25 @@
   .instruction-card-step {
     min-width: 150px;
     max-width: 170px;
-    padding: 16px;
+    padding: 14px;
   }
   
   .step-number-circle {
-    width: 32px;
-    height: 32px;
-    font-size: 0.9rem;
-  }
-  
-  .step-icon {
-    font-size: 1.5rem;
-  }
-  
-  .step-title {
+    width: 30px;
+    height: 30px;
     font-size: 0.85rem;
   }
   
+  .step-icon {
+    font-size: 1.4rem;
+  }
+  
+  .step-title {
+    font-size: 0.8rem;
+  }
+  
   .step-description {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 }
 
@@ -1205,13 +1275,13 @@
   .instruction-cards-horizontal {
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   
   .instruction-card-step {
-    min-width: 220px;
-    max-width: 240px;
-    padding: 14px;
+    min-width: 200px;
+    max-width: 220px;
+    padding: 12px;
   }
   
   .instruction-card-step {
@@ -1248,13 +1318,13 @@
   .measurement-card.bmi-card {
     min-width: 200px;
     max-width: 260px;
-    min-height: 220px;
-    padding: 22px 18px;
+    min-height: 240px;
+    padding: 18px 16px;
   }
   
   .measurement-card.bmi-card .measurement-icon {
-    width: 65px;
-    height: 65px;
+    width: 60px;
+    height: 60px;
   }
   
   .measurement-card.bmi-card .value,
@@ -1265,8 +1335,8 @@
   .bmi-result-card {
     min-width: 280px;
     max-width: 460px;
-    padding: 22px;
-    min-height: 165px;
+    padding: 20px;
+    min-height: 160px;
   }
   
   .bmi-value {
@@ -1274,40 +1344,40 @@
   }
   
   .instruction-card-step {
-    padding: 16px;
+    padding: 14px;
   }
   
   .step-number-circle {
-    width: 30px;
-    height: 30px;
-    font-size: 0.85rem;
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
   }
   
   .step-icon {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
   }
   
   .step-title {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
   
   .step-description {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
   }
   
   .countdown-mini-circle {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
   }
   
   .countdown-mini-number {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
   
   .continue-button {
-    padding: 16px 12px;
-    font-size: 1.1rem;
-    min-height: 60px;
+    padding: 14px 12px;
+    font-size: 1rem;
+    min-height: 55px;
   }
 }
 
@@ -1336,13 +1406,13 @@
   .measurement-card.bmi-card {
     min-width: 160px;
     max-width: 200px;
-    min-height: 180px;
-    padding: 18px 14px;
+    min-height: 220px;
+    padding: 16px 12px;
   }
   
   .measurement-card.bmi-card .measurement-icon {
-    width: 55px;
-    height: 55px;
+    width: 50px;
+    height: 50px;
   }
   
   .measurement-card.bmi-card .value,
@@ -1353,8 +1423,8 @@
   .bmi-result-card {
     min-width: 220px;
     max-width: 350px;
-    padding: 18px;
-    min-height: 145px;
+    padding: 16px;
+    min-height: 140px;
   }
   
   .bmi-value {
@@ -1362,39 +1432,39 @@
   }
   
   .instruction-card-step {
-    padding: 14px;
+    padding: 12px;
   }
   
   .step-number-circle {
-    width: 28px;
-    height: 28px;
-    font-size: 0.8rem;
-  }
-  
-  .step-icon {
-    font-size: 1.3rem;
-  }
-  
-  .step-title {
-    font-size: 0.8rem;
-  }
-  
-  .step-description {
-    font-size: 0.7rem;
-  }
-  
-  .countdown-mini-circle {
     width: 26px;
     height: 26px;
-  }
-  
-  .countdown-mini-number {
     font-size: 0.75rem;
   }
   
+  .step-icon {
+    font-size: 1.2rem;
+  }
+  
+  .step-title {
+    font-size: 0.75rem;
+  }
+  
+  .step-description {
+    font-size: 0.65rem;
+  }
+  
+  .countdown-mini-circle {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .countdown-mini-number {
+    font-size: 0.7rem;
+  }
+  
   .continue-button {
-    padding: 14px 10px;
-    font-size: 1rem;
-    min-height: 55px;
+    padding: 12px 10px;
+    font-size: 0.9rem;
+    min-height: 50px;
   }
 }

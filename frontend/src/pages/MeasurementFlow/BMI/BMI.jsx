@@ -37,6 +37,20 @@ export default function BMI() {
   const heightIntervalRef = useRef(null);
   const measurementStarted = useRef(false);
 
+  // Add conversion functions
+  const kgToLbs = (kg) => {
+    if (!kg) return "";
+    return (parseFloat(kg) * 2.20462).toFixed(1);
+  };
+
+  const cmToFeet = (cm) => {
+    if (!cm) return "";
+    const feet = parseFloat(cm) / 30.48;
+    const wholeFeet = Math.floor(feet);
+    const inches = Math.round((feet - wholeFeet) * 12);
+    return `${wholeFeet}'${inches}"`;
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     initializeSensors();
@@ -434,6 +448,9 @@ export default function BMI() {
                     </span>
                     <span className="unit">kg</span>
                   </div>
+                  <div className="height-feet-display">
+                    {weight ? `${kgToLbs(weight)} lbs` : "--.-- lbs"}
+                  </div>
                   <span className={`measurement-status ${
                     weightMeasuring ? "measuring" : 
                     weight ? "complete" : "default"
@@ -460,6 +477,9 @@ export default function BMI() {
                        height || "--.--"}
                     </span>
                     <span className="unit">cm</span>
+                  </div>
+                  <div className="height-feet-display">
+                    {height ? `${cmToFeet(height)}` : "--'--\""}
                   </div>
                   <span className={`measurement-status ${
                     heightMeasuring ? "measuring" : 
