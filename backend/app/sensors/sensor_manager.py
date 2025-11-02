@@ -23,6 +23,24 @@ class SensorManager:
         self._stop_listener = False
         self._weight_measurement_active = False
         self._height_measurement_active = False
+        
+        # Real-time measurement data
+        self.live_data = {
+            'weight': {
+                'current': None,
+                'progress': 0,
+                'status': 'idle',
+                'elapsed': 0,
+                'total': 3
+            },
+            'height': {
+                'current': None,
+                'progress': 0,
+                'status': 'idle',
+                'elapsed': 0,
+                'total': 2
+            }
+        }
 
     def connect(self):
         """Establish connection and initialize sensors with auto-tare"""
@@ -138,6 +156,9 @@ class SensorManager:
                 weight = float(data.split(":")[2])
                 self.measurements['weight'] = weight
                 self._weight_measurement_active = False
+                self.live_data['weight']['current'] = weight
+                self.live_data['weight']['progress'] = 100
+                self.live_data['weight']['status'] = 'complete'
                 print(f"Weight measured: {weight} kg")
             except (IndexError, ValueError) as e:
                 print(f"Error parsing weight: {e}")
@@ -148,9 +169,72 @@ class SensorManager:
                 height = float(data.split(":")[2])
                 self.measurements['height'] = height
                 self._height_measurement_active = False
+                self.live_data['height']['current'] = height
+                self.live_data['height']['progress'] = 100
+                self.live_data['height']['status'] = 'complete'
                 print(f"Height measured: {height} cm")
             except (IndexError, ValueError) as e:
                 print(f"Error parsing height: {e}")
+
+        # Progress updates for weight
+        elif data.startswith("STATUS:AVERAGING_PROGRESS:"):
+            try:
+                progress_parts = data.split(":")
+                if len(progress_parts) >= 4:
+                    elapsed = int(progress_parts[2].split("/")[0])
+                    total = int(progress_parts[2].split("/")[1])
+                    progress_percent = int(progress_parts[3])
+                    
+                    self.live_data['weight']['elapsed'] = elapsed
+                    self.live_data['weight']['total'] = total
+                    self.live_data['weight']['progress'] = progress_percent
+                    self.live_data['weight']['status'] = 'averaging'
+                    
+                    print(f"Weight progress: {elapsed}/{total}s ({progress_percent}%)")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing weight progress: {e}")
+
+        # Progress updates for height
+        elif data.startswith("STATUS:HEIGHT_PROGRESS:"):
+            try:
+                progress_parts = data.split(":")
+                if len(progress_parts) >= 4:
+                    elapsed = int(progress_parts[2].split("/")[0])
+                    total = int(progress_parts[2].split("/")[1])
+                    progress_percent = int(progress_parts[3])
+                    
+                    self.live_data['height']['elapsed'] = elapsed
+                    self.live_data['height']['total'] = total
+                    self.live_data['height']['progress'] = progress_percent
+                    self.live_data['height']['status'] = 'averaging'
+                    
+                    print(f"Height progress: {elapsed}/{total}s ({progress_percent}%)")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing height progress: {e}")
+
+        # Live weight readings during detection/stabilization
+        elif data.startswith("DEBUG:") and "Weight reading" in data:
+            try:
+                # Extract current weight from debug message
+                weight_match = re.search(r'Weight reading: ([\d.]+)', data)
+                if weight_match:
+                    current_weight = float(weight_match.group(1))
+                    self.live_data['weight']['current'] = current_weight
+                    print(f"Live weight: {current_weight} kg")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing live weight: {e}")
+
+        # Live height readings
+        elif data.startswith("DEBUG:") and "Height reading" in data:
+            try:
+                # Extract current height from debug message
+                height_match = re.search(r'Height reading: ([\d.]+)', data)
+                if height_match:
+                    current_height = float(height_match.group(1))
+                    self.live_data['height']['current'] = current_height
+                    print(f"Live height: {current_height} cm")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing live height: {e}")
 
         # System status updates
         elif data.startswith("STATUS:AUTO_TARE_COMPLETE"):
@@ -166,15 +250,31 @@ class SensorManager:
         # Measurement status updates
         elif data.startswith("STATUS:WEIGHT_MEASUREMENT_STARTED"):
             self._weight_measurement_active = True
+            self.live_data['weight']['status'] = 'detecting'
+            self.live_data['weight']['progress'] = 0
+            self.live_data['weight']['elapsed'] = 0
 
         elif data.startswith("STATUS:HEIGHT_MEASUREMENT_STARTED"):
             self._height_measurement_active = True
+            self.live_data['height']['status'] = 'detecting'
+            self.live_data['height']['progress'] = 0
+            self.live_data['height']['elapsed'] = 0
+
+        elif data.startswith("STATUS:WEIGHT_STABILIZING"):
+            self.live_data['weight']['status'] = 'stabilizing'
+
+        elif data.startswith("STATUS:WEIGHT_AVERAGING"):
+            self.live_data['weight']['status'] = 'averaging'
 
         elif data.startswith("STATUS:WEIGHT_MEASUREMENT_COMPLETE"):
             self._weight_measurement_active = False
+            if self.live_data['weight']['status'] != 'complete':
+                self.live_data['weight']['status'] = 'complete'
 
         elif data.startswith("STATUS:HEIGHT_MEASUREMENT_COMPLETE"):
             self._height_measurement_active = False
+            if self.live_data['height']['status'] != 'complete':
+                self.live_data['height']['status'] = 'complete'
 
     def disconnect(self):
         """Disconnect from Arduino and cleanup"""
@@ -205,7 +305,8 @@ class SensorManager:
             "full_system_initialized": self.full_system_initialized,
             "weight_sensor_ready": self.weight_sensor_ready,
             "auto_tare_completed": self.auto_tare_completed,
-            "measurements": self.measurements
+            "measurements": self.measurements,
+            "live_data": self.live_data
         }
 
     def get_system_status(self):
@@ -304,6 +405,23 @@ class SensorManager:
             'weight': None,
             'height': None
         }
+        # Reset live data
+        self.live_data = {
+            'weight': {
+                'current': None,
+                'progress': 0,
+                'status': 'idle',
+                'elapsed': 0,
+                'total': 3
+            },
+            'height': {
+                'current': None,
+                'progress': 0,
+                'status': 'idle',
+                'elapsed': 0,
+                'total': 2
+            }
+        }
         return {"status": "success", "message": "Measurements reset"}
 
     def force_reconnect(self):
@@ -326,6 +444,14 @@ class SensorManager:
         try:
             self.serial_conn.write("START_WEIGHT\n".encode())
             self._weight_measurement_active = True
+            # Reset live data for new measurement
+            self.live_data['weight'] = {
+                'current': None,
+                'progress': 0,
+                'status': 'detecting',
+                'elapsed': 0,
+                'total': 3
+            }
             return {"status": "success", "message": "Weight measurement started"}
         except Exception as e:
             return {"status": "error", "message": f"Failed to start weight measurement: {str(e)}"}
@@ -345,6 +471,7 @@ class SensorManager:
     def shutdown_weight(self):
         """Shutdown weight sensor"""
         self._weight_measurement_active = False
+        self.live_data['weight']['status'] = 'idle'
         self._power_down_sensor("weight")
         return {"status": "powered_down"}
 
@@ -354,6 +481,7 @@ class SensorManager:
             "status": "unknown",
             "measurement_active": self._weight_measurement_active,
             "weight": self.measurements.get('weight'),
+            "live_data": self.live_data['weight'],
             "message": "Weight sensor status"
         }
         
@@ -374,6 +502,14 @@ class SensorManager:
         try:
             self.serial_conn.write("START_HEIGHT\n".encode())
             self._height_measurement_active = True
+            # Reset live data for new measurement
+            self.live_data['height'] = {
+                'current': None,
+                'progress': 0,
+                'status': 'detecting',
+                'elapsed': 0,
+                'total': 2
+            }
             return {"status": "success", "message": "Height measurement started"}
         except Exception as e:
             return {"status": "error", "message": f"Failed to start height measurement: {str(e)}"}
@@ -393,6 +529,7 @@ class SensorManager:
     def shutdown_height(self):
         """Shutdown height sensor"""
         self._height_measurement_active = False
+        self.live_data['height']['status'] = 'idle'
         self._power_down_sensor("height")
         return {"status": "powered_down"}
 
@@ -402,6 +539,7 @@ class SensorManager:
             "status": "unknown",
             "measurement_active": self._height_measurement_active,
             "height": self.measurements.get('height'),
+            "live_data": self.live_data['height'],
             "message": "Height sensor status"
         }
         
@@ -435,5 +573,7 @@ class SensorManager:
             time.sleep(1)
             self._weight_measurement_active = False
             self._height_measurement_active = False
+            self.live_data['weight']['status'] = 'idle'
+            self.live_data['height']['status'] = 'idle'
         except Exception as e:
             print(f"Error shutting down sensors: {e}")

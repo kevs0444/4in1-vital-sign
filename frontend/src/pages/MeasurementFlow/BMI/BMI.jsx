@@ -63,6 +63,22 @@ export default function BMI() {
     };
   }, []);
 
+  // Apply BMI category styling to progress bars
+  const applyCategoryStyling = (bmiCategory) => {
+    // This will be applied when BMI is calculated
+    if (bmiCategory) {
+      const progressFill = document.querySelector('.progress-fill');
+      const horizontalProgress = document.querySelector('.progress-fill-horizontal');
+      
+      if (progressFill) {
+        progressFill.className = `progress-fill ${bmiCategory}`;
+      }
+      if (horizontalProgress) {
+        horizontalProgress.className = `progress-fill-horizontal ${bmiCategory}`;
+      }
+    }
+  };
+
   const initializeSensors = async () => {
     try {
       setStatusMessage("Initializing measurement sensors...");
@@ -262,6 +278,11 @@ export default function BMI() {
           stopMonitoring();
           stopCountdown();
           
+          // Apply BMI category styling
+          const bmi = calculateBMI();
+          const bmiCategory = getBMICategory(bmi);
+          applyCategoryStyling(bmiCategory.class);
+          
           setTimeout(() => {
             sensorAPI.shutdownHeight();
           }, 1000);
@@ -400,7 +421,7 @@ export default function BMI() {
         {/* Progress bar for Step 1 of 4 */}
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `25%` }}></div>
+            <div className={`progress-fill ${bmiCategory.class || ''}`} style={{ width: `25%` }}></div>
           </div>
           <span className="progress-step">Step 1 of 4 - BMI</span>
         </div>
@@ -417,7 +438,7 @@ export default function BMI() {
             <div className="measurement-progress">
               <div className="progress-bar-horizontal">
                 <div 
-                  className="progress-fill-horizontal" 
+                  className={`progress-fill-horizontal ${bmiCategory.class || ''}`}
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
@@ -495,7 +516,7 @@ export default function BMI() {
             {/* Bottom Row - BMI Result Card */}
             <div className="bmi-cards-bottom-row">
               <div className={`bmi-result-card ${
-                bmiComplete ? 'has-result' : ''
+                bmiComplete ? `has-result ${bmiCategory.class}` : ''
               }`}>
                 <div className="bmi-result-header">
                   <h3>BMI Result</h3>
@@ -608,7 +629,6 @@ export default function BMI() {
               <div className="spinner"></div>
             )}
             {getButtonText()}
-            {/* REMOVED: The result text that was showing weight, height, and BMI */}
           </button>
           
           {/* Debug info */}
