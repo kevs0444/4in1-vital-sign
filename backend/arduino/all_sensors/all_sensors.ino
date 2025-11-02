@@ -442,6 +442,7 @@ void runWeightInitializationPhase() {
 void runWeightPhase() {
   static unsigned long stateStartTime = 0;
   static unsigned long lastProgressUpdate = 0;
+  static unsigned long lastLiveUpdate = 0;
   static float weightSum = 0;
   static int readingCount = 0;
   static float recentReadings[STABILITY_READING_COUNT];
@@ -452,6 +453,14 @@ void runWeightPhase() {
     case W_DETECTING:
       if (LoadCell.update()) {
         float currentWeight = LoadCell.getData();
+        
+        // Send live weight reading
+        if (millis() - lastLiveUpdate > 200) {
+          Serial.print("DEBUG:Weight reading: ");
+          Serial.println(currentWeight, 2);
+          lastLiveUpdate = millis();
+        }
+        
         if (currentWeight > WEIGHT_THRESHOLD) {
           Serial.println("STATUS:WEIGHT_STABILIZING");
           weightState = W_STABILIZING;
@@ -464,11 +473,19 @@ void runWeightPhase() {
 
     case W_STABILIZING:
       if (LoadCell.update()) {
-        recentReadings[readingIndex] = LoadCell.getData();
+        float currentWeight = LoadCell.getData();
+        recentReadings[readingIndex] = currentWeight;
         readingIndex++;
         if (readingIndex >= STABILITY_READING_COUNT) {
           readingIndex = 0;
           bufferFilled = true;
+        }
+
+        // Send live weight reading
+        if (millis() - lastLiveUpdate > 200) {
+          Serial.print("DEBUG:Weight reading: ");
+          Serial.println(currentWeight, 2);
+          lastLiveUpdate = millis();
         }
 
         if (bufferFilled) {
@@ -504,6 +521,13 @@ void runWeightPhase() {
         if (currentWeight < 0) currentWeight = 0;
         weightSum += currentWeight;
         readingCount++;
+        
+        // Send live weight reading
+        if (millis() - lastLiveUpdate > 200) {
+          Serial.print("DEBUG:Weight reading: ");
+          Serial.println(currentWeight, 2);
+          lastLiveUpdate = millis();
+        }
       }
 
       if (millis() - lastProgressUpdate > 500) {
@@ -529,6 +553,7 @@ void runWeightPhase() {
 void runHeightPhase() {
   static unsigned long lastProgressUpdate = 0;
   static unsigned long lastHeightRead = 0;
+  static unsigned long lastLiveUpdate = 0;
   unsigned long currentTime = millis();
 
   // Read height data more frequently for better averaging
@@ -536,27 +561,18 @@ void runHeightPhase() {
     int16_t distance, strength, temperature;
     
     if (heightSensor.getData(distance, strength, temperature, 0x10)) {
-      Serial.print("DEBUG:Height reading - Distance:");
-      Serial.print(distance);
-      Serial.print("cm, Strength:");
-      Serial.print(strength);
-      Serial.print(", Temp:");
-      Serial.println(temperature);
+      // Send live height reading
+      if (currentTime - lastLiveUpdate > 200) {
+        float currentHeight = SENSOR_HEIGHT_CM - distance;
+        Serial.print("DEBUG:Height reading: ");
+        Serial.println(currentHeight, 1);
+        lastLiveUpdate = currentTime;
+      }
       
       if (distance > MIN_VALID_HEIGHT_DIST && distance < MAX_VALID_HEIGHT_DIST && strength > MIN_SIGNAL_STRENGTH) {
         distanceSum += distance;
         heightReadCount++;
-        Serial.print("DEBUG:Valid height sample - Count:");
-        Serial.println(heightReadCount);
-      } else {
-        Serial.print("DEBUG:Invalid height reading - ");
-        if (distance <= MIN_VALID_HEIGHT_DIST) Serial.print("too close, ");
-        if (distance >= MAX_VALID_HEIGHT_DIST) Serial.print("too far, ");
-        if (strength <= MIN_SIGNAL_STRENGTH) Serial.print("weak signal");
-        Serial.println();
       }
-    } else {
-      Serial.println("DEBUG:Height sensor read failed - no data received");
     }
     lastHeightRead = currentTime;
   }
@@ -579,25 +595,14 @@ void runHeightPhase() {
       float avgDistance = (float)distanceSum / heightReadCount;
       float finalHeight = SENSOR_HEIGHT_CM - avgDistance;
       
-      Serial.print("DEBUG:Height calculation - AvgDistance:");
-      Serial.print(avgDistance);
-      Serial.print("cm, FinalHeight:");
-      Serial.print(finalHeight);
-      Serial.print("cm, Samples:");
-      Serial.println(heightReadCount);
-      
       if (finalHeight > 100 && finalHeight < 220) {
         Serial.print("RESULT:HEIGHT:");
         Serial.println(finalHeight, 1);
       } else {
         Serial.println("ERROR:HEIGHT_READING_OUT_OF_RANGE");
-        Serial.print("DEBUG:Calculated height ");
-        Serial.print(finalHeight);
-        Serial.println("cm is outside valid range (100-220cm)");
       }
     } else {
       Serial.println("ERROR:HEIGHT_READING_FAILED");
-      Serial.println("DEBUG:No valid height samples collected");
       
       // Try to get a single reading as fallback
       int16_t distance, strength, temperature;
@@ -606,9 +611,6 @@ void runHeightPhase() {
         if (fallbackHeight > 100 && fallbackHeight < 220 && strength > MIN_SIGNAL_STRENGTH) {
           Serial.print("RESULT:HEIGHT:");
           Serial.println(fallbackHeight, 1);
-          Serial.println("DEBUG:Used fallback single reading");
-        } else {
-          Serial.println("DEBUG:Fallback reading also invalid");
         }
       }
     }
