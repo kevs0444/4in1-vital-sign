@@ -29,6 +29,35 @@ export default function BodyTemp() {
   const pollerRef = useRef(null);
   const countdownRef = useRef(null);
 
+  // Add viewport meta tag to prevent zooming
+  useEffect(() => {
+    // Create or update viewport meta tag
+    let viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      document.head.appendChild(viewport);
+    }
+    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
+    
+    // Prevent zooming via touch gestures
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('gesturestart', preventZoom);
+      document.removeEventListener('gesturechange', preventZoom);
+      document.removeEventListener('gestureend', preventZoom);
+    };
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     initializeTemperatureSensor();
@@ -39,6 +68,29 @@ export default function BodyTemp() {
       stopCountdown();
     };
   }, []);
+
+  // Prevent zooming functions
+  const handleTouchStart = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length > 0) {
+      e.preventDefault();
+    }
+  };
+
+  const preventZoom = (e) => {
+    e.preventDefault();
+  };
 
   const initializeTemperatureSensor = async () => {
     try {
@@ -96,12 +148,13 @@ export default function BodyTemp() {
         
         // Update live reading from actual sensor data
         if (data.live_temperature !== null && data.live_temperature !== undefined) {
-          setLiveReading(data.live_temperature.toFixed(1));
-          setLiveTempValue(data.live_temperature.toFixed(1));
+          const currentTemp = data.live_temperature.toFixed(1);
+          setLiveReading(currentTemp);
+          setLiveTempValue(currentTemp);
           
           // Show live temperature when sensor is ready but not measuring
           if (!isMeasuring && !measurementComplete) {
-            setStatusMessage(`✅ Sensor ready. Current reading: ${data.live_temperature.toFixed(1)}°C - Click Start Measurement`);
+            setStatusMessage(`✅ Sensor ready. Current reading: ${currentTemp}°C - Click Start Measurement`);
           }
         }
 
@@ -226,11 +279,67 @@ export default function BodyTemp() {
   };
 
   const getTemperatureStatus = (temp) => {
-    if (!temp || temp === "--.-") return { text: "Not measured", class: "default" };
+    if (!temp || temp === "--.-") return { 
+      text: "Not measured", 
+      class: "default",
+      description: "Temperature not measured yet"
+    };
+    
     const tempValue = parseFloat(temp);
-    if (tempValue > 37.5) return { text: "Fever Detected", class: "fever" };
-    if (tempValue < 36.1) return { text: "Low Temperature", class: "low" };
-    return { text: "Normal", class: "normal" };
+    
+    if (tempValue >= 35.0 && tempValue <= 37.2) {
+      return { 
+        text: "Normal", 
+        class: "normal",
+        description: "Your body temperature is within normal range"
+      };
+    } else if (tempValue >= 37.3 && tempValue <= 38.0) {
+      return { 
+        text: "Elevated", 
+        class: "elevated",
+        description: "Your body temperature is elevated"
+      };
+    } else if (tempValue > 38.0) {
+      return { 
+        text: "Critical", 
+        class: "critical",
+        description: "Your body temperature indicates fever"
+      };
+    }
+    
+    // For temperatures below 35.0, show as default/unknown
+    return { 
+      text: "Invalid", 
+      class: "default",
+      description: "Temperature reading is outside normal range"
+    };
+  };
+
+  const getCurrentDisplayValue = () => {
+    if (tempMeasuring && liveTempValue) {
+      return liveTempValue;
+    }
+    if (measurementComplete && temperature) {
+      return temperature;
+    }
+    return "--.-";
+  };
+
+  const getCurrentStatusInfo = () => {
+    if (measurementComplete && temperature) {
+      return getTemperatureStatus(temperature);
+    }
+    
+    const currentValue = getCurrentDisplayValue();
+    if (currentValue !== "--.-") {
+      return getTemperatureStatus(currentValue);
+    }
+    
+    return { 
+      text: isReady ? 'Ready' : 'Initializing', 
+      class: isReady ? 'ready' : 'default',
+      description: isReady ? 'Ready for measurement' : 'Initializing temperature sensor'
+    };
   };
 
   const getButtonText = () => {
@@ -249,7 +358,8 @@ export default function BodyTemp() {
     return isMeasuring;
   };
 
-  const statusInfo = getTemperatureStatus(temperature);
+  const statusInfo = getCurrentStatusInfo();
+  const displayValue = getCurrentDisplayValue();
 
   return (
     <div className="bodytemp-container">
@@ -285,57 +395,49 @@ export default function BodyTemp() {
         </div>
 
         <div className="sensor-display-section">
-          {/* Single Temperature Card - Shows both measurement and result */}
-          <div className="temperature-card-container">
-            <div className={`measurement-card temperature-card ${
+          {/* Single Temperature Display - Shows live reading and result */}
+          <div className="temperature-display-container">
+            <div className={`temperature-display ${
               tempMeasuring ? 'measuring-active' : 
               tempComplete ? 'measurement-complete' : ''
-            }`}>
-              <div className="measurement-icon">
-                <img src={tempIcon} alt="Temperature Icon" className="measurement-image"/>
+            } ${statusInfo.class}`}>
+              <div className="temperature-icon">
+                <img src={tempIcon} alt="Temperature Icon" className="temperature-image"/>
               </div>
-              <div className="measurement-info">
-                <h3 className="measurement-title">
+              
+              <div className="temperature-content">
+                <h3 className="temperature-title">
                   {measurementComplete ? "Temperature Result" : "Body Temperature"}
                 </h3>
-                <div className="measurement-value">
-                  <span className={`value ${
+                
+                <div className="temperature-value-display">
+                  <span className={`temperature-value ${
                     tempMeasuring ? 'measuring-live' : ''
                   }`}>
-                    {tempMeasuring ? (liveTempValue || "00.0") : 
-                     temperature || "--.-"}
+                    {displayValue}
                   </span>
-                  <span className="unit">°C</span>
+                  <span className="temperature-unit">°C</span>
                 </div>
                 
-                {measurementComplete ? (
-                  <div className="temperature-result-info">
-                    <span className={`measurement-status ${statusInfo.class}`}>
-                      {statusInfo.text}
-                    </span>
-                    <div className="temp-description">
-                      {statusInfo.text === "Normal" 
-                        ? "Your body temperature is within normal range" 
-                        : statusInfo.text === "Low Temperature"
-                        ? "Your body temperature is below normal range"
-                        : "Your body temperature indicates fever"
-                      }
-                    </div>
-                  </div>
-                ) : (
-                  <span className={`measurement-status ${isReady ? 'ready' : 'default'}`}>
-                    {isReady ? 'Ready for Measurement' : 'Initializing...'}
+                <div className="temperature-status-info">
+                  <span className={`temperature-status ${statusInfo.class}`}>
+                    {statusInfo.text}
                   </span>
-                )}
+                  <div className="temperature-description">
+                    {statusInfo.description}
+                  </div>
+                </div>
                 
-                {liveReading && !measurementComplete && (
-                  <div className="live-indicator">Live Reading: {liveReading}°C</div>
+                {tempMeasuring && liveTempValue && (
+                  <div className="live-reading-indicator">
+                    🔄 Live Reading
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* INSTRUCTION DISPLAY - Simplified horizontal layout */}
+          {/* INSTRUCTION DISPLAY */}
           <div className="instruction-container">
             <div className="instruction-cards-horizontal">
               {/* Step 1 Card */}

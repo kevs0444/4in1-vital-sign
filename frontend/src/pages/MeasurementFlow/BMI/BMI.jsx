@@ -763,24 +763,6 @@ export default function BMI() {
             )}
             {getButtonText()}
           </button>
-          
-          {/* Debug info */}
-          <div style={{ 
-            marginTop: '10px', 
-            fontSize: '0.7rem', 
-            color: '#666',
-            textAlign: 'center',
-            padding: '5px',
-            background: '#f5f5f5',
-            borderRadius: '5px',
-            fontFamily: 'monospace'
-          }}>
-            Step: {measurementStep} | 
-            Status: {measurementComplete ? '✅ COMPLETE' : '⏳ MEASURING'} | 
-            Weight: {weight || '--'} | 
-            Height: {height || '--'} |
-            Current: {currentMeasurement || 'none'}
-          </div>
         </div>
       </div>
     </div>

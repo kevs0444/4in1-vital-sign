@@ -108,15 +108,15 @@
   min-height: 280px;
 }
 
-/* Temperature Card Container */
-.temperature-card-container {
+/* Temperature Display Container */
+.temperature-display-container {
   display: flex;
   justify-content: center;
   width: 100%;
   margin: 25px 0;
 }
 
-.measurement-card.temperature-card {
+.temperature-display {
   min-width: 320px;
   max-width: 450px;
   min-height: 340px;
@@ -126,7 +126,7 @@
   align-items: center;
   background: white;
   border-radius: 18px;
-  border: 2px solid #e9ecef;
+  border: 3px solid #e9ecef;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   justify-content: center;
   box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
@@ -134,42 +134,60 @@
   overflow: hidden;
 }
 
-.measurement-card.temperature-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
-  transition: left 0.6s ease;
+/* Dynamic temperature status colors */
+.temperature-display.normal {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #f8fff9, #ffffff);
 }
 
-.measurement-card.temperature-card:hover::before {
-  left: 100%;
+.temperature-display.elevated {
+  border-color: #ffc107;
+  background: linear-gradient(135deg, #fffdf0, #ffffff);
 }
 
-.measurement-card.temperature-card:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+.temperature-display.critical {
   border-color: #dc3545;
+  background: linear-gradient(135deg, #fff5f5, #ffffff);
+}
+
+.temperature-display.default {
+  border-color: #6c757d;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
 }
 
 /* Active measurement state */
-.measurement-card.temperature-card.measuring-active {
+.temperature-display.measuring-active {
   border-color: #17a2b8;
   background: linear-gradient(135deg, #f8fdff, #ffffff);
   animation: measuringPulse 2s ease-in-out infinite;
   box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-.measurement-card.temperature-card.measurement-complete {
-  border-color: #28a745;
-  background: linear-gradient(135deg, #f8fff9, #ffffff);
+.temperature-display.measurement-complete {
   animation: completeCelebrate 0.6s ease-out;
 }
 
-.measurement-card.temperature-card .measurement-icon {
+.temperature-display::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s ease;
+}
+
+.temperature-display:hover::before {
+  left: 100%;
+}
+
+.temperature-display:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+}
+
+.temperature-icon {
   width: 92px;
   height: 92px;
   display: flex;
@@ -181,23 +199,23 @@
   position: relative;
 }
 
-.measurement-image {
+.temperature-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
   transition: transform 0.3s ease;
 }
 
-.measurement-card.temperature-card:hover .measurement-image {
+.temperature-display:hover .temperature-image {
   transform: scale(1.1);
 }
 
-.measurement-info {
+.temperature-content {
   text-align: center;
   width: 100%;
 }
 
-.measurement-card.temperature-card .measurement-title {
+.temperature-title {
   font-size: 1.72rem;
   color: #333;
   font-weight: 700;
@@ -206,143 +224,143 @@
   transition: color 0.3s ease;
 }
 
-.measurement-card.temperature-card.measuring-active .measurement-title {
+.temperature-display.measuring-active .temperature-title {
   color: #17a2b8;
 }
 
-.measurement-card.temperature-card.measurement-complete .measurement-title {
-  color: #28a745;
-}
-
-.measurement-value {
+.temperature-value-display {
   display: flex;
   align-items: baseline;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   position: relative;
 }
 
-.measurement-card.temperature-card .value {
-  font-size: 3.17rem;
+.temperature-value {
+  font-size: 3.5rem;
   font-weight: 800;
   line-height: 1;
   transition: all 0.3s ease;
   position: relative;
 }
 
-.measurement-card.temperature-card .value {
-  color: #333;
-}
-
-.measurement-card.temperature-card.measuring-active .value {
-  color: #17a2b8;
-  animation: liveMeasurement 0.8s ease-in-out infinite alternate;
-}
-
-.measurement-card.temperature-card.measurement-complete .value {
+/* Dynamic value colors based on temperature */
+.temperature-display.normal .temperature-value {
   color: #28a745;
 }
 
-.measurement-card.temperature-card .unit {
+.temperature-display.elevated .temperature-value {
+  color: #ffc107;
+}
+
+.temperature-display.critical .temperature-value {
+  color: #dc3545;
+}
+
+.temperature-display.default .temperature-value {
+  color: #333;
+}
+
+.temperature-display.measuring-active .temperature-value {
+  animation: liveMeasurement 0.8s ease-in-out infinite alternate;
+}
+
+.temperature-unit {
   font-size: 1.72rem;
-  color: #666;
   font-weight: 600;
   transition: color 0.3s ease;
 }
 
-.measurement-card.temperature-card.measuring-active .unit {
-  color: #17a2b8;
-}
-
-.measurement-card.temperature-card.measurement-complete .unit {
+.temperature-display.normal .temperature-unit {
   color: #28a745;
 }
 
-.measurement-status {
-  font-size: 1.13rem;
-  font-weight: 600;
-  padding: 11px 22px;
-  border-radius: 18px;
+.temperature-display.elevated .temperature-unit {
+  color: #ffc107;
+}
+
+.temperature-display.critical .temperature-unit {
+  color: #dc3545;
+}
+
+.temperature-display.default .temperature-unit {
+  color: #666;
+}
+
+.temperature-status-info {
+  margin-top: 15px;
+}
+
+.temperature-status {
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 20px;
   display: inline-block;
-  min-width: 145px;
+  min-width: 160px;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
 }
 
-.measurement-status::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.5s ease;
-}
-
-.measurement-status:hover::before {
-  left: 100%;
-}
-
-/* Status colors */
-.measurement-status.ready {
+/* Status background colors */
+.temperature-status.normal {
   background: #28a745;
   color: white;
-  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
 }
 
-.measurement-status.default {
-  background: #6c757d;
-  color: white;
-}
-
-.measurement-status.normal {
-  background: #28a745;
-  color: white;
-  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
-}
-
-.measurement-status.low {
+.temperature-status.elevated {
   background: #ffc107;
   color: #212529;
-  box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+  box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
 }
 
-.measurement-status.fever {
+.temperature-status.critical {
   background: #dc3545;
   color: white;
-  box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
 }
 
-/* Temperature result info */
-.temperature-result-info {
-  margin-top: 10px;
+.temperature-status.default {
+  background: #6c757d;
+  color: white;
+  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
 }
 
-.temp-description {
-  font-size: 0.9rem;
+.temperature-status.ready {
+  background: #28a745;
+  color: white;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.temperature-description {
+  font-size: 0.95rem;
   color: #666;
   line-height: 1.4;
   text-align: center;
   max-width: 280px;
-  margin: 10px auto 0;
+  margin: 12px auto 0;
   transition: all 0.3s ease;
+  font-weight: 500;
 }
 
-/* Live reading indicator */
-.live-indicator {
-  font-size: 0.8rem;
+.live-reading-indicator {
+  font-size: 0.85rem;
   color: #17a2b8;
   font-weight: 600;
-  margin-top: 8px;
+  margin-top: 12px;
   animation: pulse 2s infinite;
+  background: rgba(23, 162, 184, 0.1);
+  padding: 6px 12px;
+  border-radius: 12px;
+  display: inline-block;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.7; }
 }
 
 /* Instruction Container */
@@ -747,24 +765,24 @@
     font-size: 0.75rem;
   }
   
-  .measurement-card.temperature-card {
+  .temperature-display {
     min-width: 280px;
     max-width: 350px;
     min-height: 300px;
     padding: 26px 20px;
   }
   
-  .measurement-card.temperature-card .measurement-icon {
+  .temperature-icon {
     width: 75px;
     height: 75px;
   }
   
-  .measurement-card.temperature-card .measurement-title {
+  .temperature-title {
     font-size: 1.4rem;
   }
   
-  .measurement-card.temperature-card .value {
-    font-size: 2.6rem;
+  .temperature-value {
+    font-size: 2.8rem;
   }
   
   .continue-button {
@@ -814,36 +832,36 @@
     flex: none;
   }
   
-  .measurement-card.temperature-card {
+  .temperature-display {
     min-width: 250px;
     max-width: 300px;
     min-height: 280px;
     padding: 22px 16px;
   }
   
-  .measurement-card.temperature-card .measurement-icon {
+  .temperature-icon {
     width: 65px;
     height: 65px;
     margin-bottom: 16px;
   }
   
-  .measurement-card.temperature-card .measurement-title {
+  .temperature-title {
     font-size: 1.3rem;
     margin-bottom: 16px;
   }
   
-  .measurement-card.temperature-card .value {
-    font-size: 2.2rem;
+  .temperature-value {
+    font-size: 2.4rem;
   }
   
-  .measurement-card.temperature-card .unit {
+  .temperature-unit {
     font-size: 1.3rem;
   }
   
-  .measurement-status {
+  .temperature-status {
     font-size: 1rem;
-    padding: 9px 18px;
-    min-width: 120px;
+    padding: 10px 20px;
+    min-width: 140px;
   }
   
   .continue-button {
