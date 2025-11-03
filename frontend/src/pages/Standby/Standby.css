@@ -1,4 +1,3 @@
-/* Standby.css (with zoom prevention) */
 /* Import Outfit Font with correct path */
 @font-face {
   font-family: 'Outfit';
@@ -68,13 +67,6 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  touch-action: manipulation;
 }
 
 html, body {
@@ -86,9 +78,6 @@ html, body {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 100%;
   background-color: var(--background-color);
-  -ms-touch-action: manipulation;
-  touch-action: manipulation;
-  -ms-content-zooming: none;
 }
 
 .standby-container {
@@ -100,8 +89,6 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
-  -ms-touch-action: manipulation;
-  touch-action: manipulation;
 }
 
 /* Main Content Container - Self-contained */

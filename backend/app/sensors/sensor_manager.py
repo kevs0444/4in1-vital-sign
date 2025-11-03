@@ -13,16 +13,20 @@ class SensorManager:
         self.basic_mode = True
         self.full_system_initialized = False
         self.weight_sensor_ready = False
+        self.temperature_sensor_ready = False
         self.auto_tare_completed = False
+        
         self.measurements = {
             'weight': None,
-            'height': None
+            'height': None,
+            'temperature': None
         }
         self._data_buffer = ""
         self._listener_thread = None
         self._stop_listener = False
         self._weight_measurement_active = False
         self._height_measurement_active = False
+        self._temperature_measurement_active = False
         
         # Real-time measurement data
         self.live_data = {
@@ -39,6 +43,14 @@ class SensorManager:
                 'status': 'idle',
                 'elapsed': 0,
                 'total': 2
+            },
+            'temperature': {
+                'current': None,
+                'progress': 0,
+                'status': 'idle',
+                'elapsed': 0,
+                'total': 2,
+                'ready_threshold': 34.0
             }
         }
 
@@ -176,6 +188,19 @@ class SensorManager:
             except (IndexError, ValueError) as e:
                 print(f"Error parsing height: {e}")
 
+        # Temperature measurement result
+        elif data.startswith("RESULT:TEMPERATURE:"):
+            try:
+                temperature = float(data.split(":")[2])
+                self.measurements['temperature'] = temperature
+                self._temperature_measurement_active = False
+                self.live_data['temperature']['current'] = temperature
+                self.live_data['temperature']['progress'] = 100
+                self.live_data['temperature']['status'] = 'complete'
+                print(f"✅ FINAL TEMPERATURE RESULT: {temperature} °C")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing temperature: {e}")
+
         # Final result display
         elif data.startswith("FINAL_RESULT:"):
             print(f"📊 {data}")
@@ -216,10 +241,27 @@ class SensorManager:
             except (IndexError, ValueError) as e:
                 print(f"Error parsing height progress: {e}")
 
+        # Progress updates for temperature
+        elif data.startswith("STATUS:TEMPERATURE_PROGRESS:"):
+            try:
+                progress_parts = data.split(":")
+                if len(progress_parts) >= 4:
+                    elapsed = int(progress_parts[2].split("/")[0])
+                    total = int(progress_parts[2].split("/")[1])
+                    progress_percent = int(progress_parts[3])
+                    
+                    self.live_data['temperature']['elapsed'] = elapsed
+                    self.live_data['temperature']['total'] = total
+                    self.live_data['temperature']['progress'] = progress_percent
+                    self.live_data['temperature']['status'] = 'measuring'
+                    
+                    print(f"🌡️ Temperature progress: {elapsed}/{total}s ({progress_percent}%)")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing temperature progress: {e}")
+
         # Live weight readings during detection/measuring
         elif data.startswith("DEBUG:Weight reading:"):
             try:
-                # Extract current weight from debug message
                 weight_match = re.search(r'Weight reading: ([\d.]+)', data)
                 if weight_match:
                     current_weight = float(weight_match.group(1))
@@ -231,7 +273,6 @@ class SensorManager:
         # Live height readings
         elif data.startswith("DEBUG:Height reading:"):
             try:
-                # Extract current height from debug message
                 height_match = re.search(r'Height reading: ([\d.]+)', data)
                 if height_match:
                     current_height = float(height_match.group(1))
@@ -240,7 +281,18 @@ class SensorManager:
             except (IndexError, ValueError) as e:
                 print(f"Error parsing live height: {e}")
 
-        # NEW: Valid height detection
+        # Live temperature readings
+        elif data.startswith("DEBUG:Temperature reading:"):
+            try:
+                temp_match = re.search(r'Temperature reading: ([\d.]+)', data)
+                if temp_match:
+                    current_temp = float(temp_match.group(1))
+                    self.live_data['temperature']['current'] = current_temp
+                    print(f"🌡️ Live temperature: {current_temp} °C")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing live temperature: {e}")
+
+        # Valid height detection
         elif data.startswith("DEBUG:Valid height detected:"):
             try:
                 height_match = re.search(r'Valid height detected: ([\d.]+)', data)
@@ -251,21 +303,16 @@ class SensorManager:
             except (IndexError, ValueError) as e:
                 print(f"Error parsing valid height: {e}")
 
-        # NEW: Height sensor diagnostics
-        elif data.startswith("DEBUG:Invalid reading - Dist:"):
-            print(f"⚠️ Height sensor diagnostic: {data}")
-            
-        elif data.startswith("DEBUG:Height sensor read failed"):
-            print("❌ Height sensor read failed")
-            
-        elif data.startswith("DEBUG:Attempting fallback height reading"):
-            print("🔄 Attempting fallback height reading")
-            
-        elif data.startswith("DEBUG:Fallback reading - Dist:"):
-            print(f"🔄 Fallback reading: {data}")
-
-        elif data.startswith("DEBUG:Using default height"):
-            print("ℹ️ Using default height for testing")
+        # Valid temperature detection
+        elif data.startswith("DEBUG:Valid temperature detected:"):
+            try:
+                temp_match = re.search(r'Valid temperature detected: ([\d.]+)', data)
+                if temp_match:
+                    current_temp = float(temp_match.group(1))
+                    self.live_data['temperature']['current'] = current_temp
+                    print(f"✅ Valid temperature: {current_temp} °C")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing valid temperature: {e}")
 
         # System status updates
         elif data.startswith("STATUS:AUTO_TARE_COMPLETE"):
@@ -276,6 +323,10 @@ class SensorManager:
         elif data.startswith("STATUS:WEIGHT_SENSOR_READY"):
             self.weight_sensor_ready = True
             print("✅ Weight sensor ready")
+
+        elif data.startswith("STATUS:TEMPERATURE_SENSOR_INITIALIZED"):
+            self.temperature_sensor_ready = True
+            print("✅ Temperature sensor initialized")
 
         elif data.startswith("STATUS:FULL_SYSTEM_INITIALIZATION_COMPLETE"):
             self.full_system_initialized = True
@@ -296,7 +347,14 @@ class SensorManager:
             self.live_data['height']['elapsed'] = 0
             print("📏 Height measurement started")
 
-        # NEW: Real-time measuring states
+        elif data.startswith("STATUS:TEMPERATURE_MEASUREMENT_STARTED"):
+            self._temperature_measurement_active = True
+            self.live_data['temperature']['status'] = 'detecting'
+            self.live_data['temperature']['progress'] = 0
+            self.live_data['temperature']['elapsed'] = 0
+            print("🌡️ Temperature measurement started")
+
+        # Real-time measuring states
         elif data.startswith("STATUS:WEIGHT_MEASURING"):
             self.live_data['weight']['status'] = 'measuring'
             print("⚖️ Weight measuring in progress")
@@ -304,6 +362,10 @@ class SensorManager:
         elif data.startswith("STATUS:HEIGHT_MEASURING"):
             self.live_data['height']['status'] = 'measuring'
             print("📏 Height measuring in progress")
+
+        elif data.startswith("STATUS:TEMPERATURE_MEASURING"):
+            self.live_data['temperature']['status'] = 'measuring'
+            print("🌡️ Temperature measuring in progress")
 
         elif data.startswith("STATUS:WEIGHT_MEASUREMENT_COMPLETE"):
             self._weight_measurement_active = False
@@ -316,6 +378,12 @@ class SensorManager:
             if self.live_data['height']['status'] != 'complete':
                 self.live_data['height']['status'] = 'complete'
             print("✅ Height measurement complete")
+
+        elif data.startswith("STATUS:TEMPERATURE_MEASUREMENT_COMPLETE"):
+            self._temperature_measurement_active = False
+            if self.live_data['temperature']['status'] != 'complete':
+                self.live_data['temperature']['status'] = 'complete'
+            print("✅ Temperature measurement complete")
 
         # Error handling
         elif data.startswith("ERROR:"):
@@ -352,6 +420,7 @@ class SensorManager:
             "basic_mode": self.basic_mode,
             "full_system_initialized": self.full_system_initialized,
             "weight_sensor_ready": self.weight_sensor_ready,
+            "temperature_sensor_ready": self.temperature_sensor_ready,
             "auto_tare_completed": self.auto_tare_completed,
             "measurements": self.measurements,
             "live_data": self.live_data
@@ -365,7 +434,8 @@ class SensorManager:
                 "connection_established": False,
                 "sensors_ready": {
                     "weight": False,
-                    "height": False
+                    "height": False,
+                    "temperature": False
                 },
                 "auto_tare_completed": False,
                 "system_mode": "DISCONNECTED"
@@ -376,7 +446,8 @@ class SensorManager:
             "connection_established": True,
             "sensors_ready": {
                 "weight": self.weight_sensor_ready,
-                "height": True  # Height sensor is always ready when connected
+                "height": True,  # Height sensor is always ready when connected
+                "temperature": self.temperature_sensor_ready
             },
             "auto_tare_completed": self.auto_tare_completed,
             "system_mode": "FULLY_INITIALIZED" if self.auto_tare_completed else "BASIC"
@@ -451,7 +522,8 @@ class SensorManager:
         """Reset all measurement results"""
         self.measurements = {
             'weight': None,
-            'height': None
+            'height': None,
+            'temperature': None
         }
         # Reset live data
         self.live_data = {
@@ -468,6 +540,14 @@ class SensorManager:
                 'status': 'idle',
                 'elapsed': 0,
                 'total': 2
+            },
+            'temperature': {
+                'current': None,
+                'progress': 0,
+                'status': 'idle',
+                'elapsed': 0,
+                'total': 2,
+                'ready_threshold': 34.0
             }
         }
         return {"status": "success", "message": "Measurements reset"}
@@ -602,6 +682,72 @@ class SensorManager:
             
         return status
 
+    # Temperature sensor control methods
+    def start_temperature_measurement(self):
+        """Start temperature measurement"""
+        if not self.is_connected:
+            return {"status": "error", "message": "Not connected to Arduino"}
+        
+        try:
+            self.serial_conn.write("START_TEMPERATURE\n".encode())
+            self._temperature_measurement_active = True
+            # Reset live data for new measurement
+            self.live_data['temperature'] = {
+                'current': None,
+                'progress': 0,
+                'status': 'detecting',
+                'elapsed': 0,
+                'total': 2,
+                'ready_threshold': 34.0
+            }
+            # Clear previous measurement
+            self.measurements['temperature'] = None
+            return {"status": "success", "message": "Temperature measurement started"}
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to start temperature measurement: {str(e)}"}
+
+    def prepare_temperature_sensor(self):
+        """Prepare temperature sensor for measurement"""
+        if not self.is_connected:
+            return {"status": "error", "message": "Not connected to Arduino"}
+        
+        try:
+            self.serial_conn.write("POWER_UP_TEMPERATURE\n".encode())
+            time.sleep(1)
+            return {"status": "success", "message": "Temperature sensor prepared"}
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to prepare temperature sensor: {str(e)}"}
+
+    def shutdown_temperature(self):
+        """Shutdown temperature sensor"""
+        self._temperature_measurement_active = False
+        self.live_data['temperature']['status'] = 'idle'
+        self._power_down_sensor("temperature")
+        return {"status": "powered_down"}
+
+    def get_temperature_status(self):
+        """Get temperature sensor status"""
+        status = {
+            "status": "unknown",
+            "measurement_active": self._temperature_measurement_active,
+            "temperature": self.measurements.get('temperature'),
+            "live_temperature": self.live_data['temperature']['current'],
+            "live_data": self.live_data['temperature'],
+            "ready_threshold": 34.0,
+            "sensor_prepared": self.temperature_sensor_ready,
+            "is_ready_for_measurement": self.temperature_sensor_ready,
+            "message": "Temperature sensor status"
+        }
+        
+        if not self.is_connected:
+            status.update({"status": "disconnected", "message": "Not connected to Arduino"})
+        elif not self.temperature_sensor_ready:
+            status.update({"status": "not_ready", "message": "Temperature sensor not initialized"})
+        else:
+            status.update({"status": "ready", "message": "Temperature sensor ready"})
+            
+        return status
+
     def _power_down_sensor(self, sensor_type):
         """Power down specific sensor"""
         if not self.is_connected:
@@ -612,6 +758,8 @@ class SensorManager:
                 self.serial_conn.write("POWER_DOWN_WEIGHT\n".encode())
             elif sensor_type == "height":
                 self.serial_conn.write("POWER_DOWN_HEIGHT\n".encode())
+            elif sensor_type == "temperature":
+                self.serial_conn.write("POWER_DOWN_TEMPERATURE\n".encode())
         except Exception as e:
             print(f"Error powering down {sensor_type}: {e}")
 
@@ -625,7 +773,9 @@ class SensorManager:
             time.sleep(1)
             self._weight_measurement_active = False
             self._height_measurement_active = False
+            self._temperature_measurement_active = False
             self.live_data['weight']['status'] = 'idle'
             self.live_data['height']['status'] = 'idle'
+            self.live_data['temperature']['status'] = 'idle'
         except Exception as e:
             print(f"Error shutting down sensors: {e}")

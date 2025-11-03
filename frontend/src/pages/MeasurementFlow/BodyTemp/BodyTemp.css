@@ -105,10 +105,10 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 280px; /* Increased for larger card */
+  min-height: 280px;
 }
 
-/* Temperature Card - 20% LARGER than BMI cards */
+/* Temperature Card Container */
 .temperature-card-container {
   display: flex;
   justify-content: center;
@@ -117,10 +117,10 @@
 }
 
 .measurement-card.temperature-card {
-  min-width: 290px; /* 20% larger: 242 * 1.2 = 290 */
-  max-width: 396px; /* 20% larger: 330 * 1.2 = 396 */
-  min-height: 317px; /* 20% larger: 264 * 1.2 = 317 */
-  padding: 34px 26px; /* 20% larger padding */
+  min-width: 320px;
+  max-width: 450px;
+  min-height: 340px;
+  padding: 34px 26px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -163,46 +163,22 @@
   box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-.measurement-card.temperature-card.measuring-active .measurement-icon {
-  animation: iconBounce 1.5s ease-in-out infinite;
-}
-
-.measurement-card.temperature-card.measuring-active .value {
-  animation: numberPulse 1s ease-in-out infinite;
-}
-
 .measurement-card.temperature-card.measurement-complete {
   border-color: #28a745;
   background: linear-gradient(135deg, #f8fff9, #ffffff);
   animation: completeCelebrate 0.6s ease-out;
 }
 
-.measurement-card.temperature-card.measurement-complete .measurement-icon {
-  animation: iconCelebrate 0.8s ease-out;
-}
-
 .measurement-card.temperature-card .measurement-icon {
-  width: 92px; /* 20% larger: 77 * 1.2 = 92 */
-  height: 92px; /* 20% larger: 77 * 1.2 = 92 */
+  width: 92px;
+  height: 92px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 20px; /* 20% larger: 17 * 1.2 = 20 */
+  margin-bottom: 20px;
   transition: all 0.3s ease;
   position: relative;
-}
-
-.measurement-card.temperature-card.measuring-active .measurement-icon::after {
-  content: '';
-  position: absolute;
-  top: -6px; /* 20% larger: 5 * 1.2 = 6 */
-  left: -6px; /* 20% larger: 5 * 1.2 = 6 */
-  right: -6px; /* 20% larger: 5 * 1.2 = 6 */
-  bottom: -6px; /* 20% larger: 5 * 1.2 = 6 */
-  border: 2px solid #17a2b8;
-  border-radius: 50%;
-  animation: ripple 1.5s linear infinite;
 }
 
 .measurement-image {
@@ -222,10 +198,10 @@
 }
 
 .measurement-card.temperature-card .measurement-title {
-  font-size: 1.72rem; /* 20% larger: 1.43 * 1.2 = 1.72 */
+  font-size: 1.72rem;
   color: #333;
   font-weight: 700;
-  margin: 0 0 20px 0; /* 20% larger: 17 * 1.2 = 20 */
+  margin: 0 0 20px 0;
   line-height: 1.1;
   transition: color 0.3s ease;
 }
@@ -242,14 +218,13 @@
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 8px; /* 20% larger: 7 * 1.2 = 8 */
-  margin-bottom: 16px; /* 20% larger: 13 * 1.2 = 16 */
+  gap: 8px;
+  margin-bottom: 16px;
   position: relative;
 }
 
-.measurement-card.temperature-card .value,
-.measurement-card.temperature-card .placeholder {
-  font-size: 3.17rem; /* 20% larger: 2.64 * 1.2 = 3.17 */
+.measurement-card.temperature-card .value {
+  font-size: 3.17rem;
   font-weight: 800;
   line-height: 1;
   transition: all 0.3s ease;
@@ -262,35 +237,15 @@
 
 .measurement-card.temperature-card.measuring-active .value {
   color: #17a2b8;
+  animation: liveMeasurement 0.8s ease-in-out infinite alternate;
 }
 
 .measurement-card.temperature-card.measurement-complete .value {
   color: #28a745;
 }
 
-.measurement-card.temperature-card .placeholder {
-  color: #ccc;
-}
-
-/* Real-time measurement animation */
-.measurement-card.temperature-card .value.measuring-live {
-  animation: liveMeasurement 0.8s ease-in-out infinite alternate;
-  position: relative;
-}
-
-.measurement-card.temperature-card .value.measuring-live::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #17a2b8, transparent);
-  animation: scanningLine 1.2s ease-in-out infinite;
-}
-
 .measurement-card.temperature-card .unit {
-  font-size: 1.72rem; /* 20% larger: 1.43 * 1.2 = 1.72 */
+  font-size: 1.72rem;
   color: #666;
   font-weight: 600;
   transition: color 0.3s ease;
@@ -305,12 +260,12 @@
 }
 
 .measurement-status {
-  font-size: 1.19rem; /* 20% larger: 0.99 * 1.2 = 1.19 */
+  font-size: 1.13rem;
   font-weight: 600;
-  padding: 11px 22px; /* 20% larger: 9*1.2=11, 18*1.2=22 */
+  padding: 11px 22px;
   border-radius: 18px;
   display: inline-block;
-  min-width: 132px; /* 20% larger: 110 * 1.2 = 132 */
+  min-width: 145px;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -331,36 +286,16 @@
   left: 100%;
 }
 
-.measurement-card.temperature-card .measurement-status {
-  font-size: 1.13rem; /* 20% larger: 0.94 * 1.2 = 1.13 */
-  padding: 11px 22px; /* 20% larger: 9*1.2=11, 18*1.2=22 */
-  min-width: 145px; /* 20% larger: 121 * 1.2 = 145 */
-}
-
-/* Status colors with enhanced effects */
-.measurement-status.measuring {
-  background: #17a2b8;
-  color: white;
-  animation: statusPulse 2s ease-in-out infinite;
-  box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
-}
-
-.measurement-status.complete {
+/* Status colors */
+.measurement-status.ready {
   background: #28a745;
   color: white;
   box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
-  animation: completePop 0.5s ease-out;
 }
 
 .measurement-status.default {
   background: #6c757d;
   color: white;
-  transition: all 0.3s ease;
-}
-
-.measurement-status.default:hover {
-  background: #5a6268;
-  transform: translateY(-1px);
 }
 
 .measurement-status.normal {
@@ -381,180 +316,19 @@
   box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
 }
 
-/* Temperature Result Card */
-.temp-result-card {
-  min-width: 352px;
-  max-width: 605px;
-  min-height: 198px;
-  padding: 28px;
-  background: white;
-  border-radius: 18px;
-  border: 2px solid #e9ecef;
-  box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  position: relative;
-  overflow: hidden;
-}
-
-.temp-result-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
-  transition: left 0.6s ease;
-}
-
-.temp-result-card:hover::before {
-  left: 100%;
-}
-
-.temp-result-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
-  border-color: #dc3545;
-}
-
-.temp-result-card.has-result {
-  border-color: #dc3545;
-  background: linear-gradient(135deg, #fff5f5, #ffffff);
-  animation: resultCelebrate 0.8s ease-out;
-}
-
-.temp-result-header {
-  margin-bottom: 22px;
-}
-
-.temp-result-header h3 {
-  font-size: 1.54rem;
-  color: #333;
-  font-weight: 700;
-  margin: 0;
-  transition: color 0.3s ease;
-}
-
-.temp-result-card.has-result .temp-result-header h3 {
-  color: #dc3545;
-}
-
-.temp-result-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 13px;
-}
-
-.temp-value-display {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 11px;
-  margin-bottom: 13px;
-  position: relative;
-}
-
-.temp-value {
-  font-size: 2.86rem;
-  font-weight: 800;
-  color: #333;
-  line-height: 1;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.temp-result-card.has-result .temp-value {
-  color: #dc3545;
-  animation: valueReveal 1s ease-out;
-}
-
-.temp-unit {
-  font-size: 1.43rem;
-  color: #666;
-  font-weight: 600;
-  transition: color 0.3s ease;
-}
-
-.temp-result-card.has-result .temp-unit {
-  color: #dc3545;
-}
-
-.temp-category {
-  font-size: 1.21rem;
-  font-weight: 700;
-  padding: 11px 22px;
-  border-radius: 22px;
-  display: inline-block;
-  min-width: 154px;
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  position: relative;
-  overflow: hidden;
-}
-
-.temp-category::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transition: left 0.5s ease;
-}
-
-.temp-category:hover::before {
-  left: 100%;
-}
-
-.temp-category:hover {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+/* Temperature result info */
+.temperature-result-info {
+  margin-top: 10px;
 }
 
 .temp-description {
-  font-size: 0.99rem;
+  font-size: 0.9rem;
   color: #666;
   line-height: 1.4;
   text-align: center;
-  max-width: 308px;
+  max-width: 280px;
+  margin: 10px auto 0;
   transition: all 0.3s ease;
-}
-
-.temp-result-card.has-result .temp-description {
-  color: #555;
-  animation: fadeInUp 0.8s ease-out 0.3s both;
-}
-
-/* Temperature Category Colors */
-.temp-category.normal {
-  background: #28a745;
-  color: white;
-  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
-}
-
-.temp-category.normal:hover {
-  box-shadow: 0 4px 20px rgba(40, 167, 69, 0.4);
-}
-
-.temp-category.low {
-  background: #ffc107;
-  color: #212529;
-  box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
-}
-
-.temp-category.low:hover {
-  box-shadow: 0 4px 20px rgba(255, 193, 7, 0.4);
-}
-
-.temp-category.fever {
-  background: #dc3545;
-  color: white;
-  box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
-}
-
-.temp-category.fever:hover {
-  box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4);
 }
 
 /* Live reading indicator */
@@ -571,7 +345,7 @@
   50% { opacity: 0.5; }
 }
 
-/* Instruction Container - HORIZONTAL LAYOUT with 3 cards */
+/* Instruction Container */
 .instruction-container {
   margin-top: 25px;
   width: 100%;
@@ -660,19 +434,16 @@
 .instruction-card-step.completed .step-number-circle {
   background: #28a745;
   border-color: #28a745;
-  animation: none;
 }
 
 .step-icon {
   font-size: 1.7rem;
   margin-bottom: 10px;
   color: #666;
-  transition: all 0.3s ease;
 }
 
 .instruction-card-step.active .step-icon {
   color: #dc3545;
-  animation: iconFloat 2s ease-in-out infinite;
 }
 
 .instruction-card-step.completed .step-icon {
@@ -685,15 +456,6 @@
   color: #333;
   margin: 0 0 8px 0;
   line-height: 1.2;
-  transition: color 0.3s ease;
-}
-
-.instruction-card-step.active .step-title {
-  color: #dc3545;
-}
-
-.instruction-card-step.completed .step-title {
-  color: #28a745;
 }
 
 .step-description {
@@ -702,11 +464,6 @@
   line-height: 1.4;
   margin: 0;
   font-weight: 500;
-  transition: color 0.3s ease;
-}
-
-.instruction-card-step.active .step-description {
-  color: #555;
 }
 
 .step-status {
@@ -716,7 +473,6 @@
   border-radius: 12px;
   margin-top: 10px;
   display: inline-block;
-  transition: all 0.3s ease;
 }
 
 .step-status.pending {
@@ -727,7 +483,6 @@
 .step-status.active {
   background: #dc3545;
   color: white;
-  animation: statusGlow 2s ease-in-out infinite;
 }
 
 .step-status.completed {
@@ -803,45 +558,6 @@
   font-weight: 600;
 }
 
-/* Error Message Display */
-.error-message {
-  background: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 10px;
-  padding: 14px;
-  margin: 15px 0;
-  text-align: center;
-  color: #721c24;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  animation: errorShake 0.5s ease-in-out;
-}
-
-@keyframes errorShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
-}
-
-.retry-button-small {
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 11px;
-  transition: all 0.3s ease;
-}
-
-.retry-button-small:hover {
-  background: #c82333;
-  transform: translateY(-1px);
-}
-
 /* Continue Button */
 .continue-button-container {
   flex-shrink: 0;
@@ -863,7 +579,6 @@
   position: relative;
   overflow: hidden;
   box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35);
-  animation: redGlow 2s ease-in-out infinite alternate;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -887,7 +602,7 @@
 
 .continue-button:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.02);
-  animation: redStrongGlow 1s ease-in-out infinite alternate;
+  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.45);
 }
 
 .continue-button:disabled {
@@ -895,33 +610,6 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
-  animation: none;
-}
-
-/* Glow Animations */
-@keyframes redGlow {
-  from {
-    box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35),
-                0 0 6px rgba(220, 53, 69, 0.25);
-  }
-  to {
-    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
-                0 0 12px rgba(220, 53, 69, 0.4),
-                0 0 20px rgba(220, 53, 69, 0.25);
-  }
-}
-
-@keyframes redStrongGlow {
-  from {
-    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
-                0 0 12px rgba(220, 53, 69, 0.5),
-                0 0 20px rgba(220, 53, 69, 0.35);
-  }
-  to {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.55),
-                0 0 16px rgba(220, 53, 69, 0.7),
-                0 0 28px rgba(220, 53, 69, 0.4);
-  }
 }
 
 .spinner {
@@ -938,74 +626,13 @@
   100% { transform: rotate(360deg); }
 }
 
-.success-text {
-  color: #dc3545;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.retry-button {
-  border: 2px solid #dc3545;
-  background: transparent;
-  color: #dc3545;
-  border-radius: 6px;
-  padding: 10px 16px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 40px;
-  box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
-}
-
-.retry-button:hover {
-  background: #fff0f0;
-  transform: translateY(-2px);
-  box-shadow: 0 3px 8px rgba(220, 53, 69, 0.25);
-}
-
-.retry-button:active {
-  transform: translateY(0);
-}
-
-/* Additional animation keyframes from BMI */
+/* Animations */
 @keyframes measuringPulse {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
   }
   50% {
     box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
-  }
-}
-
-@keyframes iconBounce {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-}
-
-@keyframes numberPulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.8;
-  }
-}
-
-@keyframes ripple {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
   }
 }
 
@@ -1017,40 +644,6 @@
   100% {
     transform: translateY(-2px);
     text-shadow: 0 0 15px rgba(23, 162, 184, 0.8);
-  }
-}
-
-@keyframes scanningLine {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-@keyframes statusPulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.5);
-  }
-}
-
-@keyframes completePop {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
   }
 }
 
@@ -1069,63 +662,6 @@
   }
   100% {
     transform: scale(1) rotate(0deg);
-  }
-}
-
-@keyframes iconCelebrate {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-  25% {
-    transform: scale(1.2) rotate(10deg);
-  }
-  50% {
-    transform: scale(1.1) rotate(-5deg);
-  }
-  75% {
-    transform: scale(1.2) rotate(5deg);
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-  }
-}
-
-@keyframes resultCelebrate {
-  0% {
-    transform: scale(0.95);
-    opacity: 0.8;
-  }
-  50% {
-    transform: scale(1.02);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes valueReveal {
-  0% {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeInUp {
-  0% {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 1;
   }
 }
 
@@ -1149,24 +685,6 @@
   }
 }
 
-@keyframes iconFloat {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-@keyframes statusGlow {
-  0%, 100% {
-    box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
-  }
-  50% {
-    box-shadow: 0 2px 15px rgba(220, 53, 69, 0.6);
-  }
-}
-
 @keyframes countdownPulse {
   0% {
     transform: scale(1);
@@ -1180,6 +698,26 @@
 
 /* Responsive design */
 @media (max-width: 768px) {
+  .bodytemp-container {
+    padding: 6px;
+  }
+  
+  .bodytemp-content {
+    padding: 20px;
+    max-width: 100%;
+    min-height: 88vh;
+    max-height: 92vh;
+    border-radius: 14px;
+  }
+  
+  .bodytemp-title {
+    font-size: 1.4rem;
+  }
+  
+  .bodytemp-subtitle {
+    font-size: 0.8rem;
+  }
+  
   .instruction-cards-horizontal {
     gap: 10px;
     max-width: 100%;
@@ -1208,76 +746,25 @@
   .step-description {
     font-size: 0.75rem;
   }
-}
-
-@media (max-width: 480px) {
-  .instruction-cards-horizontal {
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .instruction-card-step {
-    min-width: 220px;
-    max-width: 240px;
-    padding: 14px;
-  }
-  
-  .instruction-card-step {
-    flex: none;
-  }
-}
-
-/* 768x1366 specific optimization */
-@media (max-width: 768px) and (max-height: 1366px) {
-  .bodytemp-container {
-    padding: 6px;
-  }
-  
-  .bodytemp-content {
-    padding: 20px;
-    max-width: 100%;
-    min-height: 88vh;
-    max-height: 92vh;
-    border-radius: 14px;
-  }
-  
-  .bodytemp-title {
-    font-size: 1.4rem;
-  }
-  
-  .bodytemp-subtitle {
-    font-size: 0.8rem;
-  }
   
   .measurement-card.temperature-card {
-    min-width: 240px; /* Adjusted for mobile */
-    max-width: 320px; /* Adjusted for mobile */
-    min-height: 260px; /* Adjusted for mobile */
-    padding: 26px 20px; /* Adjusted for mobile */
+    min-width: 280px;
+    max-width: 350px;
+    min-height: 300px;
+    padding: 26px 20px;
   }
   
   .measurement-card.temperature-card .measurement-icon {
-    width: 75px; /* Adjusted for mobile */
-    height: 75px; /* Adjusted for mobile */
+    width: 75px;
+    height: 75px;
   }
   
   .measurement-card.temperature-card .measurement-title {
-    font-size: 1.4rem; /* Adjusted for mobile */
+    font-size: 1.4rem;
   }
   
   .measurement-card.temperature-card .value {
-    font-size: 2.6rem; /* Adjusted for mobile */
-  }
-  
-  .temp-result-card {
-    min-width: 280px;
-    max-width: 100%;
-    padding: 22px;
-  }
-  
-  .temp-value {
-    font-size: 2.4rem;
+    font-size: 2.6rem;
   }
   
   .continue-button {
@@ -1287,8 +774,7 @@
   }
 }
 
-/* 480x800 specific optimization */
-@media (max-width: 480px) and (max-height: 800px) {
+@media (max-width: 480px) {
   .bodytemp-container {
     padding: 4px;
   }
@@ -1309,67 +795,55 @@
   }
   
   .sensor-display-section {
-    min-height: 220px; /* Increased for larger card */
+    min-height: 220px;
+  }
+  
+  .instruction-cards-horizontal {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .instruction-card-step {
+    min-width: 220px;
+    max-width: 240px;
+    padding: 14px;
+  }
+  
+  .instruction-card-step {
+    flex: none;
   }
   
   .measurement-card.temperature-card {
-    min-width: 216px; /* Adjusted for small mobile */
-    max-width: 280px; /* Adjusted for small mobile */
-    min-height: 240px; /* Adjusted for small mobile */
-    padding: 22px 16px; /* Adjusted for small mobile */
+    min-width: 250px;
+    max-width: 300px;
+    min-height: 280px;
+    padding: 22px 16px;
   }
   
   .measurement-card.temperature-card .measurement-icon {
-    width: 65px; /* Adjusted for small mobile */
-    height: 65px; /* Adjusted for small mobile */
+    width: 65px;
+    height: 65px;
     margin-bottom: 16px;
   }
   
   .measurement-card.temperature-card .measurement-title {
-    font-size: 1.3rem; /* Adjusted for small mobile */
+    font-size: 1.3rem;
     margin-bottom: 16px;
   }
   
   .measurement-card.temperature-card .value {
-    font-size: 2.2rem; /* Adjusted for small mobile */
+    font-size: 2.2rem;
   }
   
   .measurement-card.temperature-card .unit {
-    font-size: 1.3rem; /* Adjusted for small mobile */
-  }
-  
-  .measurement-status {
-    font-size: 1rem; /* Adjusted for small mobile */
-    padding: 9px 18px; /* Adjusted for small mobile */
-    min-width: 120px; /* Adjusted for small mobile */
-  }
-  
-  .temp-result-card {
-    min-width: 240px;
-    padding: 18px;
-  }
-  
-  .temp-result-header h3 {
     font-size: 1.3rem;
   }
   
-  .temp-value {
-    font-size: 2rem;
-  }
-  
-  .temp-unit {
-    font-size: 1.2rem;
-  }
-  
-  .temp-category {
+  .measurement-status {
     font-size: 1rem;
     padding: 9px 18px;
-    min-width: 130px;
-  }
-  
-  .temp-description {
-    font-size: 0.85rem;
-    max-width: 260px;
+    min-width: 120px;
   }
   
   .continue-button {

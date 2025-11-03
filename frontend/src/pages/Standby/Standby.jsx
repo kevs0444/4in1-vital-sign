@@ -1,4 +1,4 @@
-// Standby.jsx (updated to prevent zooming)
+// Standby.jsx (updated)
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Button } from 'react-bootstrap';
@@ -17,35 +17,6 @@ export default function Standby() {
   const navigate = useNavigate();
 
   const pollerRef = useRef(null);
-
-  // Add viewport meta tag to prevent zooming
-  useEffect(() => {
-    // Create or update viewport meta tag
-    let viewport = document.querySelector('meta[name="viewport"]');
-    if (!viewport) {
-      viewport = document.createElement('meta');
-      viewport.name = 'viewport';
-      document.head.appendChild(viewport);
-    }
-    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-    
-    // Prevent zooming via touch gestures
-    document.addEventListener('touchstart', handleTouchStart, { passive: false });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
-    document.addEventListener('gesturestart', preventZoom, { passive: false });
-    document.addEventListener('gesturechange', preventZoom, { passive: false });
-    document.addEventListener('gestureend', preventZoom, { passive: false });
-    
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('gesturestart', preventZoom);
-      document.removeEventListener('gesturechange', preventZoom);
-      document.removeEventListener('gestureend', preventZoom);
-    };
-  }, []);
 
   // Effect for updating the clock
   useEffect(() => {
@@ -98,29 +69,6 @@ export default function Standby() {
       // ✅ Navigate to login page instead of measurement welcome
       navigate('/login');
     }, 200);
-  };
-
-  // Prevent zooming functions
-  const handleTouchStart = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchMove = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = (e) => {
-    if (e.touches.length > 0) {
-      e.preventDefault();
-    }
-  };
-
-  const preventZoom = (e) => {
-    e.preventDefault();
   };
 
   const formatTime = (date) =>

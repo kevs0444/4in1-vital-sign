@@ -46,6 +46,7 @@ def initialize_system():
         "message": "Full system initialization complete" if success else "Initialization may be incomplete",
         "full_system_initialized": sensor_manager.full_system_initialized,
         "weight_sensor_ready": sensor_manager.weight_sensor_ready,
+        "temperature_sensor_ready": sensor_manager.temperature_sensor_ready,
         "auto_tare_completed": sensor_manager.auto_tare_completed
     })
 
@@ -92,7 +93,7 @@ def get_all_measurements():
     """Returns all completed measurements."""
     return jsonify(sensor_manager.get_measurements())
 
-# Individual sensor routes - WEIGHT & HEIGHT ONLY
+# Individual sensor routes - WEIGHT, HEIGHT & TEMPERATURE
 @sensor_bp.route('/weight/start', methods=['POST'])
 def start_weight():
     result = sensor_manager.start_weight_measurement()
@@ -130,6 +131,26 @@ def shutdown_height():
 @sensor_bp.route('/height/status', methods=['GET'])
 def get_height_status():
     return jsonify(sensor_manager.get_height_status())
+
+# Temperature sensor routes
+@sensor_bp.route('/temperature/start', methods=['POST'])
+def start_temperature():
+    result = sensor_manager.start_temperature_measurement()
+    return jsonify(result)
+
+@sensor_bp.route('/temperature/prepare', methods=['POST'])
+def prepare_temperature():
+    result = sensor_manager.prepare_temperature_sensor()
+    return jsonify(result)
+
+@sensor_bp.route('/temperature/shutdown', methods=['POST'])
+def shutdown_temperature():
+    sensor_manager._power_down_sensor("temperature")
+    return jsonify({"status": "powered_down"})
+
+@sensor_bp.route('/temperature/status', methods=['GET'])
+def get_temperature_status():
+    return jsonify(sensor_manager.get_temperature_status())
 
 @sensor_bp.route('/shutdown', methods=['POST'])
 def shutdown_sensors():
