@@ -356,7 +356,7 @@ export const sensorAPI = {
     }
   },
 
-  // ==================== MAX30102 SENSOR ====================
+  // ==================== MAX30102 SENSOR - IMPROVED ====================
   startMax30102: async () => {
     try {
       return await fetchWithTimeout(`${API_URL}/sensor/max30102/start`, {
@@ -371,12 +371,53 @@ export const sensorAPI = {
     }
   },
 
-  prepareMax30102: () => sensorAPI._prepareSensor('max30102'),
+  prepareMax30102: async () => {
+    try {
+      // First power up the sensor
+      const result = await sensorAPI._prepareSensor('max30102');
+      
+      if (result.error) {
+        return result;
+      }
+      
+      // Wait for sensor to initialize and check finger detection
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Check initial status to see if finger is already detected
+      const status = await sensorAPI.getMax30102Status();
+      
+      return {
+        ...result,
+        initial_finger_detected: status.finger_detected || false,
+        sensor_ready: status.sensor_prepared || false
+      };
+      
+    } catch (error) {
+      console.error('Error preparing MAX30102 sensor:', error);
+      return { 
+        error: 'Failed to prepare MAX30102 sensor',
+        details: error.message 
+      };
+    }
+  },
+
   shutdownMax30102: () => sensorAPI._shutdownSensor('max30102'),
 
   getMax30102Status: async () => {
     try {
-      return await fetchWithTimeout(`${API_URL}/sensor/max30102/status`, {}, TIMEOUTS.SHORT);
+      const response = await fetchWithTimeout(`${API_URL}/sensor/max30102/status`, {}, TIMEOUTS.SHORT);
+      
+      // Enhanced response with better finger detection handling
+      return {
+        ...response,
+        // Ensure finger_detected is always a boolean
+        finger_detected: Boolean(response.finger_detected),
+        // Enhanced sensor readiness check
+        sensor_fully_ready: Boolean(response.sensor_prepared && response.status !== 'error'),
+        // Add timestamp for debugging
+        timestamp: new Date().toISOString()
+      };
+      
     } catch (error) {
       console.error('Error getting MAX30102 status:', error);
       return { 
@@ -392,14 +433,39 @@ export const sensorAPI = {
         elapsed: 0,
         total_time: 30,
         sensor_prepared: false,
+        sensor_fully_ready: false,
         final_results: {
           heart_rate: null,
           spo2: null,
           respiratory_rate: null
-        }
+        },
+        timestamp: new Date().toISOString()
       };
     }
   },
+
+  // New method to force finger detection check
+  checkFingerDetection: async () => {
+    try {
+      // This triggers the backend to immediately check finger status
+      const status = await sensorAPI.getMax30102Status();
+      
+      return {
+        finger_detected: status.finger_detected,
+        ir_value: status.ir_value || 0,
+        sensor_ready: status.sensor_prepared,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error checking finger detection:', error);
+      return {
+        finger_detected: false,
+        ir_value: 0,
+        sensor_ready: false,
+        error: error.message
+      };
+    }
+  }
 };
 
 // Export for backward compatibility

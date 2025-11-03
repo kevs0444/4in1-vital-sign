@@ -104,10 +104,8 @@ export default function RegisterRole() {
   };
 
   const getButtonText = () => {
-    if (!selectedRole) return "Choose your category to continue";
-    
-    const role = roles.find(r => r.id === selectedRole);
-    return `Continue as ${role?.title}`;
+    if (!selectedRole) return "Select a category to continue";
+    return "Continue to Next Step";
   };
 
   const getButtonClass = () => {
@@ -205,7 +203,6 @@ export default function RegisterRole() {
               disabled={!selectedRole}
             >
               {getButtonText()}
-              {selectedRole && <span className="button-arrow">→</span>}
             </button>
           </div>
         </div>
