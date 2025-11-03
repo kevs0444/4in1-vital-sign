@@ -1,4 +1,4 @@
-/* src/pages/Login/Login.css - OPTIMIZED FOR 768x1366 TOUCH SCREEN */
+/* src/pages/Login/Login.css - OPTIMIZED FOR 768x1366 TOUCH SCREEN (NON-ZOOMABLE) */
 .login-container {
   background: white;
   width: 100vw;
@@ -19,6 +19,12 @@
   justify-content: center;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  -ms-touch-action: manipulation;
+  -ms-content-zooming: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .login-content {
@@ -30,6 +36,7 @@
   flex-direction: column;
   overflow: hidden !important;
   position: relative;
+  touch-action: manipulation;
 }
 
 /* TOP SECTION - ID CARD FORMAT (25%) */
@@ -46,6 +53,7 @@
   position: relative;
   overflow: hidden;
   min-height: 0;
+  touch-action: manipulation;
 }
 
 .card-section-content {
@@ -71,6 +79,7 @@
   border: 2px solid rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(10px);
   flex-shrink: 0;
+  touch-action: manipulation;
 }
 
 .card-icon .MuiSvgIcon-root {
@@ -86,6 +95,10 @@
   line-height: 1.1;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .card-subtitle {
@@ -96,6 +109,10 @@
   font-weight: 500;
   flex-shrink: 0;
   max-width: 90%;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .physical-scanner-notice {
@@ -112,6 +129,11 @@
   font-size: 0.85rem;
   backdrop-filter: blur(10px);
   flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .physical-scanner-notice .MuiSvgIcon-root {
@@ -129,6 +151,7 @@
   position: relative;
   min-height: 0;
   overflow: hidden;
+  touch-action: manipulation;
 }
 
 .login-header {
@@ -142,12 +165,20 @@
   font-size: 1.6rem;
   font-weight: 800;
   margin-bottom: 0.5rem;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .login-subtitle {
   color: #666;
   font-size: 0.95rem;
   font-weight: 500;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .login-form {
@@ -159,6 +190,7 @@
   flex-direction: column;
   justify-content: center;
   min-height: 0;
+  touch-action: manipulation;
 }
 
 .form-group {
@@ -173,6 +205,10 @@
   margin-bottom: 0.5rem;
   display: block;
   text-align: left;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .form-input {
@@ -190,6 +226,11 @@
   touch-action: manipulation;
   flex-shrink: 0;
   box-sizing: border-box;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .form-input:focus {
@@ -224,6 +265,11 @@
   color: white !important;
   letter-spacing: 0.02em;
   flex-shrink: 0;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .login-button:hover:not(:disabled) {
@@ -253,6 +299,10 @@
   color: #666;
   font-size: 0.9rem;
   margin-bottom: 0.8rem;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .register-link {
@@ -270,6 +320,11 @@
   font-size: 0.9rem;
   touch-action: manipulation;
   flex-shrink: 0;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .register-link:active {
@@ -329,6 +384,10 @@
   user-select: none;
   flex-shrink: 0;
   box-sizing: border-box;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .login-keyboard-key:active {
@@ -423,6 +482,10 @@
   animation: slideDown 0.3s ease-out;
   border-left: 3px solid #dc2626;
   flex-shrink: 0;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 @keyframes slideDown {
@@ -555,4 +618,19 @@
     min-height: 38px;
     font-size: 0.85rem;
   }
+}
+
+/* Additional zoom prevention */
+* {
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+html, body {
+  -ms-content-zooming: none;
+  -ms-touch-action: manipulation;
+  touch-action: manipulation;
 }

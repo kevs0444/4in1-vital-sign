@@ -37,6 +37,13 @@
   left: 0;
   right: 0;
   bottom: 0;
+  -ms-touch-action: manipulation;
+  touch-action: manipulation;
+  -ms-content-zooming: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 /* Content Box - Wider and less tall */
@@ -57,6 +64,7 @@
   overflow: hidden;
   margin: auto;
   border: 1px solid var(--border-gray); /* Changed to gray border */
+  touch-action: manipulation;
 }
 
 .starting-content.visible {
@@ -77,6 +85,10 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* Changed to gray shadow */
   border: 3px solid var(--border-light); /* Changed to gray border */
   transition: all 0.3s ease;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .logo-image:hover {
@@ -98,6 +110,10 @@
   font-weight: var(--font-black);
   margin-bottom: 0.5rem;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Changed to gray shadow */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .starting-subtitle {
@@ -105,6 +121,10 @@
   color: #4b5563;
   font-weight: var(--font-medium);
   margin: 0;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 /* Personal Info Summary - Compact with gray theme */
@@ -119,6 +139,7 @@
   border-right: 1px solid var(--border-light);
   border-top: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
+  touch-action: manipulation;
 }
 
 .personal-info-summary:hover {
@@ -136,6 +157,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .summary-title::before {
@@ -173,12 +198,20 @@
   font-size: 0.95rem;
   color: #333;
   font-weight: var(--font-semi-bold);
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .info-value {
   font-size: 0.95rem;
   color: #555; /* Changed to medium gray */
   font-weight: var(--font-medium);
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 /* Measurement Instructions - Compact with gray theme */
@@ -195,6 +228,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .instructions-title::before {
@@ -221,6 +258,11 @@
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .instruction-item::before {
@@ -257,6 +299,10 @@
   text-align: center;
   color: #666; /* Changed to medium gray */
   transition: all 0.3s ease;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .instruction-item:hover .instruction-icon {
@@ -276,11 +322,19 @@
   color: #333;
   font-weight: var(--font-semi-bold);
   margin-bottom: 0.2rem;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .instruction-text span {
   font-size: 0.85rem;
   color: #666;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 /* Action Button - UPDATED: Full width red button with enhanced interactivity and 30% larger */
@@ -304,6 +358,12 @@
   width: 100%;
   position: relative;
   overflow: hidden;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .start-button::before {
@@ -497,4 +557,19 @@
     font-size: 1.43rem; /* Increased by 30% from 1.1rem */
     width: 100%;
   }
+}
+
+/* Additional zoom prevention */
+* {
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+html, body {
+  -ms-content-zooming: none;
+  -ms-touch-action: manipulation;
+  touch-action: manipulation;
 }

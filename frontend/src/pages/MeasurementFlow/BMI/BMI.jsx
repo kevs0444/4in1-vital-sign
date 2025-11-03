@@ -51,6 +51,70 @@ export default function BMI() {
   const heightIntervalRef = useRef(null);
   const measurementStarted = useRef(false);
 
+  // Add viewport meta tag to prevent zooming
+  useEffect(() => {
+    // Create or update viewport meta tag
+    let viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      document.head.appendChild(viewport);
+    }
+    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
+    
+    // Prevent zooming via touch gestures
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('gesturestart', preventZoom);
+      document.removeEventListener('gesturechange', preventZoom);
+      document.removeEventListener('gestureend', preventZoom);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 100);
+    initializeSensors();
+
+    return () => {
+      clearTimeout(timer);
+      stopMonitoring();
+      stopCountdown();
+      clearSimulatedMeasurements();
+    };
+  }, []);
+
+  // Prevent zooming functions
+  const handleTouchStart = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length > 0) {
+      e.preventDefault();
+    }
+  };
+
+  const preventZoom = (e) => {
+    e.preventDefault();
+  };
+
   // Add conversion functions
   const kgToLbs = (kg) => {
     if (!kg) return "";
@@ -64,18 +128,6 @@ export default function BMI() {
     const inches = Math.round((feet - wholeFeet) * 12);
     return `${wholeFeet}'${inches}"`;
   };
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    initializeSensors();
-
-    return () => {
-      clearTimeout(timer);
-      stopMonitoring();
-      stopCountdown();
-      clearSimulatedMeasurements();
-    };
-  }, []);
 
   const initializeSensors = async () => {
     try {
@@ -112,7 +164,27 @@ export default function BMI() {
     } else if (measurementStep === 2 && height) {
       // Measurements complete, navigate to next page
       handleContinue();
+    } else if (measurementStep === 3) {
+      // All measurements complete, proceed to BodyTemp
+      navigateToBodyTemp();
     }
+  };
+
+  const navigateToBodyTemp = () => {
+    // Prepare data to pass to next page
+    const measurementData = {
+      ...location.state, // User personal info from Starting page
+      bmi: {
+        weight: parseFloat(weight),
+        height: parseFloat(height),
+        bmi: calculateBMI()
+      }
+    };
+    
+    console.log("Navigating to BodyTemp with data:", measurementData);
+    
+    // Navigate to Body Temperature measurement
+    navigate('/measure/bodytemp', { state: measurementData });
   };
 
   const startCountdown = (seconds) => {
@@ -155,14 +227,15 @@ export default function BMI() {
       setStatusMessage("Starting weight measurement...");
       setMeasurementStep(1);
       
-      // Clear any previous weight and reset live data
+      // CLEAR PREVIOUS DATA - This ensures fresh measurement each time
       setWeight("");
+      setWeightComplete(false);
       setLiveWeightData({
         current: null,
         progress: 0,
         status: 'detecting',
         elapsed: 0,
-        total: 3
+        total: 3  // 3 seconds for weight
       });
       
       // Start actual sensor measurement
@@ -174,7 +247,7 @@ export default function BMI() {
         return;
       }
       
-      setStatusMessage("Please step on the scale and stand still.");
+      setStatusMessage("Please step on the scale and stand still for 3 seconds");
       measurementStarted.current = true;
       startCountdown(3); // 3 seconds for weight
       startMonitoring("weight");
@@ -194,14 +267,15 @@ export default function BMI() {
       setStatusMessage("Starting height measurement...");
       setMeasurementStep(2);
       
-      // Clear any previous height and reset live data
+      // CLEAR PREVIOUS DATA - This ensures fresh measurement each time
       setHeight("");
+      setHeightComplete(false);
       setLiveHeightData({
         current: null,
         progress: 0,
         status: 'detecting',
         elapsed: 0,
-        total: 2
+        total: 2  // 2 seconds for height
       });
       
       // Start actual sensor measurement
@@ -213,7 +287,7 @@ export default function BMI() {
         return;
       }
       
-      setStatusMessage("Please stand under the height sensor.");
+      setStatusMessage("Please stand under the height sensor for 2 seconds");
       measurementStarted.current = true;
       startCountdown(2); // 2 seconds for height
       startMonitoring("height");
@@ -241,40 +315,38 @@ export default function BMI() {
           if (type === "weight") {
             setLiveWeightData(data.live_data);
             
-            // Update progress for weight measurement
+            // Update progress
             if (data.live_data.progress > 0) {
               setProgress(data.live_data.progress);
             }
             
             // Update status message based on live data
             if (data.live_data.status === 'detecting') {
-              setStatusMessage("Detecting weight... Please step on scale");
-            } else if (data.live_data.status === 'stabilizing') {
-              setStatusMessage("Stabilizing weight measurement...");
-            } else if (data.live_data.status === 'averaging') {
-              setStatusMessage(`Averaging weight... ${data.live_data.elapsed}/${data.live_data.total}s`);
+              setStatusMessage("Step on scale and stand still for 3 seconds");
+            } else if (data.live_data.status === 'measuring') {
+              setStatusMessage(`Measuring weight... ${data.live_data.elapsed}/${data.live_data.total}s`);
             }
             
           } else if (type === "height") {
             setLiveHeightData(data.live_data);
             
-            // Update progress for height measurement
+            // Update progress
             if (data.live_data.progress > 0) {
               setProgress(data.live_data.progress);
             }
             
             // Update status message based on live data
             if (data.live_data.status === 'detecting') {
-              setStatusMessage("Detecting height... Please stand under sensor");
-            } else if (data.live_data.status === 'averaging') {
-              setStatusMessage(`Averaging height... ${data.live_data.elapsed}/${data.live_data.total}s`);
+              setStatusMessage("Stand under sensor for 2 seconds");
+            } else if (data.live_data.status === 'measuring') {
+              setStatusMessage(`Measuring height... ${data.live_data.elapsed}/${data.live_data.total}s`);
             }
           }
         }
         
         setIsMeasuring(data.measurement_active);
 
-        // Handle measurement completion
+        // Handle measurement completion - SIMPLIFIED
         if (type === "weight" && data.weight && data.weight > 0 && !weight) {
           setWeight(data.weight.toFixed(1));
           setWeightMeasuring(false);
@@ -302,7 +374,7 @@ export default function BMI() {
           setHeightComplete(true);
           setMeasurementComplete(true);
           setBmiComplete(true);
-          setStatusMessage("✅ All measurements complete! Click the button to continue.");
+          setStatusMessage("✅ All measurements complete! Click the button to continue to Body Temperature.");
           setIsMeasuring(false);
           setCurrentMeasurement("");
           setMeasurementStep(3);
@@ -324,7 +396,7 @@ export default function BMI() {
         console.error(`Error polling ${type} status:`, error);
         setStatusMessage("⚠️ Connection issue, retrying...");
       }
-    }, 500); // Poll more frequently for live updates
+    }, 500);
   };
 
   const handleRetry = () => {
@@ -406,13 +478,9 @@ export default function BMI() {
       bmi: calculateBMI()
     };
     
-    console.log("Navigating to next page with data:", bmiData);
-    
-    // For now, just show completion
-    setStatusMessage("✅ BMI measurement complete! Data ready for next step.");
-    
-    // Navigate to next page (you can change this to your desired route)
-    // navigate('/next-page', { state: bmiData });
+    console.log("BMI measurement complete! Data ready for next step.");
+    setStatusMessage("✅ BMI measurement complete! Click the button to continue to Body Temperature.");
+    setMeasurementStep(3);
   };
 
   const getButtonText = () => {
@@ -428,7 +496,7 @@ export default function BMI() {
       case 2:
         return height ? "Continue to Next Step" : "Measuring Height...";
       case 3:
-        return "Continue to Next Step";
+        return "Continue to Body Temperature";
       default:
         return "Start BMI Measurement";
     }
@@ -462,12 +530,11 @@ export default function BMI() {
     if (weightMeasuring) {
       switch (liveWeightData.status) {
         case 'detecting': return "Detecting...";
-        case 'stabilizing': return "Stabilizing...";
-        case 'averaging': return `Averaging... ${liveWeightData.elapsed}/${liveWeightData.total}s`;
+        case 'measuring': return `Measuring... ${liveWeightData.elapsed}/${liveWeightData.total}s`;
         default: return "Measuring...";
       }
     }
-    return "Waiting";
+    return "Pending";
   };
 
   // Get status text for height
@@ -476,11 +543,11 @@ export default function BMI() {
     if (heightMeasuring) {
       switch (liveHeightData.status) {
         case 'detecting': return "Detecting...";
-        case 'averaging': return `Averaging... ${liveHeightData.elapsed}/${liveHeightData.total}s`;
+        case 'measuring': return `Measuring... ${liveHeightData.elapsed}/${liveHeightData.total}s`;
         default: return "Measuring...";
       }
     }
-    return "Waiting";
+    return "Pending";
   };
 
   const bmi = calculateBMI();
@@ -492,7 +559,7 @@ export default function BMI() {
         {/* Progress bar for Step 1 of 4 */}
         <div className="progress-container">
           <div className="progress-bar">
-            <div className={`progress-fill ${bmiCategory.class || ''}`} style={{ width: `25%` }}></div>
+            <div className="progress-fill red-progress" style={{ width: `25%` }}></div>
           </div>
           <span className="progress-step">Step 1 of 4 - BMI</span>
         </div>
@@ -509,7 +576,7 @@ export default function BMI() {
             <div className="measurement-progress">
               <div className="progress-bar-horizontal">
                 <div 
-                  className={`progress-fill-horizontal ${bmiCategory.class || ''}`}
+                  className="progress-fill-horizontal red-progress"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
@@ -628,7 +695,7 @@ export default function BMI() {
                 <div className="step-icon">⚖️</div>
                 <h4 className="step-title">Measure Weight</h4>
                 <p className="step-description">
-                  Step on scale and stand still for 3 seconds
+                  Stand still for 3 seconds
                 </p>
                 <div className={`step-status ${
                   measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
@@ -645,10 +712,7 @@ export default function BMI() {
                 <div className="step-icon">📏</div>
                 <h4 className="step-title">Measure Height</h4>
                 <p className="step-description">
-                  {isMeasuring && currentMeasurement === "height" 
-                    ? "Stand under sensor - wait for measurement"
-                    : "Stand under height sensor for measurement"
-                  }
+                  Stand still under height sensor for 2 seconds
                 </p>
                 {isMeasuring && countdown > 0 && (
                   <div className="countdown-mini">
@@ -674,7 +738,7 @@ export default function BMI() {
                 <h4 className="step-title">Complete</h4>
                 <p className="step-description">
                   {measurementComplete 
-                    ? "BMI calculated! Continue to next step" 
+                    ? "BMI calculated! Continue to Body Temperature" 
                     : "BMI will be calculated automatically"
                   }
                 </p>
