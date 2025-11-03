@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./RegisterRole.css";
 import employeeIcon from "../../../assets/icons/employee-icon.png";
@@ -8,6 +8,58 @@ export default function RegisterRole() {
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState(null);
   const [touchFeedback, setTouchFeedback] = useState(null);
+
+  // Add viewport meta tag to prevent zooming
+  useEffect(() => {
+    // Create or update viewport meta tag
+    let viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      document.head.appendChild(viewport);
+    }
+    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
+    
+    // Prevent zooming via touch gestures
+    document.addEventListener('touchstart', handleGlobalTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+    document.addEventListener('touchend', handleGlobalTouchEnd, { passive: false });
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchstart', handleGlobalTouchStart);
+      document.removeEventListener('touchmove', handleGlobalTouchMove);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+      document.removeEventListener('gesturestart', preventZoom);
+      document.removeEventListener('gesturechange', preventZoom);
+      document.removeEventListener('gestureend', preventZoom);
+    };
+  }, []);
+
+  // Prevent zooming functions
+  const handleGlobalTouchStart = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleGlobalTouchMove = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleGlobalTouchEnd = (e) => {
+    if (e.touches.length > 0) {
+      e.preventDefault();
+    }
+  };
+
+  const preventZoom = (e) => {
+    e.preventDefault();
+  };
 
   const roles = [
     {
@@ -34,11 +86,11 @@ export default function RegisterRole() {
     setTimeout(() => setTouchFeedback(null), 200);
   };
 
-  const handleTouchStart = (roleId) => {
+  const handleCardTouchStart = (roleId) => {
     setTouchFeedback(roleId);
   };
 
-  const handleTouchEnd = () => {
+  const handleCardTouchEnd = () => {
     setTimeout(() => setTouchFeedback(null), 150);
   };
 
@@ -76,8 +128,8 @@ export default function RegisterRole() {
           <div
             className={`role-card ${selectedRole === 'rtu-employees' ? 'selected' : ''} ${touchFeedback === 'rtu-employees' ? 'touch-feedback' : ''}`}
             onClick={() => handleRoleSelect('rtu-employees')}
-            onTouchStart={() => handleTouchStart('rtu-employees')}
-            onTouchEnd={handleTouchEnd}
+            onTouchStart={() => handleCardTouchStart('rtu-employees')}
+            onTouchEnd={handleCardTouchEnd}
             style={{ '--role-color': roles[0].color }}
           >
             <div className="role-card-icon">
@@ -102,8 +154,8 @@ export default function RegisterRole() {
           <div
             className={`role-card ${selectedRole === 'rtu-students' ? 'selected' : ''} ${touchFeedback === 'rtu-students' ? 'touch-feedback' : ''}`}
             onClick={() => handleRoleSelect('rtu-students')}
-            onTouchStart={() => handleTouchStart('rtu-students')}
-            onTouchEnd={handleTouchEnd}
+            onTouchStart={() => handleCardTouchStart('rtu-students')}
+            onTouchEnd={handleCardTouchEnd}
             style={{ '--role-color': roles[1].color }}
           >
             <div className="role-card-icon">

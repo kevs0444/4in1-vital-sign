@@ -5,7 +5,7 @@ const API_URL = "http://127.0.0.1:5000/api";
 const TIMEOUTS = {
   SHORT: 5000,    // 5 seconds for quick operations
   MEDIUM: 10000,  // 10 seconds for measurements
-  LONG: 15000     // 15 seconds for initialization
+  LONG: 30000     // 30 seconds for MAX30102 measurement
 };
 
 // Helper function for API calls with timeout
@@ -361,7 +361,7 @@ export const sensorAPI = {
     try {
       return await fetchWithTimeout(`${API_URL}/sensor/max30102/start`, {
         method: 'POST',
-      }, TIMEOUTS.LONG); // Longer timeout for 10-second measurement
+      }, TIMEOUTS.LONG); // 30 seconds for MAX30102 measurement
     } catch (error) {
       console.error('Error starting MAX30102 measurement:', error);
       return { 
@@ -386,7 +386,17 @@ export const sensorAPI = {
         measurement_active: false,
         heart_rate: null,
         spo2: null,
-        respiratory_rate: null
+        respiratory_rate: null,
+        finger_detected: false,
+        progress: 0,
+        elapsed: 0,
+        total_time: 30,
+        sensor_prepared: false,
+        final_results: {
+          heart_rate: null,
+          spo2: null,
+          respiratory_rate: null
+        }
       };
     }
   },

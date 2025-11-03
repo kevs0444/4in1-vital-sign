@@ -36,6 +36,35 @@ export default function RegisterPersonalInfo() {
     { title: "What is your biological sex?", subtitle: "Required for accurate health assessments", image: null }
   ];
 
+  // Add viewport meta tag to prevent zooming
+  useEffect(() => {
+    // Create or update viewport meta tag
+    let viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      document.head.appendChild(viewport);
+    }
+    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
+    
+    // Prevent zooming via touch gestures
+    document.addEventListener('touchstart', handleZoomTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleZoomTouchMove, { passive: false });
+    document.addEventListener('touchend', handleZoomTouchEnd, { passive: false });
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchstart', handleZoomTouchStart);
+      document.removeEventListener('touchmove', handleZoomTouchMove);
+      document.removeEventListener('touchend', handleZoomTouchEnd);
+      document.removeEventListener('gesturestart', preventZoom);
+      document.removeEventListener('gesturechange', preventZoom);
+      document.removeEventListener('gestureend', preventZoom);
+    };
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
@@ -48,6 +77,29 @@ export default function RegisterPersonalInfo() {
       }, 300);
     }
   }, [currentStep]);
+
+  // Prevent zooming functions - RENAMED
+  const handleZoomTouchStart = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleZoomTouchMove = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleZoomTouchEnd = (e) => {
+    if (e.touches.length > 0) {
+      e.preventDefault();
+    }
+  };
+
+  const preventZoom = (e) => {
+    e.preventDefault();
+  };
 
   const handleContinue = () => {
     if (currentStep === 0) {
@@ -168,18 +220,18 @@ export default function RegisterPersonalInfo() {
     return 0;
   };
 
-  // Sex step functions
+  // Sex step functions - RENAMED
   const handleSexSelect = (sex) => {
     setFormData(prev => ({ ...prev, sex }));
     setTouchFeedback(sex);
     setTimeout(() => setTouchFeedback(null), 200);
   };
 
-  const handleTouchStart = (item) => {
+  const handleSexTouchStart = (item) => {
     setTouchFeedback(item);
   };
 
-  const handleTouchEnd = () => {
+  const handleSexTouchEnd = () => {
     setTimeout(() => setTouchFeedback(null), 150);
   };
 
@@ -370,8 +422,8 @@ export default function RegisterPersonalInfo() {
                     <div
                       className={`sex-option ${formData.sex === "male" ? "selected" : ""} ${touchFeedback === "male" ? "touch-feedback" : ""}`}
                       onClick={() => handleSexSelect("male")}
-                      onTouchStart={() => handleTouchStart("male")}
-                      onTouchEnd={handleTouchEnd}
+                      onTouchStart={() => handleSexTouchStart("male")}
+                      onTouchEnd={handleSexTouchEnd}
                     >
                       <div className="role-card-icon">
                         <img src={maleIcon} alt="Male" />
@@ -381,8 +433,8 @@ export default function RegisterPersonalInfo() {
                     <div
                       className={`sex-option ${formData.sex === "female" ? "selected" : ""} ${touchFeedback === "female" ? "touch-feedback" : ""}`}
                       onClick={() => handleSexSelect("female")}
-                      onTouchStart={() => handleTouchStart("female")}
-                      onTouchEnd={handleTouchEnd}
+                      onTouchStart={() => handleSexTouchStart("female")}
+                      onTouchEnd={handleSexTouchEnd}
                     >
                       <div className="role-card-icon">
                         <img src={femaleIcon} alt="Female" />

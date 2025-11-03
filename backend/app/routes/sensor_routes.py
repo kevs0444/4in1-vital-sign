@@ -47,6 +47,7 @@ def initialize_system():
         "full_system_initialized": sensor_manager.full_system_initialized,
         "weight_sensor_ready": sensor_manager.weight_sensor_ready,
         "temperature_sensor_ready": sensor_manager.temperature_sensor_ready,
+        "max30102_sensor_ready": sensor_manager.max30102_sensor_ready,
         "auto_tare_completed": sensor_manager.auto_tare_completed
     })
 
@@ -151,6 +152,30 @@ def shutdown_temperature():
 @sensor_bp.route('/temperature/status', methods=['GET'])
 def get_temperature_status():
     return jsonify(sensor_manager.get_temperature_status())
+
+# MAX30102 sensor routes
+@sensor_bp.route('/max30102/start', methods=['POST'])
+def start_max30102():
+    """Start MAX30102 measurement (heart rate, SpO2, respiratory rate)"""
+    result = sensor_manager.start_max30102_measurement()
+    return jsonify(result)
+
+@sensor_bp.route('/max30102/prepare', methods=['POST'])
+def prepare_max30102():
+    """Prepare MAX30102 sensor for measurement"""
+    result = sensor_manager.prepare_max30102_sensor()
+    return jsonify(result)
+
+@sensor_bp.route('/max30102/shutdown', methods=['POST'])
+def shutdown_max30102():
+    """Shutdown MAX30102 sensor"""
+    sensor_manager._power_down_sensor("max30102")
+    return jsonify({"status": "powered_down"})
+
+@sensor_bp.route('/max30102/status', methods=['GET'])
+def get_max30102_status():
+    """Get MAX30102 sensor status and measurements"""
+    return jsonify(sensor_manager.get_max30102_status())
 
 @sensor_bp.route('/shutdown', methods=['POST'])
 def shutdown_sensors():

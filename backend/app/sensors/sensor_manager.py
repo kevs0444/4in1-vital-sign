@@ -14,12 +14,16 @@ class SensorManager:
         self.full_system_initialized = False
         self.weight_sensor_ready = False
         self.temperature_sensor_ready = False
+        self.max30102_sensor_ready = False
         self.auto_tare_completed = False
         
         self.measurements = {
             'weight': None,
             'height': None,
-            'temperature': None
+            'temperature': None,
+            'heart_rate': None,
+            'spo2': None,
+            'respiratory_rate': None
         }
         self._data_buffer = ""
         self._listener_thread = None
@@ -27,6 +31,7 @@ class SensorManager:
         self._weight_measurement_active = False
         self._height_measurement_active = False
         self._temperature_measurement_active = False
+        self._max30102_measurement_active = False
         
         # Real-time measurement data
         self.live_data = {
@@ -51,6 +56,17 @@ class SensorManager:
                 'elapsed': 0,
                 'total': 2,
                 'ready_threshold': 34.0
+            },
+            'max30102': {
+                'heart_rate': None,
+                'spo2': None,
+                'respiratory_rate': None,
+                'finger_detected': False,
+                'progress': 0,
+                'status': 'idle',
+                'elapsed': 0,
+                'total': 30,
+                'sensor_prepared': False
             }
         }
 
@@ -162,8 +178,106 @@ class SensorManager:
         """Parse incoming serial data and update measurements"""
         print(f"ARDUINO: {data}")  # Debug print
 
+        # ==================== MAX30102 PARSING - UPDATED ====================
+        
+        # MAX30102 finger status
+        if data.startswith("MAX30102_FINGER_STATUS:"):
+            status = data.split(":")[1].strip()
+            self.live_data['max30102']['finger_detected'] = (status == "DETECTED")
+            print(f"👆 MAX30102 Finger: {status}")
+
+        # MAX30102 IR value
+        elif data.startswith("MAX30102_IR_VALUE:"):
+            try:
+                ir_value = int(data.split(":")[1])
+                print(f"📊 MAX30102 IR Value: {ir_value}")
+            except ValueError:
+                pass
+
+        # MAX30102 state changes
+        elif data.startswith("MAX30102_STATE:"):
+            state = data.split(":")[1]
+            print(f"🔄 MAX30102 State: {state}")
+            if state == "WAITING_FOR_FINGER":
+                self.live_data['max30102']['status'] = 'detecting'
+            elif state == "MEASURING":
+                self.live_data['max30102']['status'] = 'measuring'
+                self._max30102_measurement_active = True
+            elif state == "FINGER_REMOVED":
+                self.live_data['max30102']['status'] = 'detecting'
+                self.live_data['max30102']['finger_detected'] = False
+                self._max30102_measurement_active = False
+
+        # MAX30102 ready message
+        elif data.startswith("MAX30102_READY:"):
+            message = data.split(":")[1]
+            print(f"✅ MAX30102: {message}")
+            self.max30102_sensor_ready = True
+            self.live_data['max30102']['sensor_prepared'] = True
+
+        # MAX30102 live data (more frequent updates)
+        elif data.startswith("MAX30102_LIVE_DATA:"):
+            try:
+                # Parse: HR=75,SPO2=98,RR=16,VALID_HR=1,VALID_SPO2=1
+                parts = data.split(":")[1].split(",")
+                data_dict = {}
+                for part in parts:
+                    key, value = part.split("=")
+                    data_dict[key] = value
+                
+                if 'HR' in data_dict:
+                    hr = int(data_dict['HR'])
+                    self.live_data['max30102']['heart_rate'] = hr
+                    self.measurements['heart_rate'] = hr
+                    print(f"💓 Live Heart Rate: {hr} BPM")
+                
+                if 'SPO2' in data_dict:
+                    spo2 = int(data_dict['SPO2'])
+                    self.live_data['max30102']['spo2'] = spo2
+                    self.measurements['spo2'] = spo2
+                    print(f"🩸 Live SpO2: {spo2}%")
+                
+                if 'RR' in data_dict:
+                    rr = float(data_dict['RR'])
+                    self.live_data['max30102']['respiratory_rate'] = rr
+                    self.measurements['respiratory_rate'] = rr
+                    print(f"🌬️ Live Respiratory Rate: {rr} breaths/min")
+                    
+            except (ValueError, IndexError) as e:
+                print(f"Error parsing MAX30102 live data: {e}")
+
+        # MAX30102 measurement completing
+        elif data == "MAX30102_MEASUREMENT_COMPLETING":
+            print("⏳ MAX30102 measurement completing...")
+
+        # MAX30102 results validity
+        elif data == "MAX30102_RESULTS_VALID":
+            print("✅ MAX30102 results are valid")
+            self._max30102_measurement_active = False
+            self.live_data['max30102']['status'] = 'complete'
+
+        elif data == "MAX30102_RESULTS_INVALID":
+            print("❌ MAX30102 results are invalid")
+            self._max30102_measurement_active = False
+            self.live_data['max30102']['status'] = 'error'
+
+        # MAX30102 finger detection
+        elif data == "FINGER_DETECTED":
+            self.live_data['max30102']['finger_detected'] = True
+            print("✅ Finger detected on MAX30102")
+            self.live_data['max30102']['status'] = 'measuring'
+            self._max30102_measurement_active = True
+
+        elif data == "FINGER_REMOVED":
+            self.live_data['max30102']['finger_detected'] = False
+            print("⚠️ Finger removed from MAX30102")
+            self.live_data['max30102']['status'] = 'detecting'
+            self._max30102_measurement_active = False
+
+        # ==================== WEIGHT SENSOR PARSING ====================
+        
         # Weight measurement result
-        if data.startswith("RESULT:WEIGHT:"):
+        elif data.startswith("RESULT:WEIGHT:"):
             try:
                 weight = float(data.split(":")[2])
                 self.measurements['weight'] = weight
@@ -175,6 +289,8 @@ class SensorManager:
             except (IndexError, ValueError) as e:
                 print(f"Error parsing weight: {e}")
 
+        # ==================== HEIGHT SENSOR PARSING ====================
+        
         # Height measurement result
         elif data.startswith("RESULT:HEIGHT:"):
             try:
@@ -188,6 +304,8 @@ class SensorManager:
             except (IndexError, ValueError) as e:
                 print(f"Error parsing height: {e}")
 
+        # ==================== TEMPERATURE SENSOR PARSING ====================
+        
         # Temperature measurement result
         elif data.startswith("RESULT:TEMPERATURE:"):
             try:
@@ -201,9 +319,55 @@ class SensorManager:
             except (IndexError, ValueError) as e:
                 print(f"Error parsing temperature: {e}")
 
-        # Final result display
-        elif data.startswith("FINAL_RESULT:"):
-            print(f"📊 {data}")
+        # ==================== MAX30102 FINAL RESULTS ====================
+        
+        # MAX30102 measurement results
+        elif data.startswith("RESULT:HEART_RATE:"):
+            try:
+                heart_rate = int(data.split(":")[2])
+                self.measurements['heart_rate'] = heart_rate
+                self.live_data['max30102']['heart_rate'] = heart_rate
+                print(f"✅ FINAL HEART RATE RESULT: {heart_rate} BPM")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing heart rate: {e}")
+
+        elif data.startswith("RESULT:SPO2:"):
+            try:
+                spo2 = int(data.split(":")[2])
+                self.measurements['spo2'] = spo2
+                self.live_data['max30102']['spo2'] = spo2
+                print(f"✅ FINAL SPO2 RESULT: {spo2}%")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing SpO2: {e}")
+
+        elif data.startswith("RESULT:RESPIRATORY_RATE:"):
+            try:
+                respiratory_rate = float(data.split(":")[2])
+                self.measurements['respiratory_rate'] = respiratory_rate
+                self.live_data['max30102']['respiratory_rate'] = respiratory_rate
+                print(f"✅ FINAL RESPIRATORY RATE RESULT: {respiratory_rate} breaths/min")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing respiratory rate: {e}")
+
+        # ==================== PROGRESS UPDATES ====================
+        
+        # Progress updates for MAX30102
+        elif data.startswith("STATUS:MAX30102_PROGRESS:"):
+            try:
+                progress_parts = data.split(":")
+                if len(progress_parts) >= 4:
+                    elapsed = int(progress_parts[2].split("/")[0])
+                    total = int(progress_parts[2].split("/")[1])
+                    progress_percent = int(progress_parts[3])
+                    
+                    self.live_data['max30102']['elapsed'] = elapsed
+                    self.live_data['max30102']['total'] = total
+                    self.live_data['max30102']['progress'] = progress_percent
+                    self.live_data['max30102']['status'] = 'measuring'
+                    
+                    print(f"❤️ MAX30102 progress: {elapsed}/{total}s ({progress_percent}%)")
+            except (IndexError, ValueError) as e:
+                print(f"Error parsing MAX30102 progress: {e}")
 
         # Progress updates for weight
         elif data.startswith("STATUS:WEIGHT_PROGRESS:"):
@@ -258,6 +422,31 @@ class SensorManager:
                     print(f"🌡️ Temperature progress: {elapsed}/{total}s ({progress_percent}%)")
             except (IndexError, ValueError) as e:
                 print(f"Error parsing temperature progress: {e}")
+
+        # ==================== LIVE DATA UPDATES ====================
+        
+        # Real-time data from MAX30102 (alternative format)
+        elif "Heart Rate:" in data and "SpO2:" in data and data.startswith("["):
+            try:
+                # Parse format: "[Time: 5s] Heart Rate: 75 BPM  SpO2: 98%  RR: 16 breaths/min  (25s remaining)"
+                hr_match = re.search(r'Heart Rate:\s*(\d+)', data)
+                spo2_match = re.search(r'SpO2:\s*(\d+)', data)
+                rr_match = re.search(r'RR:\s*([\d.]+)', data)
+                time_match = re.search(r'Time:\s*(\d+)', data)
+                
+                if hr_match:
+                    self.live_data['max30102']['heart_rate'] = int(hr_match.group(1))
+                if spo2_match:
+                    self.live_data['max30102']['spo2'] = int(spo2_match.group(1))
+                if rr_match:
+                    self.live_data['max30102']['respiratory_rate'] = float(rr_match.group(1))
+                if time_match:
+                    self.live_data['max30102']['elapsed'] = int(time_match.group(1))
+                    progress_percent = (int(time_match.group(1)) * 100) // 30
+                    self.live_data['max30102']['progress'] = progress_percent
+                    
+            except (ValueError, IndexError) as e:
+                print(f"Error parsing MAX30102 real-time data: {e}")
 
         # Live weight readings during detection/measuring
         elif data.startswith("DEBUG:Weight reading:"):
@@ -314,6 +503,8 @@ class SensorManager:
             except (IndexError, ValueError) as e:
                 print(f"Error parsing valid temperature: {e}")
 
+        # ==================== SYSTEM STATUS UPDATES ====================
+        
         # System status updates
         elif data.startswith("STATUS:AUTO_TARE_COMPLETE"):
             self.auto_tare_completed = True
@@ -328,10 +519,18 @@ class SensorManager:
             self.temperature_sensor_ready = True
             print("✅ Temperature sensor initialized")
 
+        # MAX30102 status updates
+        elif data.startswith("STATUS:MAX30102_SENSOR_INITIALIZED"):
+            self.max30102_sensor_ready = True
+            self.live_data['max30102']['sensor_prepared'] = True
+            print("✅ MAX30102 sensor initialized")
+
         elif data.startswith("STATUS:FULL_SYSTEM_INITIALIZATION_COMPLETE"):
             self.full_system_initialized = True
             print("✅ Full system initialization complete")
 
+        # ==================== MEASUREMENT STATUS UPDATES ====================
+        
         # Measurement status updates
         elif data.startswith("STATUS:WEIGHT_MEASUREMENT_STARTED"):
             self._weight_measurement_active = True
@@ -354,6 +553,14 @@ class SensorManager:
             self.live_data['temperature']['elapsed'] = 0
             print("🌡️ Temperature measurement started")
 
+        # MAX30102 measurement status
+        elif data.startswith("STATUS:MAX30102_MEASUREMENT_STARTED"):
+            self._max30102_measurement_active = True
+            self.live_data['max30102']['status'] = 'detecting'
+            self.live_data['max30102']['progress'] = 0
+            self.live_data['max30102']['elapsed'] = 0
+            print("❤️ MAX30102 measurement started")
+
         # Real-time measuring states
         elif data.startswith("STATUS:WEIGHT_MEASURING"):
             self.live_data['weight']['status'] = 'measuring'
@@ -366,6 +573,11 @@ class SensorManager:
         elif data.startswith("STATUS:TEMPERATURE_MEASURING"):
             self.live_data['temperature']['status'] = 'measuring'
             print("🌡️ Temperature measuring in progress")
+
+        # MAX30102 measuring state
+        elif data.startswith("STATUS:MAX30102_MEASURING"):
+            self.live_data['max30102']['status'] = 'measuring'
+            print("❤️ MAX30102 measuring in progress")
 
         elif data.startswith("STATUS:WEIGHT_MEASUREMENT_COMPLETE"):
             self._weight_measurement_active = False
@@ -385,12 +597,31 @@ class SensorManager:
                 self.live_data['temperature']['status'] = 'complete'
             print("✅ Temperature measurement complete")
 
+        # MAX30102 measurement complete
+        elif data.startswith("STATUS:MAX30102_MEASUREMENT_COMPLETE"):
+            self._max30102_measurement_active = False
+            if self.live_data['max30102']['status'] != 'complete':
+                self.live_data['max30102']['status'] = 'complete'
+            print("✅ MAX30102 measurement complete")
+
+        # ==================== FINAL RESULT DISPLAY ====================
+        
+        # Final result display
+        elif data.startswith("FINAL_RESULT:"):
+            print(f"📊 {data}")
+
+        # ==================== ERROR HANDLING ====================
+        
         # Error handling
         elif data.startswith("ERROR:"):
             print(f"❌ {data}")
 
         elif data.startswith("WARNING:"):
             print(f"⚠️ {data}")
+
+        # Command received
+        elif data.startswith("COMMAND_RECEIVED:"):
+            print(f"📨 {data}")
 
     def disconnect(self):
         """Disconnect from Arduino and cleanup"""
@@ -421,6 +652,7 @@ class SensorManager:
             "full_system_initialized": self.full_system_initialized,
             "weight_sensor_ready": self.weight_sensor_ready,
             "temperature_sensor_ready": self.temperature_sensor_ready,
+            "max30102_sensor_ready": self.max30102_sensor_ready,
             "auto_tare_completed": self.auto_tare_completed,
             "measurements": self.measurements,
             "live_data": self.live_data
@@ -435,7 +667,8 @@ class SensorManager:
                 "sensors_ready": {
                     "weight": False,
                     "height": False,
-                    "temperature": False
+                    "temperature": False,
+                    "max30102": False
                 },
                 "auto_tare_completed": False,
                 "system_mode": "DISCONNECTED"
@@ -447,7 +680,8 @@ class SensorManager:
             "sensors_ready": {
                 "weight": self.weight_sensor_ready,
                 "height": True,  # Height sensor is always ready when connected
-                "temperature": self.temperature_sensor_ready
+                "temperature": self.temperature_sensor_ready,
+                "max30102": self.max30102_sensor_ready
             },
             "auto_tare_completed": self.auto_tare_completed,
             "system_mode": "FULLY_INITIALIZED" if self.auto_tare_completed else "BASIC"
@@ -523,7 +757,10 @@ class SensorManager:
         self.measurements = {
             'weight': None,
             'height': None,
-            'temperature': None
+            'temperature': None,
+            'heart_rate': None,
+            'spo2': None,
+            'respiratory_rate': None
         }
         # Reset live data
         self.live_data = {
@@ -548,6 +785,17 @@ class SensorManager:
                 'elapsed': 0,
                 'total': 2,
                 'ready_threshold': 34.0
+            },
+            'max30102': {
+                'heart_rate': None,
+                'spo2': None,
+                'respiratory_rate': None,
+                'finger_detected': False,
+                'progress': 0,
+                'status': 'idle',
+                'elapsed': 0,
+                'total': 30,
+                'sensor_prepared': self.live_data['max30102']['sensor_prepared']
             }
         }
         return {"status": "success", "message": "Measurements reset"}
@@ -563,7 +811,8 @@ class SensorManager:
         """Return all completed measurements"""
         return self.measurements
 
-    # Individual sensor control methods
+    # ==================== INDIVIDUAL SENSOR CONTROL METHODS ====================
+    
     def start_weight_measurement(self):
         """Start weight measurement"""
         if not self.is_connected:
@@ -597,32 +846,6 @@ class SensorManager:
             return {"status": "success", "message": "Weight sensor prepared"}
         except Exception as e:
             return {"status": "error", "message": f"Failed to prepare weight sensor: {str(e)}"}
-
-    def shutdown_weight(self):
-        """Shutdown weight sensor"""
-        self._weight_measurement_active = False
-        self.live_data['weight']['status'] = 'idle'
-        self._power_down_sensor("weight")
-        return {"status": "powered_down"}
-
-    def get_weight_status(self):
-        """Get weight sensor status"""
-        status = {
-            "status": "unknown",
-            "measurement_active": self._weight_measurement_active,
-            "weight": self.measurements.get('weight'),
-            "live_data": self.live_data['weight'],
-            "message": "Weight sensor status"
-        }
-        
-        if not self.is_connected:
-            status.update({"status": "disconnected", "message": "Not connected to Arduino"})
-        elif not self.weight_sensor_ready:
-            status.update({"status": "not_ready", "message": "Weight sensor not initialized"})
-        else:
-            status.update({"status": "ready", "message": "Weight sensor ready"})
-            
-        return status
 
     def start_height_measurement(self):
         """Start height measurement"""
@@ -658,31 +881,6 @@ class SensorManager:
         except Exception as e:
             return {"status": "error", "message": f"Failed to prepare height sensor: {str(e)}"}
 
-    def shutdown_height(self):
-        """Shutdown height sensor"""
-        self._height_measurement_active = False
-        self.live_data['height']['status'] = 'idle'
-        self._power_down_sensor("height")
-        return {"status": "powered_down"}
-
-    def get_height_status(self):
-        """Get height sensor status"""
-        status = {
-            "status": "unknown",
-            "measurement_active": self._height_measurement_active,
-            "height": self.measurements.get('height'),
-            "live_data": self.live_data['height'],
-            "message": "Height sensor status"
-        }
-        
-        if not self.is_connected:
-            status.update({"status": "disconnected", "message": "Not connected to Arduino"})
-        else:
-            status.update({"status": "ready", "message": "Height sensor ready"})
-            
-        return status
-
-    # Temperature sensor control methods
     def start_temperature_measurement(self):
         """Start temperature measurement"""
         if not self.is_connected:
@@ -718,6 +916,97 @@ class SensorManager:
         except Exception as e:
             return {"status": "error", "message": f"Failed to prepare temperature sensor: {str(e)}"}
 
+    # MAX30102 sensor methods
+    def start_max30102_measurement(self):
+        """Start MAX30102 measurement (heart rate, SpO2, respiratory rate)"""
+        if not self.is_connected:
+            return {"status": "error", "message": "Not connected to Arduino"}
+        
+        try:
+            self.serial_conn.write("START_MAX30102\n".encode())
+            self._max30102_measurement_active = True
+            # Reset live data for new measurement
+            self.live_data['max30102'] = {
+                'heart_rate': None,
+                'spo2': None,
+                'respiratory_rate': None,
+                'finger_detected': False,
+                'progress': 0,
+                'status': 'detecting',
+                'elapsed': 0,
+                'total': 30,
+                'sensor_prepared': self.live_data['max30102']['sensor_prepared']
+            }
+            # Clear previous measurements
+            self.measurements['heart_rate'] = None
+            self.measurements['spo2'] = None
+            self.measurements['respiratory_rate'] = None
+            return {"status": "success", "message": "MAX30102 measurement started"}
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to start MAX30102 measurement: {str(e)}"}
+
+    def prepare_max30102_sensor(self):
+        """Prepare MAX30102 sensor for measurement"""
+        if not self.is_connected:
+            return {"status": "error", "message": "Not connected to Arduino"}
+        
+        try:
+            self.serial_conn.write("POWER_UP_MAX30102\n".encode())
+            time.sleep(1)
+            return {"status": "success", "message": "MAX30102 sensor prepared"}
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to prepare MAX30102 sensor: {str(e)}"}
+
+    def shutdown_weight(self):
+        """Shutdown weight sensor"""
+        self._weight_measurement_active = False
+        self.live_data['weight']['status'] = 'idle'
+        self._power_down_sensor("weight")
+        return {"status": "powered_down"}
+
+    def get_weight_status(self):
+        """Get weight sensor status"""
+        status = {
+            "status": "unknown",
+            "measurement_active": self._weight_measurement_active,
+            "weight": self.measurements.get('weight'),
+            "live_data": self.live_data['weight'],
+            "message": "Weight sensor status"
+        }
+        
+        if not self.is_connected:
+            status.update({"status": "disconnected", "message": "Not connected to Arduino"})
+        elif not self.weight_sensor_ready:
+            status.update({"status": "not_ready", "message": "Weight sensor not initialized"})
+        else:
+            status.update({"status": "ready", "message": "Weight sensor ready"})
+            
+        return status
+
+    def shutdown_height(self):
+        """Shutdown height sensor"""
+        self._height_measurement_active = False
+        self.live_data['height']['status'] = 'idle'
+        self._power_down_sensor("height")
+        return {"status": "powered_down"}
+
+    def get_height_status(self):
+        """Get height sensor status"""
+        status = {
+            "status": "unknown",
+            "measurement_active": self._height_measurement_active,
+            "height": self.measurements.get('height'),
+            "live_data": self.live_data['height'],
+            "message": "Height sensor status"
+        }
+        
+        if not self.is_connected:
+            status.update({"status": "disconnected", "message": "Not connected to Arduino"})
+        else:
+            status.update({"status": "ready", "message": "Height sensor ready"})
+            
+        return status
+
     def shutdown_temperature(self):
         """Shutdown temperature sensor"""
         self._temperature_measurement_active = False
@@ -748,6 +1037,45 @@ class SensorManager:
             
         return status
 
+    # MAX30102 status method
+    def get_max30102_status(self):
+        """Get MAX30102 sensor status"""
+        status = {
+            "status": "unknown",
+            "measurement_active": self._max30102_measurement_active,
+            "heart_rate": self.live_data['max30102']['heart_rate'],
+            "spo2": self.live_data['max30102']['spo2'],
+            "respiratory_rate": self.live_data['max30102']['respiratory_rate'],
+            "finger_detected": self.live_data['max30102']['finger_detected'],
+            "progress": self.live_data['max30102']['progress'],
+            "status": self.live_data['max30102']['status'],
+            "elapsed": self.live_data['max30102']['elapsed'],
+            "total_time": self.live_data['max30102']['total'],
+            "sensor_prepared": self.live_data['max30102']['sensor_prepared'],
+            "final_results": {
+                "heart_rate": self.measurements['heart_rate'],
+                "spo2": self.measurements['spo2'],
+                "respiratory_rate": self.measurements['respiratory_rate']
+            },
+            "message": "MAX30102 sensor status"
+        }
+        
+        if not self.is_connected:
+            status.update({"status": "disconnected", "message": "Not connected to Arduino"})
+        elif not self.max30102_sensor_ready:
+            status.update({"status": "not_ready", "message": "MAX30102 sensor not initialized"})
+        else:
+            status.update({"status": self.live_data['max30102']['status'], "message": "MAX30102 sensor ready"})
+            
+        return status
+
+    def shutdown_max30102(self):
+        """Shutdown MAX30102 sensor"""
+        self._max30102_measurement_active = False
+        self.live_data['max30102']['status'] = 'idle'
+        self._power_down_sensor("max30102")
+        return {"status": "powered_down"}
+
     def _power_down_sensor(self, sensor_type):
         """Power down specific sensor"""
         if not self.is_connected:
@@ -760,6 +1088,8 @@ class SensorManager:
                 self.serial_conn.write("POWER_DOWN_HEIGHT\n".encode())
             elif sensor_type == "temperature":
                 self.serial_conn.write("POWER_DOWN_TEMPERATURE\n".encode())
+            elif sensor_type == "max30102":
+                self.serial_conn.write("POWER_DOWN_MAX30102\n".encode())
         except Exception as e:
             print(f"Error powering down {sensor_type}: {e}")
 
@@ -774,8 +1104,10 @@ class SensorManager:
             self._weight_measurement_active = False
             self._height_measurement_active = False
             self._temperature_measurement_active = False
+            self._max30102_measurement_active = False
             self.live_data['weight']['status'] = 'idle'
             self.live_data['height']['status'] = 'idle'
             self.live_data['temperature']['status'] = 'idle'
+            self.live_data['max30102']['status'] = 'idle'
         except Exception as e:
             print(f"Error shutting down sensors: {e}")

@@ -1,9 +1,12 @@
-// LIBRARIES for weight, height, and temperature
+// LIBRARIES for weight, height, temperature, and MAX30102
 #include <Wire.h>
 #include <EEPROM.h>
 #include "HX711_ADC.h"         // For Weight
 #include "TFLI2C.h"            // For Height (TF-Luna Lidar)
 #include <Adafruit_MLX90614.h> // For Temperature
+#include "MAX30105.h"          // For MAX30102
+#include "heartRate.h"
+#include "spo2_algorithm.h"
 
 // =================================================================
 // --- SENSOR OBJECTS ---
@@ -12,11 +15,12 @@
 HX711_ADC LoadCell(4, 5);      // DAT pin = 4, CLK pin = 5
 TFLI2C heightSensor;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614(); // Temperature sensor
+MAX30105 particleSensor;       // MAX30102 sensor
 
 // =================================================================
 // --- SYSTEM STATE MANAGEMENT ---
 // =================================================================
-enum SystemPhase { IDLE, AUTO_TARE, INITIALIZING_WEIGHT, WEIGHT, HEIGHT, TEMPERATURE };
+enum SystemPhase { IDLE, AUTO_TARE, INITIALIZING_WEIGHT, WEIGHT, HEIGHT, TEMPERATURE, MAX30102 };
 SystemPhase currentPhase = IDLE;
 bool measurementActive = false;
 unsigned long phaseStartTime = 0;
@@ -25,10 +29,36 @@ unsigned long phaseStartTime = 0;
 bool weightSensorPowered = false;
 bool heightSensorPowered = false;
 bool temperatureSensorPowered = false;
+bool max30102SensorPowered = false;
 
 // Weight sensor initialization flag
 bool weightSensorInitialized = false;
 bool autoTareCompleted = false;
+
+// MAX30102 Variables - UPDATED TO MATCH WORKING CODE
+#define BUFFER_SIZE 50
+uint32_t irBuffer[BUFFER_SIZE];  
+uint32_t redBuffer[BUFFER_SIZE];  
+int32_t spo2;          
+int8_t validSPO2;      
+int32_t heartRate;     
+int8_t validHeartRate; 
+float respiratoryRate = 0;
+const int BPM_DEDUCTION = 20;  // Deduct 20 BPM dynamically
+
+// MAX30102 Measurement Variables - SIMPLIFIED
+const unsigned long MAX30102_MEASUREMENT_TIME = 30000; // 30 seconds total
+const unsigned long MAX30102_READ_INTERVAL = 1000;     // Show readings every second
+
+// Variables to store final results
+int32_t finalHeartRate = 0;
+int32_t finalSpO2 = 0;
+float finalRespiratoryRate = 0;
+bool max30102MeasurementComplete = false;
+bool fingerDetected = false;
+bool max30102MeasurementStarted = false;
+unsigned long max30102StartTime = 0;
+unsigned long lastMax30102DisplayTime = 0;
 
 // --- Measurement Variables - SIMPLIFIED FOR REAL-TIME ---
 // Weight - SIMPLIFIED FOR 3 SECONDS REAL-TIME
@@ -68,6 +98,9 @@ unsigned long lastTemperatureReadTime = 0;
 bool temperatureSensorInitialized = false;
 const float TEMPERATURE_THRESHOLD = 34.0; // Minimum valid temperature
 const float TEMPERATURE_MAX = 42.0;       // Maximum valid temperature
+
+// MAX30102 timing variables
+bool max30102SensorInitialized = false;
 
 // =================================================================
 // --- SETUP FUNCTION ---
@@ -173,6 +206,9 @@ void initializeBasicSensors() {
   // Temperature sensor will be initialized when powered up
   Serial.println("DEBUG:Temperature sensor ready for initialization");
   
+  // MAX30102 sensor will be initialized when powered up
+  Serial.println("DEBUG:MAX30102 sensor ready for initialization");
+  
   Serial.println("STATUS:BASIC_SENSORS_INITIALIZED");
 }
 
@@ -211,6 +247,9 @@ void initializeOtherSensors() {
   
   // Temperature sensor will be initialized when powered up
   Serial.println("STATUS:TEMPERATURE_SENSOR_READY");
+  
+  // MAX30102 sensor will be initialized when powered up
+  Serial.println("STATUS:MAX30102_SENSOR_READY");
 }
 
 void fullSystemInitialize() {
@@ -223,6 +262,246 @@ void fullSystemInitialize() {
   initializeOtherSensors();
   
   Serial.println("STATUS:FULL_SYSTEM_INITIALIZATION_COMPLETE");
+}
+
+// =================================================================
+// --- MAX30102 FUNCTIONS - UPDATED TO MATCH WORKING CODE ---
+// =================================================================
+void powerUpMax30102Sensor() {
+  if (!max30102SensorPowered) {
+    Serial.println("STATUS:POWERING_UP_MAX30102");
+    
+    if (!particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
+      Serial.println("ERROR:MAX30102_NOT_FOUND");
+      max30102SensorPowered = false;
+      max30102SensorInitialized = false;
+      return;
+    }
+
+    particleSensor.setup();
+    particleSensor.setPulseAmplitudeRed(0x0A);
+    particleSensor.setPulseAmplitudeGreen(0);
+    
+    max30102SensorPowered = true;
+    max30102SensorInitialized = true;
+    Serial.println("STATUS:MAX30102_SENSOR_POWERED_UP");
+    Serial.println("STATUS:MAX30102_SENSOR_INITIALIZED");
+    Serial.println("MAX30102_READY:Place finger on sensor to start measurement");
+  }
+}
+
+void powerDownMax30102Sensor() {
+  if (max30102SensorPowered) {
+    max30102SensorPowered = false;
+    Serial.println("STATUS:MAX30102_SENSOR_POWERED_DOWN");
+  }
+}
+
+// Estimate respiratory rate based on heart rate - FROM WORKING CODE
+int estimateRespiratoryRate(int32_t bpm) {
+  float rr;
+  
+  if (bpm < 40) rr = 8;
+  else if (bpm >= 40 && bpm <= 100) rr = bpm / 4.0;
+  else if (bpm > 100 && bpm <= 140) rr = bpm / 4.5;
+  else rr = bpm / 5.0;
+
+  if (rr < 8) rr = 8;
+  if (rr > 40) rr = 40;
+  return rr;
+}
+
+void startMax30102Measurement() {
+  if (!max30102SensorPowered) powerUpMax30102Sensor();
+  
+  if (!max30102SensorInitialized) {
+    Serial.println("ERROR:MAX30102_SENSOR_NOT_INITIALIZED");
+    return;
+  }
+  
+  // Reset all states - SIMPLIFIED LIKE WORKING CODE
+  measurementActive = true;
+  currentPhase = MAX30102;
+  max30102MeasurementStarted = true;
+  max30102StartTime = millis();
+  lastMax30102DisplayTime = millis();
+  max30102MeasurementComplete = false;
+  fingerDetected = false;
+  finalHeartRate = 0;
+  finalSpO2 = 0;
+  finalRespiratoryRate = 0;
+  
+  Serial.println("STATUS:MAX30102_MEASUREMENT_STARTED");
+  Serial.println("MAX30102_STATE:WAITING_FOR_FINGER");
+  Serial.println("MAX30102_READY:Place finger on sensor to start measurement");
+}
+
+void runMax30102Phase() {
+  long irValue = particleSensor.getIR();
+  
+  // Check for finger presence - SIMPLIFIED LIKE WORKING CODE
+  if (irValue < 50000) {
+    if (fingerDetected) {
+      // Finger was removed
+      fingerDetected = false;
+      max30102MeasurementStarted = false;
+      Serial.println("FINGER_REMOVED");
+      Serial.println("MAX30102_STATE:FINGER_REMOVED");
+      Serial.println("MAX30102_READY:Place finger on sensor to start measurement");
+    }
+    
+    // Send finger status
+    if (millis() - lastMax30102DisplayTime >= 1000) {
+      Serial.print("MAX30102_FINGER_STATUS:");
+      Serial.println("NOT_DETECTED");
+      Serial.print("MAX30102_IR_VALUE:");
+      Serial.println(irValue);
+      lastMax30102DisplayTime = millis();
+    }
+    return;
+  }
+  
+  // Finger detected for the first time
+  if (!fingerDetected) {
+    fingerDetected = true;
+    max30102MeasurementStarted = true;
+    max30102StartTime = millis();
+    lastMax30102DisplayTime = millis();
+    
+    Serial.println("FINGER_DETECTED");
+    Serial.println("MAX30102_STATE:MEASURING");
+    Serial.println("✅ Finger detected! Starting 30-second measurement...");
+    Serial.println("==================================================");
+  }
+  
+  // If measurement hasn't started yet, wait
+  if (!max30102MeasurementStarted) {
+    return;
+  }
+
+  // Collect 50 samples - FROM WORKING CODE
+  for (byte i = 0; i < BUFFER_SIZE; i++) {
+    while (!particleSensor.available())
+      particleSensor.check();
+
+    redBuffer[i] = particleSensor.getRed();
+    irBuffer[i] = particleSensor.getIR();
+    particleSensor.nextSample();
+  }
+
+  // Process this batch - FROM WORKING CODE
+  maxim_heart_rate_and_oxygen_saturation(
+    irBuffer, BUFFER_SIZE, redBuffer,
+    &spo2, &validSPO2,
+    &heartRate, &validHeartRate
+  );
+
+  // Adjust heart rate and recalc respiratory rate - FROM WORKING CODE
+  if (validHeartRate && heartRate > 0) {
+    heartRate -= BPM_DEDUCTION;
+    if (heartRate < 30) heartRate = 30;
+    if (heartRate > 200) heartRate = 200;
+    respiratoryRate = estimateRespiratoryRate(heartRate);
+  }
+
+  // Show real-time reading every second - FROM WORKING CODE
+  if (millis() - lastMax30102DisplayTime >= MAX30102_READ_INTERVAL) {
+    unsigned long elapsedTime = (millis() - max30102StartTime) / 1000;
+    unsigned long remainingTime = 30 - elapsedTime;
+    
+    if (validSPO2 && validHeartRate && spo2 > 0 && heartRate > 0) {
+      Serial.print("[Time: ");
+      Serial.print(elapsedTime);
+      Serial.print("s] Heart Rate: ");
+      Serial.print(heartRate);
+      Serial.print(" BPM  SpO2: ");
+      Serial.print(spo2);
+      Serial.print("%  RR: ");
+      Serial.print(respiratoryRate);
+      Serial.print(" breaths/min  (");
+      Serial.print(remainingTime);
+      Serial.println("s remaining)");
+      
+      // Send live data for frontend
+      Serial.print("MAX30102_LIVE_DATA:");
+      Serial.print("HR=");
+      Serial.print(heartRate);
+      Serial.print(",SPO2=");
+      Serial.print(spo2);
+      Serial.print(",RR=");
+      Serial.print(respiratoryRate);
+      Serial.print(",VALID_HR=");
+      Serial.print(validHeartRate);
+      Serial.print(",VALID_SPO2=");
+      Serial.println(validSPO2);
+      
+      // Store the latest reading as final result
+      finalHeartRate = heartRate;
+      finalSpO2 = spo2;
+      finalRespiratoryRate = respiratoryRate;
+    } else {
+      Serial.print("[Time: ");
+      Serial.print(elapsedTime);
+      Serial.print("s] Waiting for valid signal... (");
+      Serial.print(remainingTime);
+      Serial.println("s remaining)");
+    }
+    
+    // Send progress updates
+    int progressPercent = (elapsedTime * 100) / 30;
+    Serial.print("STATUS:MAX30102_PROGRESS:");
+    Serial.print(elapsedTime);
+    Serial.print("/30:");
+    Serial.println(progressPercent);
+    
+    lastMax30102DisplayTime = millis();
+  }
+
+  // Show final result after 30 seconds - FROM WORKING CODE
+  if (millis() - max30102StartTime >= MAX30102_MEASUREMENT_TIME && !max30102MeasurementComplete && max30102MeasurementStarted) {
+    Serial.println("MAX30102_MEASUREMENT_COMPLETING");
+    
+    if (finalHeartRate > 0 && finalSpO2 > 0) {
+      Serial.println("==================================");
+      Serial.println("===== 30-SECOND FINAL RESULT =====");
+      Serial.println("==================================");
+      Serial.print("RESULT:HEART_RATE:");
+      Serial.println(finalHeartRate);
+      Serial.print("RESULT:SPO2:");
+      Serial.println(finalSpO2);
+      Serial.print("RESULT:RESPIRATORY_RATE:");
+      Serial.println(finalRespiratoryRate, 1);
+      
+      Serial.print("FINAL_RESULT: Heart Rate: ");
+      Serial.print(finalHeartRate);
+      Serial.print(" BPM, SpO2: ");
+      Serial.print(finalSpO2);
+      Serial.print("%, RR: ");
+      Serial.print(finalRespiratoryRate, 1);
+      Serial.println(" breaths/min");
+      
+      Serial.println("MAX30102_RESULTS_VALID");
+    } else {
+      Serial.println("ERROR:MAX30102_READING_FAILED");
+      Serial.println("DEBUG:No valid readings obtained during the 30-second period");
+      Serial.println("MAX30102_RESULTS_INVALID");
+    }
+    
+    Serial.println("==================================");
+    Serial.println("STATUS:MAX30102_MEASUREMENT_COMPLETE");
+    
+    max30102MeasurementComplete = true;
+    finalizeMax30102Measurement();
+  }
+}
+
+void finalizeMax30102Measurement() {
+  delay(100);
+  measurementActive = false;
+  currentPhase = IDLE;
+  max30102MeasurementStarted = false;
+  max30102MeasurementComplete = true;
+  powerDownMax30102Sensor();
 }
 
 // =================================================================
@@ -254,6 +533,9 @@ void loop() {
       case TEMPERATURE:
         runTemperaturePhase();
         break;
+      case MAX30102:
+        runMax30102Phase();
+        break;
       default: 
         break;
     }
@@ -276,18 +558,24 @@ void handleCommand(String command) {
     startHeightMeasurement();
   } else if (command == "START_TEMPERATURE") {
     startTemperatureMeasurement();
+  } else if (command == "START_MAX30102") {
+    startMax30102Measurement();
   } else if (command == "POWER_UP_WEIGHT") {
     powerUpWeightSensor();
   } else if (command == "POWER_UP_HEIGHT") {
     powerUpHeightSensor();
   } else if (command == "POWER_UP_TEMPERATURE") {
     powerUpTemperatureSensor();
+  } else if (command == "POWER_UP_MAX30102") {
+    powerUpMax30102Sensor();
   } else if (command == "POWER_DOWN_WEIGHT") {
     powerDownWeightSensor();
   } else if (command == "POWER_DOWN_HEIGHT") {
     powerDownHeightSensor();
   } else if (command == "POWER_DOWN_TEMPERATURE") {
     powerDownTemperatureSensor();
+  } else if (command == "POWER_DOWN_MAX30102") {
+    powerDownMax30102Sensor();
   } else if (command == "SHUTDOWN_ALL") {
     shutdownAllSensors();
   } else if (command == "GET_STATUS") {
@@ -429,6 +717,7 @@ void shutdownAllSensors() {
   powerDownWeightSensor();
   powerDownHeightSensor();
   powerDownTemperatureSensor();
+  powerDownMax30102Sensor();
   measurementActive = false;
   currentPhase = IDLE;
   Serial.println("STATUS:ALL_SENSORS_SHUTDOWN");
@@ -442,6 +731,7 @@ void sendStatus() {
     case WEIGHT: Serial.println("WEIGHT"); break;
     case HEIGHT: Serial.println("HEIGHT"); break;
     case TEMPERATURE: Serial.println("TEMPERATURE"); break;
+    case MAX30102: Serial.println("MAX30102"); break;
   }
   Serial.print("STATUS:MEASUREMENT_ACTIVE:");
   Serial.println(measurementActive ? "YES" : "NO");
@@ -449,6 +739,8 @@ void sendStatus() {
   Serial.println(weightSensorInitialized ? "YES" : "NO");
   Serial.print("STATUS:TEMPERATURE_SENSOR_INITIALIZED:");
   Serial.println(temperatureSensorInitialized ? "YES" : "NO");
+  Serial.print("STATUS:MAX30102_SENSOR_INITIALIZED:");
+  Serial.println(max30102SensorInitialized ? "YES" : "NO");
   Serial.print("STATUS:AUTO_TARE_COMPLETED:");
   Serial.println(autoTareCompleted ? "YES" : "NO");
   Serial.print("STATUS:SYSTEM_MODE:");

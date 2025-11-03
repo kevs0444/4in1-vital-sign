@@ -53,6 +53,35 @@ export default function RegisterTapID() {
     }
   ];
 
+  // Add viewport meta tag to prevent zooming
+  useEffect(() => {
+    // Create or update viewport meta tag
+    let viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      document.head.appendChild(viewport);
+    }
+    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
+    
+    // Prevent zooming via touch gestures
+    document.addEventListener('touchstart', handleZoomTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleZoomTouchMove, { passive: false });
+    document.addEventListener('touchend', handleZoomTouchEnd, { passive: false });
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchstart', handleZoomTouchStart);
+      document.removeEventListener('touchmove', handleZoomTouchMove);
+      document.removeEventListener('touchend', handleZoomTouchEnd);
+      document.removeEventListener('gesturestart', preventZoom);
+      document.removeEventListener('gesturechange', preventZoom);
+      document.removeEventListener('gestureend', preventZoom);
+    };
+  }, []);
+
   // Get placeholder based on user type
   const getIdNumberPlaceholder = () => {
     return isEmployee ? "e.g., 2023-001" : "e.g., 2022-200901";
@@ -61,6 +90,29 @@ export default function RegisterTapID() {
   // Get input label based on user type
   const getIdNumberLabel = () => {
     return isEmployee ? "Employee Number" : "Student Number";
+  };
+
+  // Prevent zooming functions - RENAMED
+  const handleZoomTouchStart = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleZoomTouchMove = (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+
+  const handleZoomTouchEnd = (e) => {
+    if (e.touches.length > 0) {
+      e.preventDefault();
+    }
+  };
+
+  const preventZoom = (e) => {
+    e.preventDefault();
   };
 
   // Auto-focus inputs when step changes
