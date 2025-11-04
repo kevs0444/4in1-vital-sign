@@ -62,11 +62,19 @@
   --border-radius-lg: 20px;
 }
 
-/* Global Styles */
+/* Global Styles - Prevent Zooming and Fix Scale */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html, body {
@@ -78,10 +86,34 @@ html, body {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 100%;
   background-color: var(--background-color);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+/* Prevent double-tap zoom on mobile */
+.standby-container {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .standby-container {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   min-height: 100vh;
   background-color: var(--background-color);
   overflow: hidden;
@@ -89,6 +121,7 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
+  touch-action: manipulation;
 }
 
 /* Main Content Container - Self-contained */
@@ -101,6 +134,8 @@ html, body {
   max-width: none;
   margin: 0 auto;
   padding: 0 2rem;
+  transform: scale(1);
+  transform-origin: center center;
 }
 
 /* Backend Status */
@@ -346,6 +381,11 @@ html, body {
   overflow: hidden;
   color: white !important;
   letter-spacing: 0.03em;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .standby-start-button:hover:not(:disabled) {
@@ -604,4 +644,26 @@ html, body {
   font-size: 13px;
   font-weight: normal;
   margin: 4px 0;
+}
+
+/* Additional anti-zoom properties */
+.standby-container * {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+}
+
+/* Prevent pinch-zoom on the entire document */
+body {
+  touch-action: pan-x pan-y;
+}
+
+/* Viewport meta tag simulation through CSS */
+.standby-container {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
 }

@@ -18,6 +18,42 @@ Adafruit_MLX90614 mlx = Adafruit_MLX90614(); // Temperature sensor
 MAX30105 particleSensor;       // MAX30102 sensor
 
 // =================================================================
+// --- MAX30102 CONSTANTS (FROM TESTING CODE) ---
+// =================================================================
+#define BUFFER_SIZE 100
+uint32_t irBuffer[BUFFER_SIZE];  
+uint32_t redBuffer[BUFFER_SIZE];  
+int32_t spo2;          
+int8_t validSPO2;      
+int32_t heartRate;     
+int8_t validHeartRate; 
+float respiratoryRate = 0;
+
+// MAX30102 Measurement Variables (FROM TESTING CODE)
+const unsigned long MAX30102_MEASUREMENT_TIME = 30000;     // 30 seconds total duration
+const unsigned long MAX30102_READ_INTERVAL = 100;          // Show readings every 100ms like testing code
+
+// BPM deduction (FROM TESTING CODE)
+const int BPM_DEDUCTION = 25;  // Deduct 25 BPM dynamically
+
+// Variables to store final results (FROM TESTING CODE)
+int32_t finalHeartRate = 0;
+int32_t finalSpO2 = 0;
+float finalRespiratoryRate = 0;
+bool max30102MeasurementComplete = false;
+bool fingerDetected = false;
+bool max30102MeasurementStarted = false;
+unsigned long max30102StartTime = 0;
+unsigned long lastMax30102DisplayTime = 0;
+
+// =================================================================
+// --- TEMPERATURE CONSTANTS ---
+// =================================================================
+const float TEMPERATURE_CALIBRATION_OFFSET = 3.6;  // Calibration offset
+const float TEMPERATURE_THRESHOLD = 35.0;          // Minimum valid temperature
+const float TEMPERATURE_MAX = 42.0;                // Maximum valid temperature
+
+// =================================================================
 // --- SYSTEM STATE MANAGEMENT ---
 // =================================================================
 enum SystemPhase { IDLE, AUTO_TARE, INITIALIZING_WEIGHT, WEIGHT, HEIGHT, TEMPERATURE, MAX30102 };
@@ -34,30 +70,6 @@ bool max30102SensorPowered = false;
 // Weight sensor initialization flag
 bool weightSensorInitialized = false;
 bool autoTareCompleted = false;
-
-// MAX30102 Variables - IMPROVED FINGER DETECTION
-#define BUFFER_SIZE 50
-uint32_t irBuffer[BUFFER_SIZE];  
-uint32_t redBuffer[BUFFER_SIZE];  
-int32_t spo2;          
-int8_t validSPO2;      
-int32_t heartRate;     
-int8_t validHeartRate; 
-float respiratoryRate = 0;
-
-// MAX30102 Measurement Variables
-const unsigned long MAX30102_MEASUREMENT_TIME = 30000; // 30 seconds total
-const unsigned long MAX30102_READ_INTERVAL = 1000;     // Show readings every second
-
-// Variables to store final results
-int32_t finalHeartRate = 0;
-int32_t finalSpO2 = 0;
-float finalRespiratoryRate = 0;
-bool max30102MeasurementComplete = false;
-bool fingerDetected = false;
-bool max30102MeasurementStarted = false;
-unsigned long max30102StartTime = 0;
-unsigned long lastMax30102DisplayTime = 0;
 
 // --- Measurement Variables ---
 // Weight
@@ -95,8 +107,6 @@ unsigned long lastProgressUpdate = 0;
 // Temperature sensor variables
 unsigned long lastTemperatureReadTime = 0;
 bool temperatureSensorInitialized = false;
-const float TEMPERATURE_THRESHOLD = 34.0;
-const float TEMPERATURE_MAX = 42.0;
 
 // MAX30102 timing variables
 bool max30102SensorInitialized = false;
@@ -244,7 +254,17 @@ void fullSystemInitialize() {
 }
 
 // =================================================================
-// --- MAX30102 FUNCTIONS - CONTINUOUS MONITORING LIKE TESTING CODE ---
+// --- TEMPERATURE CLASSIFICATION FUNCTION ---
+// =================================================================
+String classifyTemperature(float temp) {
+  if (temp >= 35.0 && temp <= 37.2) return "Normal";
+  else if (temp >= 37.3 && temp <= 38.0) return "Elevated";
+  else if (temp > 38.0 && temp <= 42.0) return "Critical";
+  else return "Out of Range";
+}
+
+// =================================================================
+// --- MAX30102 FUNCTIONS - INTEGRATED FROM TESTING CODE ---
 // =================================================================
 void powerUpMax30102Sensor() {
   if (!max30102SensorPowered) {
@@ -262,7 +282,7 @@ void powerUpMax30102Sensor() {
         Serial.println("STATUS:MAX30102_SENSOR_INITIALIZED");
         Serial.println("MAX30102_READY:Sensor ready - Place finger to start");
         
-        // Start continuous finger monitoring immediately
+        // Start continuous finger monitoring immediately (FROM TESTING CODE)
         startFingerDetection();
         return;
       }
@@ -282,13 +302,13 @@ void powerDownMax30102Sensor() {
   }
 }
 
-// Start continuous finger detection
+// Start continuous finger detection (FROM TESTING CODE)
 void startFingerDetection() {
   Serial.println("MAX30102_STATE:FINGER_DETECTION_ACTIVE");
   Serial.println("MAX30102_READY:Place finger on sensor to start automatic measurement");
 }
 
-// Continuous finger monitoring with automatic measurement start
+// Continuous finger monitoring with automatic measurement start (FROM TESTING CODE)
 void monitorFingerPresence() {
   static unsigned long lastFingerCheck = 0;
   static bool lastFingerState = false;
@@ -297,25 +317,25 @@ void monitorFingerPresence() {
     bool currentFingerState = checkFingerPresence();
     
     if (currentFingerState && !lastFingerState) {
-      // Finger just detected - start measurement automatically
+      // Finger just detected - start measurement automatically (FROM TESTING CODE)
       fingerDetected = true;
       Serial.println("FINGER_DETECTED");
       Serial.println("MAX30102_STATE:FINGER_DETECTED");
       Serial.println("MAX30102_FINGER_STATUS:DETECTED");
       Serial.println("MAX30102_READY:Finger detected! Starting automatic measurement...");
       
-      // Start measurement automatically when finger is detected
+      // Start measurement automatically when finger is detected (FROM TESTING CODE)
       startMax30102Measurement();
       
     } else if (!currentFingerState && lastFingerState) {
-      // Finger just removed
+      // Finger just removed (FROM TESTING CODE)
       fingerDetected = false;
       Serial.println("FINGER_REMOVED");
       Serial.println("MAX30102_STATE:WAITING_FOR_FINGER");
       Serial.println("MAX30102_FINGER_STATUS:NOT_DETECTED");
       Serial.println("MAX30102_READY:Place finger on sensor to start measurement");
       
-      // Stop any ongoing measurement
+      // Stop any ongoing measurement (FROM TESTING CODE)
       if (max30102MeasurementStarted) {
         max30102MeasurementStarted = false;
         measurementActive = false;
@@ -329,7 +349,7 @@ void monitorFingerPresence() {
   }
 }
 
-// Improved finger detection
+// Improved finger detection (FROM TESTING CODE)
 bool checkFingerPresence() {
   if (!max30102SensorPowered) return false;
   
@@ -339,13 +359,13 @@ bool checkFingerPresence() {
   Serial.print("MAX30102_IR_VALUE:");
   Serial.println(irValue);
   
-  // Finger detection threshold - same as your testing code
+  // Finger detection threshold - same as testing code
   bool fingerPresent = (irValue > 50000); // Use same threshold as testing code
   
   return fingerPresent;
 }
 
-// Estimate respiratory rate based on heart rate
+// Estimate respiratory rate based on heart rate (FROM TESTING CODE)
 int estimateRespiratoryRate(int32_t bpm) {
   float rr;
   
@@ -367,14 +387,14 @@ void startMax30102Measurement() {
     return;
   }
   
-  // Check if finger is present before starting
+  // Check if finger is present before starting (FROM TESTING CODE)
   if (!checkFingerPresence()) {
     Serial.println("ERROR:MAX30102_NO_FINGER");
     Serial.println("MAX30102_READY:Please place finger on sensor first");
     return;
   }
   
-  // Reset all states
+  // Reset all states (FROM TESTING CODE)
   measurementActive = true;
   currentPhase = MAX30102;
   max30102MeasurementStarted = true;
@@ -394,10 +414,10 @@ void startMax30102Measurement() {
 void runMax30102Phase() {
   unsigned long currentTime = millis();
   
-  // Always monitor finger presence during MAX30102 phase
+  // Always monitor finger presence during MAX30102 phase (FROM TESTING CODE)
   monitorFingerPresence();
   
-  // If no finger detected during measurement, stop it
+  // If no finger detected during measurement, stop it (FROM TESTING CODE)
   if (max30102MeasurementStarted && !fingerDetected) {
     Serial.println("MAX30102_STATE:FINGER_REMOVED_DURING_MEASUREMENT");
     Serial.println("ERROR:MAX30102_MEASUREMENT_INTERRUPTED");
@@ -407,12 +427,12 @@ void runMax30102Phase() {
     return;
   }
   
-  // If measurement hasn't started yet, just monitor finger
+  // If measurement hasn't started yet, just monitor finger (FROM TESTING CODE)
   if (!max30102MeasurementStarted) {
     return;
   }
 
-  // Collect samples for processing
+  // Collect samples for processing (FROM TESTING CODE)
   for (byte i = 0; i < BUFFER_SIZE; i++) {
     while (!particleSensor.available())
       particleSensor.check();
@@ -422,22 +442,22 @@ void runMax30102Phase() {
     particleSensor.nextSample();
   }
 
-  // Process this batch
+  // Process this batch (FROM TESTING CODE)
   maxim_heart_rate_and_oxygen_saturation(
     irBuffer, BUFFER_SIZE, redBuffer,
     &spo2, &validSPO2,
     &heartRate, &validHeartRate
   );
 
-  // Use raw values without deduction (like your testing code)
+  // Apply BPM deduction like testing code
   if (validHeartRate && heartRate > 0) {
-    // No BPM deduction - use raw values like your testing code
+    heartRate -= BPM_DEDUCTION; // Apply deduction like testing code
     if (heartRate < 30) heartRate = 30;
     if (heartRate > 200) heartRate = 200;
     respiratoryRate = estimateRespiratoryRate(heartRate);
   }
 
-  // Show real-time reading every second
+  // Show real-time reading every 100ms like testing code
   if (currentTime - lastMax30102DisplayTime >= MAX30102_READ_INTERVAL) {
     unsigned long elapsedTime = (currentTime - max30102StartTime) / 1000;
     unsigned long remainingTime = 30 - elapsedTime;
@@ -468,14 +488,14 @@ void runMax30102Phase() {
       Serial.print(",VALID_SPO2=");
       Serial.println(validSPO2);
       
-      // Store the latest reading as final result
+      // Store the latest reading as final result (FROM TESTING CODE)
       finalHeartRate = heartRate;
       finalSpO2 = spo2;
       finalRespiratoryRate = respiratoryRate;
     } else {
       Serial.print("[Time: ");
       Serial.print(elapsedTime);
-      Serial.print("s] Acquiring signal... (");
+      Serial.print("s] Waiting for valid signal... (");
       Serial.print(remainingTime);
       Serial.println("s remaining)");
     }
@@ -490,7 +510,7 @@ void runMax30102Phase() {
     lastMax30102DisplayTime = currentTime;
   }
 
-  // Show final result after 30 seconds
+  // Show final result after 30 seconds (FROM TESTING CODE)
   if (currentTime - max30102StartTime >= MAX30102_MEASUREMENT_TIME && !max30102MeasurementComplete) {
     Serial.println("MAX30102_MEASUREMENT_COMPLETING");
     
@@ -523,6 +543,13 @@ void runMax30102Phase() {
     max30102MeasurementComplete = true;
     finalizeMax30102Measurement();
   }
+
+  // Reset for new 30-second cycle if final result was shown and finger is still detected (FROM TESTING CODE)
+  if (max30102MeasurementComplete && currentTime - max30102StartTime >= MAX30102_MEASUREMENT_TIME + 2000 && fingerDetected) {
+    Serial.println("\n🔄 Starting new 30-second measurement...");
+    Serial.println("==================================================");
+    startMax30102Measurement();
+  }
 }
 
 void finalizeMax30102Measurement() {
@@ -532,7 +559,7 @@ void finalizeMax30102Measurement() {
   max30102MeasurementStarted = false;
   max30102MeasurementComplete = true;
   
-  // Don't reset fingerDetected - keep monitoring
+  // Don't reset fingerDetected - keep monitoring (FROM TESTING CODE)
   Serial.println("MAX30102_STATE:FINGER_DETECTION_ACTIVE");
   Serial.println("MAX30102_READY:Measurement complete. Keep finger on sensor for new measurement or remove to stop.");
 }
@@ -576,7 +603,7 @@ void loop() {
     // When IDLE, run background tasks including finger monitoring
     runIdleTasks();
     
-    // Always monitor finger if MAX30102 is powered
+    // Always monitor finger if MAX30102 is powered (FROM TESTING CODE)
     if (max30102SensorPowered) {
       monitorFingerPresence();
     }
@@ -706,8 +733,10 @@ void powerUpTemperatureSensor() {
       temperatureSensorInitialized = true;
       Serial.println("STATUS:TEMPERATURE_SENSOR_POWERED_UP");
       Serial.println("STATUS:TEMPERATURE_SENSOR_INITIALIZED");
+      Serial.println("🌡️ Temperature sensor ready!");
     } else {
       Serial.println("ERROR:TEMPERATURE_SENSOR_INIT_FAILED");
+      Serial.println("❌ Failed to initialize MLX90614. Check wiring!");
       temperatureSensorPowered = false;
       temperatureSensorInitialized = false;
     }
@@ -753,6 +782,10 @@ void sendStatus() {
   Serial.println(autoTareCompleted ? "YES" : "NO");
   Serial.print("STATUS:MAX30102_FINGER_DETECTED:");
   Serial.println(fingerDetected ? "YES" : "NO");
+  Serial.print("STATUS:MAX30102_MEASUREMENT_STARTED:");
+  Serial.println(max30102MeasurementStarted ? "YES" : "NO");
+  Serial.print("STATUS:MAX30102_MEASUREMENT_COMPLETE:");
+  Serial.println(max30102MeasurementComplete ? "YES" : "NO");
 }
 
 // =================================================================
@@ -794,7 +827,115 @@ void startTemperatureMeasurement() {
   currentPhase = TEMPERATURE;
   temperatureState = T_DETECTING;
   phaseStartTime = millis();
+  
+  Serial.println("🌡️ Measuring body temperature...");
+  Serial.println("Please stand close to the sensor for 2 seconds.");
+  Serial.println("-----------------------------------------------");
+  
   Serial.println("STATUS:TEMPERATURE_MEASUREMENT_STARTED");
+}
+
+// =================================================================
+// --- UPDATED TEMPERATURE MEASUREMENT FUNCTIONS ---
+// =================================================================
+void runTemperaturePhase() {
+  static unsigned long lastTemperatureRead = 0;
+  static unsigned long lastLiveUpdate = 0;
+  static unsigned long lastProgressUpdate = 0;
+  static bool measurementTaken = false;
+  unsigned long currentTime = millis();
+
+  switch (temperatureState) {
+    case T_DETECTING:
+      Serial.println("STATUS:TEMPERATURE_MEASURING");
+      temperatureState = T_MEASURING;
+      measurementStartTime = millis();
+      measurementTaken = false;
+      finalRealTimeTemperature = 0;
+      break;
+
+    case T_MEASURING:
+      if (currentTime - lastTemperatureRead >= TEMPERATURE_READ_INTERVAL) {
+        if (temperatureSensorPowered && temperatureSensorInitialized) {
+          // Apply calibration offset like testing code
+          float currentTemperature = mlx.readObjectTempC() + TEMPERATURE_CALIBRATION_OFFSET;
+          
+          // Check if temperature is in valid human range (like testing code)
+          if (currentTemperature >= TEMPERATURE_THRESHOLD && currentTemperature <= TEMPERATURE_MAX) {
+            finalRealTimeTemperature = currentTemperature;
+            
+            if (currentTime - lastLiveUpdate > 500) { // Update every 500ms like testing code
+              int secondsPassed = (currentTime - measurementStartTime) / 1000;
+              Serial.print("⏱️ Measuring... ");
+              Serial.print(secondsPassed);
+              Serial.println("s");
+              
+              Serial.print("DEBUG:Temperature reading: ");
+              Serial.println(currentTemperature, 2);
+              lastLiveUpdate = currentTime;
+            }
+          } else {
+            // No human detected or out of range
+            if (currentTime - lastLiveUpdate > 1000) {
+              Serial.println("⚠️ No human detected or out of range. Please stand closer.");
+              lastLiveUpdate = currentTime;
+              // Reset measurement time when no valid reading
+              measurementStartTime = currentTime;
+            }
+          }
+        }
+        
+        lastTemperatureRead = currentTime;
+      }
+
+      // Progress updates
+      if (currentTime - lastProgressUpdate > 500) {
+        int elapsed = (currentTime - measurementStartTime) / 1000;
+        int total = TEMPERATURE_MEASUREMENT_TIME / 1000;
+        int progressPercent = (elapsed * 100) / total;
+        Serial.print("STATUS:TEMPERATURE_PROGRESS:");
+        Serial.print(elapsed);
+        Serial.print("/");
+        Serial.print(total);
+        Serial.print(":");
+        Serial.println(progressPercent);
+        lastProgressUpdate = currentTime;
+      }
+
+      // Finalize measurement after 2 seconds with valid reading
+      if (!measurementTaken && (currentTime - measurementStartTime >= TEMPERATURE_MEASUREMENT_TIME)) {
+        if (finalRealTimeTemperature >= TEMPERATURE_THRESHOLD) {
+          // Classify temperature with new ranges
+          String tempCategory = classifyTemperature(finalRealTimeTemperature);
+          
+          Serial.println("\n✅ Final Body Temperature Result:");
+          Serial.print("   Temperature: ");
+          Serial.print(finalRealTimeTemperature, 2);
+          Serial.println(" °C");
+          Serial.print("   Category: ");
+          Serial.println(tempCategory);
+          Serial.println("--------------------------------");
+          
+          Serial.print("RESULT:TEMPERATURE:");
+          Serial.println(finalRealTimeTemperature, 2);
+          Serial.print("RESULT:TEMPERATURE_CATEGORY:");
+          Serial.println(tempCategory);
+          
+          Serial.print("FINAL_RESULT: Temperature measurement complete: ");
+          Serial.print(finalRealTimeTemperature, 2);
+          Serial.print(" °C (");
+          Serial.print(tempCategory);
+          Serial.println(")");
+        } else {
+          Serial.println("ERROR:TEMPERATURE_READING_FAILED");
+          Serial.println("ERROR:No valid human temperature detected");
+        }
+        
+        measurementTaken = true;
+        finalizeTemperatureMeasurement();
+      }
+      break;
+  }
 }
 
 // =================================================================
@@ -968,72 +1109,6 @@ void runHeightPhase() {
         
         measurementTaken = true;
         finalizeHeightMeasurement();
-      }
-      break;
-  }
-}
-
-void runTemperaturePhase() {
-  static unsigned long lastTemperatureRead = 0;
-  static unsigned long lastLiveUpdate = 0;
-  static unsigned long lastProgressUpdate = 0;
-  static bool measurementTaken = false;
-  unsigned long currentTime = millis();
-
-  switch (temperatureState) {
-    case T_DETECTING:
-      Serial.println("STATUS:TEMPERATURE_MEASURING");
-      temperatureState = T_MEASURING;
-      measurementStartTime = millis();
-      measurementTaken = false;
-      finalRealTimeTemperature = 0;
-      break;
-
-    case T_MEASURING:
-      if (currentTime - lastTemperatureRead >= TEMPERATURE_READ_INTERVAL) {
-        if (temperatureSensorPowered && temperatureSensorInitialized) {
-          float currentTemperature = mlx.readObjectTempC();
-          
-          if (currentTime - lastLiveUpdate > 200) {
-            Serial.print("DEBUG:Temperature reading: ");
-            Serial.println(currentTemperature, 1);
-            lastLiveUpdate = currentTime;
-          }
-          
-          if (currentTemperature > TEMPERATURE_THRESHOLD && currentTemperature < TEMPERATURE_MAX) {
-            finalRealTimeTemperature = currentTemperature;
-          }
-        }
-        
-        lastTemperatureRead = currentTime;
-      }
-
-      if (currentTime - lastProgressUpdate > 500) {
-        int elapsed = (currentTime - measurementStartTime) / 1000;
-        int total = TEMPERATURE_MEASUREMENT_TIME / 1000;
-        int progressPercent = (elapsed * 100) / total;
-        Serial.print("STATUS:TEMPERATURE_PROGRESS:");
-        Serial.print(elapsed);
-        Serial.print("/");
-        Serial.print(total);
-        Serial.print(":");
-        Serial.println(progressPercent);
-        lastProgressUpdate = currentTime;
-      }
-
-      if (!measurementTaken && (currentTime - measurementStartTime >= TEMPERATURE_MEASUREMENT_TIME)) {
-        if (finalRealTimeTemperature > TEMPERATURE_THRESHOLD) {
-          Serial.print("RESULT:TEMPERATURE:");
-          Serial.println(finalRealTimeTemperature, 1);
-          Serial.print("FINAL_RESULT: Temperature measurement complete: ");
-          Serial.print(finalRealTimeTemperature, 1);
-          Serial.println(" °C");
-        } else {
-          Serial.println("ERROR:TEMPERATURE_READING_FAILED");
-        }
-        
-        measurementTaken = true;
-        finalizeTemperatureMeasurement();
       }
       break;
   }

@@ -561,11 +561,6 @@ export default function Max30102() {
             }}
           >
             {getButtonText()}
-            {measurementComplete && (
-              <span style={{fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9}}>
-                HR: {measurements.heartRate} BPM • SpO2: {measurements.spo2}% • RR: {measurements.respiratoryRate}/min
-              </span>
-            )}
           </button>
           
           {isMeasuring && (

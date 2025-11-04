@@ -18,6 +18,31 @@ export default function Standby() {
 
   const pollerRef = useRef(null);
 
+  // Effect for preventing zoom and controlling viewport
+  useEffect(() => {
+    // Prevent zooming via viewport meta tag simulation
+    const preventZoom = (e) => {
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    // Prevent context menu (right click)
+    const preventContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('touchstart', preventZoom, { passive: false });
+    document.addEventListener('touchmove', preventZoom, { passive: false });
+    document.addEventListener('contextmenu', preventContextMenu);
+
+    return () => {
+      document.removeEventListener('touchstart', preventZoom);
+      document.removeEventListener('touchmove', preventZoom);
+      document.removeEventListener('contextmenu', preventContextMenu);
+    };
+  }, []);
+
   // Effect for updating the clock
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
