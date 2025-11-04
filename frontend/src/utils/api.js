@@ -356,7 +356,7 @@ export const sensorAPI = {
     }
   },
 
-  // ==================== MAX30102 SENSOR - IMPROVED ====================
+  // ==================== MAX30102 SENSOR - UPDATED FOR AUTOMATIC MEASUREMENT ====================
   startMax30102: async () => {
     try {
       return await fetchWithTimeout(`${API_URL}/sensor/max30102/start`, {
@@ -389,7 +389,8 @@ export const sensorAPI = {
       return {
         ...result,
         initial_finger_detected: status.finger_detected || false,
-        sensor_ready: status.sensor_prepared || false
+        sensor_ready: status.sensor_prepared || false,
+        measurement_started: status.measurement_started || false
       };
       
     } catch (error) {
@@ -415,7 +416,10 @@ export const sensorAPI = {
         // Enhanced sensor readiness check
         sensor_fully_ready: Boolean(response.sensor_prepared && response.status !== 'error'),
         // Add timestamp for debugging
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        // Enhanced measurement status
+        measurement_started: response.measurement_started || false,
+        final_result_shown: response.final_result_shown || false
       };
       
     } catch (error) {
@@ -434,6 +438,8 @@ export const sensorAPI = {
         total_time: 30,
         sensor_prepared: false,
         sensor_fully_ready: false,
+        measurement_started: false,
+        final_result_shown: false,
         final_results: {
           heart_rate: null,
           spo2: null,
@@ -454,6 +460,7 @@ export const sensorAPI = {
         finger_detected: status.finger_detected,
         ir_value: status.ir_value || 0,
         sensor_ready: status.sensor_prepared,
+        measurement_started: status.measurement_started,
         timestamp: new Date().toISOString()
       };
     } catch (error) {
@@ -462,6 +469,30 @@ export const sensorAPI = {
         finger_detected: false,
         ir_value: 0,
         sensor_ready: false,
+        measurement_started: false,
+        error: error.message
+      };
+    }
+  },
+
+  // New method to check if measurement is complete
+  isMax30102MeasurementComplete: async () => {
+    try {
+      const status = await sensorAPI.getMax30102Status();
+      
+      return {
+        complete: status.final_result_shown || false,
+        has_valid_data: Boolean(status.final_results && 
+                               (status.final_results.heart_rate || status.final_results.spo2)),
+        final_results: status.final_results || {},
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error checking measurement completion:', error);
+      return {
+        complete: false,
+        has_valid_data: false,
+        final_results: {},
         error: error.message
       };
     }

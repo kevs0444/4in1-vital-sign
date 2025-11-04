@@ -18,6 +18,7 @@ export default function BloodPressure() {
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(0);
+  const [sensorAvailable, setSensorAvailable] = useState(false);
   
   // New interactive state variables
   const [bpMeasuring, setBpMeasuring] = useState(false);
@@ -46,6 +47,20 @@ export default function BloodPressure() {
   const initializeBloodPressureSensor = async () => {
     try {
       setStatusMessage("Powering up blood pressure monitor...");
+      
+      // Try to detect sensor
+      const sensorCheck = await sensorAPI.checkBloodPressureSensor();
+      
+      if (sensorCheck.error || !sensorCheck.sensor_detected) {
+        // No sensor detected - use random data mode
+        setSensorAvailable(false);
+        setStatusMessage("⚠️ Using simulated data - Click 'Start Measurement' to begin");
+        setMeasurementStep(1); // Ready for measurement
+        return;
+      }
+      
+      // Sensor detected - proceed with normal flow
+      setSensorAvailable(true);
       const prepareResult = await sensorAPI.prepareBloodPressure();
       
       if (prepareResult.error) {
@@ -60,8 +75,10 @@ export default function BloodPressure() {
       
     } catch (error) {
       console.error("Blood pressure initialization error:", error);
-      setStatusMessage("❌ Failed to initialize blood pressure monitor");
-      handleRetry();
+      // Fall back to random data mode
+      setSensorAvailable(false);
+      setStatusMessage("⚠️ Using simulated data - Click 'Start Measurement' to begin");
+      setMeasurementStep(1); // Ready for measurement
     }
   };
 
@@ -94,6 +111,11 @@ export default function BloodPressure() {
   };
 
   const startMonitoring = () => {
+    if (!sensorAvailable) {
+      // Skip monitoring if no sensor available
+      return;
+    }
+    
     stopMonitoring();
     
     pollerRef.current = setInterval(async () => {
@@ -178,8 +200,50 @@ export default function BloodPressure() {
     }, 1000);
   };
 
+  const generateRandomBloodPressure = () => {
+    // Generate realistic blood pressure values
+    const baseSystolic = 110 + Math.floor(Math.random() * 30); // 110-140
+    const baseDiastolic = 70 + Math.floor(Math.random() * 15); // 70-85
+    
+    // Add some small random variation
+    const systolic = baseSystolic + Math.floor(Math.random() * 5) - 2;
+    const diastolic = baseDiastolic + Math.floor(Math.random() * 3) - 1;
+    
+    return {
+      systolic: Math.max(90, Math.min(180, systolic)), // Keep within reasonable bounds
+      diastolic: Math.max(60, Math.min(120, diastolic)) // Keep within reasonable bounds
+    };
+  };
+
   const startSimulatedMeasurement = () => {
     clearSimulatedMeasurements();
+    
+    if (!sensorAvailable) {
+      // Simulate measurement with random data
+      let progress = 0;
+      const progressInterval = setInterval(() => {
+        progress += 5;
+        setProgress(progress);
+        
+        if (progress >= 100) {
+          clearInterval(progressInterval);
+          // Generate final random blood pressure
+          const bp = generateRandomBloodPressure();
+          setSystolic(bp.systolic.toString());
+          setDiastolic(bp.diastolic.toString());
+          setMeasurementComplete(true);
+          setBpComplete(true);
+          setBpMeasuring(false);
+          setMeasurementStep(3); // Move to step 3: Results complete
+          setStatusMessage("✅ Blood Pressure Measurement Complete!");
+          stopCountdown();
+        }
+      }, 300);
+      
+      return;
+    }
+    
+    // Original sensor-based simulation
     let simulatedSystolic = 120;
     let simulatedDiastolic = 80;
     bpIntervalRef.current = setInterval(() => {
@@ -201,17 +265,25 @@ export default function BloodPressure() {
       setStatusMessage("Starting blood pressure measurement...");
       setBpMeasuring(true);
       setMeasurementStep(2); // Move to step 2: Measuring
-      const response = await sensorAPI.startBloodPressure();
       
-      if (response.error) {
-        setStatusMessage(`❌ ${response.error}`);
-        setBpMeasuring(false);
-        setMeasurementStep(1); // Return to ready state
-        handleRetry();
+      if (sensorAvailable) {
+        const response = await sensorAPI.startBloodPressure();
+        
+        if (response.error) {
+          setStatusMessage(`❌ ${response.error}`);
+          setBpMeasuring(false);
+          setMeasurementStep(1); // Return to ready state
+          handleRetry();
+        } else {
+          setStatusMessage("Blood pressure measurement started...");
+          startSimulatedMeasurement();
+          startCountdown(15);
+        }
       } else {
-        setStatusMessage("Blood pressure measurement started...");
+        // No sensor - use random data simulation
+        setStatusMessage("Simulating blood pressure measurement...");
         startSimulatedMeasurement();
-        startCountdown(15);
+        startCountdown(8); // Shorter countdown for simulation
       }
     } catch (error) {
       console.error("Start blood pressure error:", error);
@@ -231,7 +303,8 @@ export default function BloodPressure() {
         initializeBloodPressureSensor();
       }, 2000);
     } else {
-      setStatusMessage("❌ Maximum retries reached. Please check the monitor.");
+      setStatusMessage("❌ Maximum retries reached. Using simulated data.");
+      setSensorAvailable(false); // Fall back to random data
       clearSimulatedMeasurements();
       stopCountdown();
     }
@@ -276,23 +349,74 @@ export default function BloodPressure() {
 
   const getBloodPressureStatus = (sys, dia) => {
     if (!sys || !dia || sys === "--" || dia === "--") {
-      return { text: "Not measured", class: "default" };
+      return { 
+        text: "Not measured", 
+        class: "default",
+        description: "Blood pressure not measured yet"
+      };
     }
     
     const systolicValue = parseInt(sys);
     const diastolicValue = parseInt(dia);
     
     if (systolicValue >= 180 || diastolicValue >= 120) {
-      return { text: "Hypertensive Crisis", class: "fever" };
+      return { 
+        text: "Hypertensive Crisis", 
+        class: "critical",
+        description: "Your blood pressure requires immediate attention"
+      };
     } else if (systolicValue >= 140 || diastolicValue >= 90) {
-      return { text: "Hypertension Stage 2", class: "fever" };
+      return { 
+        text: "Hypertension Stage 2", 
+        class: "critical",
+        description: "Your blood pressure indicates severe hypertension"
+      };
     } else if (systolicValue >= 130 || diastolicValue >= 80) {
-      return { text: "Hypertension Stage 1", class: "low" };
+      return { 
+        text: "Hypertension Stage 1", 
+        class: "elevated",
+        description: "Your blood pressure is elevated"
+      };
     } else if (systolicValue >= 120) {
-      return { text: "Elevated", class: "low" };
+      return { 
+        text: "Elevated", 
+        class: "elevated",
+        description: "Your blood pressure is slightly elevated"
+      };
     } else {
-      return { text: "Normal", class: "normal" };
+      return { 
+        text: "Normal", 
+        class: "normal",
+        description: "Your blood pressure is within normal range"
+      };
     }
+  };
+
+  const getCurrentDisplayValue = () => {
+    if (bpMeasuring && liveBpValue) {
+      return liveBpValue;
+    }
+    if (measurementComplete && systolic && diastolic) {
+      return `${systolic}/${diastolic}`;
+    }
+    return "--/--";
+  };
+
+  const getCurrentStatusInfo = () => {
+    if (measurementComplete && systolic && diastolic) {
+      return getBloodPressureStatus(systolic, diastolic);
+    }
+    
+    const currentValue = getCurrentDisplayValue();
+    if (currentValue !== "--/--") {
+      return getBloodPressureStatus(currentValue.split('/')[0], currentValue.split('/')[1]);
+    }
+    
+    return { 
+      text: isReady ? 'Ready' : 'Initializing', 
+      class: isReady ? 'ready' : 'default',
+      description: isReady ? 'Ready for measurement' : 'Initializing blood pressure monitor'
+    };
   };
 
   const getButtonText = () => {
@@ -325,122 +449,117 @@ export default function BloodPressure() {
     return measurementStep === 2; // Disable only during measurement
   };
 
-  const statusInfo = getBloodPressureStatus(systolic, diastolic);
+  const statusInfo = getCurrentStatusInfo();
+  const displayValue = getCurrentDisplayValue();
 
   return (
-    <div className="bloodpressure-container">
-      <div className={`bloodpressure-content ${isVisible ? 'visible' : ''}`}>
+    <div className="bp-container">
+      <div className={`bp-content ${isVisible ? 'visible' : ''}`}>
         
         {/* Progress bar for Step 4 of 4 */}
-        <div className="progress-container">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `100%` }}></div>
+        <div className="bp-progress-container">
+          <div className="bp-progress-bar">
+            <div className="bp-progress-fill" style={{ width: `100%` }}></div>
           </div>
-          <span className="progress-step">Step 4 of 4 - Blood Pressure</span>
+          <span className="bp-progress-step">Step 4 of 4 - Blood Pressure</span>
         </div>
 
-        <div className="bloodpressure-header">
-          <h1 className="bloodpressure-title">Blood Pressure Measurement</h1>
-          <p className="bloodpressure-subtitle">{statusMessage}</p>
+        <div className="bp-header">
+          <h1 className="bp-title">Blood Pressure Measurement</h1>
+          <p className="bp-subtitle">
+            {statusMessage}
+            {!sensorAvailable && (
+              <span style={{display: 'block', fontSize: '0.7rem', color: '#ff6b35', marginTop: '5px'}}>
+                🔄 Using simulated data for demonstration
+              </span>
+            )}
+          </p>
           {retryCount > 0 && (
-            <div className="retry-indicator">
+            <div className="bp-retry-indicator">
               Retry attempt: {retryCount}/{MAX_RETRIES}
             </div>
           )}
           {isMeasuring && progress > 0 && (
-            <div className="measurement-progress">
-              <div className="progress-bar-horizontal">
+            <div className="bp-measurement-progress">
+              <div className="bp-progress-bar-horizontal">
                 <div 
-                  className="progress-fill-horizontal" 
+                  className="bp-progress-fill-horizontal" 
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <span className="progress-text">{Math.round(progress)}%</span>
+              <span className="bp-progress-text">{Math.round(progress)}%</span>
             </div>
           )}
         </div>
 
-        <div className="sensor-display-section">
-          {/* Single Blood Pressure Card */}
-          <div className="bloodpressure-card-container">
-            <div className={`measurement-card bloodpressure-card ${
+        <div className="bp-sensor-display-section">
+          {/* Single Blood Pressure Display - Shows live reading and result */}
+          <div className="bp-display-container">
+            <div className={`bp-display ${
               bpMeasuring ? 'measuring-active' : 
               bpComplete ? 'measurement-complete' : ''
-            }`}>
-              <div className="measurement-icon">
-                <img src={bpIcon} alt="Blood Pressure Icon" className="measurement-image"/>
+            } ${statusInfo.class}`}>
+              <div className="bp-icon">
+                <img src={bpIcon} alt="Blood Pressure Icon" className="bp-image"/>
               </div>
-              <div className="measurement-info">
-                <h3 className="measurement-title">Blood Pressure</h3>
-                <div className="measurement-value">
-                  <span className={`value ${
+              
+              <div className="bp-display-content">
+                <h3 className="bp-display-title">
+                  {measurementComplete ? "Blood Pressure Result" : "Blood Pressure"}
+                </h3>
+                
+                <div className="bp-value-display">
+                  <span className={`bp-display-value ${
                     bpMeasuring ? 'measuring-live' : ''
                   }`}>
-                    {bpMeasuring ? (liveBpValue || "000/00") : 
-                     (systolic && diastolic ? `${systolic}/${diastolic}` : "--/--")}
+                    {displayValue}
                   </span>
-                  <span className="unit">mmHg</span>
+                  <span className="bp-display-unit">mmHg</span>
                 </div>
-                <span className={`measurement-status ${statusInfo.class}`}>
-                  {statusInfo.text}
-                </span>
+                
+                <div className="bp-status-info">
+                  <span className={`bp-status ${statusInfo.class}`}>
+                    {statusInfo.text}
+                  </span>
+                  <div className="bp-description">
+                    {statusInfo.description}
+                  </div>
+                </div>
+                
                 {bpMeasuring && (
-                  <div className="live-indicator">Live Reading</div>
+                  <div className="bp-live-reading-indicator">
+                    🔄 Measuring...
+                  </div>
+                )}
+                
+                {!sensorAvailable && !bpMeasuring && !measurementComplete && (
+                  <div style={{
+                    fontSize: '0.7rem',
+                    color: '#ff6b35',
+                    marginTop: '8px',
+                    fontWeight: '600'
+                  }}>
+                    🔄 Simulation Mode
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Blood Pressure Result Card - Automatically shown when results are available */}
-          {measurementComplete && systolic && diastolic && (
-            <div className="bloodpressure-card-container">
-              <div className="bp-result-card has-result">
-                <div className="bp-result-header">
-                  <h3>Blood Pressure Result</h3>
-                </div>
-                <div className="bp-result-content">
-                  <div className="bp-value-display">
-                    <span className="bp-value">
-                      {systolic}/{diastolic}
-                    </span>
-                    <span className="bp-unit">mmHg</span>
-                  </div>
-                  {systolic && diastolic && (
-                    <>
-                      <div className={`bp-category ${statusInfo.class}`}>
-                        {statusInfo.text}
-                      </div>
-                      <div className="bp-description">
-                        {statusInfo.text === "Normal" 
-                          ? "Your blood pressure is within normal range" 
-                          : statusInfo.text.includes("Elevated")
-                          ? "Your blood pressure is slightly elevated"
-                          : statusInfo.text.includes("Hypertension")
-                          ? "Your blood pressure indicates hypertension"
-                          : "Your blood pressure requires immediate attention"
-                        }
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* INSTRUCTION DISPLAY - Simplified workflow */}
-          <div className="instruction-container">
-            <div className="instruction-cards-horizontal">
+          <div className="bp-instruction-container">
+            <div className="bp-instruction-cards-horizontal">
               {/* Step 1 Card - Ready for Measurement */}
-              <div className={`instruction-card-step ${
+              <div className={`bp-instruction-card-step ${
                 measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''
               }`}>
-                <div className="step-number-circle">1</div>
-                <div className="step-icon">🩺</div>
-                <h4 className="step-title">Ready</h4>
-                <p className="step-description">
-                  Click Start to begin blood pressure measurement
+                <div className="bp-step-number-circle">1</div>
+                <div className="bp-step-icon">🩺</div>
+                <h4 className="bp-step-title">Ready</h4>
+                <p className="bp-step-description">
+                  Click Start to begin measurement
                 </p>
-                <div className={`step-status ${
+                <div className={`bp-step-status ${
                   measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
                 }`}>
                   {measurementStep >= 1 ? (measurementStep > 1 ? 'Completed' : 'Ready') : 'Pending'}
@@ -448,24 +567,24 @@ export default function BloodPressure() {
               </div>
 
               {/* Step 2 Card - Measurement in Progress */}
-              <div className={`instruction-card-step ${
+              <div className={`bp-instruction-card-step ${
                 measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''
               }`}>
-                <div className="step-number-circle">2</div>
-                <div className="step-icon">📊</div>
-                <h4 className="step-title">Measuring</h4>
-                <p className="step-description">
+                <div className="bp-step-number-circle">2</div>
+                <div className="bp-step-icon">📊</div>
+                <h4 className="bp-step-title">Measuring</h4>
+                <p className="bp-step-description">
                   Blood pressure measurement in progress
                 </p>
                 {bpMeasuring && countdown > 0 && (
-                  <div className="countdown-mini">
-                    <div className="countdown-mini-circle">
-                      <span className="countdown-mini-number">{countdown}</span>
+                  <div className="bp-countdown-mini">
+                    <div className="bp-countdown-mini-circle">
+                      <span className="bp-countdown-mini-number">{countdown}</span>
                     </div>
-                    <span className="countdown-mini-text">seconds remaining</span>
+                    <span className="bp-countdown-mini-text">seconds remaining</span>
                   </div>
                 )}
-                <div className={`step-status ${
+                <div className={`bp-step-status ${
                   measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : 'pending'
                 }`}>
                   {measurementStep >= 2 ? (measurementStep > 2 ? 'Completed' : 'Measuring') : 'Pending'}
@@ -473,16 +592,16 @@ export default function BloodPressure() {
               </div>
 
               {/* Step 3 Card - Results Complete */}
-              <div className={`instruction-card-step ${
+              <div className={`bp-instruction-card-step ${
                 measurementStep >= 3 ? 'completed' : ''
               }`}>
-                <div className="step-number-circle">3</div>
-                <div className="step-icon">🤖</div>
-                <h4 className="step-title">AI Results</h4>
-                <p className="step-description">
+                <div className="bp-step-number-circle">3</div>
+                <div className="bp-step-icon">🤖</div>
+                <h4 className="bp-step-title">AI Results</h4>
+                <p className="bp-step-description">
                   View complete AI analysis and results
                 </p>
-                <div className={`step-status ${
+                <div className={`bp-step-status ${
                   measurementStep >= 3 ? 'completed' : 'pending'
                 }`}>
                   {measurementStep >= 3 ? 'Ready' : 'Pending'}
@@ -492,9 +611,9 @@ export default function BloodPressure() {
           </div>
         </div>
 
-        <div className="continue-button-container">
+        <div className="bp-continue-button-container">
           <button 
-            className={`continue-button ${
+            className={`bp-continue-button ${
               measurementStep === 1 ? 'measurement-action' : 
               measurementStep === 2 ? 'measuring-action' : 
               'ai-results-action'
@@ -503,7 +622,7 @@ export default function BloodPressure() {
             disabled={getButtonDisabled()}
           >
             {measurementStep === 2 && (
-              <div className="spinner"></div>
+              <div className="bp-spinner"></div>
             )}
             {getButtonText()}
             {measurementComplete && (
@@ -525,6 +644,7 @@ export default function BloodPressure() {
             fontFamily: 'monospace'
           }}>
             Step: {measurementStep} | 
+            Sensor: {sensorAvailable ? '✅ DETECTED' : '🔄 SIMULATION'} | 
             Status: {measurementComplete ? '✅ COMPLETE' : (bpMeasuring ? '⏳ MEASURING' : '🟢 READY')} | 
             BP: {systolic || '--'}/{diastolic || '--'} |
             Next: /measure/ai-loading

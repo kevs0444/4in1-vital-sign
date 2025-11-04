@@ -62,7 +62,9 @@ class SensorManager:
                 'elapsed': 0,
                 'total': 30,
                 'ir_value': 0,
-                'sensor_prepared': False
+                'sensor_prepared': False,
+                'measurement_started': False,
+                'final_result_shown': False
             }
         }
         
@@ -230,19 +232,26 @@ class SensorManager:
             except (IndexError, ValueError) as e:
                 print(f"Error parsing respiratory rate: {e}")
 
-        # ==================== MAX30102 SPECIFIC ====================
+        # ==================== MAX30102 SPECIFIC - UPDATED ====================
         elif data.startswith("MAX30102_IR_VALUE:"):
             try:
                 ir_value = int(data.split(":")[1])
                 self.live_data['max30102']['ir_value'] = ir_value
-                print(f"📊 MAX30102 IR Value: {ir_value}")
+                # Don't print every IR value to avoid spam
             except ValueError:
                 pass
 
-        elif data.startswith("MAX30102_FINGER_STATUS:"):
-            status = data.split(":")[1].strip()
-            self.live_data['max30102']['finger_detected'] = (status == "DETECTED")
-            print(f"👆 MAX30102 Finger: {status}")
+        elif data == "FINGER_DETECTED":
+            self.live_data['max30102']['finger_detected'] = True
+            self.live_data['max30102']['measurement_started'] = True
+            self._max30102_measurement_active = True
+            print("✅ Finger detected - Automatic measurement starting")
+
+        elif data == "FINGER_REMOVED":
+            self.live_data['max30102']['finger_detected'] = False
+            self.live_data['max30102']['measurement_started'] = False
+            self._max30102_measurement_active = False
+            print("⚠️ Finger removed - Measurement stopped")
 
         elif data.startswith("MAX30102_LIVE_DATA:"):
             try:
@@ -252,17 +261,17 @@ class SensorManager:
                     key, value = part.split("=")
                     data_dict[key] = value
                 
-                if 'HR' in data_dict:
+                if 'HR' in data_dict and data_dict['HR'] != '0':
                     hr = int(data_dict['HR'])
                     self.live_data['max30102']['heart_rate'] = hr
                     print(f"💓 Live Heart Rate: {hr} BPM")
                 
-                if 'SPO2' in data_dict:
+                if 'SPO2' in data_dict and data_dict['SPO2'] != '0':
                     spo2 = int(data_dict['SPO2'])
                     self.live_data['max30102']['spo2'] = spo2
                     print(f"🩸 Live SpO2: {spo2}%")
                 
-                if 'RR' in data_dict:
+                if 'RR' in data_dict and data_dict['RR'] != '0':
                     rr = float(data_dict['RR'])
                     self.live_data['max30102']['respiratory_rate'] = rr
                     print(f"🌬️ Live Respiratory Rate: {rr} breaths/min")
@@ -270,18 +279,11 @@ class SensorManager:
             except (ValueError, IndexError) as e:
                 print(f"Error parsing MAX30102 live data: {e}")
 
-        elif data == "FINGER_DETECTED":
-            self.live_data['max30102']['finger_detected'] = True
-            print("✅ Finger detected on MAX30102")
-
-        elif data == "FINGER_REMOVED":
-            self.live_data['max30102']['finger_detected'] = False
-            print("⚠️ Finger removed from MAX30102")
-
         elif data == "MAX30102_RESULTS_VALID":
             print("✅ MAX30102 results are valid")
             self._max30102_measurement_active = False
             self.live_data['max30102']['status'] = 'complete'
+            self.live_data['max30102']['final_result_shown'] = True
 
         elif data == "MAX30102_RESULTS_INVALID":
             print("❌ MAX30102 results are invalid")
@@ -380,6 +382,7 @@ class SensorManager:
             self.live_data['max30102']['status'] = 'detecting'
             self.live_data['max30102']['progress'] = 0
             self.live_data['max30102']['elapsed'] = 0
+            self.live_data['max30102']['measurement_started'] = True
             print("❤️ MAX30102 measurement started")
 
         elif data.startswith("STATUS:WEIGHT_MEASUREMENT_COMPLETE"):
@@ -531,7 +534,9 @@ class SensorManager:
                 'elapsed': 0,
                 'total': 30,
                 'ir_value': 0,
-                'sensor_prepared': sensor_prepared
+                'sensor_prepared': sensor_prepared,
+                'measurement_started': False,
+                'final_result_shown': False
             }
         }
         
@@ -607,6 +612,8 @@ class SensorManager:
             "total_time": self.live_data['max30102']['total'],
             "ir_value": self.live_data['max30102']['ir_value'],
             "sensor_prepared": self.live_data['max30102']['sensor_prepared'],
+            "measurement_started": self.live_data['max30102']['measurement_started'],
+            "final_result_shown": self.live_data['max30102']['final_result_shown'],
             "final_results": {
                 "heart_rate": self.measurements['heart_rate'],
                 "spo2": self.measurements['spo2'],

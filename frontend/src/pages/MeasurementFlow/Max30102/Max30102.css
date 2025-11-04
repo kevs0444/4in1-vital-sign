@@ -121,34 +121,35 @@
   min-height: 220px;
 }
 
-/* Vital Signs Cards Container - UPDATED for 3 cards layout */
+/* Vital Signs Cards Container - FIXED for 3 cards layout */
 .vital-signs-cards-container {
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 15px;
   width: 100%;
-  margin: 25px 0;
+  margin: 20px 0;
   flex-wrap: wrap;
 }
 
-/* Measurement Cards - Enhanced to match BMI cards */
+/* Measurement Cards - Fixed size (5% smaller) and non-overlapping */
 .measurement-card.vital-sign-card {
-  min-width: 200px;
-  max-width: 280px;
-  min-height: 264px;
-  padding: 28px 22px;
+  min-width: 180px;
+  max-width: 240px;
+  min-height: 220px;
+  padding: 22px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: white;
-  border-radius: 18px;
+  border-radius: 16px;
   border: 2px solid #e9ecef;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   justify-content: center;
   box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
   position: relative;
   overflow: hidden;
-  flex: 1;
+  flex: 1 1 calc(33.333% - 30px);
+  max-width: calc(33.333% - 30px);
 }
 
 .measurement-card.vital-sign-card::before {
@@ -199,13 +200,13 @@
 }
 
 .measurement-card.vital-sign-card .measurement-icon {
-  width: 77px;
-  height: 77px;
+  width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 17px;
+  margin-bottom: 15px;
   transition: all 0.3s ease;
   position: relative;
 }
@@ -238,12 +239,22 @@
   width: 100%;
 }
 
+/* Updated Title and Subtitle Styles */
 .measurement-card.vital-sign-card .measurement-title {
-  font-size: 1.43rem;
+  font-size: 1.5rem;
   color: #333;
   font-weight: 700;
-  margin: 0 0 17px 0;
+  margin: 0 0 4px 0;
   line-height: 1.1;
+  transition: color 0.3s ease;
+}
+
+.measurement-subtitle {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0 0 12px 0;
+  font-weight: 500;
+  line-height: 1.2;
   transition: color 0.3s ease;
 }
 
@@ -251,7 +262,15 @@
   color: #17a2b8;
 }
 
+.measurement-card.vital-sign-card.measuring-active .measurement-subtitle {
+  color: #17a2b8;
+}
+
 .measurement-card.vital-sign-card.measurement-complete .measurement-title {
+  color: #28a745;
+}
+
+.measurement-card.vital-sign-card.measurement-complete .measurement-subtitle {
   color: #28a745;
 }
 
@@ -259,14 +278,14 @@
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 7px;
-  margin-bottom: 13px;
+  gap: 6px;
+  margin-bottom: 12px;
   position: relative;
 }
 
 .measurement-card.vital-sign-card .value,
 .measurement-card.vital-sign-card .placeholder {
-  font-size: 2.64rem;
+  font-size: 2.4rem;
   font-weight: 800;
   line-height: 1;
   transition: all 0.3s ease;
@@ -289,25 +308,8 @@
   color: #ccc;
 }
 
-/* Real-time measurement animation */
-.measurement-card.vital-sign-card .value.measuring-live {
-  animation: liveMeasurement 0.8s ease-in-out infinite alternate;
-  position: relative;
-}
-
-.measurement-card.vital-sign-card .value.measuring-live::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #17a2b8, transparent);
-  animation: scanningLine 1.2s ease-in-out infinite;
-}
-
 .measurement-card.vital-sign-card .unit {
-  font-size: 1.43rem;
+  font-size: 1.3rem;
   color: #666;
   font-weight: 600;
   transition: color 0.3s ease;
@@ -322,12 +324,12 @@
 }
 
 .measurement-status {
-  font-size: 0.99rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  padding: 9px 18px;
-  border-radius: 18px;
+  padding: 8px 16px;
+  border-radius: 16px;
   display: inline-block;
-  min-width: 110px;
+  min-width: 100px;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -349,9 +351,9 @@
 }
 
 .measurement-card.vital-sign-card .measurement-status {
-  font-size: 0.94rem;
-  padding: 9px 18px;
-  min-width: 121px;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  min-width: 110px;
 }
 
 /* Status colors with enhanced effects */
@@ -1011,15 +1013,9 @@
   font-weight: 600;
 }
 
+/* Remove debug info */
 .debug-info {
-  margin-top: 10px;
-  font-size: 0.7rem;
-  color: #666;
-  text-align: center;
-  padding: 5px;
-  background: #f5f5f5;
-  border-radius: 5px;
-  font-family: monospace;
+  display: none;
 }
 
 /* Modern Pulse Oximeter Animations */
@@ -1104,7 +1100,25 @@
     box-shadow: 
       0 0 35px rgba(52, 152, 219, 0.8),
       inset 0 2px 8px rgba(255, 255, 255, 0.4);
-    transform: scale(1.08);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes completeCelebrateSensor {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.05) rotate(2deg);
+  }
+  50% {
+    transform: scale(1.03) rotate(-1deg);
+  }
+  75% {
+    transform: scale(1.04) rotate(1deg);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
@@ -1113,31 +1127,31 @@
     transform: translateY(0) scale(1);
   }
   25% {
-    transform: translateY(-5px) scale(1.1);
+    transform: translateY(-5px) scale(1.05);
   }
   50% {
-    transform: translateY(0) scale(1.05);
+    transform: translateY(0) scale(1.02);
   }
   75% {
-    transform: translateY(-3px) scale(1.08);
+    transform: translateY(-3px) scale(1.03);
   }
 }
 
 @keyframes successCelebrate {
   0% {
-    transform: scale(1) rotate(0deg);
+    transform: scale(1);
   }
   25% {
-    transform: scale(1.2) rotate(10deg);
-  }
-  50% {
-    transform: scale(1.1) rotate(-5deg);
-  }
-  75% {
     transform: scale(1.2) rotate(5deg);
   }
+  50% {
+    transform: scale(1.1) rotate(-3deg);
+  }
+  75% {
+    transform: scale(1.15) rotate(2deg);
+  }
   100% {
-    transform: scale(1) rotate(0deg);
+    transform: scale(1);
   }
 }
 
@@ -1150,27 +1164,15 @@
   }
 }
 
-@keyframes completeCelebrateSensor {
-  0% {
-    transform: scale(0.95);
-    opacity: 0.8;
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Additional animation keyframes from BMI */
+/* Measurement Card Animations */
 @keyframes measuringPulse {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #17a2b8;
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.1), 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #138496;
   }
 }
 
@@ -1178,19 +1180,61 @@
   0%, 100% {
     transform: scale(1);
   }
-  50% {
+  25% {
     transform: scale(1.1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  75% {
+    transform: scale(1.05);
   }
 }
 
 @keyframes numberPulse {
   0%, 100% {
     transform: scale(1);
-    opacity: 1;
+    color: #17a2b8;
   }
   50% {
     transform: scale(1.05);
-    opacity: 0.8;
+    color: #138496;
+  }
+}
+
+@keyframes completeCelebrate {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.05) rotate(1deg);
+  }
+  50% {
+    transform: scale(1.03) rotate(-0.5deg);
+  }
+  75% {
+    transform: scale(1.04) rotate(0.5deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes iconCelebrate {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.2) rotate(5deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(-3deg);
+  }
+  75% {
+    transform: scale(1.15) rotate(2deg);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
@@ -1205,34 +1249,14 @@
   }
 }
 
-@keyframes liveMeasurement {
-  0% {
-    transform: translateY(0px);
-    text-shadow: 0 0 5px rgba(23, 162, 184, 0.5);
-  }
-  100% {
-    transform: translateY(-2px);
-    text-shadow: 0 0 15px rgba(23, 162, 184, 0.8);
-  }
-}
-
-@keyframes scanningLine {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
 @keyframes statusPulse {
   0%, 100% {
-    transform: scale(1);
     box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
+    transform: scale(1);
   }
   50% {
-    transform: scale(1.05);
     box-shadow: 0 4px 15px rgba(23, 162, 184, 0.5);
+    transform: scale(1.02);
   }
 }
 
@@ -1243,6 +1267,7 @@
   }
   70% {
     transform: scale(1.1);
+    opacity: 1;
   }
   100% {
     transform: scale(1);
@@ -1250,131 +1275,160 @@
   }
 }
 
-@keyframes completeCelebrate {
-  0% {
-    transform: scale(1);
-  }
-  25% {
-    transform: scale(1.05) rotate(1deg);
-  }
-  50% {
-    transform: scale(1.03) rotate(-1deg);
-  }
-  75% {
-    transform: scale(1.05) rotate(1deg);
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-  }
-}
-
-@keyframes iconCelebrate {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-  25% {
-    transform: scale(1.2) rotate(10deg);
-  }
-  50% {
-    transform: scale(1.1) rotate(-5deg);
-  }
-  75% {
-    transform: scale(1.2) rotate(5deg);
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-  }
-}
-
+/* Instruction Card Animations */
 @keyframes instructionPulse {
   0%, 100% {
-    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.15);
+    border-color: #dc3545;
   }
   50% {
-    box-shadow: 0 6px 25px rgba(220, 53, 69, 0.2);
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.25);
+    border-color: #c82333;
   }
 }
 
 @keyframes stepPulse {
   0%, 100% {
-    transform: scale(1);
+    background: white;
+    color: #dc3545;
     box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
   }
   50% {
-    transform: scale(1.1);
-    box-shadow: 0 0 0 5px rgba(220, 53, 69, 0.1);
+    background: #dc3545;
+    color: white;
+    box-shadow: 0 0 0 8px rgba(220, 53, 69, 0.2);
   }
 }
 
 @keyframes iconFloat {
   0%, 100% {
-    transform: translateY(0px);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-3px);
+    transform: translateY(-5px);
   }
 }
 
 @keyframes statusGlow {
   0%, 100% {
-    box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
   }
   50% {
-    box-shadow: 0 2px 15px rgba(220, 53, 69, 0.6);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.5);
   }
 }
 
 @keyframes countdownPulse {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+    border-color: #dc3545;
   }
   100% {
     transform: scale(1.1);
-    box-shadow: 0 0 0 4px rgba(220, 53, 69, 0);
+    border-color: #c82333;
   }
 }
 
-/* Responsive design */
+/* Responsive Design */
 @media (max-width: 768px) {
+  .max30102-content {
+    padding: 20px;
+    min-height: 95vh;
+    max-height: 98vh;
+    margin: 10px;
+    width: calc(100% - 20px);
+  }
+  
+  .max30102-title {
+    font-size: 1.4rem;
+  }
+  
+  .max30102-subtitle {
+    font-size: 0.8rem;
+  }
+  
+  /* Mobile cards layout */
+  .vital-signs-cards-container {
+    gap: 12px;
+    margin: 15px 0;
+  }
+  
+  .measurement-card.vital-sign-card {
+    min-width: 150px;
+    max-width: 200px;
+    min-height: 200px;
+    padding: 18px 15px;
+    flex: 1 1 calc(50% - 24px);
+    max-width: calc(50% - 24px);
+  }
+  
+  .measurement-card.vital-sign-card .measurement-icon {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 12px;
+  }
+  
+  .measurement-card.vital-sign-card .measurement-title {
+    font-size: 1.3rem;
+    margin-bottom: 2px;
+  }
+  
+  .measurement-subtitle {
+    font-size: 0.8rem;
+    margin-bottom: 10px;
+  }
+  
+  .measurement-card.vital-sign-card .value,
+  .measurement-card.vital-sign-card .placeholder {
+    font-size: 2rem;
+  }
+  
+  .measurement-card.vital-sign-card .unit {
+    font-size: 1.1rem;
+  }
+  
+  .measurement-card.vital-sign-card .measurement-status {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    min-width: 90px;
+  }
+  
+  /* Mobile instruction cards */
   .instruction-cards-horizontal {
-    gap: 10px;
-    max-width: 100%;
+    gap: 12px;
   }
   
   .instruction-card-step {
-    min-width: 150px;
-    max-width: 170px;
-    padding: 16px;
+    min-width: 140px;
+    max-width: 160px;
+    padding: 15px;
   }
   
   .step-number-circle {
     width: 32px;
     height: 32px;
     font-size: 0.9rem;
+    margin-bottom: 10px;
   }
   
   .step-icon {
     font-size: 1.5rem;
+    margin-bottom: 8px;
   }
   
   .step-title {
     font-size: 0.85rem;
+    margin-bottom: 6px;
   }
   
   .step-description {
     font-size: 0.75rem;
   }
   
-  .vital-signs-cards-container {
-    gap: 15px;
-  }
-  
-  .measurement-card.vital-sign-card {
-    min-width: 180px;
-    max-width: 220px;
-    min-height: 240px;
-    padding: 22px 18px;
+  .step-status {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    margin-top: 8px;
   }
   
   .finger-sensor {
@@ -1386,10 +1440,20 @@
   .sensor-light {
     width: 45px;
     height: 45px;
+    margin-bottom: 12px;
   }
   
   .finger-placeholder {
     font-size: 2.5rem;
+    margin-bottom: 10px;
+  }
+  
+  .sensor-status-text {
+    font-size: 0.75rem;
+  }
+  
+  .sensor-ir-value {
+    font-size: 0.65rem;
   }
   
   .start-measurement-button,
@@ -1401,39 +1465,48 @@
 }
 
 @media (max-width: 480px) {
-  .instruction-cards-horizontal {
+  .max30102-content {
+    padding: 15px;
+    margin: 5px;
+    width: calc(100% - 10px);
+  }
+  
+  .max30102-title {
+    font-size: 1.3rem;
+  }
+  
+  .max30102-subtitle {
+    font-size: 0.75rem;
+  }
+  
+  /* Single column layout for very small screens */
+  .vital-signs-cards-container {
     flex-direction: column;
     align-items: center;
     gap: 10px;
   }
   
-  .instruction-card-step {
-    min-width: 220px;
-    max-width: 240px;
-    padding: 14px;
-  }
-  
-  .instruction-card-step {
+  .measurement-card.vital-sign-card {
+    min-width: 100%;
+    max-width: 280px;
+    min-height: 180px;
+    padding: 15px;
     flex: none;
   }
   
-  .vital-signs-cards-container {
+  .instruction-cards-horizontal {
     flex-direction: column;
     align-items: center;
-    gap: 15px;
   }
   
-  .measurement-card.vital-sign-card {
-    min-width: 200px;
-    max-width: 280px;
-    min-height: 220px;
-    padding: 20px 16px;
+  .instruction-card-step {
+    min-width: 100%;
+    max-width: 220px;
   }
   
   .finger-sensor {
     width: 120px;
     height: 120px;
-    border-radius: 18px;
   }
   
   .sensor-light {
@@ -1444,89 +1517,114 @@
   .finger-placeholder {
     font-size: 2.2rem;
   }
+}
+
+/* High DPI Screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .measurement-card.vital-sign-card,
+  .instruction-card-step,
+  .finger-sensor {
+    border-width: 1.5px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .max30102-container {
+    position: static;
+    height: auto;
+    min-height: auto;
+  }
+  
+  .max30102-content {
+    box-shadow: none;
+    border: 1px solid #000;
+    max-height: none;
+    min-height: auto;
+  }
   
   .start-measurement-button,
   .continue-button {
-    padding: 14px 10px;
-    font-size: 1rem;
-    min-height: 55px;
+    display: none;
   }
 }
 
-/* 768x1366 specific optimization */
-@media (max-width: 768px) and (max-height: 1366px) {
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus styles for keyboard navigation */
+.measurement-card.vital-sign-card:focus,
+.instruction-card-step:focus,
+.start-measurement-button:focus,
+.continue-button:focus {
+  outline: 2px solid #dc3545;
+  outline-offset: 2px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
   .max30102-container {
-    padding: 6px;
+    background: #1a1a1a;
   }
   
   .max30102-content {
-    padding: 20px;
-    max-width: 100%;
-    min-height: 88vh;
-    max-height: 92vh;
-    border-radius: 14px;
+    background: #2d2d2d;
+    border-color: #444;
   }
   
   .max30102-title {
-    font-size: 1.4rem;
+    color: #fff;
   }
   
   .max30102-subtitle {
-    font-size: 0.8rem;
+    color: #ccc;
   }
   
   .measurement-card.vital-sign-card {
-    min-width: 160px;
-    max-width: 200px;
-    min-height: 220px;
-    padding: 22px 18px;
+    background: #2d2d2d;
+    border-color: #444;
   }
   
-  .measurement-card.vital-sign-card .measurement-icon {
-    width: 65px;
-    height: 65px;
+  .measurement-card.vital-sign-card .measurement-title {
+    color: #fff;
   }
   
-  .measurement-card.vital-sign-card .value,
-  .measurement-card.vital-sign-card .placeholder {
-    font-size: 2.2rem;
-  }
-}
-
-/* Small mobile optimization */
-@media (max-width: 480px) {
-  .max30102-container {
-    padding: 4px;
+  .measurement-subtitle {
+    color: #ccc;
   }
   
-  .max30102-content {
-    padding: 15px;
-    min-height: 85vh;
-    max-height: 90vh;
+  .measurement-card.vital-sign-card .value {
+    color: #fff;
   }
   
-  .max30102-title {
-    font-size: 1.2rem;
+  .measurement-card.vital-sign-card .unit {
+    color: #ccc;
   }
   
-  .vital-signs-cards-container {
-    gap: 10px;
+  .instruction-card-step {
+    background: #2d2d2d;
+    border-color: #444;
   }
   
-  .measurement-card.vital-sign-card {
-    min-width: 160px;
-    max-width: 180px;
-    min-height: 200px;
-    padding: 18px 14px;
+  .step-title {
+    color: #fff;
   }
   
-  .measurement-card.vital-sign-card .measurement-icon {
-    width: 55px;
-    height: 55px;
+  .step-description {
+    color: #ccc;
   }
   
-  .measurement-card.vital-sign-card .value,
-  .measurement-card.vital-sign-card .placeholder {
-    font-size: 1.8rem;
+  .ir-value-display {
+    background: #333;
+    border-color: #444;
+    color: #ccc;
   }
 }

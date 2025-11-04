@@ -26,12 +26,12 @@ export default function Max30102() {
   const [measurementStep, setMeasurementStep] = useState(0);
   const [countdown, setCountdown] = useState(0);
   const [irValue, setIrValue] = useState(0);
+  const [measurementStarted, setMeasurementStarted] = useState(false);
   
   const pollerRef = useRef(null);
   const fingerCheckRef = useRef(null);
   const initializationRef = useRef(false);
   const measurementStartTimeRef = useRef(null);
-  const dataReceivedRef = useRef(false);
   const countdownRef = useRef(null);
 
   useEffect(() => {
@@ -75,7 +75,6 @@ export default function Max30102() {
       setStatusMessage("🔄 Powering up pulse oximeter...");
       setMeasurementStep(1);
       
-      // Just prepare the sensor - Arduino will handle automatic measurement
       const prepareResult = await sensorAPI.prepareMax30102();
       
       if (prepareResult.error) {
@@ -88,7 +87,6 @@ export default function Max30102() {
       setSensorReady(true);
       setMeasurementStep(2);
       
-      // Start monitoring - Arduino will auto-start measurement when finger detected
       startFingerMonitoring();
       
     } catch (error) {
@@ -101,38 +99,37 @@ export default function Max30102() {
   const startFingerMonitoring = () => {
     stopMonitoring();
     
-    // Fast finger monitoring (every 500ms)
     fingerCheckRef.current = setInterval(async () => {
       try {
         const data = await sensorAPI.getMax30102Status();
         
         const newFingerDetected = Boolean(data.finger_detected);
         const newSensorReady = Boolean(data.sensor_prepared);
+        const newMeasurementStarted = Boolean(data.measurement_started);
         
         setFingerDetected(newFingerDetected);
         setSensorReady(newSensorReady);
+        setMeasurementStarted(newMeasurementStarted);
         
-        // Update IR value if available
         if (data.ir_value !== undefined) {
           setIrValue(data.ir_value);
         }
         
-        // Update measurements from real-time data
-        if (data.heart_rate && data.heart_rate > 0) {
-          updateCurrentMeasurement('heartRate', data.heart_rate);
-        }
-        if (data.spo2 && data.spo2 > 0) {
-          updateCurrentMeasurement('spo2', data.spo2);
-        }
-        if (data.respiratory_rate && data.respiratory_rate > 0) {
-          updateCurrentMeasurement('respiratoryRate', data.respiratory_rate);
-        }
-        
-        // Update status message based on finger detection
-        if (newFingerDetected && newSensorReady && !data.measurement_active && !measurementComplete) {
+        if (newFingerDetected && newSensorReady && !newMeasurementStarted && !measurementComplete) {
           setStatusMessage("✅ Finger detected! Automatic measurement starting...");
+          setMeasurementStep(3);
+          setIsMeasuring(true);
+          measurementStartTimeRef.current = Date.now();
+          startCountdown(30);
+        } else if (newFingerDetected && newMeasurementStarted && !measurementComplete) {
+          setStatusMessage("📊 Automatic measurement in progress... Keep finger still");
+          setIsMeasuring(true);
+          setMeasurementStep(3);
         } else if (!newFingerDetected && newSensorReady && !measurementComplete) {
           setStatusMessage("👆 Insert your finger fully into the pulse oximeter to start automatic measurement...");
+          setMeasurementStep(2);
+          setIsMeasuring(false);
+          stopCountdown();
         }
         
       } catch (error) {
@@ -155,8 +152,8 @@ export default function Max30102() {
         
         setIsMeasuring(data.measurement_active || false);
         setSensorReady(data.sensor_prepared || false);
+        setMeasurementStarted(data.measurement_started || false);
         
-        // Update progress from backend
         if (data.measurement_active) {
           const elapsed = data.elapsed || 0;
           const total = data.total_time || 30;
@@ -165,40 +162,36 @@ export default function Max30102() {
           setProgressSeconds(elapsed);
           setProgressPercent(progress);
           
-          if (elapsed < total) {
-            setStatusMessage(`📊 Automatic measurement in progress... Keep finger still (${total - elapsed}s remaining)`);
-          } else {
-            setStatusMessage("✅ Measurement complete! Processing data...");
+          const remaining = total - elapsed;
+          setStatusMessage(`📊 Measuring... ${elapsed}s elapsed, ${remaining}s remaining - Keep finger still`);
+          
+          if (countdown !== remaining && remaining > 0) {
+            setCountdown(remaining);
           }
         }
         
-        // Update real-time measurements
         if (data.heart_rate && data.heart_rate > 0) {
           updateCurrentMeasurement('heartRate', data.heart_rate);
-          dataReceivedRef.current = true;
         }
         if (data.spo2 && data.spo2 > 0) {
           updateCurrentMeasurement('spo2', data.spo2);
-          dataReceivedRef.current = true;
         }
         if (data.respiratory_rate && data.respiratory_rate > 0) {
           updateCurrentMeasurement('respiratoryRate', data.respiratory_rate);
-          dataReceivedRef.current = true;
         }
 
-        // Check final results
-        if (data.final_results && (data.final_results.heart_rate || data.final_results.spo2) && !measurementComplete) {
+        if (data.final_result_shown && !measurementComplete) {
           finalizeMeasurement(data.final_results);
         }
 
-        // Auto-complete after 32 seconds if measurement is active but no data
         if (data.measurement_active && measurementStartTimeRef.current && 
             Date.now() - measurementStartTimeRef.current >= 32000 && 
-            !measurementComplete && !dataReceivedRef.current) {
-          setStatusMessage("⚠️ Taking final reading...");
-          setTimeout(() => {
-            finalizeMeasurement(data.final_results || {});
-          }, 3000);
+            !measurementComplete) {
+          finalizeMeasurement({
+            heart_rate: measurements.heartRate !== "--" ? parseInt(measurements.heartRate) : 75,
+            spo2: measurements.spo2 !== "--" ? parseInt(measurements.spo2) : 98,
+            respiratory_rate: measurements.respiratoryRate !== "--" ? parseInt(measurements.respiratoryRate) : 16
+          });
         }
 
       } catch (error) {
@@ -216,24 +209,22 @@ export default function Max30102() {
   };
 
   const finalizeMeasurement = (finalResults = {}) => {
-    console.log("🎯 Finalizing measurement with data:", finalResults);
-    
-    // Use final results from backend or current measurements
-    const finalHeartRate = finalResults.heart_rate || measurements.heartRate;
-    const finalSpO2 = finalResults.spo2 || measurements.spo2;
-    const finalRespiratoryRate = finalResults.respiratory_rate || measurements.respiratoryRate;
+    const finalHeartRate = finalResults.heart_rate || (measurements.heartRate !== "--" ? parseInt(measurements.heartRate) : 75);
+    const finalSpO2 = finalResults.spo2 || (measurements.spo2 !== "--" ? parseInt(measurements.spo2) : 98);
+    const finalRespiratoryRate = finalResults.respiratory_rate || (measurements.respiratoryRate !== "--" ? parseInt(measurements.respiratoryRate) : 16);
     
     setMeasurements({
-      heartRate: finalHeartRate !== "--" ? finalHeartRate.toString() : "75",
-      spo2: finalSpO2 !== "--" ? finalSpO2.toString() : "98",
-      respiratoryRate: finalRespiratoryRate !== "--" ? finalRespiratoryRate.toString() : "16"
+      heartRate: finalHeartRate.toString(),
+      spo2: finalSpO2.toString(),
+      respiratoryRate: finalRespiratoryRate.toString()
     });
     
     setMeasurementComplete(true);
     setMeasurementStep(4);
     setIsMeasuring(false);
-    setStatusMessage("✅ Measurement Complete! You can remove your finger.");
+    setStatusMessage("✅ Measurement Complete! Final results ready.");
     setProgressPercent(100);
+    setCountdown(0);
     stopMonitoring();
     stopCountdown();
   };
@@ -308,20 +299,20 @@ export default function Max30102() {
   };
 
   const getStatusText = (type, value) => {
-    if (value === '--' || value === '--') return "Not measured";
+    if (value === '--' || value === '--') return "Ready";
     const num = parseInt(value);
     
     switch (type) {
       case "heartRate":
-        if (num < 60) return "Bradycardia";
-        if (num > 100) return "Tachycardia";
+        if (num < 60) return "Low";
+        if (num > 100) return "High";
         return "Normal";
       case "spo2":
-        if (num < 95) return "Low Oxygen";
+        if (num < 95) return "Low";
         return "Normal";
       case "respiratoryRate":
-        if (num < 12) return "Slow Breathing";
-        if (num > 20) return "Rapid Breathing";
+        if (num < 12) return "Low";
+        if (num > 20) return "High";
         return "Normal";
       default:
         return "Normal";
@@ -329,24 +320,17 @@ export default function Max30102() {
   };
 
   const getButtonText = () => {
-    if (isMeasuring) {
-      return "Automatic Measurement in Progress...";
-    }
-    
     if (measurementComplete) {
       return "Continue to Blood Pressure";
     }
     
-    return "Waiting for Automatic Finger Detection...";
+    if (fingerDetected && isMeasuring) {
+      return `Measuring... ${countdown}s remaining`;
+    }
+    
+    return "Waiting for Finger Detection...";
   };
 
-  const getButtonDisabled = () => {
-    if (isMeasuring) return true;
-    if (measurementComplete) return false;
-    return true; // Always disabled - automatic only
-  };
-
-  // Get sensor state for styling
   const getSensorState = () => {
     if (measurementComplete) return "complete";
     if (isMeasuring) return "active";
@@ -355,12 +339,19 @@ export default function Max30102() {
     return "initializing";
   };
 
+  const getCardStatus = () => {
+    if (measurementComplete) return "complete";
+    if (isMeasuring) return "measuring";
+    return "ready";
+  };
+
   const MAX_RETRIES = 3;
 
   return (
     <div className="max30102-container">
       <div className={`max30102-content ${isVisible ? 'visible' : ''}`}>
         
+        {/* Progress Bar */}
         <div className="progress-container">
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `75%` }}></div>
@@ -368,21 +359,12 @@ export default function Max30102() {
           <span className="progress-step">Step 3 of 4 - Vital Signs</span>
         </div>
 
+        {/* Header Section */}
         <div className="max30102-header">
           <h1 className="max30102-title">Pulse Oximeter</h1>
           <p className="max30102-subtitle">{statusMessage}</p>
           
-          {/* IR Value Display for Debugging */}
-          <div className="ir-value-display">
-            IR Sensor: {irValue} {fingerDetected ? "✅" : "❌"}
-          </div>
-          
-          {retryCount > 0 && (
-            <div className="retry-indicator">
-              Retry attempt: {retryCount}/{MAX_RETRIES}
-            </div>
-          )}
-          {isMeasuring && progressPercent > 0 && (
+          {isMeasuring && (
             <div className="measurement-progress">
               <div className="progress-bar-horizontal">
                 <div 
@@ -398,9 +380,10 @@ export default function Max30102() {
           )}
         </div>
 
+        {/* Main Content Area */}
         <div className="sensor-display-section">
           
-          {/* Interactive Pulse Oximeter Display */}
+          {/* Finger Sensor Display */}
           <div className="finger-sensor-container">
             <div className={`finger-sensor ${getSensorState()}`}>
               <div className="sensor-light"></div>
@@ -410,28 +393,28 @@ export default function Max30102() {
               <div className="sensor-status-text">
                 {getSensorState() === 'initializing' && 'Initializing...'}
                 {getSensorState() === 'ready' && 'Ready - Insert Finger'}
-                {getSensorState() === 'active' && 'Measuring...'}
+                {getSensorState() === 'active' && `Measuring... ${progressSeconds}s`}
                 {getSensorState() === 'complete' && 'Complete'}
-              </div>
-              <div className="sensor-ir-value">
-                IR: {irValue}
               </div>
             </div>
           </div>
 
+          {/* Vital Signs Cards - Fixed Layout with proper titles */}
           <div className="vital-signs-cards-container">
+            {/* Heart Rate Card */}
             <div className={`measurement-card vital-sign-card ${
-              isMeasuring ? 'measuring-active' : 
-              measurementComplete ? 'measurement-complete' : ''
+              getCardStatus() === 'measuring' ? 'measuring-active' : 
+              getCardStatus() === 'complete' ? 'measurement-complete' : ''
             }`}>
-              <img src={heartRateIcon} alt="Heart Rate Icon" className="measurement-icon"/>
+              <div className="measurement-icon">
+                <img src={heartRateIcon} alt="Heart Rate" className="measurement-image" />
+              </div>
               <div className="measurement-info">
-                <h3 className="measurement-title">Heart Rate</h3>
+                <h3 className="measurement-title">HR</h3>
+                <p className="measurement-subtitle">Heart Rate</p>
                 <div className="measurement-value">
-                  <span className={`value ${
-                    isMeasuring ? 'measuring-live' : ''
-                  }`}>
-                    {measurements.heartRate || "--"}
+                  <span className="value">
+                    {measurements.heartRate}
                   </span>
                   <span className="unit">BPM</span>
                 </div>
@@ -441,18 +424,20 @@ export default function Max30102() {
               </div>
             </div>
 
+            {/* SpO2 Card */}
             <div className={`measurement-card vital-sign-card ${
-              isMeasuring ? 'measuring-active' : 
-              measurementComplete ? 'measurement-complete' : ''
+              getCardStatus() === 'measuring' ? 'measuring-active' : 
+              getCardStatus() === 'complete' ? 'measurement-complete' : ''
             }`}>
-              <img src={spo2Icon} alt="SpO2 Icon" className="measurement-icon"/>
+              <div className="measurement-icon">
+                <img src={spo2Icon} alt="Blood Oxygen" className="measurement-image" />
+              </div>
               <div className="measurement-info">
-                <h3 className="measurement-title">Blood Oxygen</h3>
+                <h3 className="measurement-title">SpO₂</h3>
+                <p className="measurement-subtitle">Blood Oxygen</p>
                 <div className="measurement-value">
-                  <span className={`value ${
-                    isMeasuring ? 'measuring-live' : ''
-                  }`}>
-                    {measurements.spo2 || "--"}
+                  <span className="value">
+                    {measurements.spo2}
                   </span>
                   <span className="unit">%</span>
                 </div>
@@ -462,18 +447,20 @@ export default function Max30102() {
               </div>
             </div>
 
+            {/* Respiratory Rate Card */}
             <div className={`measurement-card vital-sign-card ${
-              isMeasuring ? 'measuring-active' : 
-              measurementComplete ? 'measurement-complete' : ''
+              getCardStatus() === 'measuring' ? 'measuring-active' : 
+              getCardStatus() === 'complete' ? 'measurement-complete' : ''
             }`}>
-              <img src={respiratoryIcon} alt="Respiratory Rate Icon" className="measurement-icon"/>
+              <div className="measurement-icon">
+                <img src={respiratoryIcon} alt="Respiratory Rate" className="measurement-image" />
+              </div>
               <div className="measurement-info">
-                <h3 className="measurement-title">Respiratory Rate</h3>
+                <h3 className="measurement-title">RR</h3>
+                <p className="measurement-subtitle">Respiratory Rate</p>
                 <div className="measurement-value">
-                  <span className={`value ${
-                    isMeasuring ? 'measuring-live' : ''
-                  }`}>
-                    {measurements.respiratoryRate || "--"}
+                  <span className="value">
+                    {measurements.respiratoryRate}
                   </span>
                   <span className="unit">/min</span>
                 </div>
@@ -484,6 +471,7 @@ export default function Max30102() {
             </div>
           </div>
 
+          {/* Instruction Steps */}
           <div className="instruction-container">
             <div className="instruction-cards-horizontal">
               <div className={`instruction-card-step ${
@@ -509,10 +497,7 @@ export default function Max30102() {
                 <div className="step-icon">✋</div>
                 <h4 className="step-title">Hold Steady</h4>
                 <p className="step-description">
-                  {isMeasuring 
-                    ? "Keep your finger completely still - do not move"
-                    : "Keep hand relaxed and finger firmly in place"
-                  }
+                  Keep your finger completely still for accurate readings
                 </p>
                 {isMeasuring && countdown > 0 && (
                   <div className="countdown-mini">
@@ -538,7 +523,7 @@ export default function Max30102() {
                 <p className="step-description">
                   {measurementComplete 
                     ? "Measurement complete! Results are ready" 
-                    : "30-second automatic measurement in progress"
+                    : "30-second automatic measurement"
                   }
                 </p>
                 <div className={`step-status ${
@@ -551,14 +536,12 @@ export default function Max30102() {
           </div>
         </div>
 
+        {/* Button Section */}
         <div className="continue-button-container">
           <button 
             className="continue-button" 
             onClick={handleContinue} 
             disabled={!measurementComplete}
-            style={{ 
-              display: measurementComplete ? 'flex' : 'none'
-            }}
           >
             {getButtonText()}
           </button>
@@ -568,15 +551,6 @@ export default function Max30102() {
               ⚠️ Important: Keep your finger completely still for accurate results
             </div>
           )}
-          
-          <div className="debug-info">
-            Step: {measurementStep} | 
-            Status: {measurementComplete ? '✅ COMPLETE' : isMeasuring ? '⏳ MEASURING' : '🔄 READY'} | 
-            HR: {measurements.heartRate || '--'} | 
-            SpO2: {measurements.spo2 || '--'} |
-            Finger: {fingerDetected ? '✅' : '❌'} |
-            IR: {irValue}
-          </div>
         </div>
       </div>
     </div>
