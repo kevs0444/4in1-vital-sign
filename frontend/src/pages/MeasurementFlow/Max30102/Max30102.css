@@ -98,19 +98,6 @@
   padding: 0 10px;
 }
 
-/* IR Value Display */
-.ir-value-display {
-  font-size: 0.75rem;
-  color: #666;
-  background: #f8f9fa;
-  padding: 4px 8px;
-  border-radius: 8px;
-  display: inline-block;
-  margin: 5px 0;
-  font-family: monospace;
-  border: 1px solid #e9ecef;
-}
-
 /* Display Section */
 .sensor-display-section {
   margin: 8px 0;
@@ -118,38 +105,44 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   min-height: 220px;
+  gap: 20px;
 }
 
-/* Vital Signs Cards Container - FIXED for 3 cards layout */
+/* Vital Signs Cards Container - HORIZONTAL SINGLE ROW layout */
 .vital-signs-cards-container {
   display: flex;
+  flex-direction: row;
+  align-items: center;
   justify-content: center;
   gap: 15px;
   width: 100%;
   margin: 20px 0;
+  max-width: 100%;
   flex-wrap: wrap;
 }
 
-/* Measurement Cards - Fixed size (5% smaller) and non-overlapping */
+/* Measurement Cards - Same size as instruction cards */
 .measurement-card.vital-sign-card {
-  min-width: 180px;
-  max-width: 240px;
-  min-height: 220px;
-  padding: 22px 18px;
+  min-width: 175px;
+  max-width: 200px;
+  width: 100%;
+  min-height: 180px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: white;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 2px solid #e9ecef;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   justify-content: center;
-  box-shadow: 0 7px 22px rgba(0, 0, 0, 0.13);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
-  flex: 1 1 calc(33.333% - 30px);
-  max-width: calc(33.333% - 30px);
+  flex: 1;
+  max-width: 200px;
 }
 
 .measurement-card.vital-sign-card::before {
@@ -168,40 +161,64 @@
 }
 
 .measurement-card.vital-sign-card:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
   border-color: #dc3545;
 }
 
-/* Active measurement state */
-.measurement-card.vital-sign-card.measuring-active {
-  border-color: #17a2b8;
-  background: linear-gradient(135deg, #f8fdff, #ffffff);
-  animation: measuringPulse 2s ease-in-out infinite;
-  box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.measurement-card.vital-sign-card.measuring-active .measurement-icon {
-  animation: iconBounce 1.5s ease-in-out infinite;
-}
-
-.measurement-card.vital-sign-card.measuring-active .value {
-  animation: numberPulse 1s ease-in-out infinite;
-}
-
-.measurement-card.vital-sign-card.measurement-complete {
+/* Status-based border colors */
+.measurement-card.vital-sign-card.normal {
   border-color: #28a745;
-  background: linear-gradient(135deg, #f8fff9, #ffffff);
-  animation: completeCelebrate 0.6s ease-out;
 }
 
-.measurement-card.vital-sign-card.measurement-complete .measurement-icon {
-  animation: iconCelebrate 0.8s ease-out;
+.measurement-card.vital-sign-card.low {
+  border-color: #ffc107;
+}
+
+.measurement-card.vital-sign-card.high {
+  border-color: #dc3545;
+}
+
+.measurement-card.vital-sign-card.default {
+  border-color: #e9ecef;
+}
+
+/* Active measurement state with status colors */
+.measurement-card.vital-sign-card.measuring-active.normal {
+  border-color: #17a2b8;
+  animation: measuringPulseNormal 2s ease-in-out infinite;
+}
+
+.measurement-card.vital-sign-card.measuring-active.low {
+  border-color: #17a2b8;
+  animation: measuringPulseLow 2s ease-in-out infinite;
+}
+
+.measurement-card.vital-sign-card.measuring-active.high {
+  border-color: #17a2b8;
+  animation: measuringPulseHigh 2s ease-in-out infinite;
+}
+
+.measurement-card.vital-sign-card.measuring-active.default {
+  border-color: #17a2b8;
+  animation: measuringPulse 2s ease-in-out infinite;
+}
+
+.measurement-card.vital-sign-card.measurement-complete.normal {
+  border-color: #28a745;
+}
+
+.measurement-card.vital-sign-card.measurement-complete.low {
+  border-color: #ffc107;
+}
+
+.measurement-card.vital-sign-card.measurement-complete.high {
+  border-color: #dc3545;
 }
 
 .measurement-card.vital-sign-card .measurement-icon {
-  width: 70px;
-  height: 70px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -209,6 +226,10 @@
   margin-bottom: 15px;
   transition: all 0.3s ease;
   position: relative;
+}
+
+.measurement-card.vital-sign-card.measuring-active .measurement-icon {
+  animation: iconBounce 1.5s ease-in-out infinite;
 }
 
 .measurement-card.vital-sign-card.measuring-active .measurement-icon::after {
@@ -221,6 +242,10 @@
   border: 2px solid #17a2b8;
   border-radius: 50%;
   animation: ripple 1.5s linear infinite;
+}
+
+.measurement-card.vital-sign-card.measurement-complete .measurement-icon {
+  animation: iconCelebrate 0.8s ease-out;
 }
 
 .measurement-image {
@@ -237,14 +262,15 @@
 .measurement-info {
   text-align: center;
   width: 100%;
+  flex: 1;
 }
 
 /* Updated Title and Subtitle Styles */
 .measurement-card.vital-sign-card .measurement-title {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   color: #333;
   font-weight: 700;
-  margin: 0 0 4px 0;
+  margin: 0 0 8px 0;
   line-height: 1.1;
   transition: color 0.3s ease;
 }
@@ -285,7 +311,7 @@
 
 .measurement-card.vital-sign-card .value,
 .measurement-card.vital-sign-card .placeholder {
-  font-size: 2.4rem;
+  font-size: 2.2rem;
   font-weight: 800;
   line-height: 1;
   transition: all 0.3s ease;
@@ -298,6 +324,7 @@
 
 .measurement-card.vital-sign-card.measuring-active .value {
   color: #17a2b8;
+  animation: numberPulse 1s ease-in-out infinite;
 }
 
 .measurement-card.vital-sign-card.measurement-complete .value {
@@ -324,12 +351,13 @@
 }
 
 .measurement-status {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 600;
   padding: 8px 16px;
   border-radius: 16px;
   display: inline-block;
-  min-width: 100px;
+  min-width: 90px;
+  text-align: center;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -348,12 +376,6 @@
 
 .measurement-status:hover::before {
   left: 100%;
-}
-
-.measurement-card.vital-sign-card .measurement-status {
-  font-size: 0.85rem;
-  padding: 8px 16px;
-  min-width: 110px;
 }
 
 /* Status colors with enhanced effects */
@@ -405,7 +427,7 @@
   display: flex;
   justify-content: center;
   width: 100%;
-  margin: 20px 0;
+  margin: 10px 0;
 }
 
 .finger-sensor {
@@ -543,56 +565,9 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* Sensor IR Value Display */
-.sensor-ir-value {
-  font-size: 0.7rem;
-  color: #bdc3c7;
-  margin-top: 5px;
-  font-family: monospace;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
-}
-
-/* Modern Background Effects */
-.finger-sensor::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    45deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
-  transform: rotate(45deg);
-  transition: all 0.6s ease;
-  opacity: 0;
-}
-
-.finger-sensor.active::before {
-  animation: shimmer 3s ease-in-out infinite;
-  opacity: 1;
-}
-
-/* Interactive Hover Effects */
-.finger-sensor:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.4),
-    inset 0 2px 15px rgba(255, 255, 255, 0.15);
-}
-
-.finger-sensor.active:hover {
-  box-shadow: 
-    0 25px 50px rgba(231, 76, 60, 0.5),
-    inset 0 2px 20px rgba(255, 255, 255, 0.25);
-}
-
 /* Instruction Container - HORIZONTAL LAYOUT with 3 cards */
 .instruction-container {
-  margin-top: 25px;
+  margin-top: 15px;
   width: 100%;
   display: flex;
   justify-content: center;
@@ -832,58 +807,6 @@
   gap: 10px;
 }
 
-/* Start Measurement Button */
-.start-measurement-button {
-  width: 100%;
-  padding: 18px 14px;
-  border: none;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
-  font-size: 1.2rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  min-height: 65px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 5px 18px rgba(40, 167, 69, 0.35);
-  animation: greenGlow 2s ease-in-out infinite alternate;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.start-measurement-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transition: left 0.6s ease;
-}
-
-.start-measurement-button:hover::before {
-  left: 100%;
-}
-
-.start-measurement-button:hover:not(:disabled) {
-  transform: translateY(-3px) scale(1.02);
-  animation: greenStrongGlow 1s ease-in-out infinite alternate;
-}
-
-.start-measurement-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  animation: none;
-  background: linear-gradient(135deg, #6c757d, #868e96);
-}
-
 /* Continue Button */
 .continue-button {
   width: 100%;
@@ -936,32 +859,95 @@
   animation: none;
 }
 
+/* Add these new styles to your existing CSS */
+
+/* Finger Removed Alert */
+.finger-removed-alert {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+  z-index: 1000;
+  animation: slideDown 0.5s ease-out;
+  border: 2px solid #ff4757;
+  min-width: 300px;
+  max-width: 90%;
+}
+
+.alert-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alert-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.alert-text {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.alert-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.alert-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+@keyframes slideDown {
+  0% {
+    transform: translateX(-50%) translateY(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive design for alert */
+@media (max-width: 480px) {
+  .finger-removed-alert {
+    min-width: 280px;
+    padding: 12px 16px;
+  }
+  
+  .alert-text {
+    font-size: 0.8rem;
+  }
+  
+  .alert-icon {
+    font-size: 1.1rem;
+  }
+}
+
 /* Glow Animations */
-@keyframes greenGlow {
-  from {
-    box-shadow: 0 5px 18px rgba(40, 167, 69, 0.35),
-                0 0 6px rgba(40, 167, 69, 0.25);
-  }
-  to {
-    box-shadow: 0 8px 22px rgba(40, 167, 69, 0.45),
-                0 0 12px rgba(40, 167, 69, 0.4),
-                0 0 20px rgba(40, 167, 69, 0.25);
-  }
-}
-
-@keyframes greenStrongGlow {
-  from {
-    box-shadow: 0 8px 22px rgba(40, 167, 69, 0.45),
-                0 0 12px rgba(40, 167, 69, 0.5),
-                0 0 20px rgba(40, 167, 69, 0.35);
-  }
-  to {
-    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.55),
-                0 0 16px rgba(40, 167, 69, 0.7),
-                0 0 28px rgba(40, 167, 69, 0.4);
-  }
-}
-
 @keyframes redGlow {
   from {
     box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35),
@@ -1013,9 +999,38 @@
   font-weight: 600;
 }
 
-/* Remove debug info */
-.debug-info {
-  display: none;
+/* New pulse animations for different status colors */
+@keyframes measuringPulseNormal {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #17a2b8;
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #138496;
+  }
+}
+
+@keyframes measuringPulseLow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #17a2b8;
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 193, 7, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #138496;
+  }
+}
+
+@keyframes measuringPulseHigh {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #17a2b8;
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #138496;
+  }
 }
 
 /* Modern Pulse Oximeter Animations */
@@ -1354,43 +1369,39 @@
   }
   
   .measurement-card.vital-sign-card {
-    min-width: 150px;
-    max-width: 200px;
-    min-height: 200px;
-    padding: 18px 15px;
-    flex: 1 1 calc(50% - 24px);
-    max-width: calc(50% - 24px);
+    min-width: 160px;
+    max-width: 180px;
+    min-height: 110px;
+    padding: 15px;
   }
   
   .measurement-card.vital-sign-card .measurement-icon {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 12px;
+    width: 45px;
+    height: 45px;
+    margin-right: 12px;
   }
   
   .measurement-card.vital-sign-card .measurement-title {
-    font-size: 1.3rem;
-    margin-bottom: 2px;
+    font-size: 1.1rem;
   }
   
   .measurement-subtitle {
-    font-size: 0.8rem;
-    margin-bottom: 10px;
+    font-size: 0.75rem;
   }
   
   .measurement-card.vital-sign-card .value,
   .measurement-card.vital-sign-card .placeholder {
-    font-size: 2rem;
+    font-size: 1.6rem;
   }
   
   .measurement-card.vital-sign-card .unit {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
   
   .measurement-card.vital-sign-card .measurement-status {
-    font-size: 0.8rem;
-    padding: 6px 12px;
-    min-width: 90px;
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    min-width: 60px;
   }
   
   /* Mobile instruction cards */
@@ -1452,11 +1463,6 @@
     font-size: 0.75rem;
   }
   
-  .sensor-ir-value {
-    font-size: 0.65rem;
-  }
-  
-  .start-measurement-button,
   .continue-button {
     padding: 16px 12px;
     font-size: 1.1rem;
@@ -1479,7 +1485,7 @@
     font-size: 0.75rem;
   }
   
-  /* Single column layout for very small screens */
+  /* Stack cards vertically on very small screens */
   .vital-signs-cards-container {
     flex-direction: column;
     align-items: center;
@@ -1488,10 +1494,9 @@
   
   .measurement-card.vital-sign-card {
     min-width: 100%;
-    max-width: 280px;
-    min-height: 180px;
-    padding: 15px;
-    flex: none;
+    max-width: 220px;
+    min-height: 100px;
+    padding: 12px;
   }
   
   .instruction-cards-horizontal {
@@ -1543,7 +1548,6 @@
     min-height: auto;
   }
   
-  .start-measurement-button,
   .continue-button {
     display: none;
   }
@@ -1563,7 +1567,6 @@
 /* Focus styles for keyboard navigation */
 .measurement-card.vital-sign-card:focus,
 .instruction-card-step:focus,
-.start-measurement-button:focus,
 .continue-button:focus {
   outline: 2px solid #dc3545;
   outline-offset: 2px;
@@ -1619,12 +1622,6 @@
   }
   
   .step-description {
-    color: #ccc;
-  }
-  
-  .ir-value-display {
-    background: #333;
-    border-color: #444;
     color: #ccc;
   }
 }

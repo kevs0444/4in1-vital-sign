@@ -24,15 +24,18 @@ export default function Max30102() {
   const [retryCount, setRetryCount] = useState(0);
   const [sensorReady, setSensorReady] = useState(false);
   const [measurementStep, setMeasurementStep] = useState(0);
-  const [countdown, setCountdown] = useState(0);
+  const [countdown, setCountdown] = useState(30);
   const [irValue, setIrValue] = useState(0);
   const [measurementStarted, setMeasurementStarted] = useState(false);
+  const [showFingerRemovedAlert, setShowFingerRemovedAlert] = useState(false);
   
   const pollerRef = useRef(null);
   const fingerCheckRef = useRef(null);
   const initializationRef = useRef(false);
-  const measurementStartTimeRef = useRef(null);
-  const countdownRef = useRef(null);
+  const progressTimerRef = useRef(null);
+  const fingerRemovedAlertRef = useRef(null);
+  const previousFingerStateRef = useRef(false);
+  const totalMeasurementTime = 30;
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -40,31 +43,66 @@ export default function Max30102() {
 
     return () => {
       clearTimeout(timer);
-      stopMonitoring();
-      if (fingerCheckRef.current) clearInterval(fingerCheckRef.current);
-      stopCountdown();
+      stopAllTimers();
+      clearFingerRemovedAlert();
     };
   }, []);
 
-  const startCountdown = (seconds) => {
-    setCountdown(seconds);
-    countdownRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current);
-          return 0;
+  // Update progress percentage when seconds change
+  useEffect(() => {
+    const percent = Math.min(100, Math.round((progressSeconds / totalMeasurementTime) * 100));
+    setProgressPercent(percent);
+    
+    // Update countdown (remaining time)
+    const remaining = Math.max(0, totalMeasurementTime - progressSeconds);
+    setCountdown(remaining);
+    
+    // Auto-complete when time is up
+    if (progressSeconds >= totalMeasurementTime && isMeasuring && !measurementComplete) {
+      completeMeasurement();
+    }
+  }, [progressSeconds, isMeasuring, measurementComplete]);
+
+  const startProgressTimer = () => {
+    stopProgressTimer();
+    
+    progressTimerRef.current = setInterval(() => {
+      setProgressSeconds(prev => {
+        const newSeconds = prev + 1;
+        if (newSeconds >= totalMeasurementTime) {
+          completeMeasurement();
+          return totalMeasurementTime;
         }
-        return prev - 1;
+        return newSeconds;
       });
     }, 1000);
   };
 
-  const stopCountdown = () => {
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
+  const stopProgressTimer = () => {
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
     }
-    setCountdown(0);
+  };
+
+  const showFingerRemovedNotification = () => {
+    setShowFingerRemovedAlert(true);
+    
+    if (fingerRemovedAlertRef.current) {
+      clearTimeout(fingerRemovedAlertRef.current);
+    }
+    
+    fingerRemovedAlertRef.current = setTimeout(() => {
+      setShowFingerRemovedAlert(false);
+    }, 5000); // Show for 5 seconds
+  };
+
+  const clearFingerRemovedAlert = () => {
+    if (fingerRemovedAlertRef.current) {
+      clearTimeout(fingerRemovedAlertRef.current);
+      fingerRemovedAlertRef.current = null;
+    }
+    setShowFingerRemovedAlert(false);
   };
 
   const initializeMax30102Sensor = async () => {
@@ -97,7 +135,7 @@ export default function Max30102() {
   };
 
   const startFingerMonitoring = () => {
-    stopMonitoring();
+    stopAllTimers();
     
     fingerCheckRef.current = setInterval(async () => {
       try {
@@ -105,40 +143,106 @@ export default function Max30102() {
         
         const newFingerDetected = Boolean(data.finger_detected);
         const newSensorReady = Boolean(data.sensor_prepared);
-        const newMeasurementStarted = Boolean(data.measurement_started);
+        
+        console.log("Finger check:", { 
+          newFingerDetected, 
+          previousFingerState: previousFingerStateRef.current,
+          isMeasuring,
+          measurementComplete 
+        });
+
+        // Check if finger was JUST REMOVED (was detected, now not detected) during measurement
+        if (previousFingerStateRef.current && !newFingerDetected && isMeasuring && !measurementComplete) {
+          console.log("Finger removed during measurement - stopping timer and showing alert");
+          showFingerRemovedNotification();
+          setStatusMessage("❌ Finger removed! Please reinsert finger to continue measurement.");
+          pauseMeasurement(); // STOP COUNTING BUT DON'T RESET YET
+        }
+        
+        // Check if finger was JUST INSERTED (was not detected, now detected) AND sensor is ready
+        if (!previousFingerStateRef.current && newFingerDetected && newSensorReady) {
+          if (isMeasuring && !measurementComplete) {
+            // Finger was reinserted after removal - RESET TO 0 and start over
+            console.log("Finger reinserted during measurement - resetting to 0 and starting over");
+            resetAndStartMeasurement();
+          } else if (!isMeasuring && !measurementComplete) {
+            // First time finger insertion - start measurement
+            console.log("Finger detected for the first time - starting measurement");
+            startMeasurement();
+          }
+        }
+        
+        // Update previous state
+        previousFingerStateRef.current = newFingerDetected;
         
         setFingerDetected(newFingerDetected);
         setSensorReady(newSensorReady);
-        setMeasurementStarted(newMeasurementStarted);
         
         if (data.ir_value !== undefined) {
           setIrValue(data.ir_value);
-        }
-        
-        if (newFingerDetected && newSensorReady && !newMeasurementStarted && !measurementComplete) {
-          setStatusMessage("✅ Finger detected! Automatic measurement starting...");
-          setMeasurementStep(3);
-          setIsMeasuring(true);
-          measurementStartTimeRef.current = Date.now();
-          startCountdown(30);
-        } else if (newFingerDetected && newMeasurementStarted && !measurementComplete) {
-          setStatusMessage("📊 Automatic measurement in progress... Keep finger still");
-          setIsMeasuring(true);
-          setMeasurementStep(3);
-        } else if (!newFingerDetected && newSensorReady && !measurementComplete) {
-          setStatusMessage("👆 Insert your finger fully into the pulse oximeter to start automatic measurement...");
-          setMeasurementStep(2);
-          setIsMeasuring(false);
-          stopCountdown();
         }
         
       } catch (error) {
         console.error("Error checking finger status:", error);
         setStatusMessage("⚠️ Connection issue, retrying...");
       }
-    }, 500);
+    }, 1000); // Check every second
 
     startMainPolling();
+  };
+
+  const startMeasurement = () => {
+    console.log("Starting measurement for the first time");
+    setStatusMessage("✅ Finger detected! Automatic measurement starting...");
+    setMeasurementStep(3);
+    setIsMeasuring(true);
+    setMeasurementStarted(true);
+    setProgressSeconds(0); // Start from 0
+    setProgressPercent(0);
+    setCountdown(30);
+    startProgressTimer();
+    clearFingerRemovedAlert();
+  };
+
+  const pauseMeasurement = () => {
+    console.log("Pausing measurement due to finger removal");
+    stopProgressTimer(); // STOP COUNTING but keep current progress
+    setIsMeasuring(false);
+    // Don't reset progressSeconds here - keep it where it was
+  };
+
+  const resetAndStartMeasurement = () => {
+    console.log("Resetting measurement to 0 and starting over");
+    stopProgressTimer();
+    setProgressSeconds(0); // RESET TO 0
+    setProgressPercent(0); // RESET PROGRESS TO 0%
+    setCountdown(30); // RESET COUNTDOWN TO 30
+    setStatusMessage("✅ Finger detected! Measurement restarting from beginning...");
+    setIsMeasuring(true);
+    startProgressTimer(); // START COUNTING FROM 0
+    clearFingerRemovedAlert();
+  };
+
+  const completeMeasurement = () => {
+    console.log("Measurement completed successfully");
+    stopProgressTimer();
+    setIsMeasuring(false);
+    setMeasurementComplete(true);
+    setMeasurementStep(4);
+    setStatusMessage("✅ Measurement Complete! Final results ready.");
+    setProgressPercent(100);
+    setProgressSeconds(totalMeasurementTime);
+    setCountdown(0);
+    
+    // Update with final mock data (replace with actual API data)
+    setMeasurements({
+      heartRate: "72",
+      spo2: "98",
+      respiratoryRate: "16"
+    });
+    
+    stopAllTimers();
+    clearFingerRemovedAlert();
   };
 
   const startMainPolling = () => {
@@ -150,26 +254,7 @@ export default function Max30102() {
       try {
         const data = await sensorAPI.getMax30102Status();
         
-        setIsMeasuring(data.measurement_active || false);
-        setSensorReady(data.sensor_prepared || false);
-        setMeasurementStarted(data.measurement_started || false);
-        
-        if (data.measurement_active) {
-          const elapsed = data.elapsed || 0;
-          const total = data.total_time || 30;
-          const progress = data.progress || 0;
-          
-          setProgressSeconds(elapsed);
-          setProgressPercent(progress);
-          
-          const remaining = total - elapsed;
-          setStatusMessage(`📊 Measuring... ${elapsed}s elapsed, ${remaining}s remaining - Keep finger still`);
-          
-          if (countdown !== remaining && remaining > 0) {
-            setCountdown(remaining);
-          }
-        }
-        
+        // Update measurements from API data if available
         if (data.heart_rate && data.heart_rate > 0) {
           updateCurrentMeasurement('heartRate', data.heart_rate);
         }
@@ -180,25 +265,18 @@ export default function Max30102() {
           updateCurrentMeasurement('respiratoryRate', data.respiratory_rate);
         }
 
+        // Check for API-based completion
         if (data.final_result_shown && !measurementComplete) {
-          finalizeMeasurement(data.final_results);
-        }
-
-        if (data.measurement_active && measurementStartTimeRef.current && 
-            Date.now() - measurementStartTimeRef.current >= 32000 && 
-            !measurementComplete) {
-          finalizeMeasurement({
-            heart_rate: measurements.heartRate !== "--" ? parseInt(measurements.heartRate) : 75,
-            spo2: measurements.spo2 !== "--" ? parseInt(measurements.spo2) : 98,
-            respiratory_rate: measurements.respiratoryRate !== "--" ? parseInt(measurements.respiratoryRate) : 16
-          });
+          completeMeasurement();
         }
 
       } catch (error) {
         console.error("Error polling MAX30102 status:", error);
-        setStatusMessage("⚠️ Connection issue, retrying...");
+        if (isMeasuring) {
+          setStatusMessage("⚠️ Connection issue, retrying...");
+        }
       }
-    }, 1000);
+    }, 2000);
   };
 
   const updateCurrentMeasurement = (type, value) => {
@@ -206,27 +284,6 @@ export default function Max30102() {
       ...prev,
       [type]: Math.round(value).toString()
     }));
-  };
-
-  const finalizeMeasurement = (finalResults = {}) => {
-    const finalHeartRate = finalResults.heart_rate || (measurements.heartRate !== "--" ? parseInt(measurements.heartRate) : 75);
-    const finalSpO2 = finalResults.spo2 || (measurements.spo2 !== "--" ? parseInt(measurements.spo2) : 98);
-    const finalRespiratoryRate = finalResults.respiratory_rate || (measurements.respiratoryRate !== "--" ? parseInt(measurements.respiratoryRate) : 16);
-    
-    setMeasurements({
-      heartRate: finalHeartRate.toString(),
-      spo2: finalSpO2.toString(),
-      respiratoryRate: finalRespiratoryRate.toString()
-    });
-    
-    setMeasurementComplete(true);
-    setMeasurementStep(4);
-    setIsMeasuring(false);
-    setStatusMessage("✅ Measurement Complete! Final results ready.");
-    setProgressPercent(100);
-    setCountdown(0);
-    stopMonitoring();
-    stopCountdown();
   };
 
   const handleRetry = () => {
@@ -245,7 +302,7 @@ export default function Max30102() {
     }
   };
 
-  const stopMonitoring = () => {
+  const stopAllTimers = () => {
     if (pollerRef.current) {
       clearInterval(pollerRef.current);
       pollerRef.current = null;
@@ -254,14 +311,14 @@ export default function Max30102() {
       clearInterval(fingerCheckRef.current);
       fingerCheckRef.current = null;
     }
-    measurementStartTimeRef.current = null;
+    stopProgressTimer();
   };
 
   const handleContinue = () => {
     if (!measurementComplete) return;
     
-    stopMonitoring();
-    stopCountdown();
+    stopAllTimers();
+    clearFingerRemovedAlert();
     
     const vitalSignsData = {
       ...location.state,
@@ -321,11 +378,20 @@ export default function Max30102() {
 
   const getButtonText = () => {
     if (measurementComplete) {
-      return "Continue to Blood Pressure";
+      return (
+        <>
+          <span>Continue to Blood Pressure</span>
+          <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>Results ready!</span>
+        </>
+      );
     }
     
-    if (fingerDetected && isMeasuring) {
+    if (isMeasuring) {
       return `Measuring... ${countdown}s remaining`;
+    }
+    
+    if (fingerDetected && !isMeasuring && !measurementComplete) {
+      return "Ready to Measure - Keep Finger Steady";
     }
     
     return "Waiting for Finger Detection...";
@@ -334,8 +400,8 @@ export default function Max30102() {
   const getSensorState = () => {
     if (measurementComplete) return "complete";
     if (isMeasuring) return "active";
-    if (fingerDetected) return "active";
-    if (sensorReady) return "ready";
+    if (fingerDetected) return "ready";
+    if (sensorReady) return "initializing";
     return "initializing";
   };
 
@@ -345,11 +411,25 @@ export default function Max30102() {
     return "ready";
   };
 
-  const MAX_RETRIES = 3;
-
   return (
     <div className="max30102-container">
       <div className={`max30102-content ${isVisible ? 'visible' : ''}`}>
+        
+        {/* Finger Removed Alert */}
+        {showFingerRemovedAlert && (
+          <div className="finger-removed-alert">
+            <div className="alert-content">
+              <span className="alert-icon">⚠️</span>
+              <span className="alert-text">Finger removed! Please reinsert to continue measurement.</span>
+              <button 
+                className="alert-close" 
+                onClick={clearFingerRemovedAlert}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
         
         {/* Progress Bar */}
         <div className="progress-container">
@@ -373,7 +453,7 @@ export default function Max30102() {
                 ></div>
               </div>
               <span className="progress-text">
-                {Math.round(progressPercent)}% - {progressSeconds}/30s
+                {Math.round(progressPercent)}% - {progressSeconds}/{totalMeasurementTime}s
                 {countdown > 0 && ` (${countdown}s left)`}
               </span>
             </div>
@@ -392,20 +472,20 @@ export default function Max30102() {
               </div>
               <div className="sensor-status-text">
                 {getSensorState() === 'initializing' && 'Initializing...'}
-                {getSensorState() === 'ready' && 'Ready - Insert Finger'}
+                {getSensorState() === 'ready' && (fingerDetected ? 'Finger Detected - Ready' : 'Ready - Insert Finger')}
                 {getSensorState() === 'active' && `Measuring... ${progressSeconds}s`}
                 {getSensorState() === 'complete' && 'Complete'}
               </div>
             </div>
           </div>
 
-          {/* Vital Signs Cards - Fixed Layout with proper titles */}
+          {/* Vital Signs Cards */}
           <div className="vital-signs-cards-container">
             {/* Heart Rate Card */}
             <div className={`measurement-card vital-sign-card ${
               getCardStatus() === 'measuring' ? 'measuring-active' : 
               getCardStatus() === 'complete' ? 'measurement-complete' : ''
-            }`}>
+            } ${getStatusColor('heartRate', measurements.heartRate)}`}>
               <div className="measurement-icon">
                 <img src={heartRateIcon} alt="Heart Rate" className="measurement-image" />
               </div>
@@ -428,7 +508,7 @@ export default function Max30102() {
             <div className={`measurement-card vital-sign-card ${
               getCardStatus() === 'measuring' ? 'measuring-active' : 
               getCardStatus() === 'complete' ? 'measurement-complete' : ''
-            }`}>
+            } ${getStatusColor('spo2', measurements.spo2)}`}>
               <div className="measurement-icon">
                 <img src={spo2Icon} alt="Blood Oxygen" className="measurement-image" />
               </div>
@@ -451,7 +531,7 @@ export default function Max30102() {
             <div className={`measurement-card vital-sign-card ${
               getCardStatus() === 'measuring' ? 'measuring-active' : 
               getCardStatus() === 'complete' ? 'measurement-complete' : ''
-            }`}>
+            } ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
               <div className="measurement-icon">
                 <img src={respiratoryIcon} alt="Respiratory Rate" className="measurement-image" />
               </div>
