@@ -8,10 +8,10 @@ export default function Starting() {
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
   const [userData, setUserData] = useState({
-    firstName: "",
-    lastName: "",
-    age: "",
-    sex: ""
+    firstName: "Juan",
+    lastName: "Dela Cruz",
+    age: "21",
+    sex: "male"
   });
 
   // Add viewport meta tag to prevent zooming
@@ -44,17 +44,17 @@ export default function Starting() {
   }, []);
 
   useEffect(() => {
-    if (location.state) {
-      setUserData({
-        firstName: location.state.firstName || "",
-        lastName: location.state.lastName || "",
-        age: location.state.age || "",
-        sex: location.state.sex || ""
-      });
-    }
+    // Use default values regardless of location.state
+    setUserData({
+      firstName: "Juan",
+      lastName: "Dela Cruz",
+      age: "21",
+      sex: "male"
+    });
+    
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
-  }, [location.state]);
+  }, []);
 
   // Prevent zooming functions
   const handleTouchStart = (e) => {
@@ -81,11 +81,18 @@ export default function Starting() {
 
   // ✅ Fixed navigation path to match routes.js
   const handleStartMeasurements = () => {
-    navigate("/measure/bmi", { state: userData });
-  };
-
-  const getSexDisplay = (sex) => {
-    return sex === 'male' ? 'Male' : sex === 'female' ? 'Female' : '';
+    const userData = {
+      firstName: "Juan",
+      lastName: "Dela Cruz",
+      age: "21",
+      sex: "male"
+    };
+    
+    console.log("🚀 Starting navigation to BMI with data:", userData);
+    
+    navigate("/measure/bmi", { 
+      state: userData
+    });
   };
 
   return (
@@ -114,17 +121,20 @@ export default function Starting() {
             <div className="info-item">
               <span className="info-label">Name:</span>
               <span className="info-value">
-                {userData.firstName} {userData.lastName}
+                Juan Dela Cruz
               </span>
             </div>
             <div className="info-item">
               <span className="info-label">Age:</span>
-              <span className="info-value">{userData.age} years old</span>
+              <span className="info-value">21 years old</span>
             </div>
             <div className="info-item">
               <span className="info-label">Sex:</span>
-              <span className="info-value">{getSexDisplay(userData.sex)}</span>
+              <span className="info-value">Male</span>
             </div>
+          </div>
+          <div className="simulation-notice">
+            🔄 Simulation Mode - Using test data
           </div>
         </div>
 

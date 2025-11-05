@@ -82,6 +82,7 @@ export default function BMI() {
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
+    console.log("📍 BMI received location.state:", location.state);
     initializeSensors();
 
     return () => {
@@ -171,17 +172,15 @@ export default function BMI() {
   };
 
   const navigateToBodyTemp = () => {
-    // Prepare data to pass to next page
+    // Prepare data to pass to next page - MERGE existing data with new BMI data
     const measurementData = {
       ...location.state, // User personal info from Starting page
-      bmi: {
-        weight: parseFloat(weight),
-        height: parseFloat(height),
-        bmi: calculateBMI()
-      }
+      weight: parseFloat(weight),
+      height: parseFloat(height),
+      bmi: calculateBMI()
     };
     
-    console.log("Navigating to BodyTemp with data:", measurementData);
+    console.log("🚀 BMI complete - navigating to BodyTemp with data:", measurementData);
     
     // Navigate to Body Temperature measurement
     navigate('/measure/bodytemp', { state: measurementData });
@@ -478,9 +477,12 @@ export default function BMI() {
       bmi: calculateBMI()
     };
     
-    console.log("BMI measurement complete! Data ready for next step.");
+    console.log("🚀 BMI complete - continuing to BodyTemp with data:", bmiData);
     setStatusMessage("✅ BMI measurement complete! Click the button to continue to Body Temperature.");
     setMeasurementStep(3);
+    
+    // Actually navigate to BodyTemp
+    navigate('/measure/bodytemp', { state: bmiData });
   };
 
   const getButtonText = () => {

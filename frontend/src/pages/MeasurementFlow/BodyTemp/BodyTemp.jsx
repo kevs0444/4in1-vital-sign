@@ -60,6 +60,7 @@ export default function BodyTemp() {
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
+    console.log("📍 BodyTemp received location.state:", location.state);
     initializeTemperatureSensor();
 
     return () => {
@@ -268,13 +269,16 @@ export default function BodyTemp() {
     stopMonitoring();
     stopCountdown();
     
+    // Merge all previous data with temperature
+    const vitalSignsData = {
+      ...location.state, // This includes BMI data and personal info
+      temperature: parseFloat(temperature)
+    };
+    
+    console.log("🚀 BodyTemp complete - navigating to Max30102 with data:", vitalSignsData);
+    
     navigate("/measure/max30102", {
-      state: { 
-        ...location.state, 
-        weight: location.state?.weight,
-        height: location.state?.height,
-        temperature: parseFloat(temperature) 
-      },
+      state: vitalSignsData,
     });
   };
 

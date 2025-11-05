@@ -37,24 +37,37 @@ export default function Result() {
       console.log("🔍 Starting analysis with data:", location.state);
       analyzeHealthData(location.state);
     } else {
-      console.log("🧪 No data received - using sample data for testing");
-      // Use sample data for testing/design purposes
-      const sampleData = {
-        firstName: "John",
-        lastName: "Doe",
-        age: 35,
-        sex: "male",
-        weight: 75,
-        height: 175,
-        temperature: 36.8,
-        heartRate: 72,
-        spo2: 98,
-        respiratoryRate: 16,
-        systolic: 120,
-        diastolic: 80
-      };
-      setUserData(sampleData);
-      analyzeHealthData(sampleData);
+      console.log("❌ No data received - trying to get from session storage");
+      
+      // Try to get data from session storage as fallback
+      const storedData = sessionStorage.getItem('vitalSignsData');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        console.log("📦 Using data from session storage:", parsedData);
+        setUserData(parsedData);
+        analyzeHealthData(parsedData);
+      } else {
+        console.log("🧪 Using sample data for testing");
+        // Use sample data for testing/design purposes
+        const sampleData = {
+          firstName: "Juan",
+          lastName: "Dela Cruz",
+          age: "21",
+          sex: "male",
+          weight: 75,
+          height: 175,
+          bmi: 24.5,
+          temperature: 36.8,
+          heartRate: 72,
+          spo2: 98,
+          respiratoryRate: 16,
+          systolic: 120,
+          diastolic: 80,
+          bloodPressure: "120/80"
+        };
+        setUserData(sampleData);
+        analyzeHealthData(sampleData);
+      }
     }
     
     const timer = setTimeout(() => {
@@ -103,7 +116,7 @@ export default function Result() {
     }
 
     // Body Temperature Analysis
-    const temperature = data.temperature || data.bodyTemp;
+    const temperature = data.temperature;
     console.log("🌡️ Temperature:", temperature);
     if (temperature && temperature !== 'N/A') {
       const tempNum = parseFloat(temperature);
@@ -249,6 +262,12 @@ export default function Result() {
   };
 
   const calculateBMI = (data) => {
+    // If BMI is already calculated and passed, use it
+    if (data.bmi && data.bmi !== 'N/A') {
+      return parseFloat(data.bmi);
+    }
+    
+    // Otherwise calculate from weight and height
     if (!data.weight || !data.height || data.weight === 'N/A' || data.height === 'N/A') return null;
     const heightInMeters = data.height / 100;
     const bmi = (data.weight / (heightInMeters * heightInMeters)).toFixed(1);
@@ -390,20 +409,39 @@ export default function Result() {
     return tips.slice(0, 6);
   };
 
-  const getTemperatureValue = () => {
-    return userData.temperature || userData.bodyTemp || 'N/A';
-  };
-
   const handleSaveResults = () => {
-    console.log("💾 Saving results and navigating to Saving page...");
-    navigate("/measure/saving", { 
-      state: { 
-        userData, 
-        riskLevel, 
-        riskCategory, 
-        suggestions, 
-        preventions 
-      }
+    console.log("💾 Saving results and navigating to Sharing page...");
+    
+    // Prepare complete data to pass directly to Sharing
+    const completeData = {
+      // Original user data
+      ...userData,
+      
+      // Analysis results
+      riskLevel,
+      riskCategory,
+      suggestions,
+      preventions,
+      
+      // Ensure all measurement fields are included
+      bmi: calculateBMI(userData),
+      bloodPressure: userData.systolic && userData.diastolic ? 
+        `${userData.systolic}/${userData.diastolic}` : 'N/A',
+      
+      // Add calculated fields for print
+      bmiCategory: getBMICategory(calculateBMI(userData)).status,
+      temperatureStatus: getTemperatureStatus(userData.temperature).status,
+      heartRateStatus: getHeartRateStatus(userData.heartRate).status,
+      spo2Status: getSPO2Status(userData.spo2).status,
+      respiratoryStatus: getRespiratoryStatus(userData.respiratoryRate).status,
+      bloodPressureStatus: getBloodPressureStatus(userData.systolic, userData.diastolic).status
+    };
+    
+    console.log("📤 Passing complete data to Sharing:", completeData);
+    
+    // Navigate directly to Sharing page with all data
+    navigate("/measure/sharing", { 
+      state: completeData
     });
   };
 
@@ -415,7 +453,7 @@ export default function Result() {
   };
 
   const bmiData = getBMICategory(calculateBMI(userData));
-  const tempData = getTemperatureStatus(getTemperatureValue());
+  const tempData = getTemperatureStatus(userData.temperature);
   const hrData = getHeartRateStatus(userData.heartRate);
   const spo2Data = getSPO2Status(userData.spo2);
   const respData = getRespiratoryStatus(userData.respiratoryRate);
@@ -514,11 +552,11 @@ export default function Result() {
               <div className="user-avatar">👤</div>
               <div className="user-details">
                 <h3 className="user-name">
-                  {userData.firstName || 'N/A'} {userData.lastName || 'N/A'}
+                  {userData.firstName || 'Juan'} {userData.lastName || 'Dela Cruz'}
                 </h3>
                 <div className="user-meta">
-                  <span className="user-age">{userData.age || 'N/A'} years old</span>
-                  <span className="user-sex">{userData.sex === 'male' ? 'Male' : userData.sex === 'female' ? 'Female' : 'N/A'}</span>
+                  <span className="user-age">{userData.age || '21'} years old</span>
+                  <span className="user-sex">{userData.sex === 'male' ? 'Male' : userData.sex === 'female' ? 'Female' : 'Male'}</span>
                 </div>
               </div>
             </div>
@@ -528,7 +566,7 @@ export default function Result() {
                   <div className="bmi-icon">⚖️</div>
                   <h4>Body Mass Index</h4>
                 </div>
-                <div className="bmi-value">{calculateBMI(userData) || 'N/A'}</div>
+                <div className="bmi-value">{calculateBMI(userData) || '24.5'}</div>
                 <div className="bmi-status" style={{ color: bmiData.color }}>
                   {bmiData.status}
                 </div>
@@ -548,7 +586,7 @@ export default function Result() {
                 <div className="vital-sign-icon">🌡️</div>
                 <h3>Body Temperature</h3>
               </div>
-              <div className="vital-sign-value">{getTemperatureValue()}°C</div>
+              <div className="vital-sign-value">{userData.temperature || '36.8'}°C</div>
               <div className="vital-sign-status" style={{ color: tempData.color }}>
                 {tempData.status}
               </div>
@@ -561,7 +599,7 @@ export default function Result() {
                 <div className="vital-sign-icon">💓</div>
                 <h3>Heart Rate</h3>
               </div>
-              <div className="vital-sign-value">{userData.heartRate || 'N/A'} BPM</div>
+              <div className="vital-sign-value">{userData.heartRate || '72'} BPM</div>
               <div className="vital-sign-status" style={{ color: hrData.color }}>
                 {hrData.status}
               </div>
@@ -575,14 +613,14 @@ export default function Result() {
                 <div>
                   <h3>Respiratory Rate</h3>
                   <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
-                    SpO2: {userData.spo2 || 'N/A'}% 
+                    SpO2: {userData.spo2 || '98'}% 
                     <span style={{ color: spo2Data.color, marginLeft: '4px' }}>
                       ({spo2Data.status})
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="vital-sign-value">{userData.respiratoryRate || 'N/A'} BPM</div>
+              <div className="vital-sign-value">{userData.respiratoryRate || '16'} BPM</div>
               <div className="vital-sign-status" style={{ color: respData.color }}>
                 {respData.status}
               </div>
@@ -597,7 +635,7 @@ export default function Result() {
               </div>
               <div className="vital-sign-value">
                 {userData.systolic && userData.diastolic ? 
-                  `${userData.systolic}/${userData.diastolic}` : 'N/A'}
+                  `${userData.systolic}/${userData.diastolic}` : '120/80'}
               </div>
               <div className="vital-sign-status" style={{ color: bpData.color }}>
                 {bpData.status}

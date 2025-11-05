@@ -10,7 +10,7 @@ export default function AILoading() {
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [statusMessage, setStatusMessage] = useState("Initializing AI Analysis..."); // Added this line
+  const [statusMessage, setStatusMessage] = useState("Initializing AI Analysis...");
 
   const analysisSteps = [
     "Analyzing Vital Signs",
@@ -34,13 +34,30 @@ export default function AILoading() {
         hasBloodPressure: !!location.state.bloodPressure,
         hasSystolic: !!location.state.systolic,
         hasDiastolic: !!location.state.diastolic,
+        hasPersonalInfo: !!location.state.firstName,
         fullData: location.state
       });
-      setStatusMessage("AI analysis starting...");
+      
+      // Store in session storage as backup
+      sessionStorage.setItem('vitalSignsData', JSON.stringify(location.state));
+      setStatusMessage("Juan AI is analyzing your health data...");
     } else {
-      console.error("❌ No data received in AI Loading page!");
-      setStatusMessage("No data received. Please start over.");
-      return;
+      console.log("🔄 No data in location.state, checking session storage");
+      const storedData = sessionStorage.getItem('vitalSignsData');
+      if (storedData) {
+        console.log("📦 Using data from session storage");
+        // If no location state but we have stored data, use it
+        setTimeout(() => {
+          navigate("/measure/result", { 
+            state: JSON.parse(storedData)
+          });
+        }, 2000);
+        return;
+      } else {
+        console.error("❌ No data received in AI Loading page!");
+        setStatusMessage("No data received. Please start over.");
+        return;
+      }
     }
     
     // Prevent body scrolling when component mounts with unique class

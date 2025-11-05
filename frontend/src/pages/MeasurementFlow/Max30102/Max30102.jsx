@@ -39,6 +39,7 @@ export default function Max30102() {
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
+    console.log("📍 Max30102 received location.state:", location.state);
     initializeMax30102Sensor();
 
     return () => {
@@ -321,15 +322,14 @@ export default function Max30102() {
     clearFingerRemovedAlert();
     
     const vitalSignsData = {
-      ...location.state,
-      weight: location.state?.weight,
-      height: location.state?.height,
-      temperature: location.state?.temperature,
+      ...location.state, // This includes all previous data
       heartRate: parseInt(measurements.heartRate) || 75,
       spo2: parseInt(measurements.spo2) || 98,
       respiratoryRate: parseInt(measurements.respiratoryRate) || 16,
       measurementTimestamp: new Date().toISOString()
     };
+    
+    console.log("🚀 Max30102 complete - navigating to BloodPressure with data:", vitalSignsData);
     
     navigate("/measure/bloodpressure", { state: vitalSignsData });
   };

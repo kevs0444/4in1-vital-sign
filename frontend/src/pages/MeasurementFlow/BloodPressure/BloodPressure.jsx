@@ -13,71 +13,42 @@ export default function BloodPressure() {
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurementComplete, setMeasurementComplete] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Initializing blood pressure monitor...");
-  const [liveReading, setLiveReading] = useState("");
-  const [isReady, setIsReady] = useState(false);
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(0);
-  const [sensorAvailable, setSensorAvailable] = useState(false);
   
-  // New interactive state variables
+  // Interactive state variables
   const [bpMeasuring, setBpMeasuring] = useState(false);
   const [bpComplete, setBpComplete] = useState(false);
-  const [liveBpValue, setLiveBpValue] = useState("");
   const [measurementStep, setMeasurementStep] = useState(1); // Start at step 1: Ready for measurement
 
   const MAX_RETRIES = 3;
 
-  const pollerRef = useRef(null);
-  const bpIntervalRef = useRef(null);
   const countdownRef = useRef(null);
+  const progressIntervalRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
+    console.log("📍 BloodPressure received location.state:", location.state);
     initializeBloodPressureSensor();
 
     return () => {
       clearTimeout(timer);
-      stopMonitoring();
-      clearSimulatedMeasurements();
-      stopCountdown();
+      stopAllTimers();
     };
   }, []);
 
   const initializeBloodPressureSensor = async () => {
     try {
-      setStatusMessage("Powering up blood pressure monitor...");
+      setStatusMessage("🔄 Initializing blood pressure monitor...");
       
-      // Try to detect sensor
-      const sensorCheck = await sensorAPI.checkBloodPressureSensor();
-      
-      if (sensorCheck.error || !sensorCheck.sensor_detected) {
-        // No sensor detected - use random data mode
-        setSensorAvailable(false);
-        setStatusMessage("⚠️ Using simulated data - Click 'Start Measurement' to begin");
-        setMeasurementStep(1); // Ready for measurement
-        return;
-      }
-      
-      // Sensor detected - proceed with normal flow
-      setSensorAvailable(true);
-      const prepareResult = await sensorAPI.prepareBloodPressure();
-      
-      if (prepareResult.error) {
-        setStatusMessage(`❌ ${prepareResult.error}`);
-        handleRetry();
-        return;
-      }
-      
+      // Always use simulation mode for now
       setStatusMessage("✅ Blood pressure monitor ready - Click 'Start Measurement' to begin");
       setMeasurementStep(1); // Ready for measurement
-      startMonitoring();
       
     } catch (error) {
       console.error("Blood pressure initialization error:", error);
-      // Fall back to random data mode
-      setSensorAvailable(false);
-      setStatusMessage("⚠️ Using simulated data - Click 'Start Measurement' to begin");
+      setStatusMessage("✅ Using simulation mode - Click 'Start Measurement' to begin");
       setMeasurementStep(1); // Ready for measurement
     }
   };
@@ -103,130 +74,46 @@ export default function BloodPressure() {
     setCountdown(0);
   };
 
-  const clearSimulatedMeasurements = () => {
-    if (bpIntervalRef.current) {
-      clearInterval(bpIntervalRef.current);
-      bpIntervalRef.current = null;
+  const stopAllTimers = () => {
+    stopCountdown();
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
     }
-  };
-
-  const startMonitoring = () => {
-    if (!sensorAvailable) {
-      // Skip monitoring if no sensor available
-      return;
-    }
-    
-    stopMonitoring();
-    
-    pollerRef.current = setInterval(async () => {
-      try {
-        const data = await sensorAPI.getBloodPressureStatus();
-        console.log("Blood pressure status:", data);
-        
-        setIsMeasuring(data.measurement_active);
-        setIsReady(data.is_ready_for_measurement);
-        
-        // Update live reading during measurement
-        if (data.live_pressure !== null && data.live_pressure !== undefined && bpMeasuring) {
-          setLiveReading(data.live_pressure.toFixed(0));
-          setLiveBpValue(data.live_pressure.toFixed(0));
-        }
-
-        // Handle progress during active measurement
-        if (data.status && data.status.includes('bp_progress')) {
-          const progressParts = data.status.split(':');
-          const elapsed = parseInt(progressParts[1]);
-          const total = parseInt(progressParts[2]);
-          const progressPercent = (elapsed / total) * 100;
-          setProgress(progressPercent);
-          setStatusMessage(`Measuring blood pressure... ${total - elapsed}s`);
-        }
-        
-        // Handle final result - AUTOMATICALLY from backend
-        if (data.systolic !== null && data.systolic !== undefined && 
-            data.diastolic !== null && data.diastolic !== undefined) {
-          if (data.systolic >= 60 && data.systolic <= 250 && 
-              data.diastolic >= 40 && data.diastolic <= 150) {
-            // Valid blood pressure received - AUTOMATIC RESULT
-            setSystolic(data.systolic.toFixed(0));
-            setDiastolic(data.diastolic.toFixed(0));
-            setMeasurementComplete(true);
-            setBpComplete(true);
-            setBpMeasuring(false);
-            setMeasurementStep(3); // Move to step 3: Results complete
-            setStatusMessage("✅ Blood Pressure Measurement Complete!");
-            setProgress(100);
-            stopMonitoring();
-            clearSimulatedMeasurements();
-            stopCountdown();
-          } else {
-            // Invalid blood pressure, retry
-            setStatusMessage("❌ Invalid blood pressure reading, retrying...");
-            handleRetry();
-          }
-        }
-
-        // Handle status messages
-        switch (data.status) {
-          case 'bp_measurement_started':
-            setStatusMessage("Blood pressure measurement in progress...");
-            setBpMeasuring(true);
-            setMeasurementStep(2); // Move to step 2: Measuring
-            startSimulatedMeasurement();
-            startCountdown(15); // Longer countdown for BP measurement
-            break;
-          case 'bp_measurement_complete':
-            // Handled above with data.systolic/diastolic check
-            break;
-          case 'error':
-          case 'bp_reading_invalid':
-            setStatusMessage("❌ Measurement failed, retrying...");
-            handleRetry();
-            break;
-          default:
-            // Show sensor status
-            if (data.sensor_prepared && !data.measurement_active && !measurementComplete) {
-              if (!data.live_pressure && measurementStep === 1) {
-                setStatusMessage("✅ Monitor ready - Click 'Start Measurement' to begin");
-              }
-            }
-            break;
-        }
-
-      } catch (error) {
-        console.error("Error polling blood pressure status:", error);
-        setStatusMessage("⚠️ Connection issue, retrying...");
-      }
-    }, 1000);
   };
 
   const generateRandomBloodPressure = () => {
-    // Generate realistic blood pressure values
-    const baseSystolic = 110 + Math.floor(Math.random() * 30); // 110-140
-    const baseDiastolic = 70 + Math.floor(Math.random() * 15); // 70-85
-    
-    // Add some small random variation
-    const systolic = baseSystolic + Math.floor(Math.random() * 5) - 2;
-    const diastolic = baseDiastolic + Math.floor(Math.random() * 3) - 1;
+    // Generate realistic blood pressure values for a healthy young adult
+    const baseSystolic = 110 + Math.floor(Math.random() * 15); // 110-125
+    const baseDiastolic = 70 + Math.floor(Math.random() * 10); // 70-80
     
     return {
-      systolic: Math.max(90, Math.min(180, systolic)), // Keep within reasonable bounds
-      diastolic: Math.max(60, Math.min(120, diastolic)) // Keep within reasonable bounds
+      systolic: baseSystolic,
+      diastolic: baseDiastolic
     };
   };
 
-  const startSimulatedMeasurement = () => {
-    clearSimulatedMeasurements();
-    
-    if (!sensorAvailable) {
-      // Simulate measurement with random data
-      let progress = 0;
-      const progressInterval = setInterval(() => {
-        progress += 5;
-        setProgress(progress);
+  const startMeasurement = async () => {
+    try {
+      setStatusMessage("Starting blood pressure measurement...");
+      setBpMeasuring(true);
+      setMeasurementStep(2); // Move to step 2: Measuring
+      setProgress(0);
+      
+      // Clear any previous measurement
+      setSystolic("");
+      setDiastolic("");
+      
+      // Simulate measurement with progress
+      startCountdown(8); // 8 seconds countdown for simulation
+      
+      let progressValue = 0;
+      progressIntervalRef.current = setInterval(() => {
+        progressValue += 12.5; // 8 steps to 100%
+        setProgress(progressValue);
         
-        if (progress >= 100) {
-          clearInterval(progressInterval);
+        if (progressValue >= 100) {
+          clearInterval(progressIntervalRef.current);
           // Generate final random blood pressure
           const bp = generateRandomBloodPressure();
           setSystolic(bp.systolic.toString());
@@ -238,53 +125,8 @@ export default function BloodPressure() {
           setStatusMessage("✅ Blood Pressure Measurement Complete!");
           stopCountdown();
         }
-      }, 300);
+      }, 1000);
       
-      return;
-    }
-    
-    // Original sensor-based simulation
-    let simulatedSystolic = 120;
-    let simulatedDiastolic = 80;
-    bpIntervalRef.current = setInterval(() => {
-      simulatedSystolic += (Math.random() - 0.5) * 2;
-      simulatedDiastolic += (Math.random() - 0.5) * 1.5;
-      
-      // Keep within reasonable bounds
-      if (simulatedSystolic > 140) simulatedSystolic = 140 - Math.random() * 5;
-      if (simulatedSystolic < 100) simulatedSystolic = 100 + Math.random() * 5;
-      if (simulatedDiastolic > 90) simulatedDiastolic = 90 - Math.random() * 3;
-      if (simulatedDiastolic < 60) simulatedDiastolic = 60 + Math.random() * 3;
-      
-      setLiveBpValue(`${Math.round(simulatedSystolic)}/${Math.round(simulatedDiastolic)}`);
-    }, 500);
-  };
-
-  const startMeasurement = async () => {
-    try {
-      setStatusMessage("Starting blood pressure measurement...");
-      setBpMeasuring(true);
-      setMeasurementStep(2); // Move to step 2: Measuring
-      
-      if (sensorAvailable) {
-        const response = await sensorAPI.startBloodPressure();
-        
-        if (response.error) {
-          setStatusMessage(`❌ ${response.error}`);
-          setBpMeasuring(false);
-          setMeasurementStep(1); // Return to ready state
-          handleRetry();
-        } else {
-          setStatusMessage("Blood pressure measurement started...");
-          startSimulatedMeasurement();
-          startCountdown(15);
-        }
-      } else {
-        // No sensor - use random data simulation
-        setStatusMessage("Simulating blood pressure measurement...");
-        startSimulatedMeasurement();
-        startCountdown(8); // Shorter countdown for simulation
-      }
     } catch (error) {
       console.error("Start blood pressure error:", error);
       setStatusMessage("❌ Failed to start measurement");
@@ -303,45 +145,28 @@ export default function BloodPressure() {
         initializeBloodPressureSensor();
       }, 2000);
     } else {
-      setStatusMessage("❌ Maximum retries reached. Using simulated data.");
-      setSensorAvailable(false); // Fall back to random data
-      clearSimulatedMeasurements();
-      stopCountdown();
-    }
-  };
-
-  const stopMonitoring = () => {
-    if (pollerRef.current) {
-      clearInterval(pollerRef.current);
-      pollerRef.current = null;
+      setStatusMessage("❌ Maximum retries reached. Please try again.");
+      stopAllTimers();
     }
   };
 
   const handleContinue = () => {
     if (!measurementComplete || !systolic || !diastolic) return;
     
-    stopMonitoring();
-    clearSimulatedMeasurements();
-    stopCountdown();
+    stopAllTimers();
     
     // Prepare complete data to pass to AI Results
     const completeVitalSignsData = {
-      ...location.state, // This includes all previous data (BMI, temperature, pulse oximeter)
-      weight: location.state?.weight,
-      height: location.state?.height,
-      temperature: location.state?.temperature,
-      heartRate: location.state?.heartRate,
-      spo2: location.state?.spo2,
-      respiratoryRate: location.state?.respiratoryRate,
+      ...location.state, // This includes all previous data
       systolic: systolic ? parseFloat(systolic) : null,
       diastolic: diastolic ? parseFloat(diastolic) : null,
       bloodPressure: `${systolic}/${diastolic}`,
       measurementTimestamp: new Date().toISOString()
     };
     
-    console.log("🚀 Continuing to AI Results with complete data:", completeVitalSignsData);
+    console.log("🚀 BloodPressure complete - navigating to AI Loading with data:", completeVitalSignsData);
     
-    // ✅ FIXED: Ensure correct navigation path
+    // Navigate to AI Loading
     navigate("/measure/ai-loading", { 
       state: completeVitalSignsData 
     });
@@ -393,9 +218,6 @@ export default function BloodPressure() {
   };
 
   const getCurrentDisplayValue = () => {
-    if (bpMeasuring && liveBpValue) {
-      return liveBpValue;
-    }
     if (measurementComplete && systolic && diastolic) {
       return `${systolic}/${diastolic}`;
     }
@@ -407,15 +229,10 @@ export default function BloodPressure() {
       return getBloodPressureStatus(systolic, diastolic);
     }
     
-    const currentValue = getCurrentDisplayValue();
-    if (currentValue !== "--/--") {
-      return getBloodPressureStatus(currentValue.split('/')[0], currentValue.split('/')[1]);
-    }
-    
     return { 
-      text: isReady ? 'Ready' : 'Initializing', 
-      class: isReady ? 'ready' : 'default',
-      description: isReady ? 'Ready for measurement' : 'Initializing blood pressure monitor'
+      text: 'Ready', 
+      class: 'ready',
+      description: 'Ready for blood pressure measurement'
     };
   };
 
@@ -424,9 +241,9 @@ export default function BloodPressure() {
       case 1:
         return "Start Measurement";
       case 2:
-        return "Measuring Blood Pressure...";
+        return `Measuring... ${countdown}s`;
       case 3:
-        return "Go to AI Results";
+        return "Continue to AI Results";
       default:
         return "Start Measurement";
     }
@@ -468,11 +285,9 @@ export default function BloodPressure() {
           <h1 className="bp-title">Blood Pressure Measurement</h1>
           <p className="bp-subtitle">
             {statusMessage}
-            {!sensorAvailable && (
-              <span style={{display: 'block', fontSize: '0.7rem', color: '#ff6b35', marginTop: '5px'}}>
-                🔄 Using simulated data for demonstration
-              </span>
-            )}
+            <span style={{display: 'block', fontSize: '0.7rem', color: '#ff6b35', marginTop: '5px'}}>
+              🔄 Simulation Mode - Using test data for demonstration
+            </span>
           </p>
           {retryCount > 0 && (
             <div className="bp-retry-indicator">
@@ -528,20 +343,18 @@ export default function BloodPressure() {
                 
                 {bpMeasuring && (
                   <div className="bp-live-reading-indicator">
-                    🔄 Measuring...
+                    🔄 Measuring Blood Pressure...
                   </div>
                 )}
                 
-                {!sensorAvailable && !bpMeasuring && !measurementComplete && (
-                  <div style={{
-                    fontSize: '0.7rem',
-                    color: '#ff6b35',
-                    marginTop: '8px',
-                    fontWeight: '600'
-                  }}>
-                    🔄 Simulation Mode
-                  </div>
-                )}
+                <div style={{
+                  fontSize: '0.7rem',
+                  color: '#ff6b35',
+                  marginTop: '8px',
+                  fontWeight: '600'
+                }}>
+                  🔄 Simulation Mode - Test Data
+                </div>
               </div>
             </div>
           </div>
@@ -644,7 +457,7 @@ export default function BloodPressure() {
             fontFamily: 'monospace'
           }}>
             Step: {measurementStep} | 
-            Sensor: {sensorAvailable ? '✅ DETECTED' : '🔄 SIMULATION'} | 
+            Mode: 🔄 SIMULATION | 
             Status: {measurementComplete ? '✅ COMPLETE' : (bpMeasuring ? '⏳ MEASURING' : '🟢 READY')} | 
             BP: {systolic || '--'}/{diastolic || '--'} |
             Next: /measure/ai-loading
