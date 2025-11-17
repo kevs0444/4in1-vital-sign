@@ -1,302 +1,225 @@
+# app/routes/register_routes.py - FIXED DUPLICATE CHECK
 from flask import Blueprint, request, jsonify
-from app.utils.db import get_db
-from app.models.user_model import User, RoleEnum, SexEnum
 from sqlalchemy import text
-from datetime import datetime
-import uuid
-import hashlib
-import time
+from app.utils.db import get_db
+import re
 
 register_bp = Blueprint('register', __name__)
 
-# Request tracking to prevent duplicates
-_request_tracker = {}
-CLEANUP_INTERVAL = 300  # Clean up every 5 minutes
-
-def cleanup_old_requests():
-    """Clean up old requests from tracker"""
-    current_time = time.time()
-    keys_to_remove = []
-    for key, value in _request_tracker.items():
-        if current_time - value['timestamp'] > CLEANUP_INTERVAL:
-            keys_to_remove.append(key)
-    for key in keys_to_remove:
-        del _request_tracker[key]
-
-def get_request_fingerprint(data):
-    """Create a fingerprint of the request to detect duplicates"""
-    request_str = f"{data.get('idNumber', '')}-{data.get('email', '')}"
-    return hashlib.md5(request_str.encode()).hexdigest()
-
-@register_bp.route('/test-connection', methods=['GET'])
-def test_connection():
-    """Test if registration routes are working"""
-    try:
-        db = next(get_db())
-        result = db.execute(text("SELECT DATABASE() as db_name, NOW() as time")).fetchone()
-        return jsonify({
-            'success': True,
-            'message': 'Registration routes are working!',
-            'database': result[0],
-            'server_time': result[1].isoformat() if result[1] else None
-        }), 200
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Database connection failed: {str(e)}'
-        }), 500
-
-@register_bp.route('/register', methods=['POST', 'OPTIONS'])
+@register_bp.route('/register', methods=['POST'])
 def register_user():
-    """Register a new user in the database"""
-    if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
-        
+    """Register a new user with all personal information"""
     try:
         data = request.get_json()
-        print("📥 Received registration data")
-        
+        print("📥 Received registration data:", data)
+
         if not data:
             return jsonify({
                 'success': False,
                 'message': 'No data provided'
             }), 400
+
+        # Extract and validate required fields
+        required_fields = ['userId', 'rfidTag', 'firstname', 'lastname', 'role', 'age', 'sex', 'mobileNumber', 'email', 'password']
         
-        # Clean up old requests
-        cleanup_old_requests()
-        
-        # Check for duplicate request using fingerprint
-        request_fingerprint = get_request_fingerprint(data)
-        current_time = time.time()
-        
-        if request_fingerprint in _request_tracker:
-            if current_time - _request_tracker[request_fingerprint]['timestamp'] < 10:
-                print("🔄 DUPLICATE REQUEST DETECTED - Returning cached response")
-                return jsonify(_request_tracker[request_fingerprint]['response'])
-        
-        db = next(get_db())
-        
-        # Check if user already exists by ID number or email
-        id_number = data.get('idNumber')
-        email = data.get('email')
-        
-        existing_user = db.query(User).filter(
-            (User.school_number == id_number) | (User.email == email)
-        ).first()
-        
-        if existing_user:
-            response = {
-                'success': False,
-                'message': 'User with this ID number or email already exists'
-            }
-            _request_tracker[request_fingerprint] = {
-                'response': response,
-                'timestamp': current_time
-            }
-            return jsonify(response), 400
-        
-        # Extract and validate created_at from frontend
-        created_at_str = data.get('created_at')
-        created_at = None
-        
-        if created_at_str:
-            try:
-                # Parse the datetime from frontend (expecting YYYY-MM-DD HH:MM:SS format)
-                created_at = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M:%S')
-                print(f"📅 Created at from frontend: {created_at}")
-            except ValueError as e:
-                print(f"⚠️ Invalid created_at format: {e}")
-                # Fallback to current datetime
-                created_at = datetime.now()
-        else:
-            # Use current datetime if not provided
-            created_at = datetime.now()
-            print(f"📅 Using current datetime: {created_at}")
-        
-        # Map frontend user types to backend RoleEnum
-        role_mapping = {
-            'rtu-students': RoleEnum.Student,
-            'rtu-employees': RoleEnum.Employee,
-            'rtu-admin': RoleEnum.Admin,
-            'rtu-doctor': RoleEnum.Doctor,
-            'rtu-nurse': RoleEnum.Nurse
-        }
-        
-        # Map frontend sex to backend SexEnum
-        sex_mapping = {
-            'male': SexEnum.Male,
-            'female': SexEnum.Female
-        }
-        
-        # Extract personal info
-        personal_info = data.get('personalInfo', {})
-        if not personal_info:
-            response = {
-                'success': False,
-                'message': 'Personal information is required'
-            }
-            _request_tracker[request_fingerprint] = {
-                'response': response,
-                'timestamp': current_time
-            }
-            return jsonify(response), 400
-        
-        # Validate required fields
-        required_fields = ['firstName', 'lastName', 'age', 'sex']
         for field in required_fields:
-            if not personal_info.get(field):
-                response = {
+            if field not in data or not data[field]:
+                return jsonify({
                     'success': False,
                     'message': f'Missing required field: {field}'
-                }
-                _request_tracker[request_fingerprint] = {
-                    'response': response,
-                    'timestamp': current_time
-                }
-                return jsonify(response), 400
+                }), 400
+
+        # Validate email format
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', data['email']):
+            return jsonify({
+                'success': False,
+                'message': 'Invalid email format'
+            }), 400
+
+        db = next(get_db())
         
-        # Generate user_id
-        user_id = str(uuid.uuid4())[:20]
+        # Check if user ID already exists - FIXED QUERY
+        check_user_query = text("SELECT user_id FROM users WHERE user_id = :user_id")
+        existing_user = db.execute(check_user_query, {'user_id': data['userId']}).fetchone()
         
-        # Create birthday from components
-        birth_year = personal_info.get('birthYear')
-        birth_month = personal_info.get('birthMonth') 
-        birth_day = personal_info.get('birthDay')
+        if existing_user:
+            return jsonify({
+                'success': False,
+                'message': 'User ID already exists'
+            }), 400
+
+        # Check if RFID tag already exists
+        check_rfid_query = text("SELECT rfid_tag FROM users WHERE rfid_tag = :rfid_tag")
+        existing_rfid = db.execute(check_rfid_query, {'rfid_tag': data['rfidTag']}).fetchone()
         
-        birthday = None
-        if all([birth_year, birth_month, birth_day]):
-            try:
-                birthday = datetime(int(birth_year), int(birth_month), int(birth_day)).date()
-                print(f"🎂 Birthday: {birthday}")
-            except ValueError as e:
-                print(f"⚠️ Invalid birthday: {e}")
+        if existing_rfid:
+            return jsonify({
+                'success': False,
+                'message': 'RFID tag already registered'
+            }), 400
+
+        # Check if email already exists
+        check_email_query = text("SELECT email FROM users WHERE email = :email")
+        existing_email = db.execute(check_email_query, {'email': data['email']}).fetchone()
         
-        # Get user role
-        user_type = data.get('userType', 'rtu-students')
-        role = role_mapping.get(user_type, RoleEnum.Student)
-        print(f"👤 Role: {role.value}")
+        if existing_email:
+            return jsonify({
+                'success': False,
+                'message': 'Email already registered'
+            }), 400
+
+        # Check if school number already exists
+        check_school_query = text("SELECT school_number FROM users WHERE school_number = :school_number")
+        existing_school = db.execute(check_school_query, {'school_number': data.get('school_number', '')}).fetchone()
         
-        # Get biological sex
-        sex = sex_mapping.get(personal_info.get('sex'), SexEnum.Male)
-        print(f"🚻 Sex: {sex.value}")
+        if existing_school:
+            return jsonify({
+                'success': False,
+                'message': 'School number already registered'
+            }), 400
+
+        # Insert new user
+        insert_query = text("""
+            INSERT INTO users (
+                user_id, rfid_tag, firstname, lastname, role, school_number, 
+                birthday, age, sex, mobile_number, email, password, created_at
+            ) VALUES (
+                :user_id, :rfid_tag, :firstname, :lastname, :role, :school_number,
+                :birthday, :age, :sex, :mobile_number, :email, :password, :created_at
+            )
+        """)
         
-        # Create new user with created_at from frontend
-        new_user = User(
-            user_id=user_id,
-            rfid_tag=data.get('rfidCode', ''),
-            firstname=personal_info.get('firstName', '').strip(),
-            lastname=personal_info.get('lastName', '').strip(),
-            role=role,
-            school_number=data.get('idNumber', ''),
-            birthday=birthday,
-            age=int(personal_info.get('age', 0)),
-            sex=sex,
-            mobile_number=data.get('mobile', ''),
-            email=data.get('email', '').strip(),
-            password=data.get('password', ''),
-            created_at=created_at  # Use the datetime from frontend
-        )
+        db.execute(insert_query, {
+            'user_id': data['userId'],
+            'rfid_tag': data['rfidTag'],
+            'firstname': data['firstname'],
+            'lastname': data['lastname'],
+            'role': data['role'],
+            'school_number': data.get('school_number', data['userId']),  # Use userId as school_number if not provided
+            'birthday': data.get('birthday', None),
+            'age': data['age'],
+            'sex': data['sex'],
+            'mobile_number': data['mobileNumber'],
+            'email': data['email'],
+            'password': data['password'],
+            'created_at': data.get('created_at', None)
+        })
         
-        print(f"💾 Saving user to database...")
-        db.add(new_user)
         db.commit()
-        
-        print(f"✅ User registered successfully: {new_user.user_id}")
-        print(f"📅 Created at saved: {new_user.created_at}")
-        
-        response_data = {
+
+        print(f"✅ User registered successfully: {data['userId']}")
+
+        return jsonify({
             'success': True,
             'message': 'User registered successfully',
-            'user_id': new_user.user_id,
             'data': {
-                'user_id': new_user.user_id,
-                'firstname': new_user.firstname,
-                'lastname': new_user.lastname,
-                'role': new_user.role.value,
-                'school_number': new_user.school_number,
-                'email': new_user.email,
-                'mobile_number': new_user.mobile_number,
-                'rfid_tag': new_user.rfid_tag,
-                'age': new_user.age,
-                'sex': new_user.sex.value,
-                'birthday': new_user.birthday.isoformat() if new_user.birthday else None,
-                'created_at': new_user.created_at.isoformat() if new_user.created_at else None
+                'user_id': data['userId'],
+                'rfid_tag': data['rfidTag'],
+                'firstname': data['firstname'],
+                'lastname': data['lastname'],
+                'role': data['role'],
+                'school_number': data.get('school_number', data['userId']),
+                'created_at': data.get('created_at', None)
             }
-        }
-        
-        # Cache the response for duplicate requests
-        _request_tracker[request_fingerprint] = {
-            'response': response_data,
-            'timestamp': current_time
-        }
-        
-        return jsonify(response_data), 201
-        
+        }), 201
+
     except Exception as e:
-        db.rollback()
-        print(f"❌ Registration error: {str(e)}")
+        print(f"❌ Registration error: {e}")
         return jsonify({
             'success': False,
             'message': f'Registration failed: {str(e)}'
-        }), 400
+        }), 500
 
 @register_bp.route('/check-id', methods=['POST'])
-def check_id_number():
-    """Check if ID number is available"""
+def check_id():
+    """Check if ID number already exists"""
     try:
         data = request.get_json()
         id_number = data.get('idNumber')
         user_type = data.get('userType')
-        
-        if not id_number or len(id_number) < 3:
+
+        if not id_number:
             return jsonify({
-                'available': False,
-                'message': 'Invalid ID number format'
+                'exists': False,
+                'message': 'No ID number provided'
             }), 400
-            
-        return jsonify({
-            'available': True,
-            'message': 'ID number is available'
-        }), 200
+
+        db = next(get_db())
         
-    except Exception as e:
+        query = text("SELECT user_id FROM users WHERE user_id = :user_id")
+        result = db.execute(query, {'user_id': id_number})
+        user = result.fetchone()
+
         return jsonify({
-            'available': False,
+            'exists': user is not None,
+            'message': 'ID number already exists' if user else 'ID number available'
+        }), 200
+
+    except Exception as e:
+        print(f"Check ID error: {e}")
+        return jsonify({
+            'exists': False,
             'message': f'Error checking ID: {str(e)}'
-        }), 400
+        }), 500
+
+@register_bp.route('/test-connection', methods=['GET'])
+def test_connection():
+    """Test database connection for registration"""
+    try:
+        db = next(get_db())
+        result = db.execute(text("SELECT NOW() as current_time"))
+        current_time = result.fetchone()[0]
+        
+        return jsonify({
+            'success': True,
+            'message': 'Database connection successful',
+            'current_time': str(current_time)
+        }), 200
+
+    except Exception as e:
+        print(f"Connection test error: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Database connection failed: {str(e)}'
+        }), 500
 
 @register_bp.route('/users', methods=['GET'])
 def get_all_users():
     """Get all registered users (for testing)"""
     try:
         db = next(get_db())
-        users = db.query(User).all()
         
-        users_list = []
+        query = text("""
+            SELECT user_id, firstname, lastname, role, rfid_tag, email, school_number, created_at 
+            FROM users 
+            ORDER BY created_at DESC
+        """)
+        
+        result = db.execute(query)
+        users = result.fetchall()
+        
+        user_list = []
         for user in users:
-            users_list.append({
-                'user_id': user.user_id,
-                'firstname': user.firstname,
-                'lastname': user.lastname,
-                'role': user.role.value,
-                'school_number': user.school_number,
-                'email': user.email,
-                'mobile_number': user.mobile_number,
-                'rfid_tag': user.rfid_tag,
-                'age': user.age,
-                'sex': user.sex.value,
-                'birthday': user.birthday.isoformat() if user.birthday else None,
-                'created_at': user.created_at.isoformat() if user.created_at else None
+            user_list.append({
+                'user_id': user[0],
+                'firstname': user[1],
+                'lastname': user[2],
+                'role': user[3],
+                'rfid_tag': user[4],
+                'email': user[5],
+                'school_number': user[6],
+                'created_at': user[7]
             })
-        
+
         return jsonify({
             'success': True,
-            'users': users_list,
-            'count': len(users_list)
+            'users': user_list,
+            'count': len(user_list)
         }), 200
-        
+
     except Exception as e:
+        print(f"Get users error: {e}")
         return jsonify({
             'success': False,
-            'message': f'Error fetching users: {str(e)}'
+            'message': f'Failed to get users: {str(e)}'
         }), 500
