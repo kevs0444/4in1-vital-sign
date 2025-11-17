@@ -54,6 +54,98 @@ export const checkBackendStatus = async () => {
   }
 };
 
+// ==================== REGISTRATION API FUNCTIONS ====================
+
+// User registration API call
+export const registerUser = async (userData) => {
+  try {
+    console.log('📤 Sending registration data to backend:', userData);
+    
+    const response = await fetchWithTimeout(`${API_URL}/register/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    }, TIMEOUTS.MEDIUM);
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.message || 'Registration failed');
+    }
+
+    console.log('✅ Registration successful:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Registration API error:', error);
+    throw error;
+  }
+};
+
+// Check if ID number exists
+export const checkIdNumber = async (idNumber, userType) => {
+  try {
+    return await fetchWithTimeout(`${API_URL}/register/check-id`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ idNumber, userType }),
+    }, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('ID check API error:', error);
+    throw error;
+  }
+};
+
+// Test backend connection for registration
+export const testRegistrationConnection = async () => {
+  try {
+    return await fetchWithTimeout(`${API_URL}/register/test-connection`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Registration connection test failed:', error);
+    throw error;
+  }
+};
+
+// Login user
+export const loginUser = async (credentials) => {
+  try {
+    const response = await fetchWithTimeout(`${API_URL}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+    }, TIMEOUTS.MEDIUM);
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.message || 'Login failed');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Login API error:', error);
+    throw error;
+  }
+};
+
+// Get user profile
+export const getUserProfile = async (userId) => {
+  try {
+    return await fetchWithTimeout(`${API_URL}/users/${userId}`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Get user profile API error:', error);
+    throw error;
+  }
+};
+
+// ==================== SENSOR API FUNCTIONS ====================
+
 export const sensorAPI = {
   // ==================== CONNECTION & GENERAL ====================
   

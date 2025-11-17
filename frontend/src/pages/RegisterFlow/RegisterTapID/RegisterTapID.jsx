@@ -22,12 +22,15 @@ export default function RegisterTapID() {
   const [idRegistered, setIdRegistered] = useState(false);
   const [scannerStatus, setScannerStatus] = useState("ready");
   const [rfidCode, setRfidCode] = useState("");
+  const [isCardTapped, setIsCardTapped] = useState(false);
 
   const idNumberInputRef = useRef(null);
   const passwordInputRef = useRef(null);
   const emailInputRef = useRef(null);
   const mobileInputRef = useRef(null);
-  const scanTimeoutRef = useRef(null);
+  const rfidInputRef = useRef(null);
+  const rfidDataRef = useRef('');
+  const rfidTimeoutRef = useRef(null);
 
   const userType = location.state?.userType || "rtu-students";
   const personalInfo = location.state?.personalInfo || {};
@@ -48,7 +51,7 @@ export default function RegisterTapID() {
     },
     { 
       title: "Register your ID", 
-      subtitle: "Ready to receive your ID - Tap anytime on the RFID scanner",
+      subtitle: "RFID scanner is active - Tap your ID card anytime",
       type: "id"
     }
   ];
@@ -79,6 +82,11 @@ export default function RegisterTapID() {
       document.removeEventListener('gesturestart', preventZoom);
       document.removeEventListener('gesturechange', preventZoom);
       document.removeEventListener('gestureend', preventZoom);
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+      
+      if (rfidTimeoutRef.current) {
+        clearTimeout(rfidTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -92,7 +100,7 @@ export default function RegisterTapID() {
     return isEmployee ? "Employee Number" : "Student Number";
   };
 
-  // Prevent zooming functions - RENAMED
+  // Prevent zooming functions
   const handleZoomTouchStart = (e) => {
     if (e.touches.length > 1) {
       e.preventDefault();
@@ -121,65 +129,109 @@ export default function RegisterTapID() {
       setTimeout(() => idNumberInputRef.current.focus(), 300);
     } else if (currentStep === 1 && emailInputRef.current) {
       setTimeout(() => emailInputRef.current.focus(), 300);
+    } else if (currentStep === 2) {
+      // Initialize RFID scanner when on step 2
+      initializeRFIDScanner();
     }
   }, [currentStep]);
 
-  // Simulate RFID scanner ready state
-  useEffect(() => {
-    if (currentStep === 2) {
-      console.log("🔄 RFID Scanner UI Ready - Waiting for tap...");
-      setScannerStatus("ready");
-      
-      const statusInterval = setInterval(() => {
-        setScannerStatus(prev => prev === "ready" ? "waiting" : "ready");
-      }, 2000);
-
-      return () => {
-        clearInterval(statusInterval);
-        if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-      };
-    }
-  }, [currentStep]);
-
-  // Enhanced RFID simulation
-  const simulateRFIDDetection = () => {
-    if (isScanning || idRegistered) return;
-
-    console.log("🎯 Simulating RFID card detection...");
+  // Real RFID scanner initialization
+  const initializeRFIDScanner = () => {
+    console.log("🔄 Initializing RFID Scanner Hardware...");
+    setScannerStatus("ready");
     
-    const generatedRFID = `RFID${Date.now().toString().slice(-8)}`;
-    setRfidCode(generatedRFID);
+    // Setup RFID scanner listener
+    setupRfidScanner();
+  };
+
+  // RFID Scanner Setup - LISTENS TO ALL KEYBOARD INPUT
+  const setupRfidScanner = () => {
+    console.log('🔔 RFID Scanner Active - Ready to accept ID cards');
     
-    setScannerStatus("detecting");
-    setIsScanning(true);
+    // Listen to ALL keyboard events on the entire document
+    document.addEventListener('keydown', handleGlobalKeyDown);
     
-    // Step 1: Card detection (1 second)
+    // Auto-focus on hidden RFID input
     setTimeout(() => {
-      setScannerStatus("processing");
-      setScanProgress(20);
+      if (rfidInputRef.current) {
+        rfidInputRef.current.focus();
+      }
+    }, 500);
+  };
+
+  // Handle ALL keyboard input for RFID scanning
+  const handleGlobalKeyDown = (e) => {
+    // Ignore if we're already processing RFID or not on step 2
+    if (isScanning || idRegistered || currentStep !== 2) {
+      return;
+    }
+
+    // RFID scanners typically send numbers/letters followed by Enter
+    if (e.key === 'Enter') {
+      // Process the accumulated RFID data when Enter is pressed
+      if (rfidDataRef.current.length >= 5) { // Minimum RFID length
+        processRfidScan(rfidDataRef.current);
+        rfidDataRef.current = ''; // Reset buffer
+        e.preventDefault();
+        return;
+      }
+    } else if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
+      // Accumulate alphanumeric characters (RFID data)
+      rfidDataRef.current += e.key;
       
-      // Step 2: Reading card data (1.5 seconds)
-      setTimeout(() => {
-        setScanProgress(50);
-        
-        // Step 3: Writing user data (2 seconds)
-        setTimeout(() => {
-          setScanProgress(80);
-          
-          // Step 4: Finalizing (1 second)
-          setTimeout(() => {
-            setScanProgress(100);
-            setScannerStatus("complete");
-            
-            // Complete registration after brief success display
-            setTimeout(() => {
-              completeIDRegistration(generatedRFID);
-            }, 1000);
-            
-          }, 1000);
-        }, 2000);
-      }, 1500);
-    }, 1000);
+      // Auto-detect RFID after certain length (some scanners don't send Enter)
+      if (rfidDataRef.current.length >= 8 && !isScanning) {
+        rfidTimeoutRef.current = setTimeout(() => {
+          if (rfidDataRef.current.length >= 8) {
+            processRfidScan(rfidDataRef.current);
+            rfidDataRef.current = '';
+          }
+        }, 50); // Faster detection
+      }
+    }
+  };
+
+  // Process RFID scan data with FAST animations
+  const processRfidScan = async (rfidData) => {
+    console.log('🎫 RFID Card Detected:', rfidData);
+    
+    setIsCardTapped(true);
+    setScannerStatus("reading");
+    setIsScanning(true);
+    setScanProgress(30); // Start at 30% immediately
+    
+    try {
+      // FAST Step 1: Card detection and reading (300ms)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setScanProgress(60);
+      
+      // Generate unique RFID code based on scanned data
+      const generatedRFID = `RTU${rfidData.slice(-8)}`;
+      setRfidCode(generatedRFID);
+      
+      // FAST Step 2: Writing user data to card (400ms)
+      setScannerStatus("processing");
+      await new Promise(resolve => setTimeout(resolve, 400));
+      setScanProgress(85);
+      
+      // FAST Step 3: Verification and finalization (300ms)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setScanProgress(100);
+      setScannerStatus("success");
+      
+      completeIDRegistration(generatedRFID);
+      
+    } catch (err) {
+      console.error('RFID registration error:', err);
+      setScannerStatus("ready");
+      setShowNotification({ 
+        show: true, 
+        message: "❌ RFID registration failed. Please try again.", 
+        type: "error" 
+      });
+      setIsScanning(false);
+      setIsCardTapped(false);
+    }
   };
 
   // Complete the registration process
@@ -188,36 +240,27 @@ export default function RegisterTapID() {
     setIsScanning(false);
     setIdRegistered(true);
     
-    // Navigate to data saved screen with all registration data
+    // Prepare ALL registration data to pass to RegisterDataSaved
+    const completeRegistrationData = {
+      userType: userType,
+      personalInfo: personalInfo,
+      idNumber: formData.idNumber,
+      password: formData.password,
+      email: formData.email,
+      mobile: formData.mobile,
+      rfidCode: rfidCode,
+      registrationDate: new Date().toISOString()
+    };
+
+    console.log('📦 Passing complete data to RegisterDataSaved:', completeRegistrationData);
+    
+    // Navigate to data saved screen with ALL registration data
     setTimeout(() => {
       navigate("/register/saved", {
-        state: {
-          userType: userType,
-          personalInfo: personalInfo,
-          idNumber: formData.idNumber,
-          password: formData.password,
-          email: formData.email,
-          mobile: formData.mobile,
-          rfidCode: rfidCode,
-          idRegistered: true,
-          registrationDate: new Date().toISOString(),
-          timestamp: new Date().toISOString()
-        }
+        state: completeRegistrationData
       });
-    }, 2000);
+    }, 1500); // Faster redirect
   };
-
-  // Auto-simulate RFID after 5 seconds on ID step (for demo purposes)
-  useEffect(() => {
-    if (currentStep === 2 && !isScanning && !idRegistered) {
-      const autoSimulate = setTimeout(() => {
-        console.log("🔄 Auto-simulating RFID detection for demo...");
-        simulateRFIDDetection();
-      }, 5000);
-
-      return () => clearTimeout(autoSimulate);
-    }
-  }, [currentStep, isScanning, idRegistered]);
 
   const showAlert = (message, type = "error") => {
     setShowNotification({ show: true, message, type });
@@ -389,14 +432,14 @@ export default function RegisterTapID() {
   const getScannerStatusText = () => {
     switch (scannerStatus) {
       case "ready":
-        return "🟢 Scanner Ready - Tap your ID";
-      case "waiting":
-        return "🔵 Scanner Active - Waiting for ID";
-      case "detecting":
-        return "🟡 Detecting ID Card...";
+        return "🟢 Scanner Initializing...";
+      case "active":
+        return "🔵 Scanner Ready - Tap Your ID Card";
+      case "reading":
+        return "🟡 Reading ID Card...";
       case "processing":
-        return "🟠 Processing Registration...";
-      case "complete":
+        return "🟠 Writing Data to Card...";
+      case "success":
         return "✅ Registration Complete!";
       default:
         return "🟢 Scanner Ready";
@@ -424,6 +467,26 @@ export default function RegisterTapID() {
   return (
     <div className="register-tapid-container">
       <div className="register-tapid-content">
+        
+        {/* HIDDEN RFID INPUT - CAPTURES ALL SCANNER INPUT */}
+        <input
+          ref={rfidInputRef}
+          type="text"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '1px',
+            height: '1px',
+            opacity: 0,
+            border: 'none',
+            background: 'transparent',
+            pointerEvents: 'none'
+          }}
+          autoComplete="off"
+          autoFocus
+        />
+        
         {/* Progress Steps */}
         <div className="progress-steps">
           {steps.map((step, index) => (
@@ -607,30 +670,33 @@ export default function RegisterTapID() {
             <div className="form-phase active">
               <div className="form-groups">
                 <div className="id-scan-section">
-                  {/* Enhanced Scanner Animation */}
+                  {/* Real RFID Scanner Hardware */}
                   <div className="scanner-container">
-                    <div className={`scanner-animation ${scannerStatus}`}>
-                      <div className="scanner-glow"></div>
-                      <div className="scanner-line"></div>
-                      <div className="scanner-pulse"></div>
-                      <div className="scanner-waves"></div>
-                      <div className="id-card-placeholder">
-                        <div className="id-card">
-                          <div className="id-chip"></div>
-                          <div className="id-waves"></div>
-                          <div className="rfid-symbol">📡</div>
+                    <div className={`scanner-hardware ${scannerStatus}`}>
+                      <div className="scanner-led"></div>
+                      <div className="scanner-surface">
+                        <div className="id-card-placeholder">
+                          <div className={`id-card ${isCardTapped ? 'tapped' : ''}`}>
+                            <div className="id-chip"></div>
+                            <div className="id-waves"></div>
+                            <div className="rfid-symbol">📡</div>
+                          </div>
                         </div>
                       </div>
+                      <div className="scanner-reader"></div>
+                      <div className="scanner-glow"></div>
+                      
                       {scannerStatus === "processing" && (
                         <div className="processing-overlay">
                           <div className="spinner"></div>
-                          <p>Writing Data...</p>
+                          <p>Writing Data to Card...</p>
                         </div>
                       )}
-                      {scannerStatus === "complete" && (
+                      
+                      {scannerStatus === "success" && (
                         <div className="success-overlay">
                           <div className="success-checkmark">✓</div>
-                          <p>Success!</p>
+                          <p>Registration Complete!</p>
                         </div>
                       )}
                     </div>
@@ -652,46 +718,72 @@ export default function RegisterTapID() {
                         ></div>
                       </div>
                       <p className="progress-text">
-                        {scanProgress < 20 && "Initializing scanner..."}
-                        {scanProgress >= 20 && scanProgress < 50 && "Reading ID data..."}
-                        {scanProgress >= 50 && scanProgress < 80 && "Writing user information..."}
-                        {scanProgress >= 80 && scanProgress < 100 && "Finalizing registration..."}
+                        {scanProgress < 60 && "Reading card data..."}
+                        {scanProgress >= 60 && scanProgress < 85 && "Writing user information..."}
+                        {scanProgress >= 85 && scanProgress < 100 && "Finalizing registration..."}
                         {scanProgress === 100 && "Registration Complete!"}
                       </p>
                     </div>
                   )}
 
+                  {/* RFID Scanner Status */}
+                  <div className="physical-tap-area">
+                    <p className="tap-instruction">
+                      {scannerStatus === "ready" 
+                        ? "🔄 Initializing RFID Scanner..." 
+                        : scannerStatus === "active"
+                        ? "🔵 Scanner Ready - Tap Any ID Card"
+                        : scannerStatus === "reading"
+                        ? "🟡 Reading Card Data..."
+                        : scannerStatus === "processing"
+                        ? "🟠 Writing Data to Card..."
+                        : "✅ Registration Complete!"}
+                    </p>
+                    
+                    {/* Scanner Information */}
+                    <div className="scanner-info">
+                      <div className="info-item">
+                        <span className="info-label">Scanner Status:</span>
+                        <span className={`info-value ${scannerStatus}`}>
+                          {scannerStatus === "ready" ? "Initializing" :
+                           scannerStatus === "active" ? "Ready" :
+                           scannerStatus === "reading" ? "Reading" :
+                           scannerStatus === "processing" ? "Processing" :
+                           "Complete"}
+                        </span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">RFID Data:</span>
+                        <span className="info-value">
+                          {rfidCode || "Waiting for card..."}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Instructions */}
                   <div className="scan-instructions">
-                    <h3>Tap Your ID Card on RFID Scanner</h3>
-                    <p>Place your ID card on the RFID scanner to automatically save your information</p>
+                    <h3>Automatic ID Card Registration</h3>
+                    <p>RFID scanner is active and ready - Simply tap your ID card on the scanner</p>
                     <div className="instruction-steps">
                       <div className="instruction-step">
                         <span className="step-number">1</span>
-                        <span className="step-text">RFID Scanner is active and ready</span>
+                        <span className="step-text">RFID scanner is automatically active</span>
                       </div>
                       <div className="instruction-step">
                         <span className="step-number">2</span>
-                        <span className="step-text">Tap your ID card on the scanner surface</span>
+                        <span className="step-text">Tap your ID card on any RFID scanner</span>
                       </div>
                       <div className="instruction-step">
                         <span className="step-number">3</span>
                         <span className="step-text">Registration will start automatically</span>
                       </div>
+                      <div className="instruction-step">
+                        <span className="step-number">4</span>
+                        <span className="step-text">Wait for the process to complete</span>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Manual Trigger for Testing */}
-                  {!isScanning && !idRegistered && (
-                    <div className="manual-trigger">
-                      <p className="manual-hint">
-                        Demo Mode: The system will auto-simulate in 5 seconds or 
-                        <button onClick={simulateRFIDDetection} className="manual-trigger-btn">
-                          Simulate ID Tap Now
-                        </button>
-                      </p>
-                    </div>
-                  )}
 
                   {/* Success Message */}
                   {idRegistered && (
@@ -700,6 +792,8 @@ export default function RegisterTapID() {
                         <span className="success-icon">✅</span>
                         <span className="success-text">
                           ID Successfully Registered! 
+                          <br />
+                          <small>RFID Code: {rfidCode}</small>
                           <br />
                           <small>Redirecting to confirmation...</small>
                         </span>

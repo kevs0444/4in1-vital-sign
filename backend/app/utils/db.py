@@ -1,51 +1,47 @@
-from sqlalchemy import create_engine, Column, Integer, String, Enum, Date, TIMESTAMP
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-import enum
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.exc import SQLAlchemyError
 
 # ---------- DATABASE CONNECTION ----------
-# Replace with your actual MySQL credentials if different
-DB_URL = "mysql+pymysql://root:_5Cr]92%40@localhost:3306/vital_signs_db"
+# Use the exact password without quotes that works in mysql command line
+DB_URL = "mysql+pymysql://root:_5Cr%5D92%40@localhost:3306/vital_signs_db"
 
-engine = create_engine(DB_URL, echo=True)
-SessionLocal = sessionmaker(bind=engine)
+print("🔧 Database configuration:")
+print("   Database: vital_signs_db")
+print("   User: root")
+print("   Password: _5Cr]92@ (URL encoded)")
+
+try:
+    engine = create_engine(
+        DB_URL,
+        echo=True,
+        pool_pre_ping=True,
+        pool_recycle=280,
+    )
+    
+    # Test connection immediately using text() for raw SQL
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT DATABASE() as db_name, NOW() as server_time"))
+        db_info = result.fetchone()
+        # Access tuple by index since it's not a dictionary
+        print(f"✅ Connected to database: {db_info[0]}")
+        print(f"✅ Server time: {db_info[1]}")
+    
+    print("✅ Database engine created successfully")
+    
+except Exception as e:
+    print(f"❌ Error creating database engine: {e}")
+    raise
+
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
-
-# ---------- ENUMS ----------
-class RoleEnum(enum.Enum):
-    Admin = "Admin"
-    Doctor = "Doctor"
-    Nurse = "Nurse"
-    Employee = "Employee"
-    Student = "Student"
-
-class SexEnum(enum.Enum):
-    Male = "Male"
-    Female = "Female"
-
-
-# ---------- TABLES ----------
-class User(Base):
-    __tablename__ = "users"
-
-    user_id = Column(String(20), primary_key=True)
-    rfid_tag = Column(String(100))
-    firstname = Column(String(100))
-    lastname = Column(String(100))
-    role = Column(Enum(RoleEnum))
-    school_number = Column(String(20))  # ✅ added this field
-    birthday = Column(Date)
-    age = Column(Integer)
-    sex = Column(Enum(SexEnum))
-    mobile_number = Column(String(15))
-    email = Column(String(100))
-    password = Column(String(255))
-    created_at = Column(TIMESTAMP)
-
-
-# ---------- TEST CONNECTION ----------
-if __name__ == "__main__":
-    print("🔄 Connecting to database...")
-    Base.metadata.create_all(engine)
-    print("✅ Tables created successfully in 'vital_signs_db'!")
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise e
+    finally:
+        db.close()

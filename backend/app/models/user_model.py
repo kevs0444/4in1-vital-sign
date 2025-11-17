@@ -17,14 +17,19 @@ class SexEnum(enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    user_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(20), primary_key=True)
     rfid_tag = Column(String(100), nullable=False)
     firstname = Column(String(100), nullable=False)
     lastname = Column(String(100), nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)
-    birthday = Column(Date, nullable=False)
+    school_number = Column(String(20), nullable=True)
+    birthday = Column(Date, nullable=True)
     age = Column(Integer, nullable=False)
     sex = Column(Enum(SexEnum), nullable=False)
     mobile_number = Column(String(15), nullable=False)
     email = Column(String(100), nullable=False)
+    password = Column(String(255), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
+
+    def __repr__(self):
+        return f"<User(user_id={self.user_id}, name='{self.firstname} {self.lastname}', role={self.role})>"

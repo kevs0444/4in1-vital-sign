@@ -11,8 +11,10 @@ def create_app():
     # Register blueprints
     from app.routes.main_routes import main_bp
     from app.routes.sensor_routes import sensor_bp
+    from app.routes.register_routes import register_bp  # Add this line
     
     app.register_blueprint(main_bp, url_prefix='/api')
     app.register_blueprint(sensor_bp, url_prefix='/api/sensor')
+    app.register_blueprint(register_bp, url_prefix='/api/register')  # Add this line
     
     return app

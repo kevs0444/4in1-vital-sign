@@ -310,44 +310,55 @@
   gap: 20px;
 }
 
-.scanner-animation {
+.scanner-hardware {
   position: relative;
   width: 100%;
   max-width: 400px;
   height: 200px;
-  background: white;
-  border: 4px solid #e9ecef;
+  background: linear-gradient(135deg, #2d3748, #4a5568);
+  border: 6px solid #1a202c;
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
 
-.scanner-animation.ready {
-  border-color: #22c55e;
-  animation: scannerReady 2s ease-in-out infinite;
+.scanner-surface {
+  width: 80%;
+  height: 60%;
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
+  border: 3px solid #a0aec0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: inset 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.scanner-animation.waiting {
-  border-color: #3b82f6;
-  animation: scannerPulse 1.5s ease-in-out infinite;
+.scanner-led {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
+  animation: ledPulse 2s ease-in-out infinite;
 }
 
-.scanner-animation.detecting {
-  border-color: #f59e0b;
-  animation: scannerDetect 0.5s ease-in-out;
-}
-
-.scanner-animation.processing {
-  border-color: #f59e0b;
-}
-
-.scanner-animation.complete {
-  border-color: #22c55e;
-  animation: scannerSuccess 1s ease-in-out;
+.scanner-reader {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 8px;
+  background: linear-gradient(90deg, #718096, #a0aec0, #718096);
+  border-radius: 4px;
 }
 
 .scanner-glow {
@@ -356,46 +367,25 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(185, 28, 28, 0.05));
-  border-radius: 16px;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.1), transparent 70%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
-.scanner-animation.ready .scanner-glow {
+.scanner-hardware.active .scanner-glow {
   opacity: 1;
+  animation: scannerActive 1.5s ease-in-out infinite;
 }
 
-.scanner-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #dc2626, transparent);
-  animation: scanLine 2s linear infinite;
+.scanner-hardware.reading .scanner-glow {
+  opacity: 1;
+  background: radial-gradient(circle at center, rgba(34, 197, 94, 0.2), transparent 70%);
+  animation: scannerReading 0.5s ease-in-out infinite;
 }
 
-.scanner-pulse {
-  position: absolute;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(220, 38, 38, 0.3), transparent 70%);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.scanner-waves {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 16px;
-  opacity: 0;
-}
-
-.scanner-animation.ready .scanner-waves {
-  animation: scannerWaves 2s ease-in-out infinite;
+.scanner-hardware.success .scanner-glow {
+  opacity: 1;
+  background: radial-gradient(circle at center, rgba(34, 197, 94, 0.3), transparent 70%);
 }
 
 .id-card-placeholder {
@@ -415,6 +405,13 @@
   justify-content: center;
   position: relative;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.id-card.tapped {
+  transform: scale(1.05);
+  border-color: #22c55e;
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
 }
 
 .id-chip {
@@ -451,12 +448,12 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
+  border-radius: 14px;
   z-index: 10;
 }
 
@@ -488,8 +485,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
+  border-radius: 14px;
   z-index: 10;
+  border: 2px solid #22c55e;
 }
 
 .success-checkmark {
@@ -539,26 +537,21 @@
   border-color: #bbf7d0;
 }
 
-.status-indicator.waiting {
+.status-indicator.active {
   background: #eff6ff;
   color: #1e40af;
   border-color: #bfdbfe;
-}
-
-.status-indicator.detecting {
-  background: #fffbeb;
-  color: #92400e;
-  border-color: #fed7aa;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-.status-indicator.processing {
+.status-indicator.reading {
   background: #fffbeb;
   color: #92400e;
   border-color: #fed7aa;
+  animation: pulse 0.5s ease-in-out infinite;
 }
 
-.status-indicator.complete {
+.status-indicator.success {
   background: #dcfce7;
   color: #166534;
   border-color: #bbf7d0;
@@ -656,42 +649,52 @@
   font-weight: 600;
 }
 
-/* Manual Trigger */
-.manual-trigger {
+/* Physical Tap Area */
+.physical-tap-area {
   background: #f8fafc;
-  border: 2px dashed #cbd5e1;
-  border-radius: 12px;
-  padding: 15px;
+  border: 3px dashed #cbd5e1;
+  border-radius: 15px;
+  padding: 25px;
   text-align: center;
+  margin-top: 10px;
 }
 
-.manual-hint {
-  font-size: 1.1rem;
-  color: #6b7280;
-  margin: 0;
+.tap-instruction {
+  font-size: 1.3rem;
+  color: #4a5568;
+  font-weight: 600;
+  margin-bottom: 15px;
 }
 
-.manual-trigger-btn {
+.tap-button {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 12px;
+  padding: 15px 30px;
+  font-size: 1.2rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-left: 8px;
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.manual-trigger-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+.tap-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.5);
 }
 
-.manual-trigger-btn:active {
+.tap-button:active {
   transform: translateY(0);
+}
+
+.tap-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Registration Complete */
@@ -1009,70 +1012,32 @@
 }
 
 /* Animations */
-@keyframes scannerReady {
+@keyframes ledPulse {
   0%, 100% {
-    border-color: #cbd5e1;
+    opacity: 1;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
   }
   50% {
-    border-color: #22c55e;
+    opacity: 0.7;
+    box-shadow: 0 0 5px rgba(34, 197, 94, 0.4);
   }
 }
 
-@keyframes scannerPulse {
+@keyframes scannerActive {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    background: radial-gradient(circle at center, rgba(59, 130, 246, 0.1), transparent 70%);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+    background: radial-gradient(circle at center, rgba(59, 130, 246, 0.2), transparent 70%);
   }
 }
 
-@keyframes scannerDetect {
-  0% {
-    transform: scale(1);
+@keyframes scannerReading {
+  0%, 100% {
+    background: radial-gradient(circle at center, rgba(34, 197, 94, 0.2), transparent 70%);
   }
   50% {
-    transform: scale(1.02);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes scannerSuccess {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes scannerWaves {
-  0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-    opacity: 1;
-  }
-  100% {
-    box-shadow: 0 0 0 20px rgba(34, 197, 94, 0);
-    opacity: 0;
-  }
-}
-
-@keyframes scanLine {
-  0% {
-    top: 0;
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    top: 100%;
-    opacity: 0;
+    background: radial-gradient(circle at center, rgba(34, 197, 94, 0.3), transparent 70%);
   }
 }
 
@@ -1185,7 +1150,7 @@
     font-size: 1.2rem;
   }
   
-  .scanner-animation {
+  .scanner-hardware {
     height: 180px;
     max-width: 350px;
   }
@@ -1233,7 +1198,7 @@
     font-size: 1.1rem;
   }
   
-  .scanner-animation {
+  .scanner-hardware {
     height: 160px;
     max-width: 300px;
   }
@@ -1290,7 +1255,7 @@
     font-size: 1rem;
   }
   
-  .scanner-animation {
+  .scanner-hardware {
     height: 140px;
     max-width: 280px;
   }
