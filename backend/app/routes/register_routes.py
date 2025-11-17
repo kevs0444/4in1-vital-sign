@@ -25,7 +25,6 @@ def cleanup_old_requests():
 
 def get_request_fingerprint(data):
     """Create a fingerprint of the request to detect duplicates"""
-    # Use ID number and email as the unique identifier
     request_str = f"{data.get('idNumber', '')}-{data.get('email', '')}"
     return hashlib.md5(request_str.encode()).hexdigest()
 
@@ -34,7 +33,6 @@ def test_connection():
     """Test if registration routes are working"""
     try:
         db = next(get_db())
-        # Test database connection
         result = db.execute(text("SELECT DATABASE() as db_name, NOW() as time")).fetchone()
         return jsonify({
             'success': True,
@@ -72,7 +70,6 @@ def register_user():
         current_time = time.time()
         
         if request_fingerprint in _request_tracker:
-            # If same request within 10 seconds, it's a duplicate
             if current_time - _request_tracker[request_fingerprint]['timestamp'] < 10:
                 print("🔄 DUPLICATE REQUEST DETECTED - Returning cached response")
                 return jsonify(_request_tracker[request_fingerprint]['response'])
@@ -98,9 +95,23 @@ def register_user():
             }
             return jsonify(response), 400
         
-        # Test database connection first
-        db_test = db.execute(text("SELECT DATABASE() as db_name")).fetchone()
-        print(f"✅ Connected to database: {db_test[0]}")
+        # Extract and validate created_at from frontend
+        created_at_str = data.get('created_at')
+        created_at = None
+        
+        if created_at_str:
+            try:
+                # Parse the datetime from frontend (expecting YYYY-MM-DD HH:MM:SS format)
+                created_at = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M:%S')
+                print(f"📅 Created at from frontend: {created_at}")
+            except ValueError as e:
+                print(f"⚠️ Invalid created_at format: {e}")
+                # Fallback to current datetime
+                created_at = datetime.now()
+        else:
+            # Use current datetime if not provided
+            created_at = datetime.now()
+            print(f"📅 Using current datetime: {created_at}")
         
         # Map frontend user types to backend RoleEnum
         role_mapping = {
@@ -155,7 +166,7 @@ def register_user():
         birthday = None
         if all([birth_year, birth_month, birth_day]):
             try:
-                birthday = datetime(int(birth_year), int(birth_month), int(birth_day))
+                birthday = datetime(int(birth_year), int(birth_month), int(birth_day)).date()
                 print(f"🎂 Birthday: {birthday}")
             except ValueError as e:
                 print(f"⚠️ Invalid birthday: {e}")
@@ -169,7 +180,7 @@ def register_user():
         sex = sex_mapping.get(personal_info.get('sex'), SexEnum.Male)
         print(f"🚻 Sex: {sex.value}")
         
-        # Create new user
+        # Create new user with created_at from frontend
         new_user = User(
             user_id=user_id,
             rfid_tag=data.get('rfidCode', ''),
@@ -181,8 +192,9 @@ def register_user():
             age=int(personal_info.get('age', 0)),
             sex=sex,
             mobile_number=data.get('mobile', ''),
-            email=data.get('email', ''),
-            password=data.get('password', '')
+            email=data.get('email', '').strip(),
+            password=data.get('password', ''),
+            created_at=created_at  # Use the datetime from frontend
         )
         
         print(f"💾 Saving user to database...")
@@ -190,6 +202,7 @@ def register_user():
         db.commit()
         
         print(f"✅ User registered successfully: {new_user.user_id}")
+        print(f"📅 Created at saved: {new_user.created_at}")
         
         response_data = {
             'success': True,
@@ -206,7 +219,8 @@ def register_user():
                 'rfid_tag': new_user.rfid_tag,
                 'age': new_user.age,
                 'sex': new_user.sex.value,
-                'birthday': new_user.birthday.isoformat() if new_user.birthday else None
+                'birthday': new_user.birthday.isoformat() if new_user.birthday else None,
+                'created_at': new_user.created_at.isoformat() if new_user.created_at else None
             }
         }
         

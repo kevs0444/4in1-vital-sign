@@ -2,23 +2,17 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./RegisterDataSaved.css";
 
-// Enhanced registerUser function with proper timestamp handling
+// Enhanced registerUser function with proper error handling
 const registerUser = async (userData) => {
   try {
     console.log('📤 Sending registration data to backend:', userData);
     
-    // Ensure we have a proper timestamp for created_at
-    const submissionData = {
-      ...userData,
-      created_at: userData.created_at || new Date().toISOString()
-    };
-
     const response = await fetch('http://127.0.0.1:5000/api/register/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(submissionData),
+      body: JSON.stringify(userData),
     });
 
     if (!response.ok) {
@@ -116,7 +110,19 @@ export default function RegisterDataSaved() {
         return;
       }
 
-      // Prepare data with proper created_at timestamp
+      // Get current date and time in YYYY-MM-DD HH:MM:SS format
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      
+      const currentDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      console.log('📅 Current date time for registration:', currentDateTime);
+
+      // Prepare data WITH created_at from frontend
       const userData = {
         userType: registrationData.userType,
         personalInfo: registrationData.personalInfo,
@@ -125,8 +131,7 @@ export default function RegisterDataSaved() {
         email: registrationData.email,
         mobile: registrationData.mobile,
         rfidCode: registrationData.rfidCode,
-        created_at: new Date().toISOString(), // Always use current timestamp
-        registrationDate: new Date().toISOString() // For frontend display
+        created_at: currentDateTime  // Send current date and time to backend
       };
 
       console.log('📤 Sending registration data:', userData);
@@ -134,6 +139,7 @@ export default function RegisterDataSaved() {
       
       if (result.success) {
         console.log('✅ Database registration successful:', result);
+        console.log('📅 Created at from backend:', result.data?.created_at);
         setRegistrationStatus('success');
         setBackendResponse(result);
       } else {
@@ -168,7 +174,7 @@ export default function RegisterDataSaved() {
     saveRegistrationToDatabase();
   };
 
-  // Improved date formatting with fallbacks
+  // Improved date formatting with fallbacks - now handles DATETIME format
   const formatDate = (dateString) => {
     if (!dateString) return "Just now";
     
@@ -244,7 +250,7 @@ export default function RegisterDataSaved() {
           {registrationStatus === 'success' && backendResponse && (
             <div className="backend-success">
               <p>✅ User ID: <strong>{backendResponse.data?.user_id}</strong></p>
-              <p>📅 Registered: {formatDate(registrationData.registrationDate)}</p>
+              <p>📅 Registered: {formatDate(backendResponse.data?.created_at)}</p>
             </div>
           )}
           
@@ -367,7 +373,7 @@ export default function RegisterDataSaved() {
                         <div className="info-item">
                           <span className="info-label">Registered On:</span>
                           <span className="info-value">
-                            {formatDate(registrationData.registrationDate)}
+                            {formatDate(backendResponse?.data?.created_at)}
                           </span>
                         </div>
                         <div className="info-item">

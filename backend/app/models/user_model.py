@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum, Date, TIMESTAMP
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer, String, Enum, Date, DateTime
 from app.utils.db import Base
 import enum
 
@@ -29,7 +28,7 @@ class User(Base):
     mobile_number = Column(String(15), nullable=False)
     email = Column(String(100), nullable=False)
     password = Column(String(255), nullable=False)
-    created_at = Column(TIMESTAMP, server_default=func.now())
+    created_at = Column(DateTime)  # Changed to DateTime
 
     def __repr__(self):
         return f"<User(user_id={self.user_id}, name='{self.firstname} {self.lastname}', role={self.role})>"
