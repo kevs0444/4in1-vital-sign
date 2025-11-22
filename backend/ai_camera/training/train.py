@@ -6,7 +6,7 @@ def train_model():
 
     # Train the model
     results = model.train(
-        data='config.yaml',
+        data=r'C:\Users\VitalSign\Documents\4in1-vital-sign\backend\ai_camera\training\config.yaml',
         epochs=100,
         imgsz=640,
         device='cpu', # Use '0' for GPU

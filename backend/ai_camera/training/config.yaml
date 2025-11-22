@@ -1,7 +1,8 @@
 # YOLOv8 Dataset Configuration - Bare Feet Training
 
 # Absolute path to the dataset directory
-path: ../datasets
+# Absolute path to the dataset directory
+path: C:/Users/VitalSign/Documents/4in1-vital-sign/backend/ai_camera/datasets
 
 # Subfolders for images
 train: images/train

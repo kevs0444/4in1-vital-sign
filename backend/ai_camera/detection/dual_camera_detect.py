@@ -1,5 +1,6 @@
 import cv2
 import sys
+import os
 from ultralytics import YOLO
 
 # Global flag to check if AI is available
@@ -20,14 +21,16 @@ except Exception as e:
     print(f"Warning: {AI_ERROR_MSG}")
 
 class ComplianceDetector:
-    def __init__(self, model_path='yolov8n.pt'):
+    def __init__(self, model_path='../models/best.pt'):
         self.model = None
         self.class_names = {}
         
         if AI_AVAILABLE:
             try:
-                print(f"Loading YOLO model from {model_path}...")
-                self.model = YOLO(model_path)
+                # Construct absolute path to model to avoid path issues
+                abs_model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'best.pt'))
+                print(f"Loading YOLO model from {abs_model_path}...")
+                self.model = YOLO(abs_model_path)
                 self.class_names = self.model.names
                 print("Model loaded successfully.")
             except Exception as e:
@@ -36,13 +39,13 @@ class ComplianceDetector:
         else:
             print("AI is unavailable. Running in pass-through mode.")
 
-        # Define Compliance Rules (IDs based on standard COCO dataset for now)
-        # In a custom model, these IDs would match your config.yaml
-        self.FORBIDDEN_CLASSES = [24, 26, 28] # backpack, handbag, suitcase (COCO)
-        # self.FORBIDDEN_CLASSES = [2, 3, 4, 5] # shoes, bag, backpack, other (Custom)
+        # Define Compliance Rules
+        # In our custom model: 0 = bare_feet
+        self.PERMITTED_CLASSES = [0] # bare_feet
         
-        self.PERMITTED_CLASSES = [0] # person (COCO) - strictly we want feet/socks
-        # self.PERMITTED_CLASSES = [0, 1] # bare_feet, socks (Custom)
+        # We don't have 'shoes' trained yet, so anything NOT 'bare_feet' is technically unknown/suspicious
+        # But for now, we will just check if we see 'bare_feet'.
+        self.FORBIDDEN_CLASSES = []
 
     def detect_body(self, frame):
         """
@@ -74,29 +77,30 @@ class ComplianceDetector:
         
         violations = []
         
+        # Custom Logic for Bare Feet Model
+        # We only trained 'bare_feet' (class 0).
+        # So if we see class 0, it is compliant.
+        
+        bare_feet_detected = False
+        
         for box in detections:
             cls_id = int(box.cls[0])
-            cls_name = self.class_names.get(cls_id, "Unknown")
+            # cls_name = self.class_names.get(cls_id, "Unknown")
             
-            # Check for forbidden items
-            if cls_id in self.FORBIDDEN_CLASSES:
-                violations.append(cls_name)
+            if cls_id == 0: # bare_feet
+                bare_feet_detected = True
             
-            # If using standard YOLOv8n, we can't detect shoes yet.
-            # We assume 'person' is okay, but 'backpack' is bad.
-            # TODO: Once custom model is trained, add 'shoes' to FORBIDDEN_CLASSES
-            
-        if violations:
-            status = f"VIOLATION: {', '.join(set(violations))}"
-            is_compliant = False
-            # Draw red border
-            h, w = frame.shape[:2]
-            cv2.rectangle(annotated_frame, (0,0), (w,h), (0,0,255), 10)
-        else:
-            status = "COMPLIANT: Ready for Weight"
+        if bare_feet_detected:
+            status = "COMPLIANT: Bare Feet Detected"
             is_compliant = True
             # Draw green border
             h, w = frame.shape[:2]
             cv2.rectangle(annotated_frame, (0,0), (w,h), (0,255,0), 10)
+        else:
+            status = "WAITING: Please step on scale barefoot"
+            is_compliant = False
+            # Draw orange border
+            h, w = frame.shape[:2]
+            cv2.rectangle(annotated_frame, (0,0), (w,h), (0,165,255), 10)
             
         return annotated_frame, status, is_compliant
