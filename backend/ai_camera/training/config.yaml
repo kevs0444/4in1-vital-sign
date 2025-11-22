@@ -1,0 +1,13 @@
+# YOLOv8 Dataset Configuration - Bare Feet Training
+
+# Absolute path to the dataset directory
+path: ../datasets
+
+# Subfolders for images
+train: images/train
+val: images/val
+
+# Class Names
+# We are only training 1 class for now: "bare_feet"
+names:
+  0: bare_feet
