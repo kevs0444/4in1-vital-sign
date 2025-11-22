@@ -1,3 +1,4 @@
+// src/pages/RegisterFlow/RegisterDataSaved.jsx - FIXED RFID PROCESSING
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./RegisterDataSaved.css";
@@ -98,7 +99,46 @@ export default function RegisterDataSaved() {
     };
   }, [registrationStatus]);
 
-  // Enhanced registration function with better error handling
+  // Process RFID - Use EXACT numbers from scanner (NO CUTTING)
+  const processRfidForRegistration = (rawRfid) => {
+    console.log('🔢 Processing RFID for registration:', rawRfid);
+    
+    if (!rawRfid) {
+      // Generate a random numeric RFID
+      const randomRfid = Math.floor(10000000 + Math.random() * 90000000).toString();
+      console.log('🎫 Generated new numeric RFID:', randomRfid);
+      return randomRfid;
+    }
+    
+    // Extract numbers only - NO CUTTING, NO MODIFICATIONS
+    const numbersOnly = rawRfid.replace(/\D/g, '');
+    console.log('🔢 Numbers extracted (exact from scanner):', numbersOnly);
+    
+    if (numbersOnly.length < 5) {
+      // Generate if insufficient numbers
+      const randomRfid = Math.floor(10000000 + Math.random() * 90000000).toString();
+      console.log('🎫 Generated RFID due to insufficient numbers:', randomRfid);
+      return randomRfid;
+    }
+    
+    // USE EXACT NUMBERS FROM SCANNER - NO CUTTING, NO PADDING
+    console.log('🎫 Using exact numeric RFID from scanner:', numbersOnly);
+    return numbersOnly;
+  };
+
+  // Map frontend user types to backend role enum
+  const mapUserTypeToRole = (userType) => {
+    const roleMap = {
+      "rtu-students": "Student",
+      "rtu-employees": "Employee", 
+      "rtu-admin": "Admin",
+      "rtu-doctor": "Doctor",
+      "rtu-nurse": "Nurse"
+    };
+    return roleMap[userType] || "Student";
+  };
+
+  // Enhanced registration function - NO RFID CUTTING
   const saveRegistrationToDatabase = async () => {
     try {
       console.log('💾 Saving registration data to database');
@@ -110,7 +150,7 @@ export default function RegisterDataSaved() {
         return;
       }
 
-      // Get current date and time in YYYY-MM-DD HH:MM:SS format
+      // Get current date and time
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -122,24 +162,47 @@ export default function RegisterDataSaved() {
       const currentDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
       console.log('📅 Current date time for registration:', currentDateTime);
 
-      // Prepare data WITH created_at from frontend
+      // Process RFID - EXACT NUMBERS FROM SCANNER (NO CUTTING)
+      const rfidCode = processRfidForRegistration(registrationData.rfidCode);
+      console.log('🎫 Final numeric RFID for registration (exact from scanner):', rfidCode);
+
+      // Prepare data for backend
       const userData = {
-        userType: registrationData.userType,
-        personalInfo: registrationData.personalInfo,
-        idNumber: registrationData.idNumber,
-        password: registrationData.password,
-        email: registrationData.email,
-        mobile: registrationData.mobile,
-        rfidCode: registrationData.rfidCode,
-        created_at: currentDateTime  // Send current date and time to backend
+        // Basic user info
+        userId: registrationData.idNumber,
+        rfidTag: rfidCode, // EXACT NUMERIC RFID FROM SCANNER
+        firstname: registrationData.personalInfo.firstName || '',
+        lastname: registrationData.personalInfo.lastName || '',
+        role: mapUserTypeToRole(registrationData.userType),
+        
+        // School info
+        school_number: registrationData.idNumber,
+        
+        // Personal details
+        age: parseInt(registrationData.personalInfo.age) || 0,
+        sex: registrationData.personalInfo.sex || 'Male',
+        birthday: registrationData.personalInfo.birthYear && 
+                 registrationData.personalInfo.birthMonth && 
+                 registrationData.personalInfo.birthDay 
+                  ? `${registrationData.personalInfo.birthYear}-${String(registrationData.personalInfo.birthMonth).padStart(2, '0')}-${String(registrationData.personalInfo.birthDay).padStart(2, '0')}`
+                  : null,
+        
+        // Contact info
+        mobileNumber: registrationData.mobile || '',
+        email: registrationData.email || '',
+        
+        // Authentication
+        password: registrationData.password || '123456',
+        
+        // Timestamp
+        created_at: currentDateTime
       };
 
-      console.log('📤 Sending registration data:', userData);
+      console.log('📤 Sending registration data to backend:', userData);
       const result = await registerUser(userData);
       
       if (result.success) {
         console.log('✅ Database registration successful:', result);
-        console.log('📅 Created at from backend:', result.data?.created_at);
         setRegistrationStatus('success');
         setBackendResponse(result);
       } else {
@@ -174,7 +237,7 @@ export default function RegisterDataSaved() {
     saveRegistrationToDatabase();
   };
 
-  // Improved date formatting with fallbacks - now handles DATETIME format
+  // Improved date formatting with fallbacks
   const formatDate = (dateString) => {
     if (!dateString) return "Just now";
     
@@ -201,9 +264,23 @@ export default function RegisterDataSaved() {
     const typeMap = {
       "rtu-students": "RTU Student",
       "rtu-employees": "RTU Employee", 
-      "rtu-admin": "RTU Administrator"
+      "rtu-admin": "RTU Administrator",
+      "rtu-doctor": "RTU Doctor",
+      "rtu-nurse": "RTU Nurse"
     };
     return typeMap[userType] || "RTU Member";
+  };
+
+  const getRoleDisplay = () => {
+    const userType = registrationData.userType;
+    const roleMap = {
+      "rtu-students": "Student",
+      "rtu-employees": "Employee", 
+      "rtu-admin": "Administrator",
+      "rtu-doctor": "Doctor",
+      "rtu-nurse": "Nurse"
+    };
+    return roleMap[userType] || "Member";
   };
 
   const getStatusDisplay = () => {
@@ -251,6 +328,7 @@ export default function RegisterDataSaved() {
             <div className="backend-success">
               <p>✅ User ID: <strong>{backendResponse.data?.user_id}</strong></p>
               <p>📅 Registered: {formatDate(backendResponse.data?.created_at)}</p>
+              <p>🎫 RFID Number: <strong>{backendResponse.data?.rfid_tag}</strong></p>
             </div>
           )}
           
@@ -290,6 +368,11 @@ export default function RegisterDataSaved() {
                   </div>
                   
                   <div className="summary-item">
+                    <span className="summary-label">Role</span>
+                    <span className="summary-value">{getRoleDisplay()}</span>
+                  </div>
+                  
+                  <div className="summary-item">
                     <span className="summary-label">Status</span>
                     <span className="summary-value status-active">Active</span>
                   </div>
@@ -300,11 +383,38 @@ export default function RegisterDataSaved() {
                       <span className="summary-value">{backendResponse.data.user_id}</span>
                     </div>
                   )}
+
+                  {backendResponse?.data?.rfid_tag && (
+                    <div className="summary-item">
+                      <span className="summary-label">RFID Number</span>
+                      <span className="summary-value code">{backendResponse.data.rfid_tag}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Detailed Information */}
                 {showDetails && (
                   <div className="detailed-info">
+                    <div className="info-section">
+                      <h4>Login Information</h4>
+                      <div className="info-grid">
+                        <div className="info-item">
+                          <span className="info-label">School Number:</span>
+                          <span className="info-value">{registrationData.idNumber}</span>
+                        </div>
+                        <div className="info-item">
+                          <span className="info-label">Password:</span>
+                          <span className="info-value">••••••</span>
+                        </div>
+                        {backendResponse?.data?.rfid_tag && (
+                          <div className="info-item">
+                            <span className="info-label">RFID Number:</span>
+                            <span className="info-value code">{backendResponse.data.rfid_tag}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="info-section">
                       <h4>Personal Information</h4>
                       <div className="info-grid">
@@ -342,14 +452,8 @@ export default function RegisterDataSaved() {
                     </div>
 
                     <div className="info-section">
-                      <h4>Account Information</h4>
+                      <h4>Contact Information</h4>
                       <div className="info-grid">
-                        <div className="info-item">
-                          <span className="info-label">
-                            {registrationData.userType === 'rtu-employees' ? 'Employee No:' : 'Student No:'}
-                          </span>
-                          <span className="info-value">{registrationData.idNumber}</span>
-                        </div>
                         <div className="info-item">
                           <span className="info-label">Email:</span>
                           <span className="info-value">{registrationData.email}</span>
@@ -358,12 +462,6 @@ export default function RegisterDataSaved() {
                           <span className="info-label">Mobile:</span>
                           <span className="info-value">{registrationData.mobile}</span>
                         </div>
-                        {registrationData.rfidCode && (
-                          <div className="info-item">
-                            <span className="info-label">RFID Code:</span>
-                            <span className="info-value code">{registrationData.rfidCode}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -393,6 +491,29 @@ export default function RegisterDataSaved() {
               </div>
             </div>
 
+            {/* Login Instructions */}
+            <div className="login-instructions">
+              <h3>How to Login</h3>
+              <div className="instructions-grid">
+                <div className="instruction-item">
+                  <div className="instruction-icon">🎫</div>
+                  <div className="instruction-content">
+                    <strong>RFID Login</strong>
+                    <p>Tap your ID card with RFID number: <strong>{backendResponse?.data?.rfid_tag}</strong></p>
+                    <p style={{ fontSize: '0.8rem', color: '#666' }}>Make sure to use the exact same card you registered with</p>
+                  </div>
+                </div>
+                <div className="instruction-item">
+                  <div className="instruction-icon">🔑</div>
+                  <div className="instruction-content">
+                    <strong>Manual Login</strong>
+                    <p>Use School Number: <strong>{registrationData.idNumber}</strong></p>
+                    <p>Password: <strong>{registrationData.password || '123456'}</strong></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Next Steps */}
             <div className="next-steps">
               <h3>What's Next?</h3>
@@ -401,14 +522,14 @@ export default function RegisterDataSaved() {
                   <div className="step-number">1</div>
                   <div className="step-content">
                     <strong>Access Campus Facilities</strong>
-                    <p>Use your registered ID to enter buildings and access services</p>
+                    <p>Use your registered ID card to enter buildings and access services</p>
                   </div>
                 </div>
                 <div className="step-item">
                   <div className="step-number">2</div>
                   <div className="step-content">
                     <strong>Login to Your Account</strong>
-                    <p>Use your ID number and password to sign in</p>
+                    <p>Use your School Number and password or tap your ID card to sign in</p>
                   </div>
                 </div>
                 <div className="step-item">

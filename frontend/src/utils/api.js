@@ -1,4 +1,4 @@
-// frontend/src/utils/api.js
+// frontend/src/utils/api.js - COMPLETE UPDATED VERSION WITH MISSING SENSOR FUNCTIONS
 const API_URL = "http://127.0.0.1:5000/api";
 
 // Timeout configuration
@@ -14,6 +14,11 @@ const fetchWithTimeout = async (url, options = {}, timeout = TIMEOUTS.MEDIUM) =>
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   
   try {
+    console.log(`🌐 API Call: ${options.method || 'GET'} ${url}`);
+    if (options.body) {
+      console.log(`📦 Request Body:`, JSON.parse(options.body));
+    }
+    
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
@@ -26,18 +31,27 @@ const fetchWithTimeout = async (url, options = {}, timeout = TIMEOUTS.MEDIUM) =>
     clearTimeout(timeoutId);
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ HTTP error! status: ${response.status}`, errorText);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    console.log(`✅ API Response:`, result);
+    return result;
+    
   } catch (error) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
+      console.error(`⏰ Request timeout after ${timeout}ms`);
       throw new Error(`Request timeout after ${timeout}ms`);
     }
+    console.error(`❌ API Error:`, error);
     throw error;
   }
 };
+
+// ==================== BACKEND STATUS ====================
 
 // Check backend status
 export const checkBackendStatus = async () => {
@@ -54,44 +68,339 @@ export const checkBackendStatus = async () => {
   }
 };
 
+// ==================== LOGIN API FUNCTIONS ====================
+
+// RFID Login - UPDATED to return proper user data structure
+export const loginWithRFID = async (rfidTag) => {
+  try {
+    console.log(`🎫 Attempting RFID login with tag: ${rfidTag}`);
+    
+    const response = await fetchWithTimeout(`${API_URL}/login/login`, {
+      method: 'POST',
+      body: JSON.stringify({ rfid_tag: rfidTag }),
+    }, TIMEOUTS.MEDIUM);
+
+    // Transform backend response to frontend format
+    if (response.success && response.user) {
+      return {
+        success: true,
+        message: response.message,
+        user: {
+          firstName: response.user.firstname || response.user.firstName,
+          lastName: response.user.lastname || response.user.lastName,
+          age: response.user.age,
+          sex: response.user.sex,
+          schoolNumber: response.user.school_number || response.user.schoolNumber,
+          role: response.user.role,
+          email: response.user.email,
+          userId: response.user.user_id || response.user.id
+        }
+      };
+    } else {
+      return {
+        success: false,
+        message: response.message
+      };
+    }
+    
+  } catch (error) {
+    console.error('❌ RFID login API error:', error);
+    return {
+      success: false,
+      message: 'Network error. Please try again.'
+    };
+  }
+};
+
+// Manual Credentials Login - UPDATED to return proper user data structure
+export const loginWithCredentials = async (schoolNumber, password) => {
+  try {
+    console.log(`🔑 Attempting manual login with school_number: ${schoolNumber}`);
+    
+    const response = await fetchWithTimeout(`${API_URL}/login/login`, {
+      method: 'POST',
+      body: JSON.stringify({ 
+        school_number: schoolNumber,
+        password: password 
+      }),
+    }, TIMEOUTS.MEDIUM);
+
+    // Transform backend response to frontend format
+    if (response.success && response.user) {
+      return {
+        success: true,
+        message: response.message,
+        user: {
+          firstName: response.user.firstname || response.user.firstName,
+          lastName: response.user.lastname || response.user.lastName,
+          age: response.user.age,
+          sex: response.user.sex,
+          schoolNumber: response.user.school_number || response.user.schoolNumber,
+          role: response.user.role,
+          email: response.user.email,
+          userId: response.user.user_id || response.user.id
+        }
+      };
+    } else {
+      return {
+        success: false,
+        message: response.message
+      };
+    }
+    
+  } catch (error) {
+    console.error('❌ Manual login API error:', error);
+    return {
+      success: false,
+      message: 'Network error. Please try again.'
+    };
+  }
+};
+
+// Check if user exists by school number
+export const checkUserExists = async (schoolNumber) => {
+  try {
+    console.log(`🔍 Checking if user exists: ${schoolNumber}`);
+    return await fetchWithTimeout(`${API_URL}/login/check-user/${schoolNumber}`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Check user API error:', error);
+    throw error;
+  }
+};
+
+// Check if RFID exists
+export const checkRfidExists = async (rfidTag) => {
+  try {
+    console.log(`🔍 Checking if RFID exists: ${rfidTag}`);
+    return await fetchWithTimeout(`${API_URL}/login/check-rfid/${rfidTag}`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Check RFID API error:', error);
+    throw error;
+  }
+};
+
+// Test login endpoints
+export const testLoginConnection = async () => {
+  try {
+    console.log('🧪 Testing login connection...');
+    return await fetchWithTimeout(`${API_URL}/login/test-login`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Test login connection error:', error);
+    throw error;
+  }
+};
+
+// Legacy login function for backward compatibility
+export const loginUser = async (credentials) => {
+  try {
+    // Determine if it's RFID or manual login
+    if (credentials.rfid_tag) {
+      return await loginWithRFID(credentials.rfid_tag);
+    } else {
+      return await loginWithCredentials(credentials.school_number, credentials.password);
+    }
+  } catch (error) {
+    console.error('Login API error:', error);
+    throw error;
+  }
+};
+
+// ==================== AUTHENTICATION UTILITIES ====================
+
+// Store user data after successful login - UPDATED for proper data structure
+export const storeUserData = (userData) => {
+  try {
+    localStorage.setItem('userData', JSON.stringify(userData));
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('loginTime', new Date().toISOString());
+    console.log('✅ User data stored in localStorage:', {
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      age: userData.age,
+      sex: userData.sex,
+      schoolNumber: userData.schoolNumber,
+      role: userData.role
+    });
+    return true;
+  } catch (error) {
+    console.error('Error storing user data:', error);
+    return false;
+  }
+};
+
+// Get current user data - UPDATED for proper data structure
+export const getCurrentUser = () => {
+  try {
+    const userData = localStorage.getItem('userData');
+    const user = userData ? JSON.parse(userData) : null;
+    if (user) {
+      console.log('📋 Retrieved user from storage:', {
+        name: `${user.firstName} ${user.lastName}`,
+        age: user.age,
+        sex: user.sex,
+        role: user.role
+      });
+    }
+    return user;
+  } catch (error) {
+    console.error('Error getting user data:', error);
+    return null;
+  }
+};
+
+// Check if user is authenticated
+export const isAuthenticated = () => {
+  try {
+    const authStatus = localStorage.getItem('isAuthenticated');
+    const authenticated = authStatus === 'true';
+    console.log('🔐 Authentication status:', authenticated);
+    return authenticated;
+  } catch (error) {
+    console.error('Error checking authentication:', error);
+    return false;
+  }
+};
+
+// Logout user
+export const logoutUser = () => {
+  try {
+    const user = getCurrentUser();
+    localStorage.removeItem('userData');
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('loginTime');
+    console.log('✅ User logged out successfully:', user?.firstName, user?.lastName);
+    return true;
+  } catch (error) {
+    console.error('Error during logout:', error);
+    return false;
+  }
+};
+
+// Get user role for navigation
+export const getUserRole = () => {
+  const user = getCurrentUser();
+  const role = user ? user.role : null;
+  console.log('🎭 User role:', role);
+  return role;
+};
+
+// Get user ID
+export const getUserId = () => {
+  const user = getCurrentUser();
+  return user ? user.userId : null;
+};
+
+// Get school number
+export const getSchoolNumber = () => {
+  const user = getCurrentUser();
+  return user ? user.schoolNumber : null;
+};
+
+// Get user full name
+export const getUserFullName = () => {
+  const user = getCurrentUser();
+  return user ? `${user.firstName} ${user.lastName}` : null;
+};
+
+// Get user first name
+export const getUserFirstName = () => {
+  const user = getCurrentUser();
+  return user ? user.firstName : null;
+};
+
+// Get user age
+export const getUserAge = () => {
+  const user = getCurrentUser();
+  return user ? user.age : null;
+};
+
+// Get user sex
+export const getUserSex = () => {
+  const user = getCurrentUser();
+  return user ? user.sex : null;
+};
+
+// Check if user has specific role
+export const hasRole = (role) => {
+  const userRole = getUserRole();
+  return userRole === role;
+};
+
+// Check if user is admin
+export const isAdmin = () => hasRole('Admin');
+
+// Check if user is student
+export const isStudent = () => hasRole('Student');
+
+// Check if user is employee
+export const isEmployee = () => hasRole('Employee');
+
+// Check if user is doctor
+export const isDoctor = () => hasRole('Doctor');
+
+// Check if user is nurse
+export const isNurse = () => hasRole('Nurse');
+
 // ==================== REGISTRATION API FUNCTIONS ====================
 
-// User registration API call
+// User registration API call - UPDATED for proper data structure
 export const registerUser = async (userData) => {
   try {
     console.log('📤 Sending registration data to backend:', userData);
     
     const response = await fetchWithTimeout(`${API_URL}/register/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
+      body: JSON.stringify({
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        age: userData.age,
+        sex: userData.sex,
+        school_number: userData.schoolNumber,
+        role: userData.role,
+        email: userData.email,
+        password: userData.password,
+        rfid_number: userData.rfidNumber
+      }),
     }, TIMEOUTS.MEDIUM);
 
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.message || 'Registration failed');
+    // Transform backend response to frontend format
+    if (response.success && response.user) {
+      return {
+        success: true,
+        message: response.message,
+        user: {
+          firstName: response.user.first_name || response.user.firstName,
+          lastName: response.user.last_name || response.user.lastName,
+          age: response.user.age,
+          sex: response.user.sex,
+          schoolNumber: response.user.school_number || response.user.schoolNumber,
+          role: response.user.role,
+          email: response.user.email,
+          userId: response.user.user_id || response.user.id
+        }
+      };
+    } else {
+      return {
+        success: false,
+        message: response.message
+      };
     }
-
-    console.log('✅ Registration successful:', result);
-    return result;
     
   } catch (error) {
     console.error('❌ Registration API error:', error);
-    throw error;
+    return {
+      success: false,
+      message: 'Network error. Please try again.'
+    };
   }
 };
 
 // Check if ID number exists
 export const checkIdNumber = async (idNumber, userType) => {
   try {
+    console.log(`🔍 Checking if ID exists: ${idNumber} for ${userType}`);
     return await fetchWithTimeout(`${API_URL}/register/check-id`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ idNumber, userType }),
     }, TIMEOUTS.SHORT);
   } catch (error) {
@@ -103,6 +412,7 @@ export const checkIdNumber = async (idNumber, userType) => {
 // Test backend connection for registration
 export const testRegistrationConnection = async () => {
   try {
+    console.log('🧪 Testing registration connection...');
     return await fetchWithTimeout(`${API_URL}/register/test-connection`, {}, TIMEOUTS.SHORT);
   } catch (error) {
     console.error('Registration connection test failed:', error);
@@ -110,36 +420,104 @@ export const testRegistrationConnection = async () => {
   }
 };
 
-// Login user
-export const loginUser = async (credentials) => {
+// Get all registered users (for testing)
+export const getAllUsers = async () => {
   try {
-    const response = await fetchWithTimeout(`${API_URL}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    }, TIMEOUTS.MEDIUM);
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.message || 'Login failed');
-    }
-
-    return result;
+    console.log('📋 Getting all users...');
+    return await fetchWithTimeout(`${API_URL}/register/users`, {}, TIMEOUTS.SHORT);
   } catch (error) {
-    console.error('Login API error:', error);
+    console.error('Get users API error:', error);
     throw error;
   }
 };
 
+// ==================== USER PROFILE FUNCTIONS ====================
+
 // Get user profile
 export const getUserProfile = async (userId) => {
   try {
+    console.log(`👤 Getting user profile: ${userId}`);
     return await fetchWithTimeout(`${API_URL}/users/${userId}`, {}, TIMEOUTS.SHORT);
   } catch (error) {
     console.error('Get user profile API error:', error);
+    throw error;
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (userId, profileData) => {
+  try {
+    console.log(`✏️ Updating user profile: ${userId}`, profileData);
+    return await fetchWithTimeout(`${API_URL}/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    }, TIMEOUTS.MEDIUM);
+  } catch (error) {
+    console.error('Update user profile API error:', error);
+    throw error;
+  }
+};
+
+// Delete user account
+export const deleteUserAccount = async (userId) => {
+  try {
+    console.log(`🗑️ Deleting user account: ${userId}`);
+    return await fetchWithTimeout(`${API_URL}/users/${userId}`, {
+      method: 'DELETE',
+    }, TIMEOUTS.MEDIUM);
+  } catch (error) {
+    console.error('Delete user account API error:', error);
+    throw error;
+  }
+};
+
+// ==================== MEASUREMENT DATA FUNCTIONS ====================
+
+// Save measurement results
+export const saveMeasurementResults = async (measurementData) => {
+  try {
+    console.log('💾 Saving measurement results:', measurementData);
+    return await fetchWithTimeout(`${API_URL}/measurements/save`, {
+      method: 'POST',
+      body: JSON.stringify(measurementData),
+    }, TIMEOUTS.MEDIUM);
+  } catch (error) {
+    console.error('Error saving measurement results:', error);
+    throw error;
+  }
+};
+
+// Get measurement history for user
+export const getMeasurementHistory = async (userId) => {
+  try {
+    console.log(`📊 Getting measurement history for user: ${userId}`);
+    return await fetchWithTimeout(`${API_URL}/measurements/history/${userId}`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Error getting measurement history:', error);
+    throw error;
+  }
+};
+
+// Get all measurements (admin only)
+export const getAllMeasurements = async () => {
+  try {
+    console.log('📈 Getting all measurements...');
+    return await fetchWithTimeout(`${API_URL}/measurements/all`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Error getting all measurements:', error);
+    throw error;
+  }
+};
+
+// Delete measurement
+export const deleteMeasurement = async (measurementId) => {
+  try {
+    console.log(`🗑️ Deleting measurement: ${measurementId}`);
+    return await fetchWithTimeout(`${API_URL}/measurements/${measurementId}`, {
+      method: 'DELETE',
+    }, TIMEOUTS.MEDIUM);
+  } catch (error) {
+    console.error('Error deleting measurement:', error);
     throw error;
   }
 };
@@ -152,6 +530,7 @@ export const sensorAPI = {
   // Connect to Arduino
   connect: async () => {
     try {
+      console.log('🔌 Connecting to Arduino...');
       return await fetchWithTimeout(`${API_URL}/sensor/connect`, {
         method: 'POST',
       }, TIMEOUTS.LONG);
@@ -168,6 +547,7 @@ export const sensorAPI = {
   // Disconnect from Arduino
   disconnect: async () => {
     try {
+      console.log('🔌 Disconnecting from Arduino...');
       return await fetchWithTimeout(`${API_URL}/sensor/disconnect`, {
         method: 'POST',
       }, TIMEOUTS.SHORT);
@@ -184,6 +564,7 @@ export const sensorAPI = {
   // Get sensor manager status
   getStatus: async () => {
     try {
+      console.log('📊 Getting sensor status...');
       return await fetchWithTimeout(`${API_URL}/sensor/status`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting sensor status:', error);
@@ -198,6 +579,7 @@ export const sensorAPI = {
   // Get comprehensive system status
   getSystemStatus: async () => {
     try {
+      console.log('📈 Getting system status...');
       return await fetchWithTimeout(`${API_URL}/sensor/system_status`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting system status:', error);
@@ -214,6 +596,7 @@ export const sensorAPI = {
   // Initialize system
   initializeSystem: async () => {
     try {
+      console.log('🚀 Initializing system...');
       return await fetchWithTimeout(`${API_URL}/sensor/initialize`, {
         method: 'POST',
       }, TIMEOUTS.LONG);
@@ -227,25 +610,10 @@ export const sensorAPI = {
     }
   },
 
-  // Initialize weight sensor
-  initializeWeight: async () => {
-    try {
-      return await fetchWithTimeout(`${API_URL}/sensor/initialize_weight`, {
-        method: 'POST',
-      }, TIMEOUTS.LONG);
-    } catch (error) {
-      console.error('Error initializing weight sensor:', error);
-      return { 
-        status: 'error', 
-        error: 'Failed to initialize weight sensor',
-        details: error.message 
-      };
-    }
-  },
-
   // Reset all measurements
   reset: async () => {
     try {
+      console.log('🔄 Resetting measurements...');
       return await fetchWithTimeout(`${API_URL}/sensor/reset`, {
         method: 'POST',
       }, TIMEOUTS.SHORT);
@@ -261,6 +629,7 @@ export const sensorAPI = {
   // Force reconnect
   forceReconnect: async () => {
     try {
+      console.log('🔁 Forcing reconnect...');
       return await fetchWithTimeout(`${API_URL}/sensor/reconnect`, {
         method: 'POST',
       }, TIMEOUTS.LONG);
@@ -277,6 +646,7 @@ export const sensorAPI = {
   // Get all measurements
   getMeasurements: async () => {
     try {
+      console.log('📋 Getting all sensor measurements...');
       return await fetchWithTimeout(`${API_URL}/sensor/measurements`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting measurements:', error);
@@ -287,25 +657,10 @@ export const sensorAPI = {
     }
   },
 
-  // Perform tare operation
-  tareWeight: async () => {
-    try {
-      return await fetchWithTimeout(`${API_URL}/sensor/tare`, {
-        method: 'POST',
-      }, TIMEOUTS.MEDIUM);
-    } catch (error) {
-      console.error('Error performing tare:', error);
-      return { 
-        status: 'error', 
-        error: 'Failed to perform tare',
-        details: error.message 
-      };
-    }
-  },
-
   // Shutdown all sensors
   shutdownAll: async () => {
     try {
+      console.log('🔴 Shutting down all sensors...');
       return await fetchWithTimeout(`${API_URL}/sensor/shutdown`, {
         method: 'POST',
       }, TIMEOUTS.SHORT);
@@ -319,38 +674,10 @@ export const sensorAPI = {
     }
   },
 
-  // Generic prepare/shutdown functions
-  _prepareSensor: async (sensorName) => {
-    try {
-      return await fetchWithTimeout(`${API_URL}/sensor/${sensorName}/prepare`, { 
-        method: 'POST' 
-      }, TIMEOUTS.MEDIUM);
-    } catch (error) {
-      console.error(`Error preparing ${sensorName} sensor:`, error);
-      return { 
-        error: `Failed to prepare ${sensorName} sensor`,
-        details: error.message 
-      };
-    }
-  },
-
-  _shutdownSensor: async (sensorName) => {
-    try {
-      return await fetchWithTimeout(`${API_URL}/sensor/${sensorName}/shutdown`, { 
-        method: 'POST' 
-      }, TIMEOUTS.SHORT);
-    } catch (error) {
-      console.error(`Error shutting down ${sensorName} sensor:`, error);
-      return { 
-        error: `Failed to shutdown ${sensorName} sensor`,
-        details: error.message 
-      };
-    }
-  },
-
   // ==================== WEIGHT SENSOR ====================
   startWeight: async () => {
     try {
+      console.log('⚖️ Starting weight measurement...');
       return await fetchWithTimeout(`${API_URL}/sensor/weight/start`, {
         method: 'POST',
       }, TIMEOUTS.MEDIUM);
@@ -362,9 +689,6 @@ export const sensorAPI = {
       };
     }
   },
-
-  prepareWeight: () => sensorAPI._prepareSensor('weight'),
-  shutdownWeight: () => sensorAPI._shutdownSensor('weight'),
 
   getWeightStatus: async () => {
     try {
@@ -381,9 +705,42 @@ export const sensorAPI = {
     }
   },
 
+  // NEW: Prepare weight sensor
+  prepareWeight: async () => {
+    try {
+      console.log('⚖️ Preparing weight sensor...');
+      return await fetchWithTimeout(`${API_URL}/sensor/weight/prepare`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error preparing weight sensor:', error);
+      return { 
+        error: 'Failed to prepare weight sensor', 
+        details: error.message 
+      };
+    }
+  },
+
+  // NEW: Shutdown weight sensor
+  shutdownWeight: async () => {
+    try {
+      console.log('⚖️ Shutting down weight sensor...');
+      return await fetchWithTimeout(`${API_URL}/sensor/weight/shutdown`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error shutting down weight sensor:', error);
+      return { 
+        error: 'Failed to shutdown weight sensor', 
+        details: error.message 
+      };
+    }
+  },
+
   // ==================== HEIGHT SENSOR ====================
   startHeight: async () => {
     try {
+      console.log('📏 Starting height measurement...');
       return await fetchWithTimeout(`${API_URL}/sensor/height/start`, {
         method: 'POST',
       }, TIMEOUTS.MEDIUM);
@@ -395,9 +752,6 @@ export const sensorAPI = {
       };
     }
   },
-
-  prepareHeight: () => sensorAPI._prepareSensor('height'),
-  shutdownHeight: () => sensorAPI._shutdownSensor('height'),
 
   getHeightStatus: async () => {
     try {
@@ -414,9 +768,42 @@ export const sensorAPI = {
     }
   },
 
+  // NEW: Prepare height sensor
+  prepareHeight: async () => {
+    try {
+      console.log('📏 Preparing height sensor...');
+      return await fetchWithTimeout(`${API_URL}/sensor/height/prepare`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error preparing height sensor:', error);
+      return { 
+        error: 'Failed to prepare height sensor', 
+        details: error.message 
+      };
+    }
+  },
+
+  // NEW: Shutdown height sensor
+  shutdownHeight: async () => {
+    try {
+      console.log('📏 Shutting down height sensor...');
+      return await fetchWithTimeout(`${API_URL}/sensor/height/shutdown`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error shutting down height sensor:', error);
+      return { 
+        error: 'Failed to shutdown height sensor', 
+        details: error.message 
+      };
+    }
+  },
+
   // ==================== TEMPERATURE SENSOR ====================
   startTemperature: async () => {
     try {
+      console.log('🌡️ Starting temperature measurement...');
       return await fetchWithTimeout(`${API_URL}/sensor/temperature/start`, {
         method: 'POST',
       }, TIMEOUTS.MEDIUM);
@@ -429,9 +816,6 @@ export const sensorAPI = {
     }
   },
 
-  prepareTemperature: () => sensorAPI._prepareSensor('temperature'),
-  shutdownTemperature: () => sensorAPI._shutdownSensor('temperature'),
-  
   getTemperatureStatus: async () => {
     try {
       return await fetchWithTimeout(`${API_URL}/sensor/temperature/status`, {}, TIMEOUTS.SHORT);
@@ -448,12 +832,45 @@ export const sensorAPI = {
     }
   },
 
-  // ==================== MAX30102 SENSOR - UPDATED FOR AUTOMATIC MEASUREMENT ====================
+  // NEW: Prepare temperature sensor
+  prepareTemperature: async () => {
+    try {
+      console.log('🌡️ Preparing temperature sensor...');
+      return await fetchWithTimeout(`${API_URL}/sensor/temperature/prepare`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error preparing temperature sensor:', error);
+      return { 
+        error: 'Failed to prepare temperature sensor', 
+        details: error.message 
+      };
+    }
+  },
+
+  // NEW: Shutdown temperature sensor
+  shutdownTemperature: async () => {
+    try {
+      console.log('🌡️ Shutting down temperature sensor...');
+      return await fetchWithTimeout(`${API_URL}/sensor/temperature/shutdown`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error shutting down temperature sensor:', error);
+      return { 
+        error: 'Failed to shutdown temperature sensor', 
+        details: error.message 
+      };
+    }
+  },
+
+  // ==================== MAX30102 SENSOR ====================
   startMax30102: async () => {
     try {
+      console.log('❤️ Starting MAX30102 measurement...');
       return await fetchWithTimeout(`${API_URL}/sensor/max30102/start`, {
         method: 'POST',
-      }, TIMEOUTS.LONG); // 30 seconds for MAX30102 measurement
+      }, TIMEOUTS.LONG);
     } catch (error) {
       console.error('Error starting MAX30102 measurement:', error);
       return { 
@@ -463,57 +880,9 @@ export const sensorAPI = {
     }
   },
 
-  prepareMax30102: async () => {
-    try {
-      // First power up the sensor
-      const result = await sensorAPI._prepareSensor('max30102');
-      
-      if (result.error) {
-        return result;
-      }
-      
-      // Wait for sensor to initialize and check finger detection
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Check initial status to see if finger is already detected
-      const status = await sensorAPI.getMax30102Status();
-      
-      return {
-        ...result,
-        initial_finger_detected: status.finger_detected || false,
-        sensor_ready: status.sensor_prepared || false,
-        measurement_started: status.measurement_started || false
-      };
-      
-    } catch (error) {
-      console.error('Error preparing MAX30102 sensor:', error);
-      return { 
-        error: 'Failed to prepare MAX30102 sensor',
-        details: error.message 
-      };
-    }
-  },
-
-  shutdownMax30102: () => sensorAPI._shutdownSensor('max30102'),
-
   getMax30102Status: async () => {
     try {
-      const response = await fetchWithTimeout(`${API_URL}/sensor/max30102/status`, {}, TIMEOUTS.SHORT);
-      
-      // Enhanced response with better finger detection handling
-      return {
-        ...response,
-        // Ensure finger_detected is always a boolean
-        finger_detected: Boolean(response.finger_detected),
-        // Enhanced sensor readiness check
-        sensor_fully_ready: Boolean(response.sensor_prepared && response.status !== 'error'),
-        // Add timestamp for debugging
-        timestamp: new Date().toISOString(),
-        // Enhanced measurement status
-        measurement_started: response.measurement_started || false,
-        final_result_shown: response.final_result_shown || false
-      };
-      
+      return await fetchWithTimeout(`${API_URL}/sensor/max30102/status`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting MAX30102 status:', error);
       return { 
@@ -542,10 +911,42 @@ export const sensorAPI = {
     }
   },
 
-  // New method to force finger detection check
+  // NEW: Prepare MAX30102 sensor
+  prepareMax30102: async () => {
+    try {
+      console.log('❤️ Preparing MAX30102 sensor...');
+      return await fetchWithTimeout(`${API_URL}/sensor/max30102/prepare`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error preparing MAX30102 sensor:', error);
+      return { 
+        error: 'Failed to prepare MAX30102 sensor', 
+        details: error.message 
+      };
+    }
+  },
+
+  // NEW: Shutdown MAX30102 sensor
+  shutdownMax30102: async () => {
+    try {
+      console.log('❤️ Shutting down MAX30102 sensor...');
+      return await fetchWithTimeout(`${API_URL}/sensor/max30102/shutdown`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error shutting down MAX30102 sensor:', error);
+      return { 
+        error: 'Failed to shutdown MAX30102 sensor', 
+        details: error.message 
+      };
+    }
+  },
+
+  // Check finger detection
   checkFingerDetection: async () => {
     try {
-      // This triggers the backend to immediately check finger status
+      console.log('👆 Checking finger detection...');
       const status = await sensorAPI.getMax30102Status();
       
       return {
@@ -567,7 +968,7 @@ export const sensorAPI = {
     }
   },
 
-  // New method to check if measurement is complete
+  // Check if measurement is complete
   isMax30102MeasurementComplete: async () => {
     try {
       const status = await sensorAPI.getMax30102Status();
@@ -589,6 +990,114 @@ export const sensorAPI = {
       };
     }
   }
+};
+
+// ==================== UTILITY FUNCTIONS ====================
+
+// Test all backend connections
+export const testAllConnections = async () => {
+  try {
+    console.log('🔍 Testing all backend connections...');
+    
+    const backendStatus = await checkBackendStatus();
+    const loginTest = await testLoginConnection();
+    const registrationTest = await testRegistrationConnection();
+    
+    const allSystemsGo = backendStatus.available && loginTest.success && registrationTest.success;
+    
+    console.log('📊 Connection Test Results:', {
+      backend: backendStatus.available,
+      login: loginTest.success,
+      registration: registrationTest.success,
+      allSystemsGo
+    });
+    
+    return {
+      backend: backendStatus,
+      login: loginTest,
+      registration: registrationTest,
+      allSystemsGo
+    };
+  } catch (error) {
+    console.error('Connection test failed:', error);
+    return {
+      backend: { available: false, error: error.message },
+      login: { success: false, error: error.message },
+      registration: { success: false, error: error.message },
+      allSystemsGo: false
+    };
+  }
+};
+
+// Clear all local storage (for debugging)
+export const clearAllStorage = () => {
+  try {
+    localStorage.clear();
+    console.log('🧹 All local storage cleared');
+    return true;
+  } catch (error) {
+    console.error('Error clearing storage:', error);
+    return false;
+  }
+};
+
+// Get login session info
+export const getSessionInfo = () => {
+  try {
+    const user = getCurrentUser();
+    const loginTime = localStorage.getItem('loginTime');
+    
+    return {
+      isAuthenticated: isAuthenticated(),
+      user: user,
+      loginTime: loginTime,
+      sessionDuration: loginTime ? Math.floor((new Date() - new Date(loginTime)) / 1000) : 0
+    };
+  } catch (error) {
+    console.error('Error getting session info:', error);
+    return {
+      isAuthenticated: false,
+      user: null,
+      loginTime: null,
+      sessionDuration: 0
+    };
+  }
+};
+
+// Validate session
+export const validateSession = () => {
+  const session = getSessionInfo();
+  
+  if (!session.isAuthenticated) {
+    console.log('🚫 Session not authenticated');
+    return false;
+  }
+  
+  // Optional: Add session timeout logic here
+  const maxSessionDuration = 24 * 60 * 60; // 24 hours in seconds
+  if (session.sessionDuration > maxSessionDuration) {
+    console.log('⏰ Session expired');
+    logoutUser();
+    return false;
+  }
+  
+  console.log('✅ Session valid');
+  return true;
+};
+
+// Get complete user data for navigation - NEW FUNCTION
+export const getUserDataForNavigation = () => {
+  const user = getCurrentUser();
+  if (!user) return null;
+  
+  return {
+    firstName: user.firstName,
+    lastName: user.lastName,
+    age: user.age,
+    sex: user.sex,
+    schoolNumber: user.schoolNumber,
+    role: user.role
+  };
 };
 
 // Export for backward compatibility

@@ -191,9 +191,9 @@ export default function RegisterTapID() {
     }
   };
 
-  // Process RFID scan data with FAST animations
+  // Process RFID scan data with NO MODIFICATIONS - USE EXACT DATA
   const processRfidScan = async (rfidData) => {
-    console.log('🎫 RFID Card Detected:', rfidData);
+    console.log('🎫 RFID Card Detected (RAW):', rfidData);
     
     setIsCardTapped(true);
     setScannerStatus("reading");
@@ -205,8 +205,8 @@ export default function RegisterTapID() {
       await new Promise(resolve => setTimeout(resolve, 300));
       setScanProgress(60);
       
-      // Generate unique RFID code based on scanned data
-      const generatedRFID = `RTU${rfidData.slice(-8)}`;
+      // USE EXACT RFID DATA - NO MODIFICATIONS, NO PREFIX, NO SLICING
+      const generatedRFID = rfidData; // Use the exact data from scanner
       setRfidCode(generatedRFID);
       
       // FAST Step 2: Writing user data to card (400ms)
@@ -248,7 +248,7 @@ export default function RegisterTapID() {
       password: formData.password,
       email: formData.email,
       mobile: formData.mobile,
-      rfidCode: rfidCode,
+      rfidCode: rfidCode, // EXACT RFID DATA - NO MODIFICATIONS
       registrationDate: new Date().toISOString()
     };
 

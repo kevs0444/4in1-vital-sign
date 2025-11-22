@@ -1,4 +1,4 @@
-// src/pages/Login/Login.jsx - AUTO RFID LOGIN
+// src/pages/Login/Login.jsx - NUMERIC RFID ONLY
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
@@ -7,11 +7,13 @@ import {
   Login as LoginIcon, 
   PersonAdd, 
   CreditCard,
-  Info,
   RadioButtonChecked
 } from '@mui/icons-material';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Login.css';
+
+// Import API functions
+import { loginWithRFID, loginWithCredentials, storeUserData, testLoginConnection } from '../../utils/api';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,15 +22,38 @@ export default function LoginPage() {
   const [isVisible, setIsVisible] = useState(false);
   const [isShift, setIsShift] = useState(false);
   const [showSymbols, setShowSymbols] = useState(false);
-  const [activeInput, setActiveInput] = useState('userId');
+  const [activeInput, setActiveInput] = useState('schoolNumber');
   const [rfidStatus, setRfidStatus] = useState('ready');
+  const [connectionStatus, setConnectionStatus] = useState('checking');
   const navigate = useNavigate();
 
-  const userIdInputRef = useRef(null);
+  const schoolNumberInputRef = useRef(null);
   const passwordInputRef = useRef(null);
   const rfidInputRef = useRef(null);
   const rfidTimeoutRef = useRef(null);
   const rfidDataRef = useRef('');
+
+  // Check backend connection on component mount
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        console.log('🔍 Checking backend connection...');
+        const result = await testLoginConnection();
+        if (result.success) {
+          setConnectionStatus('connected');
+          console.log('✅ Backend connection successful');
+        } else {
+          setConnectionStatus('error');
+          console.error('❌ Backend connection failed');
+        }
+      } catch (error) {
+        setConnectionStatus('error');
+        console.error('❌ Backend connection error:', error);
+      }
+    };
+
+    checkConnection();
+  }, []);
 
   // Add viewport meta tag to prevent zooming
   useEffect(() => {
@@ -42,23 +67,22 @@ export default function LoginPage() {
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
     
     // Prevent zooming via touch gestures
-    document.addEventListener('touchstart', handleTouchStart, { passive: false });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
-    document.addEventListener('gesturestart', preventZoom, { passive: false });
-    document.addEventListener('gesturechange', preventZoom, { passive: false });
-    document.addEventListener('gestureend', preventZoom, { passive: false });
-    
+    const preventZoom = (e) => e.touches.length > 1 && e.preventDefault();
+    const preventGesture = (e) => e.preventDefault();
+
+    document.addEventListener('touchstart', preventZoom, { passive: false });
+    document.addEventListener('touchmove', preventZoom, { passive: false });
+    document.addEventListener('gesturestart', preventGesture, { passive: false });
+    document.addEventListener('gesturechange', preventGesture, { passive: false });
+
     // Setup RFID scanner listener immediately
     setupRfidScanner();
     
     return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('gesturestart', preventZoom);
-      document.removeEventListener('gesturechange', preventZoom);
-      document.removeEventListener('gestureend', preventZoom);
+      document.removeEventListener('touchstart', preventZoom);
+      document.removeEventListener('touchmove', preventZoom);
+      document.removeEventListener('gesturestart', preventGesture);
+      document.removeEventListener('gesturechange', preventGesture);
       document.removeEventListener('keydown', handleGlobalKeyDown);
       
       if (rfidTimeoutRef.current) {
@@ -75,6 +99,7 @@ export default function LoginPage() {
   // RFID Scanner Setup - LISTENS TO ALL KEYBOARD INPUT
   const setupRfidScanner = () => {
     console.log('🔔 RFID Scanner Active - Ready to accept any card');
+    console.log('🎫 RFID Format: Numeric only (exact number from scanner)');
     
     // Listen to ALL keyboard events on the entire document
     document.addEventListener('keydown', handleGlobalKeyDown);
@@ -87,31 +112,44 @@ export default function LoginPage() {
     }, 500);
   };
 
-  // Handle ALL keyboard input for RFID scanning
+  // FIXED: Handle ALL keyboard input for RFID scanning with null check
   const handleGlobalKeyDown = (e) => {
     // Ignore if we're already processing RFID
     if (rfidLoading || isLoading) {
       return;
     }
 
+    // FIX: Check if rfidDataRef.current exists before accessing length
+    const currentRfidData = rfidDataRef.current || '';
+
     // RFID scanners typically send numbers/letters followed by Enter
     if (e.key === 'Enter') {
       // Process the accumulated RFID data when Enter is pressed
-      if (rfidDataRef.current.length >= 5) { // Minimum RFID length
-        processRfidScan(rfidDataRef.current);
+      if (currentRfidData.length >= 5) {
+        console.log('🔑 Enter key pressed, processing RFID data:', currentRfidData);
+        const processedRfid = processRfidData(currentRfidData);
+        if (processedRfid) {
+          processRfidScan(processedRfid);
+        }
         rfidDataRef.current = ''; // Reset buffer
         e.preventDefault();
         return;
       }
-    } else if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
-      // Accumulate alphanumeric characters (RFID data)
-      rfidDataRef.current += e.key;
+    } else if (e.key.length === 1) {
+      // Accumulate ALL characters (RFID data can have numbers, letters, symbols)
+      rfidDataRef.current = currentRfidData + e.key;
+      console.log('📝 RFID data accumulated:', rfidDataRef.current);
       
       // Auto-detect RFID after certain length (some scanners don't send Enter)
       if (rfidDataRef.current.length >= 8 && !rfidLoading) {
         rfidTimeoutRef.current = setTimeout(() => {
-          if (rfidDataRef.current.length >= 8) {
-            processRfidScan(rfidDataRef.current);
+          const updatedRfidData = rfidDataRef.current || '';
+          if (updatedRfidData.length >= 8) {
+            console.log('⏰ Auto-detecting RFID:', updatedRfidData);
+            const processedRfid = processRfidData(updatedRfidData);
+            if (processedRfid) {
+              processRfidScan(processedRfid);
+            }
             rfidDataRef.current = '';
           }
         }, 100);
@@ -119,51 +157,122 @@ export default function LoginPage() {
     }
   };
 
-  const processRfidScan = async (rfidData) => {
-    console.log('🎫 RFID Card Detected:', rfidData);
+  // Process RFID data - Extract numbers only (NO RTU PREFIX)
+  const processRfidData = (rawRfidData) => {
+    if (!rawRfidData) {
+      console.log('❌ No RFID data provided');
+      return null;
+    }
+    
+    console.log('🔢 Raw RFID data received:', rawRfidData);
+    
+    // Extract only numbers from the RFID data - NO RTU PREFIX
+    const numbersOnly = rawRfidData.replace(/\D/g, '');
+    console.log('🔢 Numbers extracted:', numbersOnly);
+    
+    if (numbersOnly.length < 5) {
+      console.log('❌ Insufficient numbers in RFID data');
+      return null;
+    }
+    
+    // Use exact numeric RFID from scanner - NO MODIFICATIONS
+    console.log('🎫 Using exact numeric RFID:', numbersOnly);
+    return numbersOnly;
+  };
+
+  const processRfidScan = async (processedRfid) => {
+    console.log('🎫 Numeric RFID for validation:', processedRfid);
     
     setRfidLoading(true);
     setRfidStatus('scanning');
     setError('');
 
     try {
-      // Show scanning status briefly
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      setRfidStatus('success');
-      setError(`✅ Access Granted! Welcome User ${rfidData.slice(-6)}`);
-
-      // Auto-login immediately
-      rfidTimeoutRef.current = setTimeout(async () => {
-        setIsLoading(true);
+      // Call backend API for RFID login with numeric RFID
+      const response = await loginWithRFID(processedRfid);
+      
+      if (response.success) {
+        console.log('✅ RFID validation successful:', response);
+        setRfidStatus('success');
+        setError(`✅ ${response.message}`);
         
-        // Quick login process
-        await new Promise(resolve => setTimeout(resolve, 600));
+        // Store user data in localStorage
+        storeUserData(response.user);
         
-        console.log('🚀 Auto-login successful, navigating to welcome page');
+        // FIXED: Navigate to measurement welcome with user data
+        setTimeout(() => {
+          navigate('/measure/welcome', { 
+            state: {
+              firstName: response.user.firstName,
+              lastName: response.user.lastName,
+              age: response.user.age,
+              sex: response.user.sex,
+              schoolNumber: response.user.schoolNumber,
+              role: response.user.role
+            }
+          });
+        }, 1500);
         
-        // Navigate to welcome page
-        navigate('/measure/welcome');
-        
-      }, 800);
+      } else {
+        console.log('❌ RFID validation failed:', response.message);
+        setRfidStatus('error');
+        setError(`❌ ${response.message}`);
+        setRfidLoading(false);
+      }
 
     } catch (err) {
-      console.error('RFID login error:', err);
-      setRfidStatus('ready');
+      console.error('❌ RFID login error:', err);
+      setRfidStatus('error');
       setError('❌ RFID login failed. Please try again.');
       setRfidLoading(false);
     }
   };
 
-  // Manual RFID trigger for testing
-  const triggerTestRfid = () => {
-    if (!rfidLoading && !isLoading) {
-      const testRfid = Math.floor(10000000 + Math.random() * 90000000).toString();
-      processRfidScan(testRfid);
+  // FIXED: Manual login also navigates to measurement welcome with user data
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const schoolNumber = schoolNumberInputRef.current?.value || '';
+      const password = passwordInputRef.current?.value || '';
+
+      if (!schoolNumber.trim() || !password.trim()) {
+        setError('Please enter both School Number and password');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('📤 Sending manual login credentials...');
+      const response = await loginWithCredentials(schoolNumber, password);
+      
+      if (response.success) {
+        console.log('✅ Manual login successful:', response);
+        storeUserData(response.user);
+        // FIXED: Navigate to measurement welcome with user data
+        navigate('/measure/welcome', { 
+          state: {
+            firstName: response.user.firstName,
+            lastName: response.user.lastName,
+            age: response.user.age,
+            sex: response.user.sex,
+            schoolNumber: response.user.schoolNumber,
+            role: response.user.role
+          }
+        });
+      } else {
+        setError(`❌ ${response.message}`);
+        setIsLoading(false);
+      }
+      
+    } catch (err) {
+      console.error('❌ Manual login error:', err);
+      setError('❌ Login failed. Please check your credentials and try again.');
+      setIsLoading(false);
     }
   };
 
-  // Manual login functions
   const handleInputFocus = (inputName) => {
     setActiveInput(inputName);
   };
@@ -186,63 +295,41 @@ export default function LoginPage() {
     };
 
     if (key === "Del") {
-      if (activeInput === "userId") {
-        // For manual input
-        if (userIdInputRef.current) {
-          const current = userIdInputRef.current.value;
-          userIdInputRef.current.value = current.slice(0, -1);
+      if (activeInput === "schoolNumber") {
+        if (schoolNumberInputRef.current) {
+          const current = schoolNumberInputRef.current.value || '';
+          schoolNumberInputRef.current.value = current.slice(0, -1);
         }
       } else {
         if (passwordInputRef.current) {
-          const current = passwordInputRef.current.value;
+          const current = passwordInputRef.current.value || '';
           passwordInputRef.current.value = current.slice(0, -1);
         }
       }
     } else if (key === "Space") {
-      if (activeInput === "userId") {
-        if (userIdInputRef.current) {
-          userIdInputRef.current.value += " ";
+      if (activeInput === "schoolNumber") {
+        if (schoolNumberInputRef.current) {
+          const current = schoolNumberInputRef.current.value || '';
+          schoolNumberInputRef.current.value = current + " ";
         }
       } else {
         if (passwordInputRef.current) {
-          passwordInputRef.current.value += " ";
+          const current = passwordInputRef.current.value || '';
+          passwordInputRef.current.value = current + " ";
         }
       }
     } else {
-      if (activeInput === "userId") {
-        if (userIdInputRef.current) {
-          userIdInputRef.current.value += applyFormatting('', key);
+      if (activeInput === "schoolNumber") {
+        if (schoolNumberInputRef.current) {
+          const current = schoolNumberInputRef.current.value || '';
+          schoolNumberInputRef.current.value = current + applyFormatting('', key);
         }
       } else {
         if (passwordInputRef.current) {
-          passwordInputRef.current.value += applyFormatting('', key);
+          const current = passwordInputRef.current.value || '';
+          passwordInputRef.current.value = current + applyFormatting('', key);
         }
       }
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const userId = userIdInputRef.current?.value || '';
-      const password = passwordInputRef.current?.value || '';
-
-      if (!userId.trim() || !password.trim()) {
-        setError('Please enter both Student/Employee ID and password');
-        setIsLoading(false);
-        return;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      navigate('/measure/welcome');
-      
-    } catch (err) {
-      setError('Login failed. Please check your credentials and try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -276,32 +363,24 @@ export default function LoginPage() {
         return '🔄 Processing ID Card...';
       case 'success':
         return '✅ Access Granted!';
+      case 'error':
+        return '❌ Card Not Recognized';
       default:
         return 'Scanner Active - Tap Any ID Card';
     }
   };
 
-  // Prevent zooming functions
-  const handleTouchStart = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
+  const getConnectionStatusText = () => {
+    switch (connectionStatus) {
+      case 'checking':
+        return '🔍 Checking connection...';
+      case 'connected':
+        return '✅ System Ready';
+      case 'error':
+        return '❌ System Offline';
+      default:
+        return '🔍 Checking connection...';
     }
-  };
-
-  const handleTouchMove = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = (e) => {
-    if (e.touches.length > 0) {
-      e.preventDefault();
-    }
-  };
-
-  const preventZoom = (e) => {
-    e.preventDefault();
   };
 
   return (
@@ -315,6 +394,13 @@ export default function LoginPage() {
             className="w-100 h-100"
           >
             <div className={`login-content ${isVisible ? 'visible' : ''}`}>
+              
+              {/* Connection Status */}
+              <div className="connection-status">
+                <div className={`status-indicator ${connectionStatus}`}>
+                  {getConnectionStatusText()}
+                </div>
+              </div>
               
               {/* HIDDEN RFID INPUT - CAPTURES ALL SCANNER INPUT */}
               <input
@@ -338,18 +424,18 @@ export default function LoginPage() {
               {/* TOP SECTION - ID CARD FORMAT (25%) */}
               <div className={`login-card-section ${rfidLoading ? 'rfid-scanning' : ''}`}>
                 <div className="card-section-content">
-                  <div className="card-icon" onClick={triggerTestRfid} style={{ cursor: 'pointer' }}>
+                  <div className="card-icon">
                     <CreditCard />
                   </div>
                   
-                  <h2 className="card-title">Tap Any ID Card</h2>
+                  <h2 className="card-title">Tap Your ID Card</h2>
                   <p className="card-subtitle">
-                    RFID scanner is active - Tap any card for instant access
+                    Place your ID card near the scanner for instant access
                   </p>
 
                   <div className="physical-scanner-notice">
                     <RadioButtonChecked style={{ color: '#22c55e', fontSize: '1.2rem' }} />
-                    <span style={{ fontWeight: 'bold', color: '#22c55e' }}>SCANNER ACTIVE</span>
+                    <span style={{ fontWeight: 'bold', color: '#22c55e' }}>SCANNER READY</span>
                   </div>
 
                   <div className={`rfid-status ${rfidStatus}`}>
@@ -357,24 +443,12 @@ export default function LoginPage() {
                     {getRfidStatusText()}
                   </div>
 
-                  {/* Test button */}
-                  <button
-                    onClick={triggerTestRfid}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background: '#dc2626',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '0.9rem',
-                      cursor: 'pointer',
-                      marginTop: '0.5rem',
-                      fontWeight: 'bold'
-                    }}
-                    disabled={rfidLoading || isLoading}
-                  >
-                    {rfidLoading ? '🔄 Scanning...' : '🧪 Test RFID'}
-                  </button>
+                  {/* RFID Processing Info */}
+                  <div className="rfid-processing-info">
+                    <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem', textAlign: 'center' }}>
+                      <strong>Note:</strong> Uses exact numeric RFID from your card
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -402,15 +476,16 @@ export default function LoginPage() {
 
                 <Form onSubmit={handleSubmit} className="login-form">
                   <div className="form-group">
-                    <label className="form-label">Student/Employee ID</label>
+                    <label className="form-label">School Number</label>
                     <input
-                      ref={userIdInputRef}
+                      ref={schoolNumberInputRef}
                       type="text"
-                      name="userId"
-                      onFocus={() => handleInputFocus('userId')}
-                      placeholder="Enter your ID number"
-                      className={`form-input ${activeInput === 'userId' ? 'active' : ''}`}
+                      name="schoolNumber"
+                      onFocus={() => handleInputFocus('schoolNumber')}
+                      placeholder="Enter your school number"
+                      className={`form-input ${activeInput === 'schoolNumber' ? 'active' : ''}`}
                       disabled={isLoading || rfidLoading}
+                      defaultValue=""
                     />
                   </div>
 
@@ -424,6 +499,7 @@ export default function LoginPage() {
                       placeholder="Enter your password"
                       className={`form-input ${activeInput === 'password' ? 'active' : ''}`}
                       disabled={isLoading || rfidLoading}
+                      defaultValue=""
                     />
                   </div>
 
@@ -435,7 +511,7 @@ export default function LoginPage() {
                     {isLoading || rfidLoading ? (
                       <>
                         <span className="spinner"></span>
-                        {rfidLoading ? 'RFID Login...' : 'Signing In...'}
+                        {rfidLoading ? 'Processing Card...' : 'Signing In...'}
                       </>
                     ) : (
                       <>

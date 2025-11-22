@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Container, Row, Col, Button, Modal, Form } from "react-bootstrap";
 import { motion } from "framer-motion";
 import "./MeasurementWelcome.css";
@@ -7,9 +7,18 @@ import logo from "../../../assets/images/welcome.png";
 
 export default function MeasurementWelcome() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [userData, setUserData] = useState({
+    firstName: "",
+    lastName: "",
+    age: "",
+    sex: "",
+    schoolNumber: "",
+    role: ""
+  });
 
   // Add viewport meta tag to prevent zooming
   useEffect(() => {
@@ -41,11 +50,36 @@ export default function MeasurementWelcome() {
   }, []);
 
   useEffect(() => {
+    // Get user data from location state (passed from Login)
+    if (location.state) {
+      console.log("📥 Received user data in MeasurementWelcome:", location.state);
+      setUserData(location.state);
+    } else {
+      // If no data passed, try to get from localStorage
+      try {
+        const storedUser = localStorage.getItem('userData');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          console.log("📥 Retrieved user data from localStorage:", user);
+          setUserData({
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
+            age: user.age || "",
+            sex: user.sex || "",
+            schoolNumber: user.schoolNumber || "",
+            role: user.role || ""
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error retrieving user data:", error);
+      }
+    }
+    
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [location.state]);
 
   // Prevent zooming functions
   const handleTouchStart = (e) => {
@@ -71,11 +105,22 @@ export default function MeasurementWelcome() {
   };
 
   const handleContinue = () => {
-    navigate("/measure/starting");
+    console.log("🚀 Navigating to Starting with user data:", userData);
+    navigate("/measure/starting", { 
+      state: userData
+    });
   };
 
   const handleShowTerms = () => setShowTerms(true);
   const handleCloseTerms = () => setShowTerms(false);
+
+  // Format the display name
+  const getDisplayName = () => {
+    if (userData.firstName && userData.lastName) {
+      return `${userData.firstName} ${userData.lastName}`;
+    }
+    return "User";
+  };
 
   return (
     <Container fluid className="welcome-container d-flex align-items-center justify-content-center min-vh-100">
@@ -101,16 +146,46 @@ export default function MeasurementWelcome() {
             {/* Welcome Message */}
             <div className="welcome-message mb-3">
               <h1 className="main-title mb-2">
-                4 in <span className="juan-red">Juan</span> Vital Kiosk
+                Welcome, {userData.firstName || "User"}!
               </h1>
               <p className="motto mb-3">
-                Making health accessible to{" "}
+                Ready to check your vital signs with{" "}
                 <span className="every-juan">
-                  every<span className="juan-red">Juan</span>
+                  4 in <span className="juan-red">Juan</span>
                 </span>
               </p>
+              
+              {/* User Info Display */}
+              <div className="user-info-display mb-3">
+                <div className="user-info-card">
+                  <h4 className="user-info-title">Your Information</h4>
+                  <div className="user-info-grid">
+                    <div className="user-info-item">
+                      <span className="user-info-label">Name:</span>
+                      <span className="user-info-value">{getDisplayName()}</span>
+                    </div>
+                    <div className="user-info-item">
+                      <span className="user-info-label">Age:</span>
+                      <span className="user-info-value">{userData.age ? `${userData.age} years old` : "Not specified"}</span>
+                    </div>
+                    <div className="user-info-item">
+                      <span className="user-info-label">Sex:</span>
+                      <span className="user-info-value">
+                        {userData.sex ? userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1) : "Not specified"}
+                      </span>
+                    </div>
+                    {userData.schoolNumber && (
+                      <div className="user-info-item">
+                        <span className="user-info-label">School Number:</span>
+                        <span className="user-info-value">{userData.schoolNumber}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="welcome-subtitle text-muted">
-                <p className="mb-1">Before we begin, please provide us with some personal information</p>
+                <p className="mb-1">Before we begin, please review and accept our Terms and Conditions</p>
                 <p>to ensure accurate monitoring and personalized health insights.</p>
               </div>
             </div>

@@ -8,10 +8,10 @@ export default function Starting() {
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
   const [userData, setUserData] = useState({
-    firstName: "Juan",
-    lastName: "Dela Cruz",
-    age: "21",
-    sex: "male"
+    firstName: "",
+    lastName: "",
+    age: "",
+    sex: ""
   });
 
   // Add viewport meta tag to prevent zooming
@@ -44,17 +44,32 @@ export default function Starting() {
   }, []);
 
   useEffect(() => {
-    // Use default values regardless of location.state
-    setUserData({
-      firstName: "Juan",
-      lastName: "Dela Cruz",
-      age: "21",
-      sex: "male"
-    });
+    // Get user data from location state (passed from MeasurementWelcome)
+    if (location.state) {
+      console.log("📥 Received user data in Starting:", location.state);
+      setUserData(location.state);
+    } else {
+      // If no data passed, try to get from localStorage
+      try {
+        const storedUser = localStorage.getItem('userData');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          console.log("📥 Retrieved user data from localStorage:", user);
+          setUserData({
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
+            age: user.age || "",
+            sex: user.sex || ""
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error retrieving user data:", error);
+      }
+    }
     
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [location.state]);
 
   // Prevent zooming functions
   const handleTouchStart = (e) => {
@@ -81,18 +96,35 @@ export default function Starting() {
 
   // ✅ Fixed navigation path to match routes.js
   const handleStartMeasurements = () => {
-    const userData = {
-      firstName: "Juan",
-      lastName: "Dela Cruz",
-      age: "21",
-      sex: "male"
-    };
-    
     console.log("🚀 Starting navigation to BMI with data:", userData);
     
     navigate("/measure/bmi", { 
       state: userData
     });
+  };
+
+  // Format the display name
+  const getDisplayName = () => {
+    if (userData.firstName && userData.lastName) {
+      return `${userData.firstName} ${userData.lastName}`;
+    }
+    return "User";
+  };
+
+  // Format age display
+  const getAgeDisplay = () => {
+    if (userData.age) {
+      return `${userData.age} years old`;
+    }
+    return "Age not specified";
+  };
+
+  // Format sex display
+  const getSexDisplay = () => {
+    if (userData.sex) {
+      return userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1);
+    }
+    return "Not specified";
   };
 
   return (
@@ -121,20 +153,17 @@ export default function Starting() {
             <div className="info-item">
               <span className="info-label">Name:</span>
               <span className="info-value">
-                Juan Dela Cruz
+                {getDisplayName()}
               </span>
             </div>
             <div className="info-item">
               <span className="info-label">Age:</span>
-              <span className="info-value">21 years old</span>
+              <span className="info-value">{getAgeDisplay()}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Sex:</span>
-              <span className="info-value">Male</span>
+              <span className="info-value">{getSexDisplay()}</span>
             </div>
-          </div>
-          <div className="simulation-notice">
-            🔄 Simulation Mode - Using test data
           </div>
         </div>
 
