@@ -21,40 +21,39 @@ except Exception as e:
     print(f"Warning: {AI_ERROR_MSG}")
 
 class ComplianceDetector:
-    def __init__(self, model_path='../models/best.pt'):
-        self.model = None
-        self.class_names = {}
+    def __init__(self, feet_model_path='../models/best.pt', person_model_path='yolov8n.pt'):
+        self.feet_model = None
+        self.person_model = None
         
         if AI_AVAILABLE:
             try:
-                # Construct absolute path to model to avoid path issues
-                abs_model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'best.pt'))
-                print(f"Loading YOLO model from {abs_model_path}...")
-                self.model = YOLO(abs_model_path)
-                self.class_names = self.model.names
-                print("Model loaded successfully.")
+                # 1. Load Custom Feet Model
+                abs_feet_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'best.pt'))
+                print(f"Loading Feet Model from {abs_feet_path}...")
+                self.feet_model = YOLO(abs_feet_path)
+                
+                # 2. Load Standard Person Model (YOLOv8n)
+                # This will download automatically if not present
+                print(f"Loading Person Model from {person_model_path}...")
+                self.person_model = YOLO(person_model_path)
+                
+                print("All Models loaded successfully.")
             except Exception as e:
-                print(f"Failed to load model: {e}")
-                self.model = None
+                print(f"Failed to load models: {e}")
+                self.feet_model = None
+                self.person_model = None
         else:
             print("AI is unavailable. Running in pass-through mode.")
 
-        # Define Compliance Rules
-        # In our custom model: 0 = bare_feet
-        self.PERMITTED_CLASSES = [0] # bare_feet
-        
-        # We don't have 'shoes' trained yet, so anything NOT 'bare_feet' is technically unknown/suspicious
-        # But for now, we will just check if we see 'bare_feet'.
-        self.FORBIDDEN_CLASSES = []
-
     def detect_body(self, frame):
         """
-        Camera 1 Logic: Detect Person presence.
+        Camera 1 Logic: Detect Person presence using Standard YOLOv8n.
         """
-        if frame is None or self.model is None:
+        if frame is None or self.person_model is None:
             return frame, False
 
-        results = self.model(frame, verbose=False, classes=[0]) # 0 is Person in COCO
+        # Use Standard Model, Class 0 = Person
+        results = self.person_model(frame, verbose=False, classes=[0]) 
         annotated_frame = results[0].plot()
         
         # Check if person is detected
@@ -63,31 +62,22 @@ class ComplianceDetector:
 
     def detect_feet_compliance(self, frame):
         """
-        Camera 2 Logic: Check for shoes, bags, etc.
-        Returns: frame, status_message, is_compliant (True/False)
+        Camera 2 Logic: Check for Bare Feet using Custom Model.
         """
-        if frame is None or self.model is None:
+        if frame is None or self.feet_model is None:
             return frame, "AI Error", False
 
-        # Run detection on everything
-        results = self.model(frame, verbose=False)
+        # Use Custom Feet Model
+        results = self.feet_model(frame, verbose=False)
         annotated_frame = results[0].plot()
         
         detections = results[0].boxes
-        
-        violations = []
-        
-        # Custom Logic for Bare Feet Model
-        # We only trained 'bare_feet' (class 0).
-        # So if we see class 0, it is compliant.
-        
         bare_feet_detected = False
         
         for box in detections:
             cls_id = int(box.cls[0])
-            # cls_name = self.class_names.get(cls_id, "Unknown")
-            
-            if cls_id == 0: # bare_feet
+            # In our custom model, 0 is bare_feet
+            if cls_id == 0: 
                 bare_feet_detected = True
             
         if bare_feet_detected:

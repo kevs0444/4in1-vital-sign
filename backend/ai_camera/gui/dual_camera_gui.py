@@ -79,6 +79,8 @@ class DualCameraSystem:
         if not self.running:
             return
             
+        start_time = cv2.getTickCount()
+            
         # --- Process Camera 1 (Body) ---
         ret1, frame1 = self.cap1.read()
         if ret1:
@@ -104,7 +106,15 @@ class DualCameraSystem:
             else:
                 self.lbl_feet_status.config(fg="#ff0000") # Red
 
-        self.root.after(30, self.update_feeds)
+        # Calculate FPS
+        end_time = cv2.getTickCount()
+        time_diff = (end_time - start_time) / cv2.getTickFrequency()
+        fps = 1.0 / time_diff if time_diff > 0 else 0
+        
+        # Update Title with FPS
+        self.root.title(f"Vital Sign: Weight Accuracy & Body Scan | FPS: {fps:.1f}")
+
+        self.root.after(10, self.update_feeds)
 
     def display_frame(self, frame, canvas):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
