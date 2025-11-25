@@ -104,7 +104,7 @@
 .checklist-item:hover {
   transform: translateY(-8px);
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
-  border-color: #8B0000;
+  border-color: #ef4444;
 }
 
 .checklist-item:active {
@@ -113,9 +113,9 @@
 }
 
 .checklist-item.selected {
-  border-color: #8B0000;
-  background: #8B0000;
-  box-shadow: 0 8px 25px rgba(139, 0, 0, 0.4);
+  border-color: #ef4444;
+  background: linear-gradient(to bottom, #ef4444, #dc2626);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
 }
 
 .checklist-item.selected .item-name,
@@ -129,7 +129,7 @@
   top: 10px;
   right: 10px;
   background: white;
-  color: #8B0000;
+  color: #ef4444;
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -145,14 +145,30 @@
   font-size: 5rem;
   margin-bottom: 20px;
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 3px solid #f0f0f0;
+  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 .checklist-item:hover .item-icon {
   transform: scale(1.2) rotate(5deg);
+  border-color: #ef4444;
 }
 
 .checklist-item:active .item-icon {
   transform: scale(0.95);
+}
+
+.checklist-item.selected .item-icon {
+  border-color: white;
+  background: white;
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
 }
 
 .item-name {
@@ -182,9 +198,9 @@
   border-radius: 20px !important;
   font-size: 2.2rem !important;
   font-weight: 600 !important;
-  background: linear-gradient(135deg, #8B0000, #660000);
+  background: linear-gradient(to bottom, #ef4444, #dc2626);
   border: none !important;
-  box-shadow: 0 4px 15px rgba(139, 0, 0, 0.4);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
   transition: all 0.2s ease !important;
   min-height: 120px;
   min-width: 450px;
@@ -206,8 +222,8 @@
 
 .start-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(139, 0, 0, 0.5);
-  background: linear-gradient(135deg, #660000, #550000);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+  background: linear-gradient(to bottom, #dc2626, #b91c1c);
 }
 
 .start-button:disabled {

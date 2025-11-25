@@ -1,6 +1,6 @@
-// Standby.jsx (updated)
+// Standby.jsx (updated with reset detection)
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import { motion } from 'framer-motion';
 import { Circle, CheckCircle, Error, Warning } from '@mui/icons-material';
@@ -14,9 +14,12 @@ export default function Standby() {
   const [isPressed, setIsPressed] = useState(false);
   const [systemStatus, setSystemStatus] = useState('checking_backend');
   const [backendAvailable, setBackendAvailable] = useState(false);
+  const [isAlreadyConnected, setIsAlreadyConnected] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const pollerRef = useRef(null);
+  const connectionAttempted = useRef(false);
 
   // Effect for preventing zoom and controlling viewport
   useEffect(() => {
@@ -49,21 +52,82 @@ export default function Standby() {
     return () => clearInterval(timer);
   }, []);
 
+  // Check if we're coming from Sharing page with reset flag
   useEffect(() => {
+    if (location.state?.fromSharing && location.state?.reset) {
+      console.log('🔄 System reset detected - ready for new user');
+      // Perform any additional reset actions here if needed
+    }
+  }, [location.state]);
+
+  // FIXED: Improved connection polling that checks if already connected first
+  useEffect(() => {
+    console.log('🔄 Standby component mounted - Checking connection status');
+
+    // Prevent multiple connection attempts
+    if (connectionAttempted.current) {
+      console.log('⚡ Connection already attempted, skipping reconnection');
+      return;
+    }
+
     const startStatusPolling = async () => {
+      connectionAttempted.current = true;
+
+      // Clear any existing poller first
+      if (pollerRef.current) {
+        clearInterval(pollerRef.current);
+        pollerRef.current = null;
+      }
+
       try {
-        await sensorAPI.connect();
-        setBackendAvailable(true);
+        setSystemStatus('checking_backend');
+
+        // First, check if we're already connected without trying to reconnect
+        console.log('🔍 Checking current system status...');
+        const currentStatus = await sensorAPI.getSystemStatus();
+        console.log('📊 Current system status:', currentStatus);
+
+        if (currentStatus.connected) {
+          console.log('✅ Already connected to Arduino - skipping reconnection');
+          setIsAlreadyConnected(true);
+
+          if (currentStatus.auto_tare_completed) {
+            setSystemStatus('ready');
+            setBackendAvailable(true);
+          } else {
+            setSystemStatus('waiting_for_auto_tare');
+            setBackendAvailable(true);
+          }
+        } else {
+          // Only attempt connection if not already connected
+          console.log('🔌 Not connected - attempting connection...');
+          await sensorAPI.connect();
+          setBackendAvailable(true);
+          console.log('✅ Backend connected successfully');
+          setSystemStatus('waiting_for_auto_tare');
+        }
       } catch (error) {
-        console.log('Backend connection failed, entering offline mode');
-        setBackendAvailable(false);
-        setSystemStatus('offline_mode');
+        console.log('❌ Connection check failed:', error.message);
+
+        // Check if it's a permission error (already connected)
+        if (error.message.includes('Access is denied') || error.message.includes('COM3')) {
+          console.log('⚡ Port COM3 already in use - assuming connected');
+          setIsAlreadyConnected(true);
+          setBackendAvailable(true);
+          setSystemStatus('waiting_for_auto_tare');
+        } else {
+          console.log('🔌 Entering offline mode');
+          setBackendAvailable(false);
+          setSystemStatus('offline_mode');
+        }
         return;
       }
 
+      // Start polling for system status updates
       pollerRef.current = setInterval(async () => {
         try {
           const status = await sensorAPI.getSystemStatus();
+          console.log('📊 System status update:', status);
 
           if (status.connected) {
             if (status.auto_tare_completed) {
@@ -75,28 +139,43 @@ export default function Standby() {
             setSystemStatus('connecting_arduino');
           }
         } catch (error) {
-          console.log('Backend polling failed, switching to offline mode');
-          setBackendAvailable(false);
-          setSystemStatus('offline_mode');
-          clearInterval(pollerRef.current);
+          console.log('⚠️ Status polling failed:', error.message);
+
+          // If we were previously connected, maintain connection state
+          if (!isAlreadyConnected) {
+            setBackendAvailable(false);
+            setSystemStatus('offline_mode');
+          }
+
+          if (pollerRef.current) {
+            clearInterval(pollerRef.current);
+            pollerRef.current = null;
+          }
         }
-      }, 2500);
+      }, 3000); // Increased to 3 seconds to reduce load
     };
 
     startStatusPolling();
 
+    // Cleanup function - clear interval when component unmounts
     return () => {
+      console.log('🧹 Standby component unmounting - Cleaning up poller');
       if (pollerRef.current) {
         clearInterval(pollerRef.current);
+        pollerRef.current = null;
       }
+      // Don't reset connectionAttempted here - we want to remember we tried
     };
-  }, []);
+  }, [isAlreadyConnected]); // Only re-run if connection state changes
 
   const handleStartPress = () => {
     setIsPressed(true);
     setTimeout(() => {
       setIsPressed(false);
-      // ✅ Navigate to login page instead of measurement welcome
+      // Clear any residual data before going to login
+      localStorage.removeItem('currentUser');
+      sessionStorage.removeItem('currentUser');
+      console.log('🧹 Cleared residual data - navigating to login');
       navigate('/login');
     }, 200);
   };
@@ -122,7 +201,7 @@ export default function Standby() {
       case 'ready':
         return 'System Ready - Auto-Tare Completed';
       case 'waiting_for_auto_tare':
-        return 'Arduino Connected - Waiting for Auto-Tare...';
+        return isAlreadyConnected ? 'System Connected - Auto-Tare in Progress...' : 'Arduino Connected - Waiting for Auto-Tare...';
       case 'connecting_arduino':
         return 'Connecting to System...';
       case 'offline_mode':
@@ -142,8 +221,8 @@ export default function Standby() {
     <Container fluid className="standby-container">
       <motion.div className="standby-backend-status">
         <div className={`standby-status-indicator ${systemStatus === 'ready' ? 'connected' :
-            systemStatus === 'offline_mode' ? 'warning' :
-              (systemStatus === 'backend_down' || systemStatus === 'connecting_arduino') ? 'error' : 'checking'
+          systemStatus === 'offline_mode' ? 'warning' :
+            (systemStatus === 'backend_down' || systemStatus === 'connecting_arduino') ? 'error' : 'checking'
           }`}>
           {getStatusIcon(systemStatus)}
           <span className="standby-status-text">{getStatusText(systemStatus)}</span>

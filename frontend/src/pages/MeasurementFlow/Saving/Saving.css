@@ -7,26 +7,29 @@
 
 .saving-page {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  min-height: 100vh;
+  height: 100vh;
   background: #f8fafc;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 20px;
+  overflow: hidden;
 }
 
 /* Main Container */
 .saving-container {
   background: white;
-  border-radius: 16px;
-  padding: 40px 30px;
+  border-radius: 24px;
+  padding: 40px 35px;
   width: 100%;
-  max-width: 560px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  max-height: 95vh;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   text-align: center;
   opacity: 0;
   transform: translateY(20px);
   transition: all 0.6s ease;
+  overflow: hidden;
 }
 
 .saving-container.visible {
@@ -49,18 +52,14 @@
 }
 
 .icon-circle {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.icon-circle svg {
-  width: 40px;
-  height: 40px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  transition: all 0.5s ease;
 }
 
 .icon-circle.saving {
@@ -71,22 +70,25 @@
 .icon-circle.success {
   background: linear-gradient(135deg, #10b981 0%, #047857 100%);
   color: white;
+  transform: scale(1.1);
 }
 
 .main-title {
-  font-size: 1.8rem;
+  font-size: 2.2rem;
   font-weight: 800;
   color: #1e293b;
   margin-bottom: 12px;
   line-height: 1.2;
+  transition: all 0.5s ease;
 }
 
 .subtitle {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: #64748b;
   line-height: 1.5;
   max-width: 400px;
   font-weight: 500;
+  transition: all 0.5s ease;
 }
 
 /* Progress Section */
@@ -94,7 +96,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 40px;
+  gap: 30px;
   margin-bottom: 40px;
 }
 
@@ -131,7 +133,7 @@
   border: 8px solid transparent;
   border-top: 8px solid #dc2626;
   border-radius: 50%;
-  transition: transform 0.8s ease;
+  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .ring-center {
@@ -148,24 +150,28 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.5s ease;
 }
 
 .pulse-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   background: #dc2626;
   border-radius: 50%;
   animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { 
+
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
-  50% { 
-    transform: scale(1.3);
+
+  50% {
+    transform: scale(1.4);
     opacity: 0.7;
   }
 }
@@ -174,170 +180,267 @@
   font-size: 14px;
   font-weight: 600;
   color: #dc2626;
-}
-
-/* Steps Container */
-.steps-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 400px;
-}
-
-.step-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  background: white;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
   transition: all 0.3s ease;
-  width: 100%;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
-.step-item.completed {
+/* Current Step Card */
+.current-step-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 3px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 30px;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.current-step-card.animating {
   border-color: #10b981;
-  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(16, 185, 129, 0.2);
 }
 
-.step-indicator {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
+.current-step-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.8s ease;
 }
 
-.step-dot {
-  width: 12px;
-  height: 12px;
-  background: #dc2626;
+.current-step-card.animating::before {
+  left: 100%;
+}
+
+.step-icon {
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  color: white;
+  box-shadow: 0 6px 15px rgba(220, 38, 38, 0.3);
+  transition: all 0.5s ease;
 }
 
-.step-item.completed .step-dot {
-  background: #10b981;
-  transform: scale(1.2);
+.current-step-card.animating .step-icon {
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  transform: scale(1.1) rotate(360deg);
 }
 
-.step-label {
-  flex: 1;
-  text-align: left;
-  font-size: 1rem;
-  font-weight: 500;
+.step-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.step-title {
+  font-size: 1.4rem;
+  font-weight: 700;
   color: #1e293b;
-  transition: color 0.3s ease;
+  margin-bottom: 12px;
+  transition: all 0.5s ease;
 }
 
-.step-item.completed .step-label {
+.current-step-card.animating .step-title {
   color: #065f46;
+}
+
+.step-description {
+  font-size: 1rem;
+  color: #64748b;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  transition: all 0.5s ease;
+}
+
+.step-details {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  margin-top: 15px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.5s ease;
+}
+
+.current-step-card.animating .step-details {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  color: #1e293b;
   font-weight: 600;
+}
+
+.current-step-card.animating .detail-value {
+  color: #065f46;
 }
 
 .step-status {
-  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid #f1f5f9;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #64748b;
-  transition: color 0.3s ease;
-  min-width: 80px;
-  text-align: right;
+  transition: all 0.5s ease;
 }
 
-.step-item.completed .step-status {
+.current-step-card.animating .step-status {
   color: #10b981;
+  border-top-color: #dcfce7;
 }
 
-/* Success Section */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dc2626;
+  animation: statusPulse 1.5s ease-in-out infinite;
+}
+
+.current-step-card.animating .status-dot {
+  background: #10b981;
+}
+
+@keyframes statusPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.5);
+    opacity: 0.7;
+  }
+}
+
+/* Success Section - ONLY ONE CHECK (in header) */
 .success-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 32px;
+  gap: 30px;
   margin-bottom: 40px;
+  animation: slideUpFade 0.8s ease;
 }
 
-.success-visual {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.success-icon {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.success-ripple {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border: 2px solid #10b981;
-  border-radius: 50%;
-  animation: ripple 2s ease-out infinite;
-}
-
-.ripple-1 {
-  width: 100px;
-  height: 100px;
-  animation-delay: 0s;
-}
-
-.ripple-2 {
-  width: 120px;
-  height: 120px;
-  animation-delay: 0.5s;
-}
-
-.ripple-3 {
-  width: 140px;
-  height: 140px;
-  animation-delay: 1s;
-}
-
-@keyframes ripple {
+@keyframes slideUpFade {
   0% {
-    transform: translate(-50%, -50%) scale(0.8);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.4);
     opacity: 0;
+    transform: translateY(30px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 .success-message {
   text-align: center;
-  max-width: 400px;
+  max-width: 450px;
 }
 
 .success-message h2 {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: #065f46;
   margin-bottom: 12px;
 }
 
 .success-message p {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: #64748b;
   line-height: 1.5;
 }
 
+/* Completed Steps Summary */
+.completed-summary {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 3px solid #10b981;
+  border-radius: 16px;
+  padding: 25px;
+  margin: 25px 0;
+  text-align: center;
+}
+
+.summary-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #065f46;
+  margin-bottom: 15px;
+}
+
+.completed-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.completed-step-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #d1fae5;
+}
+
+.completed-step-name {
+  font-size: 0.9rem;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.completed-step-status {
+  font-size: 0.8rem;
+  color: #10b981;
+  font-weight: 600;
+}
+
 /* Navigation Info */
 .nav-info {
-  margin-bottom: 32px;
+  margin-bottom: 30px;
   display: flex;
   justify-content: center;
 }
@@ -346,7 +449,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 15px;
 }
 
 .loading-indicator {
@@ -364,13 +467,22 @@
   animation: bounce 1.4s ease-in-out infinite both;
 }
 
-.dot:nth-child(1) { animation-delay: -0.32s; }
-.dot:nth-child(2) { animation-delay: -0.16s; }
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
 
 @keyframes bounce {
-  0%, 80%, 100% {
+
+  0%,
+  80%,
+  100% {
     transform: scale(0);
   }
+
   40% {
     transform: scale(1);
   }
@@ -391,12 +503,12 @@
 .security-badge {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
+  gap: 15px;
+  padding: 18px 20px;
   background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
   border: 2px solid #fecaca;
-  border-radius: 12px;
-  max-width: 400px;
+  border-radius: 15px;
+  max-width: 450px;
   width: 100%;
 }
 
@@ -422,111 +534,93 @@
 }
 
 .security-text strong {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #dc2626;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .security-text span {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: #ef4444;
 }
 
 /* Responsive Design */
 @media (max-width: 640px) {
   .saving-page {
-    padding: 16px;
+    padding: 15px;
   }
-  
+
   .saving-container {
-    padding: 30px 20px;
-    border-radius: 12px;
+    padding: 30px 25px;
+    border-radius: 20px;
+    max-height: 95vh;
   }
-  
+
   .main-title {
-    font-size: 1.6rem;
+    font-size: 1.8rem;
   }
-  
+
   .subtitle {
-    font-size: 0.9rem;
+    font-size: 1rem;
   }
-  
-  .progress-ring {
-    width: 120px;
-    height: 120px;
+
+  .current-step-card {
+    padding: 25px;
   }
-  
-  .ring-center {
-    width: 70px;
-    height: 70px;
+
+  .step-icon {
+    width: 50px;
+    height: 50px;
   }
-  
-  .step-item {
-    padding: 14px 16px;
+
+  .step-icon svg {
+    width: 24px;
+    height: 24px;
   }
-  
-  .security-badge {
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
-  }
-  
-  .security-text {
-    align-items: center;
-    text-align: center;
+
+  .step-title {
+    font-size: 1.2rem;
   }
 }
 
 @media (max-width: 480px) {
   .saving-container {
-    padding: 24px 16px;
+    padding: 25px 20px;
   }
-  
+
   .main-title {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
   }
-  
-  .icon-circle {
-    width: 64px;
-    height: 64px;
+
+  .subtitle {
+    font-size: 0.95rem;
   }
-  
-  .icon-circle svg {
-    width: 32px;
-    height: 32px;
+
+  .current-step-card {
+    padding: 20px;
   }
-  
-  .progress-ring {
-    width: 100px;
-    height: 100px;
-  }
-  
-  .ring-center {
-    width: 60px;
-    height: 60px;
-  }
-  
-  .step-indicator {
-    width: 20px;
-    height: 20px;
-  }
-  
-  .step-dot {
-    width: 10px;
-    height: 10px;
-  }
-  
-  .step-status {
-    font-size: 0.7rem;
-    min-width: 70px;
-  }
-  
+
   .success-message h2 {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
   }
-  
+
   .success-message p {
-    font-size: 0.9rem;
+    font-size: 1rem;
+  }
+
+  .security-badge {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .security-text {
+    align-items: center;
+    text-align: center;
+  }
+
+  .completed-summary {
+    padding: 20px;
   }
 }

@@ -25,10 +25,6 @@
   position: relative;
 }
 
-/* ... existing styles ... */
-
-
-
 .result-content.visible {
   opacity: 1;
   transform: translateY(0);
@@ -199,25 +195,26 @@
   box-sizing: border-box;
 }
 
-.risk-range-mini-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.low-risk:hover {
+/* FIXED: Add permanent borders with correct colors */
+.risk-range-mini-card.low-risk {
   border-color: #10b981;
 }
 
-.moderate-risk:hover {
+.risk-range-mini-card.moderate-risk {
   border-color: #f59e0b;
 }
 
-.high-risk:hover {
+.risk-range-mini-card.high-risk {
   border-color: #ef4444;
 }
 
-.critical-risk:hover {
+.risk-range-mini-card.critical-risk {
   border-color: #dc2626;
+}
+
+.risk-range-mini-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .mini-risk-header {
@@ -235,20 +232,21 @@
   flex-shrink: 0;
 }
 
+/* FIXED: Solid colors for circles */
 .low-risk .mini-risk-color {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  background: #10b981;
 }
 
 .moderate-risk .mini-risk-color {
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  background: #f59e0b;
 }
 
 .high-risk .mini-risk-color {
-  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  background: #ef4444;
 }
 
 .critical-risk .mini-risk-color {
-  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  background: #dc2626;
 }
 
 .mini-risk-label {
@@ -778,10 +776,6 @@
   line-height: 1.4;
   font-size: 0.85rem;
 }
-
-/* REMOVED: Interactive Animations - No more pulse animation */
-
-/* REMOVED: Scrollbar Styling for result-container */
 
 /* 100% Zoom Compatibility */
 @media screen and (min-resolution: 96dpi) {

@@ -7,7 +7,10 @@ import {
   Login as LoginIcon,
   PersonAdd,
   CreditCard,
-  RadioButtonChecked
+  RadioButtonChecked,
+  CheckCircle,
+  Error,
+  Schedule
 } from '@mui/icons-material';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Login.css';
@@ -185,7 +188,7 @@ export default function LoginPage() {
 
     setRfidLoading(true);
     setRfidStatus('scanning');
-    setError('');
+    setError(''); // Clear any previous errors
 
     try {
       // Call backend API for RFID login with numeric RFID
@@ -194,7 +197,7 @@ export default function LoginPage() {
       if (response.success) {
         console.log('✅ RFID validation successful:', response);
         setRfidStatus('success');
-        setError(`✅ ${response.message}`);
+        // DON'T set error message for success - let the RFID status handle it
 
         // Store user data in localStorage
         storeUserData(response.user);
@@ -216,14 +219,14 @@ export default function LoginPage() {
       } else {
         console.log('❌ RFID validation failed:', response.message);
         setRfidStatus('error');
-        setError(`❌ ${response.message}`);
+        setError(response.message); // No emoji prefix
         setRfidLoading(false);
       }
 
     } catch (err) {
       console.error('❌ RFID login error:', err);
       setRfidStatus('error');
-      setError('❌ RFID login failed. Please try again.');
+      setError('RFID login failed. Please try again.'); // No emoji prefix
       setRfidLoading(false);
     }
   };
@@ -262,13 +265,13 @@ export default function LoginPage() {
           }
         });
       } else {
-        setError(`❌ ${response.message}`);
+        setError(response.message); // No emoji prefix
         setIsLoading(false);
       }
 
     } catch (err) {
       console.error('❌ Manual login error:', err);
-      setError('❌ Login failed. Please check your credentials and try again.');
+      setError('Login failed. Please check your credentials and try again.'); // No emoji prefix
       setIsLoading(false);
     }
   };
@@ -355,18 +358,35 @@ export default function LoginPage() {
 
   const keyboardKeys = showSymbols ? symbolKeys : alphabetKeys;
 
+  // FIXED: Get RFID status text without redundant icons/emojis
   const getRfidStatusText = () => {
     switch (rfidStatus) {
       case 'ready':
         return 'Scanner Active - Tap Any ID Card';
       case 'scanning':
-        return '🔄 Processing ID Card...';
+        return 'Processing ID Card...';
       case 'success':
-        return '✅ Access Granted!';
+        return 'Access Granted!';
       case 'error':
-        return '❌ Card Not Recognized';
+        return 'Card Not Recognized';
       default:
         return 'Scanner Active - Tap Any ID Card';
+    }
+  };
+
+  // FIXED: Get RFID status icon
+  const getRfidStatusIcon = () => {
+    switch (rfidStatus) {
+      case 'ready':
+        return <RadioButtonChecked style={{ fontSize: '1rem', marginRight: '0.5rem', color: '#22c55e' }} />;
+      case 'scanning':
+        return <Schedule style={{ fontSize: '1rem', marginRight: '0.5rem', color: '#3b82f6' }} />;
+      case 'success':
+        return <CheckCircle style={{ fontSize: '1rem', marginRight: '0.5rem', color: '#16a34a' }} />;
+      case 'error':
+        return <Error style={{ fontSize: '1rem', marginRight: '0.5rem', color: '#dc2626' }} />;
+      default:
+        return <RadioButtonChecked style={{ fontSize: '1rem', marginRight: '0.5rem', color: '#22c55e' }} />;
     }
   };
 
@@ -438,8 +458,9 @@ export default function LoginPage() {
                     <span style={{ fontWeight: 'bold', color: '#22c55e' }}>SCANNER READY</span>
                   </div>
 
+                  {/* FIXED: RFID Status Display */}
                   <div className={`rfid-status ${rfidStatus}`}>
-                    <RadioButtonChecked style={{ fontSize: '1rem', marginRight: '0.5rem' }} />
+                    {getRfidStatusIcon()}
                     {getRfidStatusText()}
                   </div>
 

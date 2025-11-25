@@ -14,7 +14,7 @@ export default function AILoading() {
 
   const analysisSteps = [
     "Analyzing Vital Signs",
-    "Processing Health Patterns", 
+    "Processing Health Patterns",
     "Assessing Risk Factors",
     "Generating Insights",
     "Finalizing Report"
@@ -23,7 +23,7 @@ export default function AILoading() {
   useEffect(() => {
     // Get user data from location state
     console.log("🧠 AI Loading page received location.state:", location.state);
-    
+
     if (location.state) {
       console.log("✅ Data received in AI Loading:", {
         hasWeight: !!location.state.weight,
@@ -37,7 +37,7 @@ export default function AILoading() {
         hasPersonalInfo: !!location.state.firstName,
         fullData: location.state
       });
-      
+
       // Store in session storage as backup
       sessionStorage.setItem('vitalSignsData', JSON.stringify(location.state));
       setStatusMessage("Juan AI is analyzing your health data...");
@@ -48,7 +48,7 @@ export default function AILoading() {
         console.log("📦 Using data from session storage");
         // If no location state but we have stored data, use it
         setTimeout(() => {
-          navigate("/measure/result", { 
+          navigate("/measure/result", {
             state: JSON.parse(storedData)
           });
         }, 2000);
@@ -59,10 +59,10 @@ export default function AILoading() {
         return;
       }
     }
-    
+
     // Prevent body scrolling when component mounts with unique class
     document.body.classList.add('ai-loading-active-768');
-    
+
     // Animation trigger and start analysis process
     const timer = setTimeout(() => {
       setIsVisible(true);
@@ -78,7 +78,7 @@ export default function AILoading() {
   const simulateAIThinkingProcess = () => {
     setIsAnalyzing(true);
     setStatusMessage("Juan AI is analyzing your health data...");
-    
+
     // Simulate AI thinking steps
     const stepInterval = setInterval(() => {
       setCurrentStep(prev => {
@@ -97,12 +97,12 @@ export default function AILoading() {
       setAnalysisComplete(true);
       setCurrentStep(analysisSteps.length - 1);
       setStatusMessage("Analysis complete! Redirecting to results...");
-      
+
       // Auto navigate to result page after 3 seconds
       setTimeout(() => {
         console.log("🧠 AI Thinking Complete - Navigating to Result with data:", location.state);
         // ✅ FIXED: Navigate to result with the received data
-        navigate("/measure/result", { 
+        navigate("/measure/result", {
           state: location.state // Pass the original data directly
         });
       }, 3000);
@@ -112,15 +112,15 @@ export default function AILoading() {
   // Manual navigation function in case auto-navigation fails
   const handleManualNavigate = () => {
     console.log("🔄 Manual navigation triggered");
-    navigate("/measure/result", { 
-      state: location.state || {} 
+    navigate("/measure/result", {
+      state: location.state || {}
     });
   };
 
   return (
     <div className="ai-loading-container-768">
       <div className={`ai-loading-content-768 ${isVisible ? 'visible' : ''}`}>
-        
+
         {/* Header with larger centered AI icon */}
         <div className="ai-loading-header-768">
           <div className="ai-loading-icon-768">
@@ -130,9 +130,9 @@ export default function AILoading() {
             {isAnalyzing ? "Juan AI is Thinking" : analysisComplete ? "Analysis Complete!" : "Juan AI Initializing"}
           </h1>
           <p className="ai-loading-subtitle-768">
-            {isAnalyzing 
-              ? "Juan AI is carefully analyzing your health data patterns..." 
-              : analysisComplete 
+            {isAnalyzing
+              ? "Juan AI is carefully analyzing your health data patterns..."
+              : analysisComplete
                 ? "Your comprehensive health assessment is ready"
                 : "Starting Juan AI analysis engine..."
             }
@@ -140,13 +140,7 @@ export default function AILoading() {
         </div>
 
         {/* Status Message Display */}
-        <div style={{
-          padding: '10px',
-          margin: '10px 0',
-          background: '#f8f9fa',
-          borderRadius: '8px',
-          border: '1px solid #e9ecef'
-        }}>
+        <div className="ai-status-message-768">
           <strong>Status:</strong> {statusMessage}
         </div>
 
@@ -160,15 +154,14 @@ export default function AILoading() {
                 <div className="ai-brain-pulse-768">🧠</div>
               </div>
             </div>
-            
+
             {/* Dynamic Analysis Steps */}
             <div className="ai-analysis-steps-768">
               {analysisSteps.map((step, index) => (
-                <div 
+                <div
                   key={index}
-                  className={`ai-analysis-step-768 ${index <= currentStep ? 'active' : ''} ${
-                    index === currentStep ? 'current' : ''
-                  }`}
+                  className={`ai-analysis-step-768 ${index <= currentStep ? 'active' : ''} ${index === currentStep ? 'current' : ''
+                    }`}
                 >
                   <span className="ai-step-check-768">
                     {index < currentStep ? '✓' : index === currentStep ? '⟳' : ''}
@@ -191,7 +184,7 @@ export default function AILoading() {
                 Juan AI is analyzing {currentStep + 1}/{analysisSteps.length} steps...
               </div>
               <div className="progress-bar-768">
-                <div 
+                <div
                   className="progress-fill-768"
                   style={{ width: `${((currentStep + 1) / analysisSteps.length) * 100}%` }}
                 ></div>
@@ -233,22 +226,22 @@ export default function AILoading() {
         {/* Auto Navigation */}
         <div className="ai-auto-navigate-768">
           {analysisComplete && (
-            <div style={{textAlign: 'center'}}>
+            <div style={{ textAlign: 'center' }}>
               <span className="ai-navigate-text-768">
                 Preparing your comprehensive health results...
               </span>
               <br />
-              <button 
+              <button
                 onClick={handleManualNavigate}
                 style={{
                   marginTop: '10px',
-                  padding: '8px 16px',
+                  padding: '10px 18px',
                   background: '#10b981',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '10px',
                   cursor: 'pointer',
-                  fontSize: '0.9rem'
+                  fontSize: '1rem'
                 }}
               >
                 Click here if not automatically redirected
@@ -262,47 +255,22 @@ export default function AILoading() {
           <div className="ai-processing-icon-768">🤖</div>
           <div className="ai-processing-text-768">
             <strong>Juan AI Neural Network</strong>
-            <span>Testing Phase - Advanced pattern recognition in progress</span>
+            <span>Advanced pattern recognition in progress</span>
           </div>
         </div>
 
-        {/* Testing Phase Badge */}
-        <div className="testing-badge-768">
-          <span className="badge-icon-768">🔬</span>
-          <span className="badge-text-768">Juan AI Capstone Testing Phase</span>
-        </div>
-
-        {/* Debug info */}
-        <div style={{ 
-          marginTop: '20px', 
-          fontSize: '0.7rem', 
-          color: '#666',
-          textAlign: 'center',
-          padding: '5px',
-          background: '#f5f5f5',
-          borderRadius: '5px',
-          fontFamily: 'monospace'
-        }}>
-          Status: {analysisComplete ? '✅ COMPLETE' : '⏳ ANALYZING'} | 
-          Next: /measure/result | 
-          Data: {location.state ? '📊 RECEIVED' : '❌ MISSING'} |
-          Steps: {currentStep + 1}/{analysisSteps.length}
+        {/* Documentation Badge */}
+        <div className="documentation-badge-768">
+          <span className="badge-icon-768">📚</span>
+          <span className="badge-text-768">Juan AI Health Analysis System</span>
         </div>
 
         {/* Manual navigation button for debugging */}
         {!isAnalyzing && !analysisComplete && (
-          <div style={{textAlign: 'center', marginTop: '15px'}}>
-            <button 
+          <div className="ai-manual-nav-768">
+            <button
               onClick={handleManualNavigate}
-              style={{
-                padding: '10px 20px',
-                background: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '0.9rem'
-              }}
+              className="ai-manual-nav-button-768"
             >
               Manual Navigate to Results
             </button>

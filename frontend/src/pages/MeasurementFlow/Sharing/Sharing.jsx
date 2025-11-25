@@ -418,8 +418,44 @@ export default function Sharing() {
     `.trim();
   };
 
+  const clearAllUserData = () => {
+    console.log('🧹 Clearing all user data and resetting system...');
+
+    // Clear any stored data in localStorage/sessionStorage
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userData');
+    sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('userData');
+
+    // Clear any state management data
+    if (window.reduxStore) {
+      window.reduxStore.dispatch({ type: 'RESET_USER_DATA' });
+    }
+
+    // Reset any global variables
+    if (window.currentUserData) {
+      window.currentUserData = null;
+    }
+
+    console.log('✅ All user data cleared - system ready for next user');
+  };
+
   const handleReturnHome = () => {
-    navigate("/");
+    console.log('🏠 Returning to home - clearing all user data and resetting system');
+
+    // Clear all user data first
+    clearAllUserData();
+
+    // Add a small delay to ensure clean state
+    setTimeout(() => {
+      navigate("/", {
+        replace: true,  // This prevents going back to sharing page
+        state: {
+          fromSharing: true,
+          reset: true  // Signal that we're resetting for new user
+        }
+      });
+    }, 100);
   };
 
   const handlePrintAgain = () => {
@@ -519,7 +555,7 @@ export default function Sharing() {
                 className="home-btn"
                 onClick={handleReturnHome}
               >
-                🏠 Return to Home
+                🏠 Return to Home (New User)
               </button>
             </>
           ) : isPrinting ? (
@@ -547,6 +583,7 @@ export default function Sharing() {
             <div>📋 Measurements: Complete Health Assessment</div>
             <div>📄 Pages: Thermal Receipt Format</div>
             <div>⏱️ Status: {isPrinting ? "PRINTING" : printComplete ? "COMPLETED" : "READY"}</div>
+            <div>🔄 Next: System will reset for new user</div>
           </div>
         </div>
 
