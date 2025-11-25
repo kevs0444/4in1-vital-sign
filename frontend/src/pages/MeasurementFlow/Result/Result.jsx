@@ -28,17 +28,17 @@ export default function Result() {
 
   useEffect(() => {
     console.log("📍 Location state received in Result:", location.state);
-    
+
     if (location.state) {
       console.log("✅ Setting user data in Result:", location.state);
       setUserData(location.state);
-      
+
       // Start analysis immediately since AILoading already happened
       console.log("🔍 Starting analysis with data:", location.state);
       analyzeHealthData(location.state);
     } else {
       console.log("❌ No data received - trying to get from session storage");
-      
+
       // Try to get data from session storage as fallback
       const storedData = sessionStorage.getItem('vitalSignsData');
       if (storedData) {
@@ -69,7 +69,7 @@ export default function Result() {
         analyzeHealthData(sampleData);
       }
     }
-    
+
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 100);
@@ -83,7 +83,7 @@ export default function Result() {
       const riskClass = getRiskClass(riskLevel);
       document.documentElement.classList.add(riskClass);
     }
-    
+
     // Cleanup function to remove class when component unmounts
     return () => {
       document.documentElement.classList.remove('low-risk', 'moderate-risk', 'high-risk', 'critical-risk');
@@ -172,7 +172,7 @@ export default function Result() {
       console.log("🩸 Blood Pressure:", `${data.systolic}/${data.diastolic}`);
       const systolicNum = parseFloat(data.systolic);
       const diastolicNum = parseFloat(data.diastolic);
-      
+
       if (!isNaN(systolicNum) && !isNaN(diastolicNum)) {
         if (systolicNum >= 180 || diastolicNum >= 120) {
           riskScore += 60;
@@ -254,7 +254,7 @@ export default function Result() {
 
     console.log("🎯 Final Risk Score:", Math.round(riskScore));
     console.log("📋 Suggestions:", calculatedSuggestions);
-    
+
     setRiskLevel(Math.round(riskScore));
     setRiskCategory(category);
     setSuggestions(calculatedSuggestions);
@@ -266,7 +266,7 @@ export default function Result() {
     if (data.bmi && data.bmi !== 'N/A') {
       return parseFloat(data.bmi);
     }
-    
+
     // Otherwise calculate from weight and height
     if (!data.weight || !data.height || data.weight === 'N/A' || data.height === 'N/A') return null;
     const heightInMeters = data.height / 100;
@@ -343,7 +343,7 @@ export default function Result() {
     if (!sys || !dia || sys === '--' || dia === '--') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
     const systolicValue = parseFloat(sys);
     const diastolicValue = parseFloat(dia);
-    
+
     if (systolicValue >= 180 || diastolicValue >= 120) {
       return { status: 'Crisis', color: '#dc2626', range: '≥ 180/120 mmHg' };
     } else if (systolicValue >= 140 || diastolicValue >= 90) {
@@ -371,20 +371,20 @@ export default function Result() {
 
   const getImprovementTips = () => {
     const tips = [];
-    
+
     const bmi = calculateBMI(userData);
     if (bmi >= 25) {
       tips.push("Aim for 150 minutes of moderate-intensity exercise weekly");
       tips.push("Incorporate fiber-rich foods and lean proteins in daily meals");
       tips.push("Monitor portion sizes and maintain food diary for awareness");
     }
-    
+
     if (userData.heartRate && (userData.heartRate < 60 || userData.heartRate > 100)) {
       tips.push("Practice mindfulness meditation for 10 minutes daily");
       tips.push("Gradually increase physical activity to improve cardiovascular fitness");
       tips.push("Limit caffeine intake to 200mg daily and avoid before bedtime");
     }
-    
+
     if (userData.spo2 && userData.spo2 < 95) {
       tips.push("Perform diaphragmatic breathing exercises morning and evening");
       tips.push("Ensure proper ventilation in living and sleeping areas");
@@ -399,35 +399,35 @@ export default function Result() {
         tips.push("Practice stress management techniques like deep breathing");
       }
     }
-    
+
     // General wellness tips
     tips.push("Maintain consistent sleep schedule of 7-9 hours nightly");
     tips.push("Stay hydrated with 2-3 liters of water daily based on activity level");
     tips.push("Incorporate stress-reduction activities like walking or yoga");
     tips.push("Schedule regular health screenings based on age and risk factors");
-    
+
     return tips.slice(0, 6);
   };
 
   const handleSaveResults = () => {
     console.log("💾 Saving results and navigating to Sharing page...");
-    
+
     // Prepare complete data to pass directly to Sharing
     const completeData = {
       // Original user data
       ...userData,
-      
+
       // Analysis results
       riskLevel,
       riskCategory,
       suggestions,
       preventions,
-      
+
       // Ensure all measurement fields are included
       bmi: calculateBMI(userData),
-      bloodPressure: userData.systolic && userData.diastolic ? 
+      bloodPressure: userData.systolic && userData.diastolic ?
         `${userData.systolic}/${userData.diastolic}` : 'N/A',
-      
+
       // Add calculated fields for print
       bmiCategory: getBMICategory(calculateBMI(userData)).status,
       temperatureStatus: getTemperatureStatus(userData.temperature).status,
@@ -436,11 +436,11 @@ export default function Result() {
       respiratoryStatus: getRespiratoryStatus(userData.respiratoryRate).status,
       bloodPressureStatus: getBloodPressureStatus(userData.systolic, userData.diastolic).status
     };
-    
-    console.log("📤 Passing complete data to Sharing:", completeData);
-    
-    // Navigate directly to Sharing page with all data
-    navigate("/measure/sharing", { 
+
+    console.log("📤 Passing complete data to Saving:", completeData);
+
+    // Navigate to Saving page first
+    navigate("/measure/saving", {
       state: completeData
     });
   };
@@ -459,13 +459,37 @@ export default function Result() {
   const respData = getRespiratoryStatus(userData.respiratoryRate);
   const bpData = getBloodPressureStatus(userData.systolic, userData.diastolic);
 
+  const shouldShowMeasurement = (type) => {
+    // If checklist exists, use it
+    if (userData.checklist && Array.isArray(userData.checklist)) {
+      // Handle special case for max30102 which covers heart rate, spo2, respiratory
+      if (type === 'heartrate' || type === 'spo2' || type === 'respiratory') {
+        return userData.checklist.includes('max30102');
+      }
+      return userData.checklist.includes(type);
+    }
+
+    // Fallback: check if data exists
+    switch (type) {
+      case 'bmi': return !!userData.weight && !!userData.height;
+      case 'bodytemp': return !!userData.temperature && userData.temperature !== 'N/A';
+      case 'max30102':
+      case 'heartrate':
+      case 'spo2':
+      case 'respiratory':
+        return !!userData.heartRate && userData.heartRate !== 'N/A';
+      case 'bloodpressure': return !!userData.systolic && !!userData.diastolic;
+      default: return true;
+    }
+  };
+
   return (
-    <div className="result-container" style={{background: getRiskGradient(riskLevel)}}>
-      <div 
+    <div className="result-container" style={{ background: getRiskGradient(riskLevel) }}>
+      <div
         className={`result-content ${isVisible ? 'visible' : ''}`}
-        style={{boxShadow: getRiskGlow(riskLevel)}}
+        style={{ boxShadow: getRiskGlow(riskLevel) }}
       >
-        
+
         {/* Header */}
         <div className="result-header">
           <div className="ai-powered-badge">
@@ -480,16 +504,16 @@ export default function Result() {
 
         {/* AI Result Score */}
         <div className="risk-score-section">
-          <div className="risk-score-card" style={{background: getRiskGradient(riskLevel)}}>
+          <div className="risk-score-card" style={{ background: getRiskGradient(riskLevel) }}>
             <div className="risk-score-main">
               <div className="risk-number">{riskLevel}%</div>
               <div className="risk-category">{riskCategory}</div>
             </div>
             <div className="risk-meter">
               <div className="risk-bar">
-                <div 
-                  className="risk-progress" 
-                  style={{ 
+                <div
+                  className="risk-progress"
+                  style={{
                     width: `${riskLevel}%`,
                     backgroundColor: 'rgba(255,255,255,0.9)'
                   }}
@@ -516,7 +540,7 @@ export default function Result() {
                 </div>
                 <span className="mini-risk-value">0-19%</span>
               </div>
-              
+
               <div className="risk-range-mini-card moderate-risk">
                 <div className="mini-risk-header">
                   <div className="mini-risk-color"></div>
@@ -524,7 +548,7 @@ export default function Result() {
                 </div>
                 <span className="mini-risk-value">20-49%</span>
               </div>
-              
+
               <div className="risk-range-mini-card high-risk">
                 <div className="mini-risk-header">
                   <div className="mini-risk-color"></div>
@@ -532,7 +556,7 @@ export default function Result() {
                 </div>
                 <span className="mini-risk-value">50-74%</span>
               </div>
-              
+
               <div className="risk-range-mini-card critical-risk">
                 <div className="mini-risk-header">
                   <div className="mini-risk-color"></div>
@@ -560,19 +584,21 @@ export default function Result() {
                 </div>
               </div>
             </div>
-            <div className="personal-info-right">
-              <div className="bmi-display">
-                <div className="bmi-header">
-                  <div className="bmi-icon">⚖️</div>
-                  <h4>Body Mass Index</h4>
+            {shouldShowMeasurement('bmi') && (
+              <div className="personal-info-right">
+                <div className="bmi-display">
+                  <div className="bmi-header">
+                    <div className="bmi-icon">⚖️</div>
+                    <h4>Body Mass Index</h4>
+                  </div>
+                  <div className="bmi-value">{calculateBMI(userData) || '24.5'}</div>
+                  <div className="bmi-status" style={{ color: bmiData.color }}>
+                    {bmiData.status}
+                  </div>
+                  <div className="bmi-range">Healthy Range: 18.5 - 24.9</div>
                 </div>
-                <div className="bmi-value">{calculateBMI(userData) || '24.5'}</div>
-                <div className="bmi-status" style={{ color: bmiData.color }}>
-                  {bmiData.status}
-                </div>
-                <div className="bmi-range">Healthy Range: 18.5 - 24.9</div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -581,77 +607,85 @@ export default function Result() {
           <h2 className="section-title">Vital Signs Assessment</h2>
           <div className="vital-signs-grid">
             {/* Body Temperature */}
-            <div className="vital-sign-card">
-              <div className="vital-sign-header">
-                <div className="vital-sign-icon">🌡️</div>
-                <h3>Body Temperature</h3>
+            {shouldShowMeasurement('bodytemp') && (
+              <div className="vital-sign-card">
+                <div className="vital-sign-header">
+                  <div className="vital-sign-icon">🌡️</div>
+                  <h3>Body Temperature</h3>
+                </div>
+                <div className="vital-sign-value">{userData.temperature || '36.8'}°C</div>
+                <div className="vital-sign-status" style={{ color: tempData.color }}>
+                  {tempData.status}
+                </div>
+                <div className="vital-sign-range">Normal: 36.0 - 37.5°C</div>
               </div>
-              <div className="vital-sign-value">{userData.temperature || '36.8'}°C</div>
-              <div className="vital-sign-status" style={{ color: tempData.color }}>
-                {tempData.status}
-              </div>
-              <div className="vital-sign-range">Normal: 36.0 - 37.5°C</div>
-            </div>
+            )}
 
             {/* Heart Rate */}
-            <div className="vital-sign-card">
-              <div className="vital-sign-header">
-                <div className="vital-sign-icon">💓</div>
-                <h3>Heart Rate</h3>
+            {(shouldShowMeasurement('max30102') || shouldShowMeasurement('heartrate')) && (
+              <div className="vital-sign-card">
+                <div className="vital-sign-header">
+                  <div className="vital-sign-icon">💓</div>
+                  <h3>Heart Rate</h3>
+                </div>
+                <div className="vital-sign-value">{userData.heartRate || '72'} BPM</div>
+                <div className="vital-sign-status" style={{ color: hrData.color }}>
+                  {hrData.status}
+                </div>
+                <div className="vital-sign-range">Normal: 60 - 100 BPM</div>
               </div>
-              <div className="vital-sign-value">{userData.heartRate || '72'} BPM</div>
-              <div className="vital-sign-status" style={{ color: hrData.color }}>
-                {hrData.status}
-              </div>
-              <div className="vital-sign-range">Normal: 60 - 100 BPM</div>
-            </div>
+            )}
 
             {/* Respiratory Rate with SPO2 */}
-            <div className="vital-sign-card">
-              <div className="vital-sign-header">
-                <div className="vital-sign-icon">🌬️</div>
-                <div>
-                  <h3>Respiratory Rate</h3>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
-                    SpO2: {userData.spo2 || '98'}% 
-                    <span style={{ color: spo2Data.color, marginLeft: '4px' }}>
-                      ({spo2Data.status})
-                    </span>
+            {(shouldShowMeasurement('max30102') || shouldShowMeasurement('spo2')) && (
+              <div className="vital-sign-card">
+                <div className="vital-sign-header">
+                  <div className="vital-sign-icon">🌬️</div>
+                  <div>
+                    <h3>Respiratory Rate</h3>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
+                      SpO2: {userData.spo2 || '98'}%
+                      <span style={{ color: spo2Data.color, marginLeft: '4px' }}>
+                        ({spo2Data.status})
+                      </span>
+                    </div>
                   </div>
                 </div>
+                <div className="vital-sign-value">{userData.respiratoryRate || '16'} BPM</div>
+                <div className="vital-sign-status" style={{ color: respData.color }}>
+                  {respData.status}
+                </div>
+                <div className="vital-sign-range">Normal: 12 - 20 BPM</div>
               </div>
-              <div className="vital-sign-value">{userData.respiratoryRate || '16'} BPM</div>
-              <div className="vital-sign-status" style={{ color: respData.color }}>
-                {respData.status}
-              </div>
-              <div className="vital-sign-range">Normal: 12 - 20 BPM</div>
-            </div>
+            )}
 
             {/* Blood Pressure */}
-            <div className="vital-sign-card">
-              <div className="vital-sign-header">
-                <div className="vital-sign-icon">🩸</div>
-                <h3>Blood Pressure</h3>
+            {shouldShowMeasurement('bloodpressure') && (
+              <div className="vital-sign-card">
+                <div className="vital-sign-header">
+                  <div className="vital-sign-icon">🩸</div>
+                  <h3>Blood Pressure</h3>
+                </div>
+                <div className="vital-sign-value">
+                  {userData.systolic && userData.diastolic ?
+                    `${userData.systolic}/${userData.diastolic}` : '120/80'}
+                </div>
+                <div className="vital-sign-status" style={{ color: bpData.color }}>
+                  {bpData.status}
+                </div>
+                <div className="vital-sign-range">Normal: &lt; 120/&lt;80 mmHg</div>
               </div>
-              <div className="vital-sign-value">
-                {userData.systolic && userData.diastolic ? 
-                  `${userData.systolic}/${userData.diastolic}` : '120/80'}
-              </div>
-              <div className="vital-sign-status" style={{ color: bpData.color }}>
-                {bpData.status}
-              </div>
-              <div className="vital-sign-range">Normal: &lt; 120/&lt;80 mmHg</div>
-            </div>
+            )}
           </div>
         </div>
 
         {/* Sub Features - Collapsible Sections */}
         <div className="sub-features-section">
           <h2 className="section-title">AI Recommendations & Guidance</h2>
-          
+
           {/* Medical Action Recommendations */}
           <div className={`sub-feature-card ${expandedSections.recommendations ? 'expanded' : ''}`}>
-            <div 
+            <div
               className="sub-feature-header"
               onClick={() => toggleSection('recommendations')}
             >
@@ -679,7 +713,7 @@ export default function Result() {
 
           {/* Preventive Strategy Plans */}
           <div className={`sub-feature-card ${expandedSections.prevention ? 'expanded' : ''}`}>
-            <div 
+            <div
               className="sub-feature-header"
               onClick={() => toggleSection('prevention')}
             >
@@ -707,7 +741,7 @@ export default function Result() {
 
           {/* Wellness Improvement Tips */}
           <div className={`sub-feature-card ${expandedSections.wellness ? 'expanded' : ''}`}>
-            <div 
+            <div
               className="sub-feature-header"
               onClick={() => toggleSection('wellness')}
             >
@@ -735,7 +769,7 @@ export default function Result() {
 
           {/* Healthcare Provider Guidance */}
           <div className={`sub-feature-card ${expandedSections.guidance ? 'expanded' : ''}`}>
-            <div 
+            <div
               className="sub-feature-header"
               onClick={() => toggleSection('guidance')}
             >
@@ -767,7 +801,7 @@ export default function Result() {
 
         {/* Save Button */}
         <div className="result-actions">
-          <button 
+          <button
             className="save-results-btn"
             onClick={handleSaveResults}
           >
@@ -780,12 +814,12 @@ export default function Result() {
         <div className="disclaimer">
           <div className="disclaimer-icon">⚠️</div>
           <div className="disclaimer-text">
-            <strong>AI Analysis Disclaimer:</strong> This assessment is generated by our AI engine based on provided vital signs. 
-            It is for informational purposes only and should not replace professional medical advice, diagnosis, or treatment. 
+            <strong>AI Analysis Disclaimer:</strong> This assessment is generated by our AI engine based on provided vital signs.
+            It is for informational purposes only and should not replace professional medical advice, diagnosis, or treatment.
             Always consult qualified healthcare providers for medical concerns.
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

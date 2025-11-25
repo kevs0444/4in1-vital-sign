@@ -24,7 +24,7 @@ export default function Starting() {
       document.head.appendChild(viewport);
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
-    
+
     // Prevent zooming via touch gestures
     document.addEventListener('touchstart', handleTouchStart, { passive: false });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -32,7 +32,7 @@ export default function Starting() {
     document.addEventListener('gesturestart', preventZoom, { passive: false });
     document.addEventListener('gesturechange', preventZoom, { passive: false });
     document.addEventListener('gestureend', preventZoom, { passive: false });
-    
+
     return () => {
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
@@ -66,7 +66,7 @@ export default function Starting() {
         console.error("❌ Error retrieving user data:", error);
       }
     }
-    
+
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
   }, [location.state]);
@@ -96,9 +96,9 @@ export default function Starting() {
 
   // ✅ Fixed navigation path to match routes.js
   const handleStartMeasurements = () => {
-    console.log("🚀 Starting navigation to BMI with data:", userData);
-    
-    navigate("/measure/bmi", { 
+    console.log("🚀 Starting navigation to Checklist with data:", userData);
+
+    navigate("/measure/checklist", {
       state: userData
     });
   };
@@ -130,12 +130,12 @@ export default function Starting() {
   return (
     <div className="starting-container">
       <div className={`starting-content ${isVisible ? 'visible' : ''}`}>
-        
+
         {/* Logo */}
         <div className="starting-logo">
-          <img 
-            src={logo} 
-            alt="VitalSign AI Logo" 
+          <img
+            src={logo}
+            alt="VitalSign AI Logo"
             className="logo-image"
           />
         </div>
@@ -204,7 +204,7 @@ export default function Starting() {
 
         {/* Start Button */}
         <div className="starting-actions">
-          <button 
+          <button
             className="start-button"
             onClick={handleStartMeasurements}
           >

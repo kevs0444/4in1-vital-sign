@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "./BodyTemp.css";
 import tempIcon from "../../../assets/icons/temp-icon.png";
 import { sensorAPI } from "../../../utils/api";
+import { getNextStepPath, getProgressInfo } from "../../../utils/checklistNavigation";
 
 export default function BodyTemp() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function BodyTemp() {
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(0);
-  
+
   // Interactive state variables
   const [tempMeasuring, setTempMeasuring] = useState(false);
   const [tempComplete, setTempComplete] = useState(false);
@@ -39,7 +40,7 @@ export default function BodyTemp() {
       document.head.appendChild(viewport);
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
-    
+
     // Prevent zooming via touch gestures
     document.addEventListener('touchstart', handleTouchStart, { passive: false });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -47,7 +48,7 @@ export default function BodyTemp() {
     document.addEventListener('gesturestart', preventZoom, { passive: false });
     document.addEventListener('gesturechange', preventZoom, { passive: false });
     document.addEventListener('gestureend', preventZoom, { passive: false });
-    
+
     return () => {
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
@@ -97,17 +98,17 @@ export default function BodyTemp() {
     try {
       setStatusMessage("Powering up temperature sensor...");
       const prepareResult = await sensorAPI.prepareTemperature();
-      
+
       if (prepareResult.error) {
         setStatusMessage(`❌ ${prepareResult.error}`);
         handleRetry();
         return;
       }
-      
+
       setStatusMessage("✅ Temperature sensor ready. Point at forehead and click Start Measurement");
       setMeasurementStep(1);
       startMonitoring();
-      
+
     } catch (error) {
       console.error("Temperature initialization error:", error);
       setStatusMessage("❌ Failed to initialize temperature sensor");
@@ -138,21 +139,21 @@ export default function BodyTemp() {
 
   const startMonitoring = () => {
     stopMonitoring();
-    
+
     pollerRef.current = setInterval(async () => {
       try {
         const data = await sensorAPI.getTemperatureStatus();
         console.log("Temperature status:", data);
-        
+
         // Update sensor readiness
         setIsReady(data.is_ready_for_measurement);
-        
+
         // Update live reading from actual sensor data
         if (data.live_temperature !== null && data.live_temperature !== undefined) {
           const currentTemp = data.live_temperature.toFixed(1);
           setLiveReading(currentTemp);
           setLiveTempValue(currentTemp);
-          
+
           // Show live temperature when sensor is ready but not measuring
           if (!isMeasuring && !measurementComplete) {
             setStatusMessage(`✅ Sensor ready. Current reading: ${currentTemp}°C - Click Start Measurement`);
@@ -165,7 +166,7 @@ export default function BodyTemp() {
           const timeLeft = data.live_data.total - data.live_data.elapsed;
           setStatusMessage(`Measuring... ${timeLeft}s remaining`);
         }
-        
+
         // Handle final result
         if (data.temperature !== null && data.temperature !== undefined && !measurementComplete) {
           if (data.temperature >= 34.0 && data.temperature <= 42.0) {
@@ -194,19 +195,19 @@ export default function BodyTemp() {
 
   const startMeasurement = async () => {
     if (isMeasuring || measurementComplete) return;
-    
+
     try {
       setStatusMessage("Starting temperature measurement...");
       setIsMeasuring(true);
       setTempMeasuring(true);
       setMeasurementStep(2);
       setProgress(0);
-      
+
       // Clear any previous measurement
       setTemperature("");
-      
+
       const response = await sensorAPI.startTemperature();
-      
+
       if (response.error) {
         setStatusMessage(`❌ ${response.error}`);
         resetMeasurement();
@@ -247,7 +248,7 @@ export default function BodyTemp() {
     if (retryCount < MAX_RETRIES) {
       setRetryCount(prev => prev + 1);
       setStatusMessage(`🔄 Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-      
+
       setTimeout(() => {
         initializeTemperatureSensor();
       }, 2000);
@@ -265,55 +266,56 @@ export default function BodyTemp() {
 
   const handleContinue = () => {
     if (!measurementComplete || !temperature) return;
-    
+
     stopMonitoring();
     stopCountdown();
-    
+
     // Merge all previous data with temperature
     const vitalSignsData = {
       ...location.state, // This includes BMI data and personal info
       temperature: parseFloat(temperature)
     };
-    
-    console.log("🚀 BodyTemp complete - navigating to Max30102 with data:", vitalSignsData);
-    
-    navigate("/measure/max30102", {
+
+    console.log("🚀 BodyTemp complete - navigating to next step with data:", vitalSignsData);
+
+    const nextPath = getNextStepPath('bodytemp', location.state?.checklist);
+    navigate(nextPath, {
       state: vitalSignsData,
     });
   };
 
   const getTemperatureStatus = (temp) => {
-    if (!temp || temp === "--.-") return { 
-      text: "Not measured", 
+    if (!temp || temp === "--.-") return {
+      text: "Not measured",
       class: "default",
       description: "Temperature not measured yet"
     };
-    
+
     const tempValue = parseFloat(temp);
-    
+
     if (tempValue >= 35.0 && tempValue <= 37.2) {
-      return { 
-        text: "Normal", 
+      return {
+        text: "Normal",
         class: "normal",
         description: "Your body temperature is within normal range"
       };
     } else if (tempValue >= 37.3 && tempValue <= 38.0) {
-      return { 
-        text: "Elevated", 
+      return {
+        text: "Elevated",
         class: "elevated",
         description: "Your body temperature is elevated"
       };
     } else if (tempValue > 38.0) {
-      return { 
-        text: "Critical", 
+      return {
+        text: "Critical",
         class: "critical",
         description: "Your body temperature indicates fever"
       };
     }
-    
+
     // For temperatures below 35.0, show as default/unknown
-    return { 
-      text: "Invalid", 
+    return {
+      text: "Invalid",
       class: "default",
       description: "Temperature reading is outside normal range"
     };
@@ -333,14 +335,14 @@ export default function BodyTemp() {
     if (measurementComplete && temperature) {
       return getTemperatureStatus(temperature);
     }
-    
+
     const currentValue = getCurrentDisplayValue();
     if (currentValue !== "--.-") {
       return getTemperatureStatus(currentValue);
     }
-    
-    return { 
-      text: isReady ? 'Ready' : 'Initializing', 
+
+    return {
+      text: isReady ? 'Ready' : 'Initializing',
       class: isReady ? 'ready' : 'default',
       description: isReady ? 'Ready for measurement' : 'Initializing temperature sensor'
     };
@@ -350,11 +352,11 @@ export default function BodyTemp() {
     if (isMeasuring) {
       return `Measuring... ${countdown}s`;
     }
-    
+
     if (measurementComplete) {
-      return "Continue to Pulse Oximeter";
+      return "Continue to Next Step";
     }
-    
+
     return "Start Temperature Measurement";
   };
 
@@ -368,13 +370,15 @@ export default function BodyTemp() {
   return (
     <div className="bodytemp-container">
       <div className={`bodytemp-content ${isVisible ? 'visible' : ''}`}>
-        
-        {/* Progress bar for Step 2 of 4 */}
+
+        {/* Progress bar for Step X of Y */}
         <div className="progress-container">
           <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `50%` }}></div>
+            <div className="progress-fill red-progress" style={{ width: `${getProgressInfo('bodytemp', location.state?.checklist).percentage}%` }}></div>
           </div>
-          <span className="progress-step">Step 2 of 4 - Body Temperature</span>
+          <span className="progress-step">
+            Step {getProgressInfo('bodytemp', location.state?.checklist).currentStep} of {getProgressInfo('bodytemp', location.state?.checklist).totalSteps} - Body Temperature
+          </span>
         </div>
 
         <div className="bodytemp-header">
@@ -388,8 +392,8 @@ export default function BodyTemp() {
           {isMeasuring && progress > 0 && (
             <div className="measurement-progress">
               <div className="progress-bar-horizontal">
-                <div 
-                  className="progress-fill-horizontal" 
+                <div
+                  className="progress-fill-horizontal"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
@@ -401,28 +405,26 @@ export default function BodyTemp() {
         <div className="sensor-display-section">
           {/* Single Temperature Display - Shows live reading and result */}
           <div className="temperature-display-container">
-            <div className={`temperature-display ${
-              tempMeasuring ? 'measuring-active' : 
+            <div className={`temperature-display ${tempMeasuring ? 'measuring-active' :
               tempComplete ? 'measurement-complete' : ''
-            } ${statusInfo.class}`}>
+              } ${statusInfo.class}`}>
               <div className="temperature-icon">
-                <img src={tempIcon} alt="Temperature Icon" className="temperature-image"/>
+                <img src={tempIcon} alt="Temperature Icon" className="temperature-image" />
               </div>
-              
+
               <div className="temperature-content">
                 <h3 className="temperature-title">
                   {measurementComplete ? "Temperature Result" : "Body Temperature"}
                 </h3>
-                
+
                 <div className="temperature-value-display">
-                  <span className={`temperature-value ${
-                    tempMeasuring ? 'measuring-live' : ''
-                  }`}>
+                  <span className={`temperature-value ${tempMeasuring ? 'measuring-live' : ''
+                    }`}>
                     {displayValue}
                   </span>
                   <span className="temperature-unit">°C</span>
                 </div>
-                
+
                 <div className="temperature-status-info">
                   <span className={`temperature-status ${statusInfo.class}`}>
                     {statusInfo.text}
@@ -431,7 +433,7 @@ export default function BodyTemp() {
                     {statusInfo.description}
                   </div>
                 </div>
-                
+
                 {tempMeasuring && liveTempValue && (
                   <div className="live-reading-indicator">
                     🔄 Live Reading
@@ -445,26 +447,23 @@ export default function BodyTemp() {
           <div className="instruction-container">
             <div className="instruction-cards-horizontal">
               {/* Step 1 Card */}
-              <div className={`instruction-card-step ${
-                measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''
-              }`}>
+              <div className={`instruction-card-step ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''
+                }`}>
                 <div className="step-number-circle">1</div>
                 <div className="step-icon">📍</div>
                 <h4 className="step-title">Position Sensor</h4>
                 <p className="step-description">
                   Point sensor at forehead
                 </p>
-                <div className={`step-status ${
-                  measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
-                }`}>
+                <div className={`step-status ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
+                  }`}>
                   {measurementStep >= 1 ? (measurementStep > 1 ? 'Completed' : 'Active') : 'Pending'}
                 </div>
               </div>
 
               {/* Step 2 Card */}
-              <div className={`instruction-card-step ${
-                measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''
-              }`}>
+              <div className={`instruction-card-step ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''
+                }`}>
                 <div className="step-number-circle">2</div>
                 <div className="step-icon">📱</div>
                 <h4 className="step-title">Start Measurement</h4>
@@ -479,26 +478,23 @@ export default function BodyTemp() {
                     <span className="countdown-mini-text">seconds</span>
                   </div>
                 )}
-                <div className={`step-status ${
-                  measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : 'pending'
-                }`}>
+                <div className={`step-status ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : 'pending'
+                  }`}>
                   {measurementStep >= 2 ? (measurementStep > 2 ? 'Completed' : 'Active') : 'Pending'}
                 </div>
               </div>
 
               {/* Step 3 Card */}
-              <div className={`instruction-card-step ${
-                measurementStep >= 3 ? 'completed' : ''
-              }`}>
+              <div className={`instruction-card-step ${measurementStep >= 3 ? 'completed' : ''
+                }`}>
                 <div className="step-number-circle">3</div>
                 <div className="step-icon">✅</div>
                 <h4 className="step-title">Continue</h4>
                 <p className="step-description">
                   Proceed to next step
                 </p>
-                <div className={`step-status ${
-                  measurementStep >= 3 ? 'completed' : 'pending'
-                }`}>
+                <div className={`step-status ${measurementStep >= 3 ? 'completed' : 'pending'
+                  }`}>
                   {measurementStep >= 3 ? 'Completed' : 'Pending'}
                 </div>
               </div>
@@ -507,9 +503,9 @@ export default function BodyTemp() {
         </div>
 
         <div className="continue-button-container">
-          <button 
-            className="continue-button" 
-            onClick={measurementComplete ? handleContinue : startMeasurement} 
+          <button
+            className="continue-button"
+            onClick={measurementComplete ? handleContinue : startMeasurement}
             disabled={getButtonDisabled()}
           >
             {isMeasuring && (

@@ -444,7 +444,7 @@
   border: 4px solid #7f8c8d;
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   padding: 20px;
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.3),
     inset 0 2px 10px rgba(255, 255, 255, 0.1);
   overflow: hidden;
@@ -455,7 +455,7 @@
 .finger-sensor.initializing {
   border-color: #f39c12;
   background: linear-gradient(135deg, #34495e, #2c3e50);
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(243, 156, 18, 0.3),
     inset 0 2px 10px rgba(255, 255, 255, 0.1);
   animation: modernPulse 2s ease-in-out infinite;
@@ -465,7 +465,7 @@
 .finger-sensor.ready {
   border-color: #27ae60;
   background: linear-gradient(135deg, #2c3e50, #34495e);
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(39, 174, 96, 0.3),
     inset 0 2px 10px rgba(255, 255, 255, 0.1);
 }
@@ -474,7 +474,7 @@
 .finger-sensor.active {
   border-color: #e74c3c;
   background: linear-gradient(135deg, #c0392b, #e74c3c);
-  box-shadow: 
+  box-shadow:
     0 15px 40px rgba(231, 76, 60, 0.4),
     inset 0 2px 15px rgba(255, 255, 255, 0.2);
   animation: activeGlow 1.5s ease-in-out infinite;
@@ -484,7 +484,7 @@
 .finger-sensor.complete {
   border-color: #3498db;
   background: linear-gradient(135deg, #2980b9, #3498db);
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(52, 152, 219, 0.4),
     inset 0 2px 10px rgba(255, 255, 255, 0.2);
   animation: completeCelebrateSensor 0.6s ease-out;
@@ -499,7 +499,7 @@
   margin-bottom: 15px;
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
-  box-shadow: 
+  box-shadow:
     0 4px 15px rgba(0, 0, 0, 0.3),
     inset 0 2px 5px rgba(255, 255, 255, 0.2);
 }
@@ -508,7 +508,7 @@
 .finger-sensor.initializing .sensor-light {
   background: linear-gradient(135deg, #f39c12, #e67e22);
   animation: modernLightPulse 2s ease-in-out infinite;
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(243, 156, 18, 0.6),
     inset 0 2px 5px rgba(255, 255, 255, 0.3);
 }
@@ -516,7 +516,7 @@
 /* Ready Light */
 .finger-sensor.ready .sensor-light {
   background: linear-gradient(135deg, #27ae60, #2ecc71);
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(39, 174, 96, 0.5),
     inset 0 2px 5px rgba(255, 255, 255, 0.3);
 }
@@ -525,7 +525,7 @@
 .finger-sensor.active .sensor-light {
   background: linear-gradient(135deg, #e74c3c, #c0392b);
   animation: heartbeat 1.2s ease-in-out infinite;
-  box-shadow: 
+  box-shadow:
     0 0 30px rgba(231, 76, 60, 0.8),
     inset 0 2px 5px rgba(255, 255, 255, 0.3);
 }
@@ -534,7 +534,7 @@
 .finger-sensor.complete .sensor-light {
   background: linear-gradient(135deg, #3498db, #2980b9);
   animation: successPulse 2s ease-in-out infinite;
-  box-shadow: 
+  box-shadow:
     0 0 25px rgba(52, 152, 219, 0.6),
     inset 0 2px 5px rgba(255, 255, 255, 0.3);
 }
@@ -810,25 +810,24 @@
 /* Continue Button */
 .continue-button {
   width: 100%;
-  padding: 18px 14px;
+  padding: 16px 14px;
   border: none;
   border-radius: 14px;
-  background: linear-gradient(135deg, #dc3545, #c82333);
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
   color: white;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  min-height: 65px;
+  min-height: 60px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35);
-  animation: redGlow 2s ease-in-out infinite alternate;
+  box-shadow: 0 5px 18px rgba(220, 38, 38, 0.35);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 10px;
+  z-index: 1;
 }
 
 .continue-button::before {
@@ -848,7 +847,7 @@
 
 .continue-button:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.02);
-  animation: redStrongGlow 1s ease-in-out infinite alternate;
+  box-shadow: 0 8px 22px rgba(220, 38, 38, 0.45);
 }
 
 .continue-button:disabled {
@@ -925,6 +924,7 @@
     transform: translateX(-50%) translateY(-100%);
     opacity: 0;
   }
+
   100% {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
@@ -937,11 +937,11 @@
     min-width: 280px;
     padding: 12px 16px;
   }
-  
+
   .alert-text {
     font-size: 0.8rem;
   }
-  
+
   .alert-icon {
     font-size: 1.1rem;
   }
@@ -951,25 +951,27 @@
 @keyframes redGlow {
   from {
     box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35),
-                0 0 6px rgba(220, 53, 69, 0.25);
+      0 0 6px rgba(220, 53, 69, 0.25);
   }
+
   to {
     box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
-                0 0 12px rgba(220, 53, 69, 0.4),
-                0 0 20px rgba(220, 53, 69, 0.25);
+      0 0 12px rgba(220, 53, 69, 0.4),
+      0 0 20px rgba(220, 53, 69, 0.25);
   }
 }
 
 @keyframes redStrongGlow {
   from {
     box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
-                0 0 12px rgba(220, 53, 69, 0.5),
-                0 0 20px rgba(220, 53, 69, 0.35);
+      0 0 12px rgba(220, 53, 69, 0.5),
+      0 0 20px rgba(220, 53, 69, 0.35);
   }
+
   to {
     box-shadow: 0 10px 25px rgba(220, 53, 69, 0.55),
-                0 0 16px rgba(220, 53, 69, 0.7),
-                0 0 28px rgba(220, 53, 69, 0.4);
+      0 0 16px rgba(220, 53, 69, 0.7),
+      0 0 28px rgba(220, 53, 69, 0.4);
   }
 }
 
@@ -983,8 +985,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .measurement-warning {
@@ -1001,10 +1008,13 @@
 
 /* New pulse animations for different status colors */
 @keyframes measuringPulseNormal {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
     border-color: #17a2b8;
   }
+
   50% {
     box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
     border-color: #138496;
@@ -1012,10 +1022,13 @@
 }
 
 @keyframes measuringPulseLow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
     border-color: #17a2b8;
   }
+
   50% {
     box-shadow: 0 0 0 10px rgba(255, 193, 7, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
     border-color: #138496;
@@ -1023,10 +1036,13 @@
 }
 
 @keyframes measuringPulseHigh {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
     border-color: #17a2b8;
   }
+
   50% {
     box-shadow: 0 0 0 10px rgba(220, 53, 69, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
     border-color: #138496;
@@ -1035,14 +1051,17 @@
 
 /* Modern Pulse Oximeter Animations */
 @keyframes modernPulse {
-  0%, 100% {
-    box-shadow: 
+
+  0%,
+  100% {
+    box-shadow:
       0 10px 30px rgba(243, 156, 18, 0.3),
       inset 0 2px 10px rgba(255, 255, 255, 0.1);
     transform: scale(1);
   }
+
   50% {
-    box-shadow: 
+    box-shadow:
       0 15px 40px rgba(243, 156, 18, 0.5),
       inset 0 2px 15px rgba(255, 255, 255, 0.15);
     transform: scale(1.02);
@@ -1050,14 +1069,17 @@
 }
 
 @keyframes modernLightPulse {
-  0%, 100% {
-    box-shadow: 
+
+  0%,
+  100% {
+    box-shadow:
       0 0 20px rgba(243, 156, 18, 0.6),
       inset 0 2px 5px rgba(255, 255, 255, 0.3);
     transform: scale(1);
   }
+
   50% {
-    box-shadow: 
+    box-shadow:
       0 0 30px rgba(243, 156, 18, 0.8),
       inset 0 2px 8px rgba(255, 255, 255, 0.4);
     transform: scale(1.1);
@@ -1065,54 +1087,65 @@
 }
 
 @keyframes activeGlow {
-  0%, 100% {
-    box-shadow: 
+
+  0%,
+  100% {
+    box-shadow:
       0 15px 40px rgba(231, 76, 60, 0.4),
       inset 0 2px 15px rgba(255, 255, 255, 0.2);
   }
+
   50% {
-    box-shadow: 
+    box-shadow:
       0 20px 50px rgba(231, 76, 60, 0.6),
       inset 0 2px 20px rgba(255, 255, 255, 0.3);
   }
 }
 
 @keyframes heartbeat {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
-    box-shadow: 
+    box-shadow:
       0 0 30px rgba(231, 76, 60, 0.8),
       inset 0 2px 5px rgba(255, 255, 255, 0.3);
   }
+
   25% {
     transform: scale(1.15);
-    box-shadow: 
+    box-shadow:
       0 0 40px rgba(231, 76, 60, 1),
       inset 0 2px 8px rgba(255, 255, 255, 0.4);
   }
+
   50% {
     transform: scale(1.1);
-    box-shadow: 
+    box-shadow:
       0 0 35px rgba(231, 76, 60, 0.9),
       inset 0 2px 6px rgba(255, 255, 255, 0.35);
   }
+
   75% {
     transform: scale(1.12);
-    box-shadow: 
+    box-shadow:
       0 0 38px rgba(231, 76, 60, 0.95),
       inset 0 2px 7px rgba(255, 255, 255, 0.38);
   }
 }
 
 @keyframes successPulse {
-  0%, 100% {
-    box-shadow: 
+
+  0%,
+  100% {
+    box-shadow:
       0 0 25px rgba(52, 152, 219, 0.6),
       inset 0 2px 5px rgba(255, 255, 255, 0.3);
     transform: scale(1);
   }
+
   50% {
-    box-shadow: 
+    box-shadow:
       0 0 35px rgba(52, 152, 219, 0.8),
       inset 0 2px 8px rgba(255, 255, 255, 0.4);
     transform: scale(1.05);
@@ -1123,30 +1156,39 @@
   0% {
     transform: scale(1);
   }
+
   25% {
     transform: scale(1.05) rotate(2deg);
   }
+
   50% {
     transform: scale(1.03) rotate(-1deg);
   }
+
   75% {
     transform: scale(1.04) rotate(1deg);
   }
+
   100% {
     transform: scale(1);
   }
 }
 
 @keyframes fingerBounce {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0) scale(1);
   }
+
   25% {
     transform: translateY(-5px) scale(1.05);
   }
+
   50% {
     transform: translateY(0) scale(1.02);
   }
+
   75% {
     transform: translateY(-3px) scale(1.03);
   }
@@ -1156,15 +1198,19 @@
   0% {
     transform: scale(1);
   }
+
   25% {
     transform: scale(1.2) rotate(5deg);
   }
+
   50% {
     transform: scale(1.1) rotate(-3deg);
   }
+
   75% {
     transform: scale(1.15) rotate(2deg);
   }
+
   100% {
     transform: scale(1);
   }
@@ -1174,6 +1220,7 @@
   0% {
     transform: rotate(45deg) translateX(-100%);
   }
+
   100% {
     transform: rotate(45deg) translateX(100%);
   }
@@ -1181,10 +1228,13 @@
 
 /* Measurement Card Animations */
 @keyframes measuringPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
     border-color: #17a2b8;
   }
+
   50% {
     box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
     border-color: #138496;
@@ -1192,25 +1242,33 @@
 }
 
 @keyframes iconBounce {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
   }
+
   25% {
     transform: scale(1.1);
   }
+
   50% {
     transform: scale(0.95);
   }
+
   75% {
     transform: scale(1.05);
   }
 }
 
 @keyframes numberPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     color: #17a2b8;
   }
+
   50% {
     transform: scale(1.05);
     color: #138496;
@@ -1221,15 +1279,19 @@
   0% {
     transform: scale(1);
   }
+
   25% {
     transform: scale(1.05) rotate(1deg);
   }
+
   50% {
     transform: scale(1.03) rotate(-0.5deg);
   }
+
   75% {
     transform: scale(1.04) rotate(0.5deg);
   }
+
   100% {
     transform: scale(1);
   }
@@ -1239,15 +1301,19 @@
   0% {
     transform: scale(1);
   }
+
   25% {
     transform: scale(1.2) rotate(5deg);
   }
+
   50% {
     transform: scale(1.1) rotate(-3deg);
   }
+
   75% {
     transform: scale(1.15) rotate(2deg);
   }
+
   100% {
     transform: scale(1);
   }
@@ -1258,6 +1324,7 @@
     transform: scale(1);
     opacity: 1;
   }
+
   100% {
     transform: scale(1.5);
     opacity: 0;
@@ -1265,10 +1332,13 @@
 }
 
 @keyframes statusPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
     transform: scale(1);
   }
+
   50% {
     box-shadow: 0 4px 15px rgba(23, 162, 184, 0.5);
     transform: scale(1.02);
@@ -1280,10 +1350,12 @@
     transform: scale(0.8);
     opacity: 0;
   }
+
   70% {
     transform: scale(1.1);
     opacity: 1;
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -1292,10 +1364,13 @@
 
 /* Instruction Card Animations */
 @keyframes instructionPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 4px 15px rgba(220, 53, 69, 0.15);
     border-color: #dc3545;
   }
+
   50% {
     box-shadow: 0 6px 20px rgba(220, 53, 69, 0.25);
     border-color: #c82333;
@@ -1303,11 +1378,14 @@
 }
 
 @keyframes stepPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     background: white;
     color: #dc3545;
     box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
   }
+
   50% {
     background: #dc3545;
     color: white;
@@ -1316,18 +1394,24 @@
 }
 
 @keyframes iconFloat {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-5px);
   }
 }
 
 @keyframes statusGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
   }
+
   50% {
     box-shadow: 0 4px 12px rgba(220, 53, 69, 0.5);
   }
@@ -1338,6 +1422,7 @@
     transform: scale(1);
     border-color: #dc3545;
   }
+
   100% {
     transform: scale(1.1);
     border-color: #c82333;
@@ -1353,116 +1438,116 @@
     margin: 10px;
     width: calc(100% - 20px);
   }
-  
+
   .max30102-title {
     font-size: 1.4rem;
   }
-  
+
   .max30102-subtitle {
     font-size: 0.8rem;
   }
-  
+
   /* Mobile cards layout */
   .vital-signs-cards-container {
     gap: 12px;
     margin: 15px 0;
   }
-  
+
   .measurement-card.vital-sign-card {
     min-width: 160px;
     max-width: 180px;
     min-height: 110px;
     padding: 15px;
   }
-  
+
   .measurement-card.vital-sign-card .measurement-icon {
     width: 45px;
     height: 45px;
     margin-right: 12px;
   }
-  
+
   .measurement-card.vital-sign-card .measurement-title {
     font-size: 1.1rem;
   }
-  
+
   .measurement-subtitle {
     font-size: 0.75rem;
   }
-  
+
   .measurement-card.vital-sign-card .value,
   .measurement-card.vital-sign-card .placeholder {
     font-size: 1.6rem;
   }
-  
+
   .measurement-card.vital-sign-card .unit {
     font-size: 1rem;
   }
-  
+
   .measurement-card.vital-sign-card .measurement-status {
     font-size: 0.7rem;
     padding: 4px 8px;
     min-width: 60px;
   }
-  
+
   /* Mobile instruction cards */
   .instruction-cards-horizontal {
     gap: 12px;
   }
-  
+
   .instruction-card-step {
     min-width: 140px;
     max-width: 160px;
     padding: 15px;
   }
-  
+
   .step-number-circle {
     width: 32px;
     height: 32px;
     font-size: 0.9rem;
     margin-bottom: 10px;
   }
-  
+
   .step-icon {
     font-size: 1.5rem;
     margin-bottom: 8px;
   }
-  
+
   .step-title {
     font-size: 0.85rem;
     margin-bottom: 6px;
   }
-  
+
   .step-description {
     font-size: 0.75rem;
   }
-  
+
   .step-status {
     font-size: 0.7rem;
     padding: 4px 8px;
     margin-top: 8px;
   }
-  
+
   .finger-sensor {
     width: 140px;
     height: 140px;
     border-radius: 20px;
   }
-  
+
   .sensor-light {
     width: 45px;
     height: 45px;
     margin-bottom: 12px;
   }
-  
+
   .finger-placeholder {
     font-size: 2.5rem;
     margin-bottom: 10px;
   }
-  
+
   .sensor-status-text {
     font-size: 0.75rem;
   }
-  
+
   .continue-button {
     padding: 16px 12px;
     font-size: 1.1rem;
@@ -1476,56 +1561,58 @@
     margin: 5px;
     width: calc(100% - 10px);
   }
-  
+
   .max30102-title {
     font-size: 1.3rem;
   }
-  
+
   .max30102-subtitle {
     font-size: 0.75rem;
   }
-  
+
   /* Stack cards vertically on very small screens */
   .vital-signs-cards-container {
     flex-direction: column;
     align-items: center;
     gap: 10px;
   }
-  
+
   .measurement-card.vital-sign-card {
     min-width: 100%;
     max-width: 220px;
     min-height: 100px;
     padding: 12px;
   }
-  
+
   .instruction-cards-horizontal {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .instruction-card-step {
     min-width: 100%;
     max-width: 220px;
   }
-  
+
   .finger-sensor {
     width: 120px;
     height: 120px;
   }
-  
+
   .sensor-light {
     width: 40px;
     height: 40px;
   }
-  
+
   .finger-placeholder {
     font-size: 2.2rem;
   }
 }
 
 /* High DPI Screens */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
+
   .measurement-card.vital-sign-card,
   .instruction-card-step,
   .finger-sensor {
@@ -1540,14 +1627,14 @@
     height: auto;
     min-height: auto;
   }
-  
+
   .max30102-content {
     box-shadow: none;
     border: 1px solid #000;
     max-height: none;
     min-height: auto;
   }
-  
+
   .continue-button {
     display: none;
   }
@@ -1555,6 +1642,7 @@
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -1577,50 +1665,50 @@
   .max30102-container {
     background: #1a1a1a;
   }
-  
+
   .max30102-content {
     background: #2d2d2d;
     border-color: #444;
   }
-  
+
   .max30102-title {
     color: #fff;
   }
-  
+
   .max30102-subtitle {
     color: #ccc;
   }
-  
+
   .measurement-card.vital-sign-card {
     background: #2d2d2d;
     border-color: #444;
   }
-  
+
   .measurement-card.vital-sign-card .measurement-title {
     color: #fff;
   }
-  
+
   .measurement-subtitle {
     color: #ccc;
   }
-  
+
   .measurement-card.vital-sign-card .value {
     color: #fff;
   }
-  
+
   .measurement-card.vital-sign-card .unit {
     color: #ccc;
   }
-  
+
   .instruction-card-step {
     background: #2d2d2d;
     border-color: #444;
   }
-  
+
   .step-title {
     color: #fff;
   }
-  
+
   .step-description {
     color: #ccc;
   }

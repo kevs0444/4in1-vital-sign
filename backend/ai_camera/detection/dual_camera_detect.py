@@ -67,18 +67,22 @@ class ComplianceDetector:
         if frame is None or self.feet_model is None:
             return frame, "AI Error", False
 
-        # Use Custom Feet Model
-        results = self.feet_model(frame, verbose=False)
+        # Use Custom Feet Model with lower confidence threshold
+        results = self.feet_model(frame, verbose=False, conf=0.25)
         annotated_frame = results[0].plot()
         
         detections = results[0].boxes
+        
+        # Custom Logic for Bare Feet Model
+        # The new dataset has 8 classes (0-7), all representing bare feet views.
+        # So if we see ANY class, it is compliant.
+        
         bare_feet_detected = False
         
         for box in detections:
-            cls_id = int(box.cls[0])
-            # In our custom model, 0 is bare_feet
-            if cls_id == 0: 
-                bare_feet_detected = True
+            # We assume the feet model only detects feet classes
+            # So any detection here is likely a foot
+            bare_feet_detected = True
             
         if bare_feet_detected:
             status = "COMPLIANT: Bare Feet Detected"

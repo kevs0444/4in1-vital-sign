@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Saving.css";
 
@@ -10,18 +10,32 @@ export default function Saving() {
   const [saveComplete, setSaveComplete] = useState(false);
   const [completedSteps, setCompletedSteps] = useState([]);
 
-  const steps = [
-    "Encrypting health data",
-    "Storing risk assessment", 
-    "Saving AI recommendations",
-    "Finalizing health records"
-  ];
+  const steps = useMemo(() => {
+    const baseSteps = ["Encrypting health data"];
+    const checklist = location.state?.checklist || [];
+
+    if (checklist.includes('bmi') || (location.state?.weight && location.state?.height)) {
+      baseSteps.push("Saving BMI calculations");
+    }
+    if (checklist.includes('bodytemp') || location.state?.temperature) {
+      baseSteps.push("Recording temperature data");
+    }
+    if (checklist.includes('max30102') || location.state?.heartRate) {
+      baseSteps.push("Processing vital signs");
+    }
+    if (checklist.includes('bloodpressure') || location.state?.systolic) {
+      baseSteps.push("Archiving blood pressure logs");
+    }
+
+    baseSteps.push("Finalizing health records");
+    return baseSteps;
+  }, [location.state]);
 
   useEffect(() => {
     if (location.state) {
       console.log("📍 Saving page received data:", location.state);
     }
-    
+
     const timer = setTimeout(() => {
       setIsVisible(true);
       simulateSaveProcess();
@@ -33,18 +47,18 @@ export default function Saving() {
   const simulateSaveProcess = () => {
     setIsSaving(true);
     setCompletedSteps([]);
-    
+
     steps.forEach((step, index) => {
       setTimeout(() => {
         setCompletedSteps(prev => [...prev, step]);
-        
+
         if (index === steps.length - 1) {
           setTimeout(() => {
             setIsSaving(false);
             setSaveComplete(true);
-            
+
             setTimeout(() => {
-              navigate("/measure/sharing", { 
+              navigate("/measure/sharing", {
                 state: location.state
               });
             }, 2000);
@@ -61,17 +75,17 @@ export default function Saving() {
   return (
     <div className="saving-page">
       <div className={`saving-container ${isVisible ? 'visible' : ''}`}>
-        
+
         {/* Header Section */}
         <div className="header-section">
           <div className="main-icon">
             <div className="icon-circle saving">
               <svg viewBox="0 0 24 24" fill="none">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M16 13H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M16 17H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M10 9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M16 13H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M16 17H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M10 9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
           </div>
@@ -79,8 +93,8 @@ export default function Saving() {
             {isSaving ? "Saving Your Data" : "Data Saved!"}
           </h1>
           <p className="subtitle">
-            {isSaving 
-              ? "Securely storing your health information..." 
+            {isSaving
+              ? "Securely storing your health information..."
               : "All your health data has been successfully saved"
             }
           </p>
@@ -92,9 +106,9 @@ export default function Saving() {
             <div className="progress-visual">
               <div className="progress-ring">
                 <div className="ring-bg"></div>
-                <div 
-                  className="ring-fill" 
-                  style={{ 
+                <div
+                  className="ring-fill"
+                  style={{
                     transform: `rotate(${(completedSteps.length / steps.length) * 360}deg)`
                   }}
                 ></div>
@@ -109,7 +123,7 @@ export default function Saving() {
 
             <div className="steps-container">
               {steps.map((step, index) => (
-                <StepItem 
+                <StepItem
                   key={index}
                   step={step}
                   isCompleted={isStepCompleted(step)}
@@ -126,7 +140,7 @@ export default function Saving() {
               <div className="success-icon">
                 <div className="icon-circle success">
                   <svg viewBox="0 0 24 24" fill="none">
-                    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
                 <div className="success-ripple ripple-1"></div>
@@ -160,8 +174,8 @@ export default function Saving() {
           <div className="security-badge">
             <div className="lock-icon">
               <svg viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-                <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2" />
+                <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </div>
             <div className="security-text">

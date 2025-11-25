@@ -13,6 +13,7 @@ import Result from "./pages/MeasurementFlow/Result/Result";
 import Saving from "./pages/MeasurementFlow/Saving/Saving";
 import Sharing from "./pages/MeasurementFlow/Sharing/Sharing";
 import Starting from "./pages/MeasurementFlow/Starting/Starting";
+import Checklist from "./pages/MeasurementFlow/Checklist/Checklist";
 
 // 🧾 Register Flow
 import RegisterWelcome from "./pages/RegisterFlow/RegisterWelcome/RegisterWelcome";
@@ -42,7 +43,7 @@ function AppRoutes() {
     <Routes>
       {/* 🏠 Default route */}
       <Route path="/" element={<Standby />} />
-      
+
       {/* 🔐 Login */}
       <Route path="/login" element={<LoginPage />} /> {/* Use LoginPage component */}
 
@@ -50,6 +51,7 @@ function AppRoutes() {
       <Route path="/measure/welcome" element={<MeasurementWelcome />} />
       <Route path="/measure/starting" element={<Starting />} />
       <Route path="/measure/ai-loading" element={<AILoading />} />
+      <Route path="/measure/checklist" element={<Checklist />} />
       <Route path="/measure/bloodpressure" element={<BloodPressure />} />
       <Route path="/measure/bmi" element={<BMI />} />
       <Route path="/measure/bodytemp" element={<BodyTemp />} />

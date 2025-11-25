@@ -13,11 +13,11 @@ export default function Sharing() {
 
   useEffect(() => {
     console.log("📍 Sharing page received data:", location.state);
-    
+
     if (location.state) {
       setUserData(location.state);
       console.log("✅ Complete health data loaded in Sharing:", location.state);
-      
+
       // Auto-start printing when component loads
       setTimeout(() => {
         startAutoPrint();
@@ -27,7 +27,7 @@ export default function Sharing() {
       navigate("/measure/result");
       return;
     }
-    
+
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 100);
@@ -38,7 +38,7 @@ export default function Sharing() {
   const directPrint = () => {
     console.log("🖨️ Starting direct print...");
     setIsPrinting(true);
-    
+
     const printFrame = document.createElement('iframe');
     printFrame.style.position = 'absolute';
     printFrame.style.left = '-9999px';
@@ -46,7 +46,7 @@ export default function Sharing() {
     printFrame.style.width = '75mm';
     printFrame.style.height = '0';
     printFrame.style.border = 'none';
-    
+
     document.body.appendChild(printFrame);
     printFrameRef.current = printFrame;
 
@@ -276,7 +276,7 @@ export default function Sharing() {
     printWindow.document.open();
     printWindow.document.write(receiptHTML);
     printWindow.document.close();
-    
+
     setIsPrinting(false);
     setPrintComplete(true);
   };
@@ -285,7 +285,7 @@ export default function Sharing() {
     console.log("🖨️ Starting auto-print...");
     console.log("📊 Printing health data:", userData);
     setIsPrinting(true);
-    
+
     setTimeout(() => {
       directPrint();
     }, 500);
@@ -294,15 +294,15 @@ export default function Sharing() {
   const generateReceiptContent = () => {
     if (!userData) return "Loading health data...";
 
-    const currentDate = new Date().toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
     });
-    const currentTime = new Date().toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    const currentTime = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
 
     return `
@@ -324,12 +324,15 @@ export default function Sharing() {
 
 <div class="section-title">VITAL SIGNS MEASUREMENT</div>
 <div class="vital-signs">
+  ${(userData.checklist?.includes('bodytemp') || userData.temperature) ? `
   <div class="vital-item">
     <span>Body Temperature:</span>
     <span>${userData.temperature || 'N/A'}°C</span>
   </div>
   <div class="normal-range">Status: ${userData.temperatureStatus || 'N/A'}</div>
+  ` : ''}
   
+  ${(userData.checklist?.includes('max30102') || userData.heartRate) ? `
   <div class="vital-item">
     <span>Heart Rate:</span>
     <span>${userData.heartRate || 'N/A'} BPM</span>
@@ -347,13 +350,17 @@ export default function Sharing() {
     <span>${userData.respiratoryRate || 'N/A'}/min</span>
   </div>
   <div class="normal-range">Status: ${userData.respiratoryStatus || 'N/A'}</div>
+  ` : ''}
   
+  ${(userData.checklist?.includes('bloodpressure') || userData.systolic) ? `
   <div class="vital-item">
     <span>Blood Pressure:</span>
     <span>${userData.systolic || 'N/A'}/${userData.diastolic || 'N/A'} mmHg</span>
   </div>
   <div class="normal-range">Status: ${userData.bloodPressureStatus || 'N/A'}</div>
+  ` : ''}
   
+  ${(userData.checklist?.includes('bmi') || userData.weight) ? `
   <div class="vital-item">
     <span>Weight:</span>
     <span>${userData.weight || 'N/A'} kg</span>
@@ -363,6 +370,7 @@ export default function Sharing() {
     <span>Height:</span>
     <span>${userData.height || 'N/A'} cm</span>
   </div>
+  ` : ''}
 </div>
 
 <div class="divider"></div>
@@ -377,24 +385,24 @@ export default function Sharing() {
 
 <div class="section-title">MEDICAL RECOMMENDATIONS</div>
 <div class="recommendations">
-  ${userData.suggestions && userData.suggestions.length > 0 
-    ? userData.suggestions.map((suggestion, index) => 
-        `<div class="recommendation-item">${index + 1}. ${suggestion}</div>`
-      ).join('')
-    : '<div>No specific recommendations at this time</div>'
-  }
+  ${userData.suggestions && userData.suggestions.length > 0
+        ? userData.suggestions.map((suggestion, index) =>
+          `<div class="recommendation-item">${index + 1}. ${suggestion}</div>`
+        ).join('')
+        : '<div>No specific recommendations at this time</div>'
+      }
 </div>
 
 <div class="divider"></div>
 
 <div class="section-title">PREVENTIVE STRATEGIES</div>
 <div class="recommendations">
-  ${userData.preventions && userData.preventions.length > 0 
-    ? userData.preventions.map((prevention, index) => 
-        `<div class="recommendation-item">${index + 1}. ${prevention}</div>`
-      ).join('')
-    : '<div>Maintain regular health monitoring</div>'
-  }
+  ${userData.preventions && userData.preventions.length > 0
+        ? userData.preventions.map((prevention, index) =>
+          `<div class="recommendation-item">${index + 1}. ${prevention}</div>`
+        ).join('')
+        : '<div>Maintain regular health monitoring</div>'
+      }
 </div>
 
 <div class="footer">
@@ -438,7 +446,7 @@ export default function Sharing() {
   return (
     <div className="share-container">
       <div className={`share-content ${isVisible ? 'visible' : ''}`}>
-        
+
         {/* Header */}
         <div className="share-header">
           <div className="share-icon">
@@ -453,17 +461,17 @@ export default function Sharing() {
               <div className="ready-icon">🖨️</div>
             )}
           </div>
-          
+
           <h1 className="share-title">
-            {isPrinting ? "Printing Receipt..." : 
-             printComplete ? "Print Complete!" : 
-             "Printing Health Receipt"}
+            {isPrinting ? "Printing Receipt..." :
+              printComplete ? "Print Complete!" :
+                "Printing Health Receipt"}
           </h1>
-          
+
           <p className="share-subtitle">
-            {isPrinting ? "Sending to thermal printer..." : 
-             printComplete ? "Your health receipt has been printed" : 
-             "Auto-printing your health assessment"}
+            {isPrinting ? "Sending to thermal printer..." :
+              printComplete ? "Your health receipt has been printed" :
+                "Auto-printing your health assessment"}
           </p>
         </div>
 
@@ -485,7 +493,7 @@ export default function Sharing() {
             <strong>Thermal Printer Ready</strong>
             <span>POS58 • Large Font Size • Auto-print</span>
           </div>
-          
+
           {isPrinting && (
             <div className="print-progress">
               <div className="progress-bar">
@@ -500,14 +508,14 @@ export default function Sharing() {
         <div className="action-buttons">
           {printComplete ? (
             <>
-              <button 
+              <button
                 className="print-again-btn"
                 onClick={handlePrintAgain}
               >
                 🖨️ Print Another Copy
               </button>
-              
-              <button 
+
+              <button
                 className="home-btn"
                 onClick={handleReturnHome}
               >
@@ -520,7 +528,7 @@ export default function Sharing() {
               <span>Please wait while we print your receipt...</span>
             </div>
           ) : (
-            <button 
+            <button
               className="print-again-btn"
               onClick={startAutoPrint}
             >

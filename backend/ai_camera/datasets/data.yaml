@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 8
+names: ['Back View -Both Feet-', 'Dorsal View -Both Feet-', 'Front View -Both Feet-', 'Lateral View -Left Foot-', 'Lateral View -Right Foot-', 'Medial View -Left Foot-', 'Medial View -Right Foot-', 'Plantar View -Both Feet-']
+
+roboflow:
+  workspace: r-sm5h9
+  project: feet-6wfx2
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/r-sm5h9/feet-6wfx2/dataset/1

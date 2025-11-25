@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Container, Row, Col, Button, Modal, Form } from "react-bootstrap";
-import { motion } from "framer-motion";
+import { Button, Modal } from "react-bootstrap";
 import "./MeasurementWelcome.css";
 import logo from "../../../assets/images/welcome.png";
 
@@ -30,7 +29,7 @@ export default function MeasurementWelcome() {
       document.head.appendChild(viewport);
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
-    
+
     // Prevent zooming via touch gestures
     document.addEventListener('touchstart', handleTouchStart, { passive: false });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -38,7 +37,7 @@ export default function MeasurementWelcome() {
     document.addEventListener('gesturestart', preventZoom, { passive: false });
     document.addEventListener('gesturechange', preventZoom, { passive: false });
     document.addEventListener('gestureend', preventZoom, { passive: false });
-    
+
     return () => {
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
@@ -74,7 +73,7 @@ export default function MeasurementWelcome() {
         console.error("❌ Error retrieving user data:", error);
       }
     }
-    
+
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 100);
@@ -106,7 +105,7 @@ export default function MeasurementWelcome() {
 
   const handleContinue = () => {
     console.log("🚀 Navigating to Starting with user data:", userData);
-    navigate("/measure/starting", { 
+    navigate("/measure/starting", {
       state: userData
     });
   };
@@ -114,133 +113,82 @@ export default function MeasurementWelcome() {
   const handleShowTerms = () => setShowTerms(true);
   const handleCloseTerms = () => setShowTerms(false);
 
-  // Format the display name
-  const getDisplayName = () => {
-    if (userData.firstName && userData.lastName) {
-      return `${userData.firstName} ${userData.lastName}`;
-    }
-    return "User";
-  };
-
   return (
-    <Container fluid className="welcome-container d-flex align-items-center justify-content-center min-vh-100">
-      <Row className="justify-content-center w-100">
-        <Col xs={12} md={10} lg={8} xl={7} className="text-center">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="welcome-content"
-          >
-            {/* Logo */}
-            <div className="welcome-logo mb-3">
-              <div className="logo-main-circle">
-                <img 
-                  src={logo} 
-                  alt="4 in Juan Logo" 
-                  className="juan-logo"
-                />
-              </div>
-            </div>
+    <div className="welcome-container">
+      <div className={`welcome-content ${isVisible ? 'visible' : ''}`}>
+        {/* Logo */}
+        <div className="welcome-logo mb-3">
+          <div className="logo-main-circle">
+            <img
+              src={logo}
+              alt="4 in Juan Logo"
+              className="juan-logo"
+            />
+          </div>
+        </div>
 
-            {/* Welcome Message */}
-            <div className="welcome-message mb-3">
-              <h1 className="main-title mb-2">
-                Welcome, {userData.firstName || "User"}!
-              </h1>
-              <p className="motto mb-3">
-                Ready to check your vital signs with{" "}
-                <span className="every-juan">
-                  4 in <span className="juan-red">Juan</span>
-                </span>
-              </p>
-              
-              {/* User Info Display */}
-              <div className="user-info-display mb-3">
-                <div className="user-info-card">
-                  <h4 className="user-info-title">Your Information</h4>
-                  <div className="user-info-grid">
-                    <div className="user-info-item">
-                      <span className="user-info-label">Name:</span>
-                      <span className="user-info-value">{getDisplayName()}</span>
-                    </div>
-                    <div className="user-info-item">
-                      <span className="user-info-label">Age:</span>
-                      <span className="user-info-value">{userData.age ? `${userData.age} years old` : "Not specified"}</span>
-                    </div>
-                    <div className="user-info-item">
-                      <span className="user-info-label">Sex:</span>
-                      <span className="user-info-value">
-                        {userData.sex ? userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1) : "Not specified"}
-                      </span>
-                    </div>
-                    {userData.schoolNumber && (
-                      <div className="user-info-item">
-                        <span className="user-info-label">School Number:</span>
-                        <span className="user-info-value">{userData.schoolNumber}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+        {/* Welcome Message */}
+        <div className="welcome-message mb-3">
+          <h1 className="main-title mb-2">
+            Welcome, {userData.firstName || "User"}!
+          </h1>
+          <p className="motto mb-3">
+            Ready to check your vital signs with{" "}
+            <span className="every-juan">
+              4 in <span className="juan-red">Juan</span>
+            </span>
+          </p>
 
-              <div className="welcome-subtitle text-muted">
-                <p className="mb-1">Before we begin, please review and accept our Terms and Conditions</p>
-                <p>to ensure accurate monitoring and personalized health insights.</p>
-              </div>
-            </div>
+          <div className="welcome-subtitle text-muted">
+            <p className="mb-1">Before we begin, please review and accept our Terms and Conditions</p>
+            <p>to ensure accurate monitoring and personalized health insights.</p>
+          </div>
+        </div>
 
-            {/* Terms and Conditions & Button Container */}
-            <div className="action-section">
-              {/* Terms and Conditions */}
-              <div className="terms-section mb-4">
-                <div className="terms-checkbox">
-                  <input
-                    type="checkbox"
-                    id="termsCheckbox"
-                    className="terms-checkbox-input"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  />
-                  <label htmlFor="termsCheckbox" className="terms-checkbox-label">
-                    I agree to the{" "}
-                    <Button 
-                      variant="link" 
-                      className="terms-link" 
-                      onClick={handleShowTerms}
-                    >
-                      Terms and Conditions
-                    </Button>
-                  </label>
-                </div>
-              </div>
-
-              {/* Action Button */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.8 }}
-                className="button-section"
-              >
+        {/* Terms and Conditions & Button Container */}
+        <div className="action-section">
+          {/* Terms and Conditions */}
+          <div className="terms-section mb-4">
+            <div className="terms-checkbox">
+              <input
+                type="checkbox"
+                id="termsCheckbox"
+                className="terms-checkbox-input"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+              />
+              <label htmlFor="termsCheckbox" className="terms-checkbox-label">
+                I agree to the{" "}
                 <Button
-                  className="continue-button"
-                  onClick={handleContinue}
-                  disabled={!acceptedTerms}
-                  size="lg"
+                  variant="link"
+                  className="terms-link"
+                  onClick={handleShowTerms}
                 >
-                  OK, Let's Start
+                  Terms and Conditions
                 </Button>
-              </motion.div>
+              </label>
             </div>
-          </motion.div>
-        </Col>
-      </Row>
+          </div>
+
+          {/* Action Button */}
+          <div className="button-section">
+            <Button
+              className="continue-button"
+              onClick={handleContinue}
+              disabled={!acceptedTerms}
+              size="lg"
+            >
+              OK, Let's Start
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Terms and Conditions Modal */}
-      <Modal 
-        show={showTerms} 
-        onHide={handleCloseTerms} 
-        size="lg" 
+      <Modal
+        show={showTerms}
+        onHide={handleCloseTerms}
+        size="lg"
         centered
         className="terms-modal"
       >
@@ -319,8 +267,8 @@ export default function MeasurementWelcome() {
           <Button variant="outline-secondary" onClick={handleCloseTerms}>
             Close
           </Button>
-          <Button 
-            variant="danger" 
+          <Button
+            variant="danger"
             onClick={() => {
               setAcceptedTerms(true);
               handleCloseTerms();
@@ -330,6 +278,6 @@ export default function MeasurementWelcome() {
           </Button>
         </Modal.Footer>
       </Modal>
-    </Container>
+    </div>
   );
 }

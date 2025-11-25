@@ -34,11 +34,11 @@
   --subtitle-color: #22333b;
   --text-color: #5a5a5a;
   --light-text: #8a8a8a;
-  
+
   /* Background */
   --background-color: #ffffff;
   --surface-color: #f8f9fa;
-  
+
   /* Red Colors */
   --red-50: #641220;
   --red-100: #6e1423;
@@ -51,29 +51,31 @@
   --red-800: #da1e37;
   --red-900: #e01e37;
   --red-accent: #dc2626;
-  
+
   /* Gray Colors for Borders */
   --border-gray: #e0e0e0;
   --border-light: #e9ecef;
   --border-hover: #d0d0d0;
-  
+
   /* Gradients */
   --red-gradient: linear-gradient(135deg, var(--red-600) 0%, var(--red-800) 100%);
-  
+
   /* Shadows - UPDATED: All gray shadows */
   --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.12);
-  --shadow-gray: 0 4px 12px rgba(0, 0, 0, 0.15); /* Replaced shadow-red */
+  --shadow-gray: 0 4px 12px rgba(0, 0, 0, 0.15);
+  /* Replaced shadow-red */
   --shadow-modal: 0 10px 40px rgba(0, 0, 0, 0.15);
   --shadow-large: 0 20px 40px rgba(0, 0, 0, 0.1);
-  
+
   /* Border Radius */
   --border-radius: 12px;
   --border-radius-lg: 20px;
 }
 
 /* Global Styles */
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -92,39 +94,60 @@ html, body {
   text-size-adjust: none;
 }
 
-/* UPDATED: White Background like BMI component */
+/* Container - Wider and better proportions */
 .welcome-container {
-  position: relative;
-  min-height: 100vh;
-  background: #ffffff;
-  overflow: hidden;
   display: flex;
-  align-items: center;
   justify-content: center;
-  padding: 2rem;
+  align-items: center;
+  height: 100vh;
+  background: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   -ms-touch-action: manipulation;
   touch-action: manipulation;
+  -ms-content-zooming: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
-/* UPDATED: Much wider main container with gray border and shadow */
+/* Content Box - Wider and less tall */
 .welcome-content {
   background: #ffffff;
-  border-radius: var(--border-radius-lg);
-  padding: 3.5rem 3rem;
+  border-radius: 2rem;
+  padding: 2.5rem 3rem;
   width: 100%;
-  max-width: 1000px;
-  box-shadow: var(--shadow-large); /* Gray shadow */
+  max-width: 700px;
+  min-height: auto;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2rem;
-  margin: 0 auto;
+  margin: auto;
   position: relative;
   z-index: 3;
   border: 1px solid var(--border-gray);
   touch-action: manipulation;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease;
+  overflow: hidden;
+}
+
+.welcome-content.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Logo Section */
@@ -145,7 +168,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-soft); /* Gray shadow */
+  box-shadow: var(--shadow-soft);
+  /* Gray shadow */
   border: 2px solid var(--border-light);
   overflow: hidden;
   margin: 0 auto;
@@ -155,7 +179,8 @@ html, body {
 
 .logo-main-circle:hover {
   transform: scale(1.02);
-  box-shadow: var(--shadow-medium); /* Gray shadow */
+  box-shadow: var(--shadow-medium);
+  /* Gray shadow */
   border-color: var(--border-hover);
 }
 
@@ -393,7 +418,8 @@ html, body {
   font-weight: 600 !important;
   background: var(--red-500) !important;
   border: none !important;
-  box-shadow: var(--shadow-gray) !important; /* Changed to gray shadow */
+  box-shadow: var(--shadow-gray) !important;
+  /* Changed to gray shadow */
   transition: all 0.2s ease !important;
   min-height: 120px;
   min-width: 450px;
@@ -414,7 +440,8 @@ html, body {
 
 .continue-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important; /* Changed to gray shadow */
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important;
+  /* Changed to gray shadow */
   background: var(--red-600) !important;
 }
 
@@ -428,7 +455,8 @@ html, body {
 .terms-modal .modal-content {
   border-radius: var(--border-radius-lg);
   border: none;
-  box-shadow: var(--shadow-modal); /* Gray shadow */
+  box-shadow: var(--shadow-modal);
+  /* Gray shadow */
   border: 1px solid var(--border-gray);
   background: #ffffff;
   touch-action: manipulation;
@@ -570,27 +598,27 @@ html, body {
   .welcome-container {
     padding: 1rem;
   }
-  
+
   .welcome-content {
     padding: 2.5rem 2rem;
     max-width: 95%;
     gap: 1.5rem;
     margin: 0 auto;
   }
-  
+
   .welcome-logo {
     width: min(400px, 70vw);
     margin: 0 auto;
   }
-  
+
   .main-title {
     font-size: 3.2rem;
   }
-  
+
   .subtitle {
     font-size: 1.8rem;
   }
-  
+
   .motto {
     color: var(--text-color);
     font-size: 1.8rem;
@@ -614,50 +642,52 @@ html, body {
     margin-left: 0;
     padding-left: 0;
   }
-    
+
   .welcome-subtitle {
     font-size: 1.17rem;
   }
-  
+
   .terms-checkbox-label {
     font-size: 1.17rem;
   }
-  
+
   .terms-link {
     font-size: 1.17rem;
   }
-  
+
   .continue-button {
     min-height: 100px;
     min-width: 380px;
     padding: 1.8rem 4rem !important;
     font-size: 1.9rem !important;
   }
-  
+
   .terms-scroll {
     max-height: 50vh;
     padding: 1.35rem;
   }
-  
+
   .terms-modal .modal-title {
     font-size: 1.44rem;
   }
-  
+
   .terms-scroll h4 {
     font-size: 1.35rem;
   }
-  
+
   .terms-scroll h5 {
     font-size: 1.17rem;
   }
-  
-  .terms-scroll p, .terms-scroll li {
+
+  .terms-scroll p,
+  .terms-scroll li {
     font-size: 0.99rem;
   }
 }
 
 /* Touch screen optimizations */
-.continue-button, .terms-link {
+.continue-button,
+.terms-link {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;

@@ -1,14 +1,21 @@
-# YOLOv8 Dataset Configuration - Bare Feet Training
+# YOLOv8 Dataset Configuration - Feet Dataset (Roboflow)
 
-# Absolute path to the dataset directory
 # Absolute path to the dataset directory
 path: C:/Users/VitalSign/Documents/4in1-vital-sign/backend/ai_camera/datasets
 
-# Subfolders for images
-train: images/train
-val: images/val
+# Subfolders for images (Roboflow structure)
+train: train/images
+val: valid/images
+test: test/images
 
-# Class Names
-# We are only training 1 class for now: "bare_feet"
-names:
-  0: bare_feet
+# Classes
+nc: 8
+names: 
+  0: 'Back View -Both Feet-'
+  1: 'Dorsal View -Both Feet-'
+  2: 'Front View -Both Feet-'
+  3: 'Lateral View -Left Foot-'
+  4: 'Lateral View -Right Foot-'
+  5: 'Medial View -Left Foot-'
+  6: 'Medial View -Right Foot-'
+  7: 'Plantar View -Both Feet-'
