@@ -14,7 +14,7 @@
   border-radius: 20px;
   padding: 40px 30px;
   width: 100%;
-  max-width: 500px;
+  max-width: 850px;
   box-shadow: 0 20px 40px rgba(220, 38, 38, 0.1);
   text-align: center;
   opacity: 0;
@@ -71,9 +71,19 @@
 }
 
 @keyframes paperPrint {
-  0% { top: -10px; opacity: 0; }
-  50% { opacity: 1; }
-  100% { top: 20px; opacity: 0; }
+  0% {
+    top: -10px;
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 20px;
+    opacity: 0;
+  }
 }
 
 .success-icon {
@@ -190,8 +200,13 @@
 }
 
 @keyframes progress {
-  0% { width: 0%; }
-  100% { width: 100%; }
+  0% {
+    width: 0%;
+  }
+
+  100% {
+    width: 100%;
+  }
 }
 
 .print-progress span {
@@ -234,21 +249,39 @@
 /* Action Buttons */
 .action-buttons {
   margin: 25px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
 }
 
 .print-again-btn {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 16px 24px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
-  margin: 5px;
-  min-width: 160px;
+  position: relative;
+  padding: 2rem 5rem !important;
+  border-radius: 20px !important;
+  font-size: 2.2rem !important;
+  font-weight: 600 !important;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  border: none !important;
+  box-shadow: 0 5px 18px rgba(220, 38, 38, 0.35);
+  transition: all 0.2s ease !important;
+  min-height: 120px;
+  min-width: 450px;
+  touch-action: manipulation;
+  overflow: hidden;
+  color: white !important;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 1;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
 }
 
 .print-again-btn:hover {
@@ -257,17 +290,32 @@
 }
 
 .home-btn {
+  position: relative;
+  padding: 2rem 5rem !important;
+  border-radius: 20px !important;
+  font-size: 2.2rem !important;
+  font-weight: 600 !important;
   background: #64748b;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 16px 24px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin: 5px;
-  min-width: 160px;
+  border: none !important;
+  box-shadow: 0 5px 18px rgba(100, 116, 139, 0.35);
+  transition: all 0.2s ease !important;
+  min-height: 120px;
+  min-width: 450px;
+  touch-action: manipulation;
+  overflow: hidden;
+  color: white !important;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 1;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
 }
 
 .home-btn:hover {
@@ -293,8 +341,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .printing-message span {
@@ -335,30 +388,30 @@
   .share-container {
     padding: 16px;
   }
-  
+
   .share-content {
     padding: 30px 20px;
     border-radius: 16px;
   }
-  
+
   .share-title {
     font-size: 1.8rem;
   }
-  
+
   .share-subtitle {
     font-size: 1rem;
   }
-  
+
   .print-again-btn,
   .home-btn {
     width: 100%;
     margin: 5px 0;
   }
-  
+
   .receipt-preview {
     display: none;
   }
-  
+
   .receipt-content {
     font-size: 0.75rem;
   }
@@ -368,11 +421,11 @@
   .share-content {
     padding: 24px 16px;
   }
-  
+
   .share-title {
     font-size: 1.6rem;
   }
-  
+
   .printing-animation,
   .success-icon,
   .ready-icon {
@@ -380,11 +433,11 @@
     height: 60px;
     font-size: 2rem;
   }
-  
+
   .patient-name {
     font-size: 1.1rem;
   }
-  
+
   .patient-details {
     font-size: 0.9rem;
   }

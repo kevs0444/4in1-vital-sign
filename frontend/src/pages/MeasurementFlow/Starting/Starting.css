@@ -52,7 +52,7 @@
   border-radius: 2rem;
   padding: 2.5rem 3rem;
   width: 100%;
-  max-width: 700px;
+  max-width: 850px;
   min-height: auto;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
   text-align: center;
@@ -368,22 +368,25 @@
 }
 
 .start-button {
-  padding: 1.56rem 3.25rem;
-  /* Increased by 30% from 1.2rem 2.5rem */
-  border: none;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  color: white;
-  font-size: 1.69rem;
-  /* Increased by 30% from 1.3rem */
-  font-weight: var(--font-semi-bold);
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  box-shadow: var(--shadow-red);
-  width: 100%;
   position: relative;
-  overflow: hidden;
+  padding: 2rem 5rem !important;
+  border-radius: 20px !important;
+  /* var(--border-radius-lg) is 20px */
+  font-size: 2.2rem !important;
+  font-weight: 600 !important;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  border: none !important;
+  box-shadow: var(--shadow-red);
+  transition: all 0.2s ease !important;
+  min-height: 120px;
+  min-width: 450px;
   touch-action: manipulation;
+  overflow: hidden;
+  color: white !important;
+  letter-spacing: 0.02em;
+  display: block;
+  margin: 0 auto;
+  z-index: 4;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;

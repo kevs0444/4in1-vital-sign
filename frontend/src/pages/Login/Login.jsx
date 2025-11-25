@@ -3,9 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Login as LoginIcon, 
-  PersonAdd, 
+import {
+  Login as LoginIcon,
+  PersonAdd,
   CreditCard,
   RadioButtonChecked
 } from '@mui/icons-material';
@@ -65,7 +65,7 @@ export default function LoginPage() {
       document.head.appendChild(viewport);
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
-    
+
     // Prevent zooming via touch gestures
     const preventZoom = (e) => e.touches.length > 1 && e.preventDefault();
     const preventGesture = (e) => e.preventDefault();
@@ -77,14 +77,14 @@ export default function LoginPage() {
 
     // Setup RFID scanner listener immediately
     setupRfidScanner();
-    
+
     return () => {
       document.removeEventListener('touchstart', preventZoom);
       document.removeEventListener('touchmove', preventZoom);
       document.removeEventListener('gesturestart', preventGesture);
       document.removeEventListener('gesturechange', preventGesture);
       document.removeEventListener('keydown', handleGlobalKeyDown);
-      
+
       if (rfidTimeoutRef.current) {
         clearTimeout(rfidTimeoutRef.current);
       }
@@ -100,10 +100,10 @@ export default function LoginPage() {
   const setupRfidScanner = () => {
     console.log('🔔 RFID Scanner Active - Ready to accept any card');
     console.log('🎫 RFID Format: Numeric only (exact number from scanner)');
-    
+
     // Listen to ALL keyboard events on the entire document
     document.addEventListener('keydown', handleGlobalKeyDown);
-    
+
     // Auto-focus on hidden RFID input
     setTimeout(() => {
       if (rfidInputRef.current) {
@@ -139,7 +139,7 @@ export default function LoginPage() {
       // Accumulate ALL characters (RFID data can have numbers, letters, symbols)
       rfidDataRef.current = currentRfidData + e.key;
       console.log('📝 RFID data accumulated:', rfidDataRef.current);
-      
+
       // Auto-detect RFID after certain length (some scanners don't send Enter)
       if (rfidDataRef.current.length >= 8 && !rfidLoading) {
         rfidTimeoutRef.current = setTimeout(() => {
@@ -163,18 +163,18 @@ export default function LoginPage() {
       console.log('❌ No RFID data provided');
       return null;
     }
-    
+
     console.log('🔢 Raw RFID data received:', rawRfidData);
-    
+
     // Extract only numbers from the RFID data - NO RTU PREFIX
     const numbersOnly = rawRfidData.replace(/\D/g, '');
     console.log('🔢 Numbers extracted:', numbersOnly);
-    
+
     if (numbersOnly.length < 5) {
       console.log('❌ Insufficient numbers in RFID data');
       return null;
     }
-    
+
     // Use exact numeric RFID from scanner - NO MODIFICATIONS
     console.log('🎫 Using exact numeric RFID:', numbersOnly);
     return numbersOnly;
@@ -182,7 +182,7 @@ export default function LoginPage() {
 
   const processRfidScan = async (processedRfid) => {
     console.log('🎫 Numeric RFID for validation:', processedRfid);
-    
+
     setRfidLoading(true);
     setRfidStatus('scanning');
     setError('');
@@ -190,18 +190,18 @@ export default function LoginPage() {
     try {
       // Call backend API for RFID login with numeric RFID
       const response = await loginWithRFID(processedRfid);
-      
+
       if (response.success) {
         console.log('✅ RFID validation successful:', response);
         setRfidStatus('success');
         setError(`✅ ${response.message}`);
-        
+
         // Store user data in localStorage
         storeUserData(response.user);
-        
+
         // FIXED: Navigate to measurement welcome with user data
         setTimeout(() => {
-          navigate('/measure/welcome', { 
+          navigate('/measure/welcome', {
             state: {
               firstName: response.user.firstName,
               lastName: response.user.lastName,
@@ -212,7 +212,7 @@ export default function LoginPage() {
             }
           });
         }, 1500);
-        
+
       } else {
         console.log('❌ RFID validation failed:', response.message);
         setRfidStatus('error');
@@ -246,12 +246,12 @@ export default function LoginPage() {
 
       console.log('📤 Sending manual login credentials...');
       const response = await loginWithCredentials(schoolNumber, password);
-      
+
       if (response.success) {
         console.log('✅ Manual login successful:', response);
         storeUserData(response.user);
         // FIXED: Navigate to measurement welcome with user data
-        navigate('/measure/welcome', { 
+        navigate('/measure/welcome', {
           state: {
             firstName: response.user.firstName,
             lastName: response.user.lastName,
@@ -265,7 +265,7 @@ export default function LoginPage() {
         setError(`❌ ${response.message}`);
         setIsLoading(false);
       }
-      
+
     } catch (err) {
       console.error('❌ Manual login error:', err);
       setError('❌ Login failed. Please check your credentials and try again.');
@@ -394,14 +394,14 @@ export default function LoginPage() {
             className="w-100 h-100"
           >
             <div className={`login-content ${isVisible ? 'visible' : ''}`}>
-              
+
               {/* Connection Status */}
               <div className="connection-status">
                 <div className={`status-indicator ${connectionStatus}`}>
                   {getConnectionStatusText()}
                 </div>
               </div>
-              
+
               {/* HIDDEN RFID INPUT - CAPTURES ALL SCANNER INPUT */}
               <input
                 ref={rfidInputRef}
@@ -420,14 +420,14 @@ export default function LoginPage() {
                 autoComplete="off"
                 autoFocus
               />
-              
+
               {/* TOP SECTION - ID CARD FORMAT (25%) */}
               <div className={`login-card-section ${rfidLoading ? 'rfid-scanning' : ''}`}>
                 <div className="card-section-content">
                   <div className="card-icon">
                     <CreditCard />
                   </div>
-                  
+
                   <h2 className="card-title">Tap Your ID Card</h2>
                   <p className="card-subtitle">
                     Place your ID card near the scanner for instant access
@@ -525,8 +525,8 @@ export default function LoginPage() {
                     <p className="register-text">
                       New to the system?
                     </p>
-                    <Link 
-                      to="/register/welcome" 
+                    <Link
+                      to="/register/welcome"
                       className="register-link"
                       onClick={handleRegisterClick}
                     >
@@ -545,30 +545,23 @@ export default function LoginPage() {
                       {row.map((key) => (
                         <button
                           key={key}
-                          className={`login-keyboard-key ${
-                            key === "↑" && isShift ? "active" : ""
-                          } ${
-                            key === "Sym" && showSymbols ? "active" : ""
-                          } ${
-                            key === "Del" ? "delete-key" : ""
-                          } ${
-                            key === "Space" ? "space-key" : ""
-                          } ${
-                            key === "↑" ? "shift-key" : ""
-                          } ${
-                            key === "Sym" || key === "ABC" ? "symbols-key" : ""
-                          } ${
-                            !isNaN(key) && key !== " " ? "number-key" : ""
-                          }`}
+                          className={`login-keyboard-key ${key === "↑" && isShift ? "active" : ""
+                            } ${key === "Sym" && showSymbols ? "active" : ""
+                            } ${key === "Del" ? "delete-key" : ""
+                            } ${key === "Space" ? "space-key" : ""
+                            } ${key === "↑" ? "shift-key" : ""
+                            } ${key === "Sym" || key === "ABC" ? "symbols-key" : ""
+                            } ${!isNaN(key) && key !== " " ? "number-key" : ""
+                            }`}
                           onClick={() => handleKeyboardPress(key)}
                           type="button"
                           disabled={isLoading || rfidLoading}
                         >
-                          {key === "↑" ? "SHIFT" : 
-                           key === "Del" ? "DELETE" : 
-                           key === "Space" ? "SPACE" : 
-                           key === "Sym" ? "SYMBOLS" : 
-                           key === "ABC" ? "ABC" : key}
+                          {key === "↑" ? "SHIFT" :
+                            key === "Del" ? "DELETE" :
+                              key === "Space" ? "SPACE" :
+                                key === "Sym" ? "SYMBOLS" :
+                                  key === "ABC" ? "ABC" : key}
                         </button>
                       ))}
                     </div>

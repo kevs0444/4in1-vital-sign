@@ -1,10 +1,38 @@
 # app/__init__.py
 from flask import Flask
 from flask_cors import CORS
+import logging
+import sys
 
 def create_app():
     app = Flask(__name__)
     CORS(app)  # Enable CORS for all routes
+    
+    # Force configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    
+    # Remove existing handlers to avoid duplicates
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+        
+    # Create console handler with formatting
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    
+    # Add handler to root logger
+    root_logger.addHandler(console_handler)
+    
+    # Also ensure app.logger uses this
+    app.logger.handlers = []
+    app.logger.propagate = True
+    
+    # Suppress werkzeug (Flask) request logs to keep terminal clean
+    # logging.getLogger('werkzeug').setLevel(logging.WARNING)
+    
+    logging.info("✅ Logging configured successfully - Backend starting...")
     
     # Configuration
     app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -13,11 +41,11 @@ def create_app():
     from app.routes.main_routes import main_bp
     from app.routes.sensor_routes import sensor_bp
     from app.routes.register_routes import register_bp
-    from app.routes.login_routes import login_bp  # Add this line
+    from app.routes.login_routes import login_bp
     
     app.register_blueprint(main_bp, url_prefix='/api')
     app.register_blueprint(sensor_bp, url_prefix='/api/sensor')
     app.register_blueprint(register_bp, url_prefix='/api/register')
-    app.register_blueprint(login_bp, url_prefix='/api/login')  # Add this line
+    app.register_blueprint(login_bp, url_prefix='/api/login')
     
     return app

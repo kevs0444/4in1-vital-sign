@@ -64,10 +64,15 @@ export default function Standby() {
       pollerRef.current = setInterval(async () => {
         try {
           const status = await sensorAPI.getSystemStatus();
-          if (status.connected && status.sensors_ready.weight) {
-            setSystemStatus('ready');
+
+          if (status.connected) {
+            if (status.auto_tare_completed) {
+              setSystemStatus('ready');
+            } else {
+              setSystemStatus('waiting_for_auto_tare');
+            }
           } else {
-            setSystemStatus('connecting_arduino'); 
+            setSystemStatus('connecting_arduino');
           }
         } catch (error) {
           console.log('Backend polling failed, switching to offline mode');
@@ -104,6 +109,7 @@ export default function Standby() {
 
   const getStatusIcon = (currentSystemStatus) => {
     if (currentSystemStatus === 'ready') return <CheckCircle className="standby-status-icon connected" />;
+    if (currentSystemStatus === 'waiting_for_auto_tare') return <Circle className="standby-status-icon checking" />;
     if (currentSystemStatus === 'offline_mode') return <Warning className="standby-status-icon warning" />;
     if (currentSystemStatus === 'backend_down' || currentSystemStatus === 'connecting_arduino') return <Error className="standby-status-icon error" />;
     return <Circle className="standby-status-icon checking" />;
@@ -114,7 +120,9 @@ export default function Standby() {
       case 'backend_down':
         return 'Backend Not Connected';
       case 'ready':
-        return 'System Ready';
+        return 'System Ready - Auto-Tare Completed';
+      case 'waiting_for_auto_tare':
+        return 'Arduino Connected - Waiting for Auto-Tare...';
       case 'connecting_arduino':
         return 'Connecting to System...';
       case 'offline_mode':
@@ -133,11 +141,10 @@ export default function Standby() {
   return (
     <Container fluid className="standby-container">
       <motion.div className="standby-backend-status">
-        <div className={`standby-status-indicator ${
-          systemStatus === 'ready' ? 'connected' : 
-          systemStatus === 'offline_mode' ? 'warning' :
-          (systemStatus === 'backend_down' || systemStatus === 'connecting_arduino') ? 'error' : 'checking'
-        }`}>
+        <div className={`standby-status-indicator ${systemStatus === 'ready' ? 'connected' :
+            systemStatus === 'offline_mode' ? 'warning' :
+              (systemStatus === 'backend_down' || systemStatus === 'connecting_arduino') ? 'error' : 'checking'
+          }`}>
           {getStatusIcon(systemStatus)}
           <span className="standby-status-text">{getStatusText(systemStatus)}</span>
         </div>

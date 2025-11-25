@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BodyTemp.css";
+import "../main-components-measurement.css";
 import tempIcon from "../../../assets/icons/temp-icon.png";
 import { sensorAPI } from "../../../utils/api";
-import { getNextStepPath, getProgressInfo } from "../../../utils/checklistNavigation";
+import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
 
 export default function BodyTemp() {
   const navigate = useNavigate();
@@ -287,7 +288,7 @@ export default function BodyTemp() {
   const getTemperatureStatus = (temp) => {
     if (!temp || temp === "--.-") return {
       text: "Not measured",
-      class: "default",
+      class: "pending",
       description: "Temperature not measured yet"
     };
 
@@ -296,19 +297,19 @@ export default function BodyTemp() {
     if (tempValue >= 35.0 && tempValue <= 37.2) {
       return {
         text: "Normal",
-        class: "normal",
+        class: "complete",
         description: "Your body temperature is within normal range"
       };
     } else if (tempValue >= 37.3 && tempValue <= 38.0) {
       return {
         text: "Elevated",
-        class: "elevated",
+        class: "warning",
         description: "Your body temperature is elevated"
       };
     } else if (tempValue > 38.0) {
       return {
         text: "Critical",
-        class: "critical",
+        class: "error",
         description: "Your body temperature indicates fever"
       };
     }
@@ -316,7 +317,7 @@ export default function BodyTemp() {
     // For temperatures below 35.0, show as default/unknown
     return {
       text: "Invalid",
-      class: "default",
+      class: "pending",
       description: "Temperature reading is outside normal range"
     };
   };
@@ -343,7 +344,7 @@ export default function BodyTemp() {
 
     return {
       text: isReady ? 'Ready' : 'Initializing',
-      class: isReady ? 'ready' : 'default',
+      class: isReady ? 'active' : 'pending',
       description: isReady ? 'Ready for measurement' : 'Initializing temperature sensor'
     };
   };
@@ -354,7 +355,8 @@ export default function BodyTemp() {
     }
 
     if (measurementComplete) {
-      return "Continue to Next Step";
+      const isLast = isLastStep('bodytemp', location.state?.checklist);
+      return isLast ? "Continue to Result" : "Continue to Next Step";
     }
 
     return "Start Temperature Measurement";
@@ -368,143 +370,118 @@ export default function BodyTemp() {
   const displayValue = getCurrentDisplayValue();
 
   return (
-    <div className="bodytemp-container">
-      <div className={`bodytemp-content ${isVisible ? 'visible' : ''}`}>
+    <div className="measurement-container">
+      <div className={`measurement-content ${isVisible ? 'visible' : ''}`}>
 
         {/* Progress bar for Step X of Y */}
-        <div className="progress-container">
-          <div className="progress-bar">
-            <div className="progress-fill red-progress" style={{ width: `${getProgressInfo('bodytemp', location.state?.checklist).percentage}%` }}></div>
+        <div className="measurement-progress-container">
+          <div className="measurement-progress-bar">
+            <div className="measurement-progress-fill" style={{ width: `${getProgressInfo('bodytemp', location.state?.checklist).percentage}%` }}></div>
           </div>
-          <span className="progress-step">
+          <span className="measurement-progress-step">
             Step {getProgressInfo('bodytemp', location.state?.checklist).currentStep} of {getProgressInfo('bodytemp', location.state?.checklist).totalSteps} - Body Temperature
           </span>
         </div>
 
-        <div className="bodytemp-header">
-          <h1 className="bodytemp-title">Body Temperature</h1>
-          <p className="bodytemp-subtitle">{statusMessage}</p>
+        <div className="measurement-header">
+          <h1 className="measurement-title">Body <span className="measurement-title-accent">Temperature</span></h1>
+          <p className="measurement-subtitle">{statusMessage}</p>
           {retryCount > 0 && (
             <div className="retry-indicator">
               Retry attempt: {retryCount}/{MAX_RETRIES}
             </div>
           )}
           {isMeasuring && progress > 0 && (
-            <div className="measurement-progress">
-              <div className="progress-bar-horizontal">
+            <div className="measurement-progress-container" style={{ width: '50%', margin: '0 auto' }}>
+              <div className="measurement-progress-bar">
                 <div
-                  className="progress-fill-horizontal"
+                  className="measurement-progress-fill"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <span className="progress-text">{Math.round(progress)}%</span>
+              <span className="measurement-progress-step" style={{ textAlign: 'center' }}>{Math.round(progress)}%</span>
             </div>
           )}
         </div>
 
-        <div className="sensor-display-section">
+        <div className="measurement-display-section">
           {/* Single Temperature Display - Shows live reading and result */}
-          <div className="temperature-display-container">
-            <div className={`temperature-display ${tempMeasuring ? 'measuring-active' :
-              tempComplete ? 'measurement-complete' : ''
-              } ${statusInfo.class}`}>
-              <div className="temperature-icon">
-                <img src={tempIcon} alt="Temperature Icon" className="temperature-image" />
-              </div>
+          <div className={`measurement-card ${tempMeasuring ? 'active' : ''} ${tempComplete ? 'completed' : ''}`} style={{ minWidth: '320px', minHeight: '320px' }}>
+            <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
+              <img src={tempIcon} alt="Temperature Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
 
-              <div className="temperature-content">
-                <h3 className="temperature-title">
-                  {measurementComplete ? "Temperature Result" : "Body Temperature"}
-                </h3>
+            <h3 className="instruction-title" style={{ fontSize: '1.5rem' }}>
+              {measurementComplete ? "Temperature Result" : "Body Temperature"}
+            </h3>
 
-                <div className="temperature-value-display">
-                  <span className={`temperature-value ${tempMeasuring ? 'measuring-live' : ''
-                    }`}>
-                    {displayValue}
-                  </span>
-                  <span className="temperature-unit">°C</span>
-                </div>
+            <div className="measurement-value-container">
+              <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
+                {displayValue}
+              </span>
+              <span className="measurement-unit">°C</span>
+            </div>
 
-                <div className="temperature-status-info">
-                  <span className={`temperature-status ${statusInfo.class}`}>
-                    {statusInfo.text}
-                  </span>
-                  <div className="temperature-description">
-                    {statusInfo.description}
-                  </div>
-                </div>
-
-                {tempMeasuring && liveTempValue && (
-                  <div className="live-reading-indicator">
-                    🔄 Live Reading
-                  </div>
-                )}
+            <div className="measurement-status-badge-container" style={{ marginTop: '15px', textAlign: 'center' }}>
+              <span className={`measurement-status-badge ${statusInfo.class}`}>
+                {statusInfo.text}
+              </span>
+              <div className="instruction-text" style={{ marginTop: '10px' }}>
+                {statusInfo.description}
               </div>
             </div>
+
+            {tempMeasuring && liveTempValue && (
+              <div style={{ color: '#17a2b8', fontWeight: 'bold', marginTop: '15px' }}>
+                🔄 Live Reading
+              </div>
+            )}
           </div>
 
           {/* INSTRUCTION DISPLAY */}
-          <div className="instruction-container">
-            <div className="instruction-cards-horizontal">
+          <div className="measurement-instruction-container">
+            <div className="instruction-cards">
               {/* Step 1 Card */}
-              <div className={`instruction-card-step ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''
-                }`}>
-                <div className="step-number-circle">1</div>
-                <div className="step-icon">📍</div>
-                <h4 className="step-title">Position Sensor</h4>
-                <p className="step-description">
+              <div className={`instruction-card ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
+                <div className="instruction-step-number">1</div>
+                <div className="instruction-icon">📍</div>
+                <h4 className="instruction-title">Position Sensor</h4>
+                <p className="instruction-text">
                   Point sensor at forehead
                 </p>
-                <div className={`step-status ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
-                  }`}>
-                  {measurementStep >= 1 ? (measurementStep > 1 ? 'Completed' : 'Active') : 'Pending'}
-                </div>
               </div>
 
               {/* Step 2 Card */}
-              <div className={`instruction-card-step ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''
-                }`}>
-                <div className="step-number-circle">2</div>
-                <div className="step-icon">📱</div>
-                <h4 className="step-title">Start Measurement</h4>
-                <p className="step-description">
+              <div className={`instruction-card ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
+                <div className="instruction-step-number">2</div>
+                <div className="instruction-icon">📱</div>
+                <h4 className="instruction-title">Start Measurement</h4>
+                <p className="instruction-text">
                   Click Start button
                 </p>
                 {isMeasuring && countdown > 0 && (
-                  <div className="countdown-mini">
-                    <div className="countdown-mini-circle">
-                      <span className="countdown-mini-number">{countdown}</span>
-                    </div>
-                    <span className="countdown-mini-text">seconds</span>
+                  <div style={{ color: '#dc2626', fontWeight: 'bold', marginTop: '5px' }}>
+                    {countdown}s
                   </div>
                 )}
-                <div className={`step-status ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : 'pending'
-                  }`}>
-                  {measurementStep >= 2 ? (measurementStep > 2 ? 'Completed' : 'Active') : 'Pending'}
-                </div>
               </div>
 
               {/* Step 3 Card */}
-              <div className={`instruction-card-step ${measurementStep >= 3 ? 'completed' : ''
-                }`}>
-                <div className="step-number-circle">3</div>
-                <div className="step-icon">✅</div>
-                <h4 className="step-title">Continue</h4>
-                <p className="step-description">
+              <div className={`instruction-card ${measurementStep >= 3 ? 'completed' : ''}`}>
+                <div className="instruction-step-number">3</div>
+                <div className="instruction-icon">✅</div>
+                <h4 className="instruction-title">Continue</h4>
+                <p className="instruction-text">
                   Proceed to next step
                 </p>
-                <div className={`step-status ${measurementStep >= 3 ? 'completed' : 'pending'
-                  }`}>
-                  {measurementStep >= 3 ? 'Completed' : 'Pending'}
-                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="continue-button-container">
+        <div className="measurement-action-container">
           <button
-            className="continue-button"
+            className="measurement-button"
             onClick={measurementComplete ? handleContinue : startMeasurement}
             disabled={getButtonDisabled()}
           >

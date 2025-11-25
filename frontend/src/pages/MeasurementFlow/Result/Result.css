@@ -13,7 +13,7 @@
   background: white;
   border-radius: 16px;
   padding: 20px;
-  max-width: 100%;
+  max-width: 850px;
   width: 100%;
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
   opacity: 0;
@@ -24,6 +24,10 @@
   overflow: visible;
   position: relative;
 }
+
+/* ... existing styles ... */
+
+
 
 .result-content.visible {
   opacity: 1;
@@ -99,7 +103,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+  background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
 .risk-score-main {
@@ -312,7 +316,8 @@
   flex-wrap: wrap;
 }
 
-.user-age, .user-sex {
+.user-age,
+.user-sex {
   color: #64748b;
   font-weight: 500;
   padding: 5px 10px;
@@ -674,26 +679,34 @@
 }
 
 .save-results-btn {
-  padding: 22px 40px;
-  border: none;
-  border-radius: 16px;
-  font-size: 1.3rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  position: relative;
+  padding: 2rem 5rem !important;
+  border-radius: 20px !important;
+  font-size: 2.2rem !important;
+  font-weight: 600 !important;
   background: linear-gradient(135deg, #dc2626, #ef4444);
-  color: white;
+  border: none !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease !important;
+  min-height: 120px;
+  min-width: 450px;
+  touch-action: manipulation;
+  overflow: hidden;
+  color: white !important;
+  letter-spacing: 0.02em;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   line-height: 1.2;
-  width: 100%; /* Changed to 100% to match card width */
-  justify-content: center;
+  width: 100%;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  position: relative;
-  overflow: hidden;
+  z-index: 1;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .save-results-btn::before {
@@ -703,7 +716,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: left 0.5s ease;
 }
 
@@ -783,61 +796,62 @@
   .result-container {
     padding: 8px;
   }
-  
+
   .result-content {
     padding: 15px;
     margin: 8px 0;
     border-radius: 12px;
   }
-  
+
   .result-title {
     font-size: 1.6rem;
   }
-  
+
   .result-subtitle {
     font-size: 0.9rem;
   }
-  
+
   .risk-number {
     font-size: 3rem;
   }
-  
+
   .risk-category {
     font-size: 1.2rem;
   }
-  
+
   .vital-signs-grid {
     gap: 12px;
   }
-  
+
   .vital-sign-card {
     padding: 15px 12px;
     min-height: 130px;
   }
-  
+
   .vital-sign-value {
     font-size: 1.6rem;
   }
-  
+
   .section-title {
     font-size: 1.3rem;
     margin-bottom: 15px;
   }
-  
+
   .sub-feature-header {
     padding: 15px;
   }
-  
+
   .sub-feature-content {
     padding: 15px;
   }
-  
+
   /* Mobile Button Adjustments */
   .save-results-btn {
     padding: 20px 30px;
     font-size: 1.2rem;
     border-radius: 14px;
-    width: 100%; /* Maintain full width on mobile */
+    width: 100%;
+    /* Maintain full width on mobile */
   }
 }
 
@@ -847,23 +861,23 @@
     max-height: none;
     overflow-y: visible;
   }
-  
+
   .risk-score-section {
     margin-bottom: 25px;
   }
-  
+
   .personal-info-section {
     margin-bottom: 25px;
   }
-  
+
   .health-assessment-section {
     margin-bottom: 25px;
   }
-  
+
   .sub-features-section {
     margin-bottom: 25px;
   }
-  
+
   .result-actions {
     margin-bottom: 25px;
   }
@@ -880,7 +894,8 @@ body {
   overflow-x: hidden;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   overflow: auto;
 }

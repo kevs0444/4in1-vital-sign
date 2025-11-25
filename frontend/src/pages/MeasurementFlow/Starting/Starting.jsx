@@ -11,7 +11,8 @@ export default function Starting() {
     firstName: "",
     lastName: "",
     age: "",
-    sex: ""
+    sex: "",
+    role: ""
   });
 
   // Add viewport meta tag to prevent zooming
@@ -59,7 +60,8 @@ export default function Starting() {
             firstName: user.firstName || "",
             lastName: user.lastName || "",
             age: user.age || "",
-            sex: user.sex || ""
+            sex: user.sex || "",
+            role: user.role || ""
           });
         }
       } catch (error) {
@@ -127,6 +129,14 @@ export default function Starting() {
     return "Not specified";
   };
 
+  // Format role display
+  const getRoleDisplay = () => {
+    if (userData.role) {
+      return userData.role.charAt(0).toUpperCase() + userData.role.slice(1);
+    }
+    return "Not specified";
+  };
+
   return (
     <div className="starting-container">
       <div className={`starting-content ${isVisible ? 'visible' : ''}`}>
@@ -163,6 +173,10 @@ export default function Starting() {
             <div className="info-item">
               <span className="info-label">Sex:</span>
               <span className="info-value">{getSexDisplay()}</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">Role:</span>
+              <span className="info-value">{getRoleDisplay()}</span>
             </div>
           </div>
         </div>

@@ -3,6 +3,10 @@ import time
 import threading
 from serial.tools import list_ports
 import re
+import logging
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 class SensorManager:
     def __init__(self):
@@ -83,6 +87,7 @@ class SensorManager:
         try:
             arduino_port = self._find_arduino_port()
             if not arduino_port:
+                print("❌ Arduino port not found")
                 return False, "Arduino port not found"
 
             self.port = arduino_port
@@ -93,25 +98,29 @@ class SensorManager:
                 write_timeout=1
             )
 
-            time.sleep(2)
-            self.serial_conn.reset_input_buffer()
-            
-            self.is_connected = True
-            print(f"SUCCESS: Connected to {self.port}")
-
-            # Start data listener
-            self._start_data_listener()
-
-            # Wait for system to be ready
+            # Wait for Arduino reset
+            print("⏳ Waiting for auto-tare completion...")
+            logger.info("SYSTEM: Waiting for auto-tare completion...")
             time.sleep(3)
             
-            # Auto-tare will be performed by Arduino on startup
-            print("SYSTEM: Waiting for auto-tare completion...")
+            if self.auto_tare_completed:
+                print("✅ Auto-tare completed successfully")
+            else:
+                print("⚠️ Auto-tare status not received yet (might be delayed)")
+            
+            self.is_connected = True
+            self._start_data_listener()
+            
+            logger.info(f"SUCCESS: Connected to {self.port}")
+            print("\n" + "="*40)
+            print(f"✅ ARDUINO: CONNECTED TO {self.port}")
+            print("="*40 + "\n")
             
             return True, f"Connected to {self.port}"
 
         except Exception as e:
-            print(f"Connection error: {e}")
+            logger.error(f"Connection error: {e}")
+            print(f"❌ Connection error: {e}")
             self.is_connected = False
             return False, f"Connection failed: {str(e)}"
 
@@ -142,12 +151,12 @@ class SensorManager:
                         self._parse_serial_data(line)
                 time.sleep(0.01)
             except Exception as e:
-                print(f"Serial listener error: {e}")
+                logger.error(f"Serial listener error: {e}")
                 time.sleep(0.1)
 
     def _parse_serial_data(self, data):
         """Parse incoming serial data"""
-        print(f"ARDUINO: {data}")
+        logger.info(f"ARDUINO: {data}")
 
         # ==================== SYSTEM STATUS ====================
         if data.startswith("STATUS:"):
@@ -156,20 +165,24 @@ class SensorManager:
             if "AUTO_TARE_COMPLETE" in status_type:
                 self.auto_tare_completed = True
                 self.weight_sensor_ready = True
-                print("✅ Auto-tare completed")
+                logger.info("✅ Auto-tare completed")
+                print("\n" + "="*40)
+                print("✅ ARDUINO: AUTO TARE COMPLETED")
+                print("="*40 + "\n")
                 
             elif "WEIGHT_SENSOR_READY" in status_type:
                 self.weight_sensor_ready = True
-                print("✅ Weight sensor ready")
+                logger.info("✅ Weight sensor ready")
+                print("✅ ARDUINO: WEIGHT SENSOR READY")
                 
             elif "MAX30102_SENSOR_INITIALIZED" in status_type:
                 self.max30102_sensor_ready = True
                 self.live_data['max30102']['sensor_prepared'] = True
-                print("✅ MAX30102 sensor initialized")
+                logger.info("✅ MAX30102 sensor initialized")
                 
             elif "FULL_SYSTEM_INITIALIZATION_COMPLETE" in status_type:
                 self.full_system_initialized = True
-                print("✅ Full system initialized")
+                logger.info("✅ Full system initialized")
 
         # ==================== MEASUREMENT RESULTS ====================
         elif data.startswith("RESULT:WEIGHT:"):
@@ -179,9 +192,9 @@ class SensorManager:
                 self.live_data['weight']['current'] = weight
                 self.live_data['weight']['progress'] = 100
                 self.live_data['weight']['status'] = 'complete'
-                print(f"✅ Weight result: {weight} kg")
+                logger.info(f"✅ Weight result: {weight} kg")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing weight: {e}")
+                logger.error(f"Error parsing weight: {e}")
 
         elif data.startswith("RESULT:HEIGHT:"):
             try:
@@ -190,9 +203,9 @@ class SensorManager:
                 self.live_data['height']['current'] = height
                 self.live_data['height']['progress'] = 100
                 self.live_data['height']['status'] = 'complete'
-                print(f"✅ Height result: {height} cm")
+                logger.info(f"✅ Height result: {height} cm")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing height: {e}")
+                logger.error(f"Error parsing height: {e}")
 
         elif data.startswith("RESULT:TEMPERATURE:"):
             try:
@@ -201,38 +214,38 @@ class SensorManager:
                 self.live_data['temperature']['current'] = temperature
                 self.live_data['temperature']['progress'] = 100
                 self.live_data['temperature']['status'] = 'complete'
-                print(f"✅ Temperature result: {temperature} °C")
+                logger.info(f"✅ Temperature result: {temperature} °C")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing temperature: {e}")
+                logger.error(f"Error parsing temperature: {e}")
 
         elif data.startswith("RESULT:HEART_RATE:"):
             try:
                 heart_rate = int(data.split(":")[2])
                 self.measurements['heart_rate'] = heart_rate
                 self.live_data['max30102']['heart_rate'] = heart_rate
-                print(f"✅ Heart rate result: {heart_rate} BPM")
+                logger.info(f"✅ Heart rate result: {heart_rate} BPM")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing heart rate: {e}")
+                logger.error(f"Error parsing heart rate: {e}")
 
         elif data.startswith("RESULT:SPO2:"):
             try:
                 spo2 = int(data.split(":")[2])
                 self.measurements['spo2'] = spo2
                 self.live_data['max30102']['spo2'] = spo2
-                print(f"✅ SpO2 result: {spo2}%")
+                logger.info(f"✅ SpO2 result: {spo2}%")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing SpO2: {e}")
+                logger.error(f"Error parsing SpO2: {e}")
 
         elif data.startswith("RESULT:RESPIRATORY_RATE:"):
             try:
                 respiratory_rate = float(data.split(":")[2])
                 self.measurements['respiratory_rate'] = respiratory_rate
                 self.live_data['max30102']['respiratory_rate'] = respiratory_rate
-                print(f"✅ Respiratory rate result: {respiratory_rate} breaths/min")
+                logger.info(f"✅ Respiratory rate result: {respiratory_rate} breaths/min")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing respiratory rate: {e}")
+                logger.error(f"Error parsing respiratory rate: {e}")
 
-        # ==================== MAX30102 SPECIFIC - UPDATED ====================
+        # ==================== MAX30102 SPECIFIC ====================
         elif data.startswith("MAX30102_IR_VALUE:"):
             try:
                 ir_value = int(data.split(":")[1])
@@ -245,13 +258,13 @@ class SensorManager:
             self.live_data['max30102']['finger_detected'] = True
             self.live_data['max30102']['measurement_started'] = True
             self._max30102_measurement_active = True
-            print("✅ Finger detected - Automatic measurement starting")
+            logger.info("✅ Finger detected - Automatic measurement starting")
 
         elif data == "FINGER_REMOVED":
             self.live_data['max30102']['finger_detected'] = False
             self.live_data['max30102']['measurement_started'] = False
             self._max30102_measurement_active = False
-            print("⚠️ Finger removed - Measurement stopped")
+            logger.info("⚠️ Finger removed - Measurement stopped")
 
         elif data.startswith("MAX30102_LIVE_DATA:"):
             try:
@@ -264,29 +277,29 @@ class SensorManager:
                 if 'HR' in data_dict and data_dict['HR'] != '0':
                     hr = int(data_dict['HR'])
                     self.live_data['max30102']['heart_rate'] = hr
-                    print(f"💓 Live Heart Rate: {hr} BPM")
+                    logger.info(f"💓 Live Heart Rate: {hr} BPM")
                 
                 if 'SPO2' in data_dict and data_dict['SPO2'] != '0':
                     spo2 = int(data_dict['SPO2'])
                     self.live_data['max30102']['spo2'] = spo2
-                    print(f"🩸 Live SpO2: {spo2}%")
+                    logger.info(f"🩸 Live SpO2: {spo2}%")
                 
                 if 'RR' in data_dict and data_dict['RR'] != '0':
                     rr = float(data_dict['RR'])
                     self.live_data['max30102']['respiratory_rate'] = rr
-                    print(f"🌬️ Live Respiratory Rate: {rr} breaths/min")
+                    logger.info(f"🌬️ Live Respiratory Rate: {rr} breaths/min")
                     
             except (ValueError, IndexError) as e:
-                print(f"Error parsing MAX30102 live data: {e}")
+                logger.error(f"Error parsing MAX30102 live data: {e}")
 
         elif data == "MAX30102_RESULTS_VALID":
-            print("✅ MAX30102 results are valid")
+            logger.info("✅ MAX30102 results are valid")
             self._max30102_measurement_active = False
             self.live_data['max30102']['status'] = 'complete'
             self.live_data['max30102']['final_result_shown'] = True
 
         elif data == "MAX30102_RESULTS_INVALID":
-            print("❌ MAX30102 results are invalid")
+            logger.info("❌ MAX30102 results are invalid")
             self._max30102_measurement_active = False
             self.live_data['max30102']['status'] = 'error'
 
@@ -303,9 +316,9 @@ class SensorManager:
                 self.live_data['weight']['progress'] = progress_percent
                 self.live_data['weight']['status'] = 'measuring'
                 
-                print(f"⚖️ Weight progress: {elapsed}/{total}s ({progress_percent}%)")
+                logger.info(f"⚖️ Weight progress: {elapsed}/{total}s ({progress_percent}%)")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing weight progress: {e}")
+                logger.error(f"Error parsing weight progress: {e}")
 
         elif data.startswith("STATUS:HEIGHT_PROGRESS:"):
             try:
@@ -319,9 +332,9 @@ class SensorManager:
                 self.live_data['height']['progress'] = progress_percent
                 self.live_data['height']['status'] = 'measuring'
                 
-                print(f"📏 Height progress: {elapsed}/{total}s ({progress_percent}%)")
+                logger.info(f"📏 Height progress: {elapsed}/{total}s ({progress_percent}%)")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing height progress: {e}")
+                logger.error(f"Error parsing height progress: {e}")
 
         elif data.startswith("STATUS:TEMPERATURE_PROGRESS:"):
             try:
@@ -335,9 +348,9 @@ class SensorManager:
                 self.live_data['temperature']['progress'] = progress_percent
                 self.live_data['temperature']['status'] = 'measuring'
                 
-                print(f"🌡️ Temperature progress: {elapsed}/{total}s ({progress_percent}%)")
+                logger.info(f"🌡️ Temperature progress: {elapsed}/{total}s ({progress_percent}%)")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing temperature progress: {e}")
+                logger.error(f"Error parsing temperature progress: {e}")
 
         elif data.startswith("STATUS:MAX30102_PROGRESS:"):
             try:
@@ -351,9 +364,9 @@ class SensorManager:
                 self.live_data['max30102']['progress'] = progress_percent
                 self.live_data['max30102']['status'] = 'measuring'
                 
-                print(f"❤️ MAX30102 progress: {elapsed}/{total}s ({progress_percent}%)")
+                logger.info(f"❤️ MAX30102 progress: {elapsed}/{total}s ({progress_percent}%)")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing MAX30102 progress: {e}")
+                logger.error(f"Error parsing MAX30102 progress: {e}")
 
         # ==================== MEASUREMENT STATUS ====================
         elif data.startswith("STATUS:WEIGHT_MEASUREMENT_STARTED"):
@@ -361,21 +374,21 @@ class SensorManager:
             self.live_data['weight']['status'] = 'detecting'
             self.live_data['weight']['progress'] = 0
             self.live_data['weight']['elapsed'] = 0
-            print("⚖️ Weight measurement started")
+            logger.info("⚖️ Weight measurement started")
 
         elif data.startswith("STATUS:HEIGHT_MEASUREMENT_STARTED"):
             self._height_measurement_active = True
             self.live_data['height']['status'] = 'detecting'
             self.live_data['height']['progress'] = 0
             self.live_data['height']['elapsed'] = 0
-            print("📏 Height measurement started")
+            logger.info("📏 Height measurement started")
 
         elif data.startswith("STATUS:TEMPERATURE_MEASUREMENT_STARTED"):
             self._temperature_measurement_active = True
             self.live_data['temperature']['status'] = 'detecting'
             self.live_data['temperature']['progress'] = 0
             self.live_data['temperature']['elapsed'] = 0
-            print("🌡️ Temperature measurement started")
+            logger.info("🌡️ Temperature measurement started")
 
         elif data.startswith("STATUS:MAX30102_MEASUREMENT_STARTED"):
             self._max30102_measurement_active = True
@@ -383,31 +396,31 @@ class SensorManager:
             self.live_data['max30102']['progress'] = 0
             self.live_data['max30102']['elapsed'] = 0
             self.live_data['max30102']['measurement_started'] = True
-            print("❤️ MAX30102 measurement started")
+            logger.info("❤️ MAX30102 measurement started")
 
         elif data.startswith("STATUS:WEIGHT_MEASUREMENT_COMPLETE"):
             self._weight_measurement_active = False
             if self.live_data['weight']['status'] != 'complete':
                 self.live_data['weight']['status'] = 'complete'
-            print("✅ Weight measurement complete")
+            logger.info("✅ Weight measurement complete")
 
         elif data.startswith("STATUS:HEIGHT_MEASUREMENT_COMPLETE"):
             self._height_measurement_active = False
             if self.live_data['height']['status'] != 'complete':
                 self.live_data['height']['status'] = 'complete'
-            print("✅ Height measurement complete")
+            logger.info("✅ Height measurement complete")
 
         elif data.startswith("STATUS:TEMPERATURE_MEASUREMENT_COMPLETE"):
             self._temperature_measurement_active = False
             if self.live_data['temperature']['status'] != 'complete':
                 self.live_data['temperature']['status'] = 'complete'
-            print("✅ Temperature measurement complete")
+            logger.info("✅ Temperature measurement complete")
 
         elif data.startswith("STATUS:MAX30102_MEASUREMENT_COMPLETE"):
             self._max30102_measurement_active = False
             if self.live_data['max30102']['status'] != 'complete':
                 self.live_data['max30102']['status'] = 'complete'
-            print("✅ MAX30102 measurement complete")
+            logger.info("✅ MAX30102 measurement complete")
 
         # ==================== LIVE DATA ====================
         elif data.startswith("DEBUG:Weight reading:"):
@@ -416,9 +429,9 @@ class SensorManager:
                 if weight_match:
                     current_weight = float(weight_match.group(1))
                     self.live_data['weight']['current'] = current_weight
-                    print(f"⚖️ Live weight: {current_weight} kg")
+                    logger.info(f"⚖️ Live weight: {current_weight} kg")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing live weight: {e}")
+                logger.error(f"Error parsing live weight: {e}")
 
         elif data.startswith("DEBUG:Height reading:"):
             try:
@@ -426,9 +439,9 @@ class SensorManager:
                 if height_match:
                     current_height = float(height_match.group(1))
                     self.live_data['height']['current'] = current_height
-                    print(f"📏 Live height: {current_height} cm")
+                    logger.info(f"📏 Live height: {current_height} cm")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing live height: {e}")
+                logger.error(f"Error parsing live height: {e}")
 
         elif data.startswith("DEBUG:Temperature reading:"):
             try:
@@ -436,16 +449,16 @@ class SensorManager:
                 if temp_match:
                     current_temp = float(temp_match.group(1))
                     self.live_data['temperature']['current'] = current_temp
-                    print(f"🌡️ Live temperature: {current_temp} °C")
+                    logger.info(f"🌡️ Live temperature: {current_temp} °C")
             except (IndexError, ValueError) as e:
-                print(f"Error parsing live temperature: {e}")
+                logger.error(f"Error parsing live temperature: {e}")
 
         # ==================== ERROR HANDLING ====================
         elif data.startswith("ERROR:"):
-            print(f"❌ {data}")
+            logger.error(f"❌ {data}")
 
         elif data.startswith("WARNING:"):
-            print(f"⚠️ {data}")
+            logger.warning(f"⚠️ {data}")
 
     def disconnect(self):
         """Disconnect from Arduino"""
@@ -461,11 +474,11 @@ class SensorManager:
                 
             self.is_connected = False
             self.port = None
-            print("Disconnected from Arduino")
+            logger.info("Disconnected from Arduino")
             return True, "Disconnected successfully"
             
         except Exception as e:
-            print(f"Error during disconnect: {e}")
+            logger.error(f"Error during disconnect: {e}")
             return False, f"Disconnect failed: {str(e)}"
 
     # ==================== PUBLIC METHODS ====================

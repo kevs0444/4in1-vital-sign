@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BloodPressure.css";
+import "../main-components-measurement.css";
 import bpIcon from "../../../assets/icons/bp-icon.png";
 import { sensorAPI } from "../../../utils/api";
-import { getNextStepPath, getProgressInfo } from "../../../utils/checklistNavigation";
+import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
 
 export default function BloodPressure() {
   const navigate = useNavigate();
@@ -178,7 +179,7 @@ export default function BloodPressure() {
     if (!sys || !dia || sys === "--" || dia === "--") {
       return {
         text: "Not measured",
-        class: "default",
+        class: "pending",
         description: "Blood pressure not measured yet"
       };
     }
@@ -189,31 +190,31 @@ export default function BloodPressure() {
     if (systolicValue >= 180 || diastolicValue >= 120) {
       return {
         text: "Hypertensive Crisis",
-        class: "critical",
+        class: "error",
         description: "Your blood pressure requires immediate attention"
       };
     } else if (systolicValue >= 140 || diastolicValue >= 90) {
       return {
         text: "Hypertension Stage 2",
-        class: "critical",
+        class: "error",
         description: "Your blood pressure indicates severe hypertension"
       };
     } else if (systolicValue >= 130 || diastolicValue >= 80) {
       return {
         text: "Hypertension Stage 1",
-        class: "elevated",
+        class: "warning",
         description: "Your blood pressure is elevated"
       };
     } else if (systolicValue >= 120) {
       return {
         text: "Elevated",
-        class: "elevated",
+        class: "warning",
         description: "Your blood pressure is slightly elevated"
       };
     } else {
       return {
         text: "Normal",
-        class: "normal",
+        class: "complete",
         description: "Your blood pressure is within normal range"
       };
     }
@@ -233,21 +234,23 @@ export default function BloodPressure() {
 
     return {
       text: 'Ready',
-      class: 'ready',
+      class: 'active',
       description: 'Ready for blood pressure measurement'
     };
   };
 
   const getButtonText = () => {
+    const isLast = isLastStep('bloodpressure', location.state?.checklist);
+
     switch (measurementStep) {
       case 1:
-        return "Start Measurement";
+        return "Start BP Measurement";
       case 2:
         return `Measuring... ${countdown}s`;
       case 3:
-        return "Continue to Next Step";
+        return isLast ? "Continue to Result" : "Continue to Next Step";
       default:
-        return "Start Measurement";
+        return "Start BP Measurement";
     }
   };
 
@@ -273,191 +276,128 @@ export default function BloodPressure() {
   const progressInfo = getProgressInfo('bloodpressure', location.state?.checklist);
 
   return (
-    <div className="bp-container">
-      <div className={`bp-content ${isVisible ? 'visible' : ''}`}>
+    <div className="measurement-container">
+      <div className={`measurement-content ${isVisible ? 'visible' : ''}`}>
 
         {/* Progress bar for Step X of Y */}
-        <div className="bp-progress-container">
-          <div className="bp-progress-bar">
-            <div className="bp-progress-fill" style={{ width: `${progressInfo.percentage}%` }}></div>
+        <div className="measurement-progress-container">
+          <div className="measurement-progress-bar">
+            <div className="measurement-progress-fill" style={{ width: `${progressInfo.percentage}%` }}></div>
           </div>
-          <span className="bp-progress-step">
+          <span className="measurement-progress-step">
             Step {progressInfo.currentStep} of {progressInfo.totalSteps} - Blood Pressure
           </span>
         </div>
 
-        <div className="bp-header">
-          <h1 className="bp-title">Blood Pressure Measurement</h1>
-          <p className="bp-subtitle">
+        <div className="measurement-header">
+          <h1 className="measurement-title">Blood <span className="measurement-title-accent">Pressure</span></h1>
+          <p className="measurement-subtitle">
             {statusMessage}
-            <span style={{ display: 'block', fontSize: '0.7rem', color: '#ff6b35', marginTop: '5px' }}>
-              🔄 Simulation Mode - Using test data for demonstration
-            </span>
           </p>
           {retryCount > 0 && (
-            <div className="bp-retry-indicator">
+            <div className="retry-indicator">
               Retry attempt: {retryCount}/{MAX_RETRIES}
             </div>
           )}
           {isMeasuring && progress > 0 && (
-            <div className="bp-measurement-progress">
-              <div className="bp-progress-bar-horizontal">
+            <div className="measurement-progress-container" style={{ width: '50%', margin: '0 auto' }}>
+              <div className="measurement-progress-bar">
                 <div
-                  className="bp-progress-fill-horizontal"
+                  className="measurement-progress-fill"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <span className="bp-progress-text">{Math.round(progress)}%</span>
+              <span className="measurement-progress-step" style={{ textAlign: 'center' }}>{Math.round(progress)}%</span>
             </div>
           )}
         </div>
 
-        <div className="bp-sensor-display-section">
+        <div className="measurement-display-section">
           {/* Single Blood Pressure Display - Shows live reading and result */}
-          <div className="bp-display-container">
-            <div className={`bp-display ${bpMeasuring ? 'measuring-active' :
-                bpComplete ? 'measurement-complete' : ''
-              } ${statusInfo.class}`}>
-              <div className="bp-icon">
-                <img src={bpIcon} alt="Blood Pressure Icon" className="bp-image" />
-              </div>
+          <div className={`measurement-card ${bpMeasuring ? 'active' : ''} ${bpComplete ? 'completed' : ''}`} style={{ minWidth: '320px', minHeight: '320px' }}>
+            <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
+              <img src={bpIcon} alt="Blood Pressure Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
 
-              <div className="bp-display-content">
-                <h3 className="bp-display-title">
-                  {measurementComplete ? "Blood Pressure Result" : "Blood Pressure"}
-                </h3>
+            <h3 className="instruction-title" style={{ fontSize: '1.5rem' }}>
+              {measurementComplete ? "Blood Pressure Result" : "Blood Pressure"}
+            </h3>
 
-                <div className="bp-value-display">
-                  <span className={`bp-display-value ${bpMeasuring ? 'measuring-live' : ''
-                    }`}>
-                    {displayValue}
-                  </span>
-                  <span className="bp-display-unit">mmHg</span>
-                </div>
+            <div className="measurement-value-container">
+              <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
+                {displayValue}
+              </span>
+              <span className="measurement-unit">mmHg</span>
+            </div>
 
-                <div className="bp-status-info">
-                  <span className={`bp-status ${statusInfo.class}`}>
-                    {statusInfo.text}
-                  </span>
-                  <div className="bp-description">
-                    {statusInfo.description}
-                  </div>
-                </div>
-
-                {bpMeasuring && (
-                  <div className="bp-live-reading-indicator">
-                    🔄 Measuring Blood Pressure...
-                  </div>
-                )}
-
-                <div style={{
-                  fontSize: '0.7rem',
-                  color: '#ff6b35',
-                  marginTop: '8px',
-                  fontWeight: '600'
-                }}>
-                  🔄 Simulation Mode - Test Data
-                </div>
+            <div className="measurement-status-badge-container" style={{ marginTop: '15px', textAlign: 'center' }}>
+              <span className={`measurement-status-badge ${statusInfo.class}`}>
+                {statusInfo.text}
+              </span>
+              <div className="instruction-text" style={{ marginTop: '10px' }}>
+                {statusInfo.description}
               </div>
             </div>
+
+            {bpMeasuring && (
+              <div style={{ color: '#17a2b8', fontWeight: 'bold', marginTop: '15px' }}>
+                🔄 Measuring Blood Pressure...
+              </div>
+            )}
           </div>
 
           {/* INSTRUCTION DISPLAY - Simplified workflow */}
-          <div className="bp-instruction-container">
-            <div className="bp-instruction-cards-horizontal">
+          <div className="measurement-instruction-container">
+            <div className="instruction-cards">
               {/* Step 1 Card - Ready for Measurement */}
-              <div className={`bp-instruction-card-step ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''
-                }`}>
-                <div className="bp-step-number-circle">1</div>
-                <div className="bp-step-icon">🩺</div>
-                <h4 className="bp-step-title">Ready</h4>
-                <p className="bp-step-description">
+              <div className={`instruction-card ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
+                <div className="instruction-step-number">1</div>
+                <div className="instruction-icon">🩺</div>
+                <h4 className="instruction-title">Ready</h4>
+                <p className="instruction-text">
                   Click Start to begin measurement
                 </p>
-                <div className={`bp-step-status ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
-                  }`}>
-                  {measurementStep >= 1 ? (measurementStep > 1 ? 'Completed' : 'Ready') : 'Pending'}
-                </div>
               </div>
 
               {/* Step 2 Card - Measurement in Progress */}
-              <div className={`bp-instruction-card-step ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''
-                }`}>
-                <div className="bp-step-number-circle">2</div>
-                <div className="bp-step-icon">📊</div>
-                <h4 className="bp-step-title">Measuring</h4>
-                <p className="bp-step-description">
+              <div className={`instruction-card ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
+                <div className="instruction-step-number">2</div>
+                <div className="instruction-icon">📊</div>
+                <h4 className="instruction-title">Measuring</h4>
+                <p className="instruction-text">
                   Blood pressure measurement in progress
                 </p>
                 {bpMeasuring && countdown > 0 && (
-                  <div className="bp-countdown-mini">
-                    <div className="bp-countdown-mini-circle">
-                      <span className="bp-countdown-mini-number">{countdown}</span>
-                    </div>
-                    <span className="bp-countdown-mini-text">seconds remaining</span>
+                  <div style={{ color: '#dc2626', fontWeight: 'bold', marginTop: '5px' }}>
+                    {countdown}s remaining
                   </div>
                 )}
-                <div className={`bp-step-status ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : 'pending'
-                  }`}>
-                  {measurementStep >= 2 ? (measurementStep > 2 ? 'Completed' : 'Measuring') : 'Pending'}
-                </div>
               </div>
 
               {/* Step 3 Card - Results Complete */}
-              <div className={`bp-instruction-card-step ${measurementStep >= 3 ? 'completed' : ''
-                }`}>
-                <div className="bp-step-number-circle">3</div>
-                <div className="bp-step-icon">🤖</div>
-                <h4 className="bp-step-title">AI Results</h4>
-                <p className="bp-step-description">
+              <div className={`instruction-card ${measurementStep >= 3 ? 'completed' : ''}`}>
+                <div className="instruction-step-number">3</div>
+                <div className="instruction-icon">🤖</div>
+                <h4 className="instruction-title">AI Results</h4>
+                <p className="instruction-text">
                   View complete AI analysis and results
                 </p>
-                <div className={`bp-step-status ${measurementStep >= 3 ? 'completed' : 'pending'
-                  }`}>
-                  {measurementStep >= 3 ? 'Ready' : 'Pending'}
-                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bp-continue-button-container">
+        <div className="measurement-action-container">
           <button
-            className={`bp-continue-button ${measurementStep === 1 ? 'measurement-action' :
-                measurementStep === 2 ? 'measuring-action' :
-                  'ai-results-action'
-              }`}
+            className="measurement-button"
             onClick={getButtonAction()}
             disabled={getButtonDisabled()}
           >
             {measurementStep === 2 && (
-              <div className="bp-spinner"></div>
+              <div className="spinner"></div>
             )}
             {getButtonText()}
-            {measurementComplete && (
-              <span style={{ fontSize: '0.8rem', display: 'block', marginTop: '5px', opacity: 0.9 }}>
-                BP: {systolic}/{diastolic} mmHg
-              </span>
-            )}
           </button>
-
-          {/* Debug info */}
-          <div style={{
-            marginTop: '10px',
-            fontSize: '0.7rem',
-            color: '#666',
-            textAlign: 'center',
-            padding: '5px',
-            background: '#f5f5f5',
-            borderRadius: '5px',
-            fontFamily: 'monospace'
-          }}>
-            Step: {measurementStep} |
-            Mode: 🔄 SIMULATION |
-            Status: {measurementComplete ? '✅ COMPLETE' : (bpMeasuring ? '⏳ MEASURING' : '🟢 READY')} |
-            BP: {systolic || '--'}/{diastolic || '--'} |
-            Next: /measure/ai-loading
-          </div>
         </div>
       </div>
     </div>

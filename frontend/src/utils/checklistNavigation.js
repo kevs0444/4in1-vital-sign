@@ -67,3 +67,24 @@ export const getProgressInfo = (currentStepId, checklist) => {
         percentage
     };
 };
+
+/**
+ * Checks if the current step is the last one in the checklist.
+ * 
+ * @param {string} currentStepId - The ID of the current step
+ * @param {Array} checklist - Array of selected step IDs
+ * @returns {boolean} True if it is the last step
+ */
+export const isLastStep = (currentStepId, checklist) => {
+    // Default flow if no checklist is present (fallback)
+    const defaultOrder = ['bmi', 'bodytemp', 'max30102', 'bloodpressure'];
+
+    const list = (checklist && Array.isArray(checklist) && checklist.length > 0)
+        ? checklist
+        : defaultOrder;
+
+    const currentIndex = list.indexOf(currentStepId);
+
+    // If not found or last index, return true
+    return currentIndex === -1 || currentIndex === list.length - 1;
+};

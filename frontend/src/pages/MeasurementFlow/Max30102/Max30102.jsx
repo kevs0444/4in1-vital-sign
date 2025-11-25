@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Max30102.css";
+import "../main-components-measurement.css";
 import heartRateIcon from "../../../assets/icons/heart-rate-icon.png";
 import spo2Icon from "../../../assets/icons/spo2-icon.png";
 import respiratoryIcon from "../../../assets/icons/respiratory-icon.png";
 import { sensorAPI } from "../../../utils/api";
-import { getNextStepPath, getProgressInfo } from "../../../utils/checklistNavigation";
+import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
 
 export default function Max30102() {
   const navigate = useNavigate();
@@ -20,6 +21,11 @@ export default function Max30102() {
     spo2: "--",
     respiratoryRate: "--"
   });
+  // Arrays to store all readings for averaging
+  const [heartRateReadings, setHeartRateReadings] = useState([]);
+  const [spo2Readings, setSpo2Readings] = useState([]);
+  const [respiratoryRateReadings, setRespiratoryRateReadings] = useState([]);
+
   const [progressSeconds, setProgressSeconds] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
@@ -202,6 +208,10 @@ export default function Max30102() {
     setProgressSeconds(0); // Start from 0
     setProgressPercent(0);
     setCountdown(30);
+    // Clear previous readings
+    setHeartRateReadings([]);
+    setSpo2Readings([]);
+    setRespiratoryRateReadings([]);
     startProgressTimer();
     clearFingerRemovedAlert();
   };
@@ -236,11 +246,30 @@ export default function Max30102() {
     setProgressSeconds(totalMeasurementTime);
     setCountdown(0);
 
-    // Update with final mock data (replace with actual API data)
+    // Calculate averages from all readings - ONLY if we have actual readings
+    let avgHeartRate = "--";
+    let avgSpo2 = "--";
+    let avgRespiratoryRate = "--";
+
+    if (heartRateReadings.length > 0) {
+      avgHeartRate = Math.round(heartRateReadings.reduce((a, b) => a + b, 0) / heartRateReadings.length).toString();
+    }
+
+    if (spo2Readings.length > 0) {
+      avgSpo2 = Math.round(spo2Readings.reduce((a, b) => a + b, 0) / spo2Readings.length).toString();
+    }
+
+    if (respiratoryRateReadings.length > 0) {
+      avgRespiratoryRate = Math.round(respiratoryRateReadings.reduce((a, b) => a + b, 0) / respiratoryRateReadings.length).toString();
+    }
+
+    console.log(`📊 Final Averages - HR: ${avgHeartRate} (${heartRateReadings.length} readings), SpO2: ${avgSpo2} (${spo2Readings.length} readings), RR: ${avgRespiratoryRate} (${respiratoryRateReadings.length} readings)`);
+
+    // Update with averaged results - only if we have actual data
     setMeasurements({
-      heartRate: "72",
-      spo2: "98",
-      respiratoryRate: "16"
+      heartRate: avgHeartRate,
+      spo2: avgSpo2,
+      respiratoryRate: avgRespiratoryRate
     });
 
     stopAllTimers();
@@ -256,15 +285,30 @@ export default function Max30102() {
       try {
         const data = await sensorAPI.getMax30102Status();
 
-        // Update measurements from API data if available
-        if (data.heart_rate && data.heart_rate > 0) {
+        // Update measurements from API data if available and store for averaging
+        // Only update if we have valid, non-zero readings from Arduino
+        if (data.heart_rate && data.heart_rate > 0 && !isNaN(data.heart_rate)) {
           updateCurrentMeasurement('heartRate', data.heart_rate);
+          // Store reading for averaging only during active measurement
+          if (isMeasuring) {
+            setHeartRateReadings(prev => [...prev, data.heart_rate]);
+          }
         }
-        if (data.spo2 && data.spo2 > 0) {
+
+        if (data.spo2 && data.spo2 > 0 && !isNaN(data.spo2)) {
           updateCurrentMeasurement('spo2', data.spo2);
+          // Store reading for averaging only during active measurement
+          if (isMeasuring) {
+            setSpo2Readings(prev => [...prev, data.spo2]);
+          }
         }
-        if (data.respiratory_rate && data.respiratory_rate > 0) {
+
+        if (data.respiratory_rate && data.respiratory_rate > 0 && !isNaN(data.respiratory_rate)) {
           updateCurrentMeasurement('respiratoryRate', data.respiratory_rate);
+          // Store reading for averaging only during active measurement
+          if (isMeasuring) {
+            setRespiratoryRateReadings(prev => [...prev, data.respiratory_rate]);
+          }
         }
 
         // Check for API-based completion
@@ -322,13 +366,22 @@ export default function Max30102() {
     stopAllTimers();
     clearFingerRemovedAlert();
 
+    // Only include measurements that have actual values
     const vitalSignsData = {
       ...location.state, // This includes all previous data
-      heartRate: parseInt(measurements.heartRate) || 75,
-      spo2: parseInt(measurements.spo2) || 98,
-      respiratoryRate: parseInt(measurements.respiratoryRate) || 16,
       measurementTimestamp: new Date().toISOString()
     };
+
+    // Only add measurements if they have real values (not "--")
+    if (measurements.heartRate !== "--") {
+      vitalSignsData.heartRate = parseInt(measurements.heartRate);
+    }
+    if (measurements.spo2 !== "--") {
+      vitalSignsData.spo2 = parseInt(measurements.spo2);
+    }
+    if (measurements.respiratoryRate !== "--") {
+      vitalSignsData.respiratoryRate = parseInt(measurements.respiratoryRate);
+    }
 
     console.log("🚀 Max30102 complete - navigating to next step with data:", vitalSignsData);
 
@@ -337,28 +390,28 @@ export default function Max30102() {
   };
 
   const getStatusColor = (type, value) => {
-    if (value === '--' || value === '--') return "default";
+    if (value === '--' || value === '--') return "pending";
     const num = parseInt(value);
 
     switch (type) {
       case "heartRate":
-        if (num < 60) return "low";
-        if (num > 100) return "high";
-        return "normal";
+        if (num < 60) return "warning";
+        if (num > 100) return "error";
+        return "complete";
       case "spo2":
-        if (num < 95) return "low";
-        return "normal";
+        if (num < 95) return "warning";
+        return "complete";
       case "respiratoryRate":
-        if (num < 12) return "low";
-        if (num > 20) return "high";
-        return "normal";
+        if (num < 12) return "warning";
+        if (num > 20) return "error";
+        return "complete";
       default:
-        return "normal";
+        return "complete";
     }
   };
 
   const getStatusText = (type, value) => {
-    if (value === '--' || value === '--') return "Ready";
+    if (value === '--' || value === '--') return "Pending";
     const num = parseInt(value);
 
     switch (type) {
@@ -380,12 +433,8 @@ export default function Max30102() {
 
   const getButtonText = () => {
     if (measurementComplete) {
-      return (
-        <>
-          <span>Continue to Next Step</span>
-          <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>Results ready!</span>
-        </>
-      );
+      const isLast = isLastStep('max30102', location.state?.checklist);
+      return isLast ? "Continue to Result" : "Continue to Next Step";
     }
 
     if (isMeasuring) {
@@ -414,8 +463,8 @@ export default function Max30102() {
   };
 
   return (
-    <div className="max30102-container">
-      <div className={`max30102-content ${isVisible ? 'visible' : ''}`}>
+    <div className="measurement-container max30102-page">
+      <div className={`measurement-content ${isVisible ? 'visible' : ''}`}>
 
         {/* Finger Removed Alert */}
         {showFingerRemovedAlert && (
@@ -434,29 +483,29 @@ export default function Max30102() {
         )}
 
         {/* Progress Bar */}
-        <div className="progress-container">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${getProgressInfo('max30102', location.state?.checklist).percentage}%` }}></div>
+        <div className="measurement-progress-container">
+          <div className="measurement-progress-bar">
+            <div className="measurement-progress-fill" style={{ width: `${getProgressInfo('max30102', location.state?.checklist).percentage}%` }}></div>
           </div>
-          <span className="progress-step">
+          <span className="measurement-progress-step">
             Step {getProgressInfo('max30102', location.state?.checklist).currentStep} of {getProgressInfo('max30102', location.state?.checklist).totalSteps} - Vital Signs
           </span>
         </div>
 
         {/* Header Section */}
-        <div className="max30102-header">
-          <h1 className="max30102-title">Pulse Oximeter</h1>
-          <p className="max30102-subtitle">{statusMessage}</p>
+        <div className="measurement-header">
+          <h1 className="measurement-title">Pulse <span className="measurement-title-accent">Oximeter</span></h1>
+          <p className="measurement-subtitle">{statusMessage}</p>
 
           {isMeasuring && (
-            <div className="measurement-progress">
-              <div className="progress-bar-horizontal">
+            <div className="measurement-progress-container" style={{ width: '50%', margin: '0 auto' }}>
+              <div className="measurement-progress-bar">
                 <div
-                  className="progress-fill-horizontal"
+                  className="measurement-progress-fill"
                   style={{ width: `${progressPercent}%` }}
                 ></div>
               </div>
-              <span className="progress-text">
+              <span className="measurement-progress-step" style={{ textAlign: 'center' }}>
                 {Math.round(progressPercent)}% - {progressSeconds}/{totalMeasurementTime}s
                 {countdown > 0 && ` (${countdown}s left)`}
               </span>
@@ -464,8 +513,7 @@ export default function Max30102() {
           )}
         </div>
 
-        {/* Main Content Area */}
-        <div className="sensor-display-section">
+        <div className="measurement-display-section">
 
           {/* Finger Sensor Display */}
           <div className="finger-sensor-container">
@@ -483,138 +531,114 @@ export default function Max30102() {
             </div>
           </div>
 
-          {/* Vital Signs Cards */}
-          <div className="vital-signs-cards-container">
+          {/* Vital Signs Cards - Much Larger and Optimized Layout */}
+          <div className="measurement-row">
             {/* Heart Rate Card */}
-            <div className={`measurement-card vital-sign-card ${getCardStatus() === 'measuring' ? 'measuring-active' :
-              getCardStatus() === 'complete' ? 'measurement-complete' : ''
-              } ${getStatusColor('heartRate', measurements.heartRate)}`}>
+            <div className={`measurement-card ${getCardStatus() === 'measuring' ? 'active' : ''} ${getCardStatus() === 'complete' ? 'completed' : ''}`}>
               <div className="measurement-icon">
-                <img src={heartRateIcon} alt="Heart Rate" className="measurement-image" />
+                <img src={heartRateIcon} alt="Heart Rate" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               </div>
-              <div className="measurement-info">
-                <h3 className="measurement-title">HR</h3>
-                <p className="measurement-subtitle">Heart Rate</p>
-                <div className="measurement-value">
-                  <span className="value">
-                    {measurements.heartRate}
-                  </span>
-                  <span className="unit">BPM</span>
-                </div>
-                <span className={`measurement-status ${getStatusColor('heartRate', measurements.heartRate)}`}>
-                  {getStatusText('heartRate', measurements.heartRate)}
+              <h3 className="instruction-title">Heart Rate</h3>
+              <p className="instruction-text" style={{ textAlign: 'center', width: '100%' }}>
+                BPM
+              </p>
+              <div className="measurement-value-container">
+                <span className="measurement-value">
+                  {measurements.heartRate}
                 </span>
+                <span className="measurement-unit">BPM</span>
               </div>
+              <span className={`measurement-status-badge ${getStatusColor('heartRate', measurements.heartRate)}`}>
+                {getStatusText('heartRate', measurements.heartRate)}
+              </span>
             </div>
 
             {/* SpO2 Card */}
-            <div className={`measurement-card vital-sign-card ${getCardStatus() === 'measuring' ? 'measuring-active' :
-              getCardStatus() === 'complete' ? 'measurement-complete' : ''
-              } ${getStatusColor('spo2', measurements.spo2)}`}>
+            <div className={`measurement-card ${getCardStatus() === 'measuring' ? 'active' : ''} ${getCardStatus() === 'complete' ? 'completed' : ''}`}>
               <div className="measurement-icon">
-                <img src={spo2Icon} alt="Blood Oxygen" className="measurement-image" />
+                <img src={spo2Icon} alt="Blood Oxygen" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               </div>
-              <div className="measurement-info">
-                <h3 className="measurement-title">SpO₂</h3>
-                <p className="measurement-subtitle">Blood Oxygen</p>
-                <div className="measurement-value">
-                  <span className="value">
-                    {measurements.spo2}
-                  </span>
-                  <span className="unit">%</span>
-                </div>
-                <span className={`measurement-status ${getStatusColor('spo2', measurements.spo2)}`}>
-                  {getStatusText('spo2', measurements.spo2)}
+              <h3 className="instruction-title">Blood Oxygen</h3>
+              <p className="instruction-text" style={{ textAlign: 'center', width: '100%' }}>
+                SpO₂
+              </p>
+              <div className="measurement-value-container">
+                <span className="measurement-value">
+                  {measurements.spo2}
                 </span>
+                <span className="measurement-unit">%</span>
               </div>
+              <span className={`measurement-status-badge ${getStatusColor('spo2', measurements.spo2)}`}>
+                {getStatusText('spo2', measurements.spo2)}
+              </span>
             </div>
 
             {/* Respiratory Rate Card */}
-            <div className={`measurement-card vital-sign-card ${getCardStatus() === 'measuring' ? 'measuring-active' :
-              getCardStatus() === 'complete' ? 'measurement-complete' : ''
-              } ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
+            <div className={`measurement-card ${getCardStatus() === 'measuring' ? 'active' : ''} ${getCardStatus() === 'complete' ? 'completed' : ''}`}>
               <div className="measurement-icon">
-                <img src={respiratoryIcon} alt="Respiratory Rate" className="measurement-image" />
+                <img src={respiratoryIcon} alt="Respiratory Rate" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               </div>
-              <div className="measurement-info">
-                <h3 className="measurement-title">RR</h3>
-                <p className="measurement-subtitle">Respiratory Rate</p>
-                <div className="measurement-value">
-                  <span className="value">
-                    {measurements.respiratoryRate}
-                  </span>
-                  <span className="unit">/min</span>
-                </div>
-                <span className={`measurement-status ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
-                  {getStatusText('respiratoryRate', measurements.respiratoryRate)}
+              <h3 className="instruction-title">Respiratory Rate</h3>
+              <p className="instruction-text" style={{ textAlign: 'center', width: '100%' }}>
+                Breaths per minute
+              </p>
+              <div className="measurement-value-container">
+                <span className="measurement-value">
+                  {measurements.respiratoryRate}
                 </span>
+                <span className="measurement-unit">/min</span>
               </div>
+              <span className={`measurement-status-badge ${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
+                {getStatusText('respiratoryRate', measurements.respiratoryRate)}
+              </span>
             </div>
           </div>
 
           {/* Instruction Steps */}
-          <div className="instruction-container">
-            <div className="instruction-cards-horizontal">
-              <div className={`instruction-card-step ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''
-                }`}>
-                <div className="step-number-circle">1</div>
-                <div className="step-icon">👆</div>
-                <h4 className="step-title">Insert Finger</h4>
-                <p className="step-description">
+          <div className="measurement-instruction-container">
+            <div className="instruction-cards">
+              <div className={`instruction-card ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
+                <div className="instruction-step-number">1</div>
+                <div className="instruction-icon">👆</div>
+                <h4 className="instruction-title">Insert Finger</h4>
+                <p className="instruction-text">
                   Place your finger fully inside the pulse oximeter device
                 </p>
-                <div className={`step-status ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : 'pending'
-                  }`}>
-                  {measurementStep >= 1 ? (measurementStep > 1 ? 'Completed' : 'Active') : 'Pending'}
-                </div>
               </div>
 
-              <div className={`instruction-card-step ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''
-                }`}>
-                <div className="step-number-circle">2</div>
-                <div className="step-icon">✋</div>
-                <h4 className="step-title">Hold Steady</h4>
-                <p className="step-description">
+              <div className={`instruction-card ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
+                <div className="instruction-step-number">2</div>
+                <div className="instruction-icon">✋</div>
+                <h4 className="instruction-title">Hold Steady</h4>
+                <p className="instruction-text">
                   Keep your finger completely still for accurate readings
                 </p>
                 {isMeasuring && countdown > 0 && (
-                  <div className="countdown-mini">
-                    <div className="countdown-mini-circle">
-                      <span className="countdown-mini-number">{countdown}</span>
-                    </div>
-                    <span className="countdown-mini-text">seconds left</span>
+                  <div style={{ color: '#dc2626', fontWeight: 'bold', marginTop: '5px' }}>
+                    {countdown}s left
                   </div>
                 )}
-                <div className={`step-status ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : 'pending'
-                  }`}>
-                  {measurementStep >= 2 ? (measurementStep > 2 ? 'Completed' : 'Active') : 'Pending'}
-                </div>
               </div>
 
-              <div className={`instruction-card-step ${measurementStep >= 3 ? (measurementStep > 3 ? 'completed' : 'active') : ''
-                }`}>
-                <div className="step-number-circle">3</div>
-                <div className="step-icon">⏱️</div>
-                <h4 className="step-title">Wait for Results</h4>
-                <p className="step-description">
+              <div className={`instruction-card ${measurementStep >= 3 ? (measurementStep > 3 ? 'completed' : 'active') : ''}`}>
+                <div className="instruction-step-number">3</div>
+                <div className="instruction-icon">⏱️</div>
+                <h4 className="instruction-title">Wait for Results</h4>
+                <p className="instruction-text">
                   {measurementComplete
                     ? "Measurement complete! Results are ready"
                     : "30-second automatic measurement"
                   }
                 </p>
-                <div className={`step-status ${measurementStep >= 3 ? (measurementStep > 3 ? 'completed' : 'active') : 'pending'
-                  }`}>
-                  {measurementStep >= 3 ? (measurementStep > 3 ? 'Completed' : 'Active') : 'Pending'}
-                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Button Section */}
-        <div className="continue-button-container">
+        <div className="measurement-action-container">
           <button
-            className="continue-button"
+            className="measurement-button"
             onClick={handleContinue}
             disabled={!measurementComplete}
           >
@@ -622,7 +646,7 @@ export default function Max30102() {
           </button>
 
           {isMeasuring && (
-            <div className="measurement-warning">
+            <div style={{ marginTop: '15px', color: '#ffc107', fontWeight: 'bold' }}>
               ⚠️ Important: Keep your finger completely still for accurate results
             </div>
           )}

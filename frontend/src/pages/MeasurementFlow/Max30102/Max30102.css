@@ -1,440 +1,293 @@
-/* GLOBAL RESET - Prevent result.css conflicts */
-.max30102-container * {
-  box-sizing: border-box;
-}
+/* 
+  Specific overrides for Max30102 page to optimize layout at 100% zoom.
+  These styles are scoped to .max30102-page to avoid affecting other measurement pages.
+*/
 
-.max30102-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  height: 100%;
-  width: 100vw;
-  background: #ffffff;
-  font-family: var(--font-primary);
-  overflow: hidden !important;
-  padding: 10px;
-  margin: 0;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-
-.max30102-content {
-  background: white;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 800px;
-  height: auto;
-  min-height: 90vh;
-  max-height: 95vh;
-  padding: 25px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  transition: all 0.8s ease;
-  transform: translateY(0);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden !important;
-  border: 1px solid #e0e0e0;
-  position: relative;
-}
-
-.max30102-content.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Progress bar - More compact */
-.progress-container {
-  margin-bottom: 15px;
-  flex-shrink: 0;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 6px;
-  background: #f0f0f0;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 3px;
-  transition: width 1s ease;
-}
-
-.progress-step {
-  font-size: 11px;
-  color: #555;
-  display: block;
-  margin-top: 4px;
-  text-align: right;
-}
-
-/* Header - More compact */
-.max30102-header {
-  text-align: center;
-  margin-bottom: 15px;
-  flex-shrink: 0;
-}
-
-.max30102-title {
-  font-size: 1.6rem;
-  color: #333;
-  font-weight: 700;
-  margin-bottom: 4px;
-  line-height: 1.2;
-}
-
-.max30102-subtitle {
-  font-size: 0.85rem;
-  color: #666;
-  line-height: 1.3;
-  padding: 0 10px;
-}
-
-/* Display Section */
-.sensor-display-section {
-  margin: 8px 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 220px;
-  gap: 20px;
-}
-
-/* Vital Signs Cards Container - HORIZONTAL SINGLE ROW layout */
-.vital-signs-cards-container {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
+/* Container Layout Optimization */
+.max30102-page .measurement-content {
+  padding: 20px !important;
+  max-width: 950px !important;
+  /* Increased to accommodate larger cards */
   gap: 15px;
-  width: 100%;
-  margin: 20px 0;
-  max-width: 100%;
-  flex-wrap: wrap;
 }
 
-/* Measurement Cards - Same size as instruction cards */
-.measurement-card.vital-sign-card {
-  min-width: 175px;
-  max-width: 200px;
+.max30102-page .measurement-display-section {
+  gap: 20px !important;
+  /* More space between sections */
+  margin: 10px 0 !important;
+}
+
+/* Finger Sensor - Make Larger to match card proportions */
+.max30102-page .finger-sensor {
+  width: 180px !important;
+  /* Larger sensor */
+  height: 180px !important;
+  padding: 20px !important;
+}
+
+.max30102-page .sensor-light {
+  width: 50px !important;
+  height: 50px !important;
+  margin-bottom: 15px !important;
+}
+
+.max30102-page .finger-placeholder {
+  font-size: 3rem !important;
+  margin-bottom: 10px !important;
+}
+
+.max30102-page .sensor-status-text {
+  font-size: 0.85rem !important;
+  margin-top: 8px !important;
+}
+
+/* Vital Sign Cards - Make much larger and optimized for column layout */
+.max30102-page .measurement-row {
+  gap: 20px !important;
+  /* More space between cards */
   width: 100%;
-  min-height: 180px;
-  padding: 20px;
+  justify-content: center;
+  align-items: stretch;
+  /* Make all cards same height */
+}
+
+.max30102-page .measurement-card {
+  padding: 25px !important;
+  /* Much larger padding */
+  min-height: 280px !important;
+  /* Much taller - from 216px to 280px */
+  min-width: 220px !important;
+  /* Much wider - from 192px to 220px */
+  border-radius: 20px !important;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  background: white;
-  border-radius: 14px;
-  border: 2px solid #e9ecef;
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  justify-content: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
+  text-align: center;
+  /* Ensure all text is centered */
   flex: 1;
-  max-width: 200px;
+  /* Allow cards to grow and fill space equally */
+  max-width: 240px;
+  /* Prevent cards from getting too wide */
 }
 
-.measurement-card.vital-sign-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
-  transition: left 0.6s ease;
-}
-
-.measurement-card.vital-sign-card:hover::before {
-  left: 100%;
-}
-
-.measurement-card.vital-sign-card:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-  border-color: #dc3545;
-}
-
-/* Status-based border colors */
-.measurement-card.vital-sign-card.normal {
-  border-color: #28a745;
-}
-
-.measurement-card.vital-sign-card.low {
-  border-color: #ffc107;
-}
-
-.measurement-card.vital-sign-card.high {
-  border-color: #dc3545;
-}
-
-.measurement-card.vital-sign-card.default {
-  border-color: #e9ecef;
-}
-
-/* Active measurement state with status colors */
-.measurement-card.vital-sign-card.measuring-active.normal {
-  border-color: #17a2b8;
-  animation: measuringPulseNormal 2s ease-in-out infinite;
-}
-
-.measurement-card.vital-sign-card.measuring-active.low {
-  border-color: #17a2b8;
-  animation: measuringPulseLow 2s ease-in-out infinite;
-}
-
-.measurement-card.vital-sign-card.measuring-active.high {
-  border-color: #17a2b8;
-  animation: measuringPulseHigh 2s ease-in-out infinite;
-}
-
-.measurement-card.vital-sign-card.measuring-active.default {
-  border-color: #17a2b8;
-  animation: measuringPulse 2s ease-in-out infinite;
-}
-
-.measurement-card.vital-sign-card.measurement-complete.normal {
-  border-color: #28a745;
-}
-
-.measurement-card.vital-sign-card.measurement-complete.low {
-  border-color: #ffc107;
-}
-
-.measurement-card.vital-sign-card.measurement-complete.high {
-  border-color: #dc3545;
-}
-
-.measurement-card.vital-sign-card .measurement-icon {
-  width: 60px;
-  height: 60px;
+.max30102-page .measurement-icon {
+  width: 65px !important;
+  /* Much larger icon */
+  height: 65px !important;
+  margin-bottom: 15px !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  margin-bottom: 15px;
-  transition: all 0.3s ease;
-  position: relative;
 }
 
-.measurement-card.vital-sign-card.measuring-active .measurement-icon {
-  animation: iconBounce 1.5s ease-in-out infinite;
-}
-
-.measurement-card.vital-sign-card.measuring-active .measurement-icon::after {
-  content: '';
-  position: absolute;
-  top: -5px;
-  left: -5px;
-  right: -5px;
-  bottom: -5px;
-  border: 2px solid #17a2b8;
-  border-radius: 50%;
-  animation: ripple 1.5s linear infinite;
-}
-
-.measurement-card.vital-sign-card.measurement-complete .measurement-icon {
-  animation: iconCelebrate 0.8s ease-out;
-}
-
-.measurement-image {
+.max30102-page .measurement-icon img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transition: transform 0.3s ease;
 }
 
-.measurement-card.vital-sign-card:hover .measurement-image {
-  transform: scale(1.1);
-}
-
-.measurement-info {
+.max30102-page .instruction-title {
+  font-size: 1.3rem !important;
+  /* Larger title */
+  margin-bottom: 8px !important;
   text-align: center;
   width: 100%;
-  flex: 1;
 }
 
-/* Updated Title and Subtitle Styles */
-.measurement-card.vital-sign-card .measurement-title {
-  font-size: 1.3rem;
-  color: #333;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  line-height: 1.1;
-  transition: color 0.3s ease;
+/* FIX: Specific styling for card subtitles */
+.max30102-page .measurement-card .instruction-text {
+  font-size: 0.95rem !important;
+  margin-bottom: 12px !important;
+  text-align: center !important;
+  width: 100% !important;
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding: 0 !important;
 }
 
-.measurement-subtitle {
-  font-size: 0.85rem;
-  color: #666;
-  margin: 0 0 12px 0;
-  font-weight: 500;
-  line-height: 1.2;
-  transition: color 0.3s ease;
-}
-
-.measurement-card.vital-sign-card.measuring-active .measurement-title {
-  color: #17a2b8;
-}
-
-.measurement-card.vital-sign-card.measuring-active .measurement-subtitle {
-  color: #17a2b8;
-}
-
-.measurement-card.vital-sign-card.measurement-complete .measurement-title {
-  color: #28a745;
-}
-
-.measurement-card.vital-sign-card.measurement-complete .measurement-subtitle {
-  color: #28a745;
-}
-
-.measurement-value {
+.max30102-page .measurement-value-container {
+  margin: 15px 0 !important;
+  /* More space around values */
+  gap: 8px !important;
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 6px;
-  margin-bottom: 12px;
-  position: relative;
+  width: 100%;
 }
 
-.measurement-card.vital-sign-card .value,
-.measurement-card.vital-sign-card .placeholder {
-  font-size: 2.2rem;
+.max30102-page .measurement-value {
+  font-size: 3.5rem !important;
+  /* Much larger value - from 3rem to 3.5rem */
   font-weight: 800;
   line-height: 1;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.measurement-card.vital-sign-card .value {
-  color: #333;
-}
-
-.measurement-card.vital-sign-card.measuring-active .value {
-  color: #17a2b8;
-  animation: numberPulse 1s ease-in-out infinite;
-}
-
-.measurement-card.vital-sign-card.measurement-complete .value {
-  color: #28a745;
-}
-
-.measurement-card.vital-sign-card .placeholder {
-  color: #ccc;
-}
-
-.measurement-card.vital-sign-card .unit {
-  font-size: 1.3rem;
-  color: #666;
-  font-weight: 600;
-  transition: color 0.3s ease;
-}
-
-.measurement-card.vital-sign-card.measuring-active .unit {
-  color: #17a2b8;
-}
-
-.measurement-card.vital-sign-card.measurement-complete .unit {
-  color: #28a745;
-}
-
-.measurement-status {
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 16px;
-  display: inline-block;
-  min-width: 90px;
   text-align: center;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
 }
 
-.measurement-status::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.5s ease;
+.max30102-page .measurement-unit {
+  font-size: 1.4rem !important;
+  /* Larger unit */
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
-.measurement-status:hover::before {
-  left: 100%;
+.max30102-page .measurement-status-badge {
+  padding: 10px 20px !important;
+  /* Larger badge */
+  min-width: 120px !important;
+  font-size: 1rem !important;
+  margin-top: 12px !important;
+  border-radius: 25px !important;
+  text-align: center;
 }
 
-/* Status colors with enhanced effects */
-.measurement-status.measuring {
-  background: #17a2b8;
-  color: white;
-  animation: statusPulse 2s ease-in-out infinite;
-  box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
+/* Instruction Cards - Make proportional to main cards */
+.max30102-page .instruction-cards {
+  gap: 20px !important;
 }
 
-.measurement-status.complete {
-  background: #28a745;
-  color: white;
-  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
-  animation: completePop 0.5s ease-out;
+.max30102-page .instruction-card {
+  padding: 20px !important;
+  min-width: 180px !important;
+  border-radius: 18px !important;
+  min-height: 180px !important;
+  /* Make instruction cards taller too */
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  justify-content: center;
 }
 
-.measurement-status.default {
-  background: #6c757d;
-  color: white;
-  transition: all 0.3s ease;
+.max30102-page .instruction-step-number {
+  width: 35px !important;
+  height: 35px !important;
+  font-size: 1rem !important;
+  margin-bottom: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-.measurement-status.default:hover {
-  background: #5a6268;
-  transform: translateY(-1px);
+.max30102-page .instruction-icon {
+  font-size: 1.8rem !important;
+  margin-bottom: 12px !important;
+  display: block !important;
+  text-align: center !important;
+  width: 100% !important;
+  line-height: 1 !important;
 }
 
-.measurement-status.normal {
-  background: #28a745;
-  color: white;
-  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+.max30102-page .instruction-title {
+  font-size: 1.1rem !important;
+  margin-bottom: 8px !important;
+  text-align: center !important;
+  width: 100% !important;
 }
 
-.measurement-status.low {
-  background: #ffc107;
-  color: #212529;
-  box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+.max30102-page .instruction-text {
+  font-size: 0.9rem !important;
+  text-align: center !important;
+  width: 100% !important;
+  margin: 0 !important;
 }
 
-.measurement-status.high {
-  background: #dc3545;
-  color: white;
-  box-shadow: 0 2px 10px rgba(220, 53, 69, 0.3);
+/* Header & Button Optimization */
+.max30102-page .measurement-header {
+  margin-bottom: 20px !important;
 }
+
+.max30102-page .measurement-title {
+  font-size: 2rem !important;
+  /* Slightly larger title */
+}
+
+.max30102-page .measurement-subtitle {
+  font-size: 1rem !important;
+  /* Slightly larger subtitle */
+}
+
+.max30102-page .measurement-action-container {
+  margin-top: 20px !important;
+  padding-top: 0 !important;
+}
+
+/* Remove any conflicting button styles - use the unified measurement-button class */
+/* .max30102-page .measurement-button {
+  // All button styles are now handled by the unified measurement-button class
+} */
+
+/* Responsive adjustments for larger cards */
+@media (max-width: 768px) {
+  .max30102-page .measurement-content {
+    padding: 15px !important;
+    max-width: 100% !important;
+  }
+
+  .max30102-page .measurement-card {
+    min-height: 240px !important;
+    /* Slightly smaller on mobile */
+    min-width: 180px !important;
+    padding: 20px !important;
+    max-width: 200px !important;
+  }
+
+  .max30102-page .measurement-value {
+    font-size: 3rem !important;
+  }
+
+  .max30102-page .measurement-unit {
+    font-size: 1.2rem !important;
+  }
+
+  .max30102-page .measurement-icon {
+    width: 55px !important;
+    height: 55px !important;
+  }
+
+  .max30102-page .finger-sensor {
+    width: 160px !important;
+    height: 160px !important;
+  }
+}
+
+/* Large screen optimization */
+@media (min-width: 1200px) {
+  .max30102-page .measurement-content {
+    max-width: 1000px !important;
+  }
+
+  .max30102-page .measurement-card {
+    min-height: 300px !important;
+    /* Even taller on large screens */
+    min-width: 240px !important;
+    max-width: 260px !important;
+  }
+
+  .max30102-page .measurement-value {
+    font-size: 3.8rem !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* MAX30102 FINGER SENSOR STYLES (Integrated & Red Themed) */
+/* -------------------------------------------------------------------------- */
 
 /* Modern Pulse Oximeter Display */
 .finger-sensor-container {
   display: flex;
   justify-content: center;
   width: 100%;
-  margin: 10px 0;
+  margin: 15px 0;
 }
 
 .finger-sensor {
-  width: 160px;
-  height: 160px;
+  width: 200px;
+  height: 200px;
   background: linear-gradient(135deg, #2c3e50, #34495e);
-  border-radius: 25px;
+  border-radius: 30px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -443,7 +296,7 @@
   position: relative;
   border: 4px solid #7f8c8d;
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  padding: 20px;
+  padding: 25px;
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.3),
     inset 0 2px 10px rgba(255, 255, 255, 0.1);
@@ -470,33 +323,33 @@
     inset 0 2px 10px rgba(255, 255, 255, 0.1);
 }
 
-/* Modern Active State - Finger Detected */
+/* Modern Active State - Finger Detected - RED THEME */
 .finger-sensor.active {
-  border-color: #e74c3c;
-  background: linear-gradient(135deg, #c0392b, #e74c3c);
+  border-color: #dc2626;
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
   box-shadow:
-    0 15px 40px rgba(231, 76, 60, 0.4),
+    0 15px 40px rgba(220, 38, 38, 0.4),
     inset 0 2px 15px rgba(255, 255, 255, 0.2);
-  animation: activeGlow 1.5s ease-in-out infinite;
+  animation: activeGlowRed 1.5s ease-in-out infinite;
 }
 
 /* Modern Complete State */
 .finger-sensor.complete {
-  border-color: #3498db;
-  background: linear-gradient(135deg, #2980b9, #3498db);
+  border-color: #28a745;
+  background: linear-gradient(135deg, #218838, #28a745);
   box-shadow:
-    0 10px 30px rgba(52, 152, 219, 0.4),
+    0 10px 30px rgba(40, 167, 69, 0.4),
     inset 0 2px 10px rgba(255, 255, 255, 0.2);
   animation: completeCelebrateSensor 0.6s ease-out;
 }
 
 /* Modern Sensor Light */
 .sensor-light {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   background: linear-gradient(135deg, #95a5a6, #7f8c8d);
   border-radius: 50%;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
   box-shadow:
@@ -521,35 +374,35 @@
     inset 0 2px 5px rgba(255, 255, 255, 0.3);
 }
 
-/* Active Light - Finger Detected */
+/* Active Light - RED THEME */
 .finger-sensor.active .sensor-light {
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
   animation: heartbeat 1.2s ease-in-out infinite;
   box-shadow:
-    0 0 30px rgba(231, 76, 60, 0.8),
+    0 0 30px rgba(220, 38, 38, 0.8),
     inset 0 2px 5px rgba(255, 255, 255, 0.3);
 }
 
 /* Complete Light */
 .finger-sensor.complete .sensor-light {
-  background: linear-gradient(135deg, #3498db, #2980b9);
+  background: linear-gradient(135deg, #28a745, #218838);
   animation: successPulse 2s ease-in-out infinite;
   box-shadow:
-    0 0 25px rgba(52, 152, 219, 0.6),
+    0 0 25px rgba(40, 167, 69, 0.6),
     inset 0 2px 5px rgba(255, 255, 255, 0.3);
 }
 
 /* Modern Finger Placeholder */
 .finger-placeholder {
-  font-size: 3rem;
-  margin-bottom: 12px;
+  font-size: 4rem;
+  margin-bottom: 15px;
   transition: all 0.4s ease;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
 .finger-sensor.active .finger-placeholder {
   animation: fingerBounce 1.5s ease-in-out infinite;
-  filter: drop-shadow(0 6px 12px rgba(231, 76, 60, 0.4));
+  filter: drop-shadow(0 6px 12px rgba(220, 38, 38, 0.4));
 }
 
 .finger-sensor.complete .finger-placeholder {
@@ -558,323 +411,28 @@
 
 /* Sensor Status Text */
 .sensor-status-text {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: white;
-  margin-top: 8px;
+  margin-top: 10px;
   font-weight: 600;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* Instruction Container - HORIZONTAL LAYOUT with 3 cards */
-.instruction-container {
-  margin-top: 15px;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.instruction-cards-horizontal {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  width: 100%;
-  max-width: 650px;
-  flex-wrap: wrap;
-}
-
-.instruction-card-step {
-  background: white;
-  border: 2px solid #e9ecef;
-  border-radius: 14px;
-  padding: 20px;
-  min-width: 175px;
-  max-width: 200px;
-  flex: 1;
-  text-align: center;
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
-}
-
-.instruction-card-step::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.05), transparent);
-  transition: left 0.6s ease;
-}
-
-.instruction-card-step:hover::before {
-  left: 100%;
-}
-
-.instruction-card-step:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-  border-color: #dc3545;
-}
-
-.instruction-card-step.active {
-  border-color: #dc3545;
-  background: linear-gradient(135deg, #fff5f5, #ffffff);
-  animation: instructionPulse 2s ease-in-out infinite;
-}
-
-.instruction-card-step.completed {
-  border-color: #28a745;
-  background: linear-gradient(135deg, #f0fff4, #ffffff);
-}
-
-.step-number-circle {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #dc3545;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 0 auto 12px auto;
-  border: 2px solid #dc3545;
-  transition: all 0.3s ease;
-}
-
-.instruction-card-step.active .step-number-circle {
-  background: white;
-  color: #dc3545;
-  animation: stepPulse 2s ease-in-out infinite;
-}
-
-.instruction-card-step.completed .step-number-circle {
-  background: #28a745;
-  border-color: #28a745;
-  animation: none;
-}
-
-.step-icon {
-  font-size: 1.7rem;
-  margin-bottom: 10px;
-  color: #666;
-  transition: all 0.3s ease;
-}
-
-.instruction-card-step.active .step-icon {
-  color: #dc3545;
-  animation: iconFloat 2s ease-in-out infinite;
-}
-
-.instruction-card-step.completed .step-icon {
-  color: #28a745;
-}
-
-.step-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 8px 0;
-  line-height: 1.2;
-  transition: color 0.3s ease;
-}
-
-.instruction-card-step.active .step-title {
-  color: #dc3545;
-}
-
-.instruction-card-step.completed .step-title {
-  color: #28a745;
-}
-
-.step-description {
-  font-size: 0.8rem;
-  color: #666;
-  line-height: 1.4;
-  margin: 0;
-  font-weight: 500;
-  transition: color 0.3s ease;
-}
-
-.instruction-card-step.active .step-description {
-  color: #555;
-}
-
-.step-status {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 12px;
-  margin-top: 10px;
-  display: inline-block;
-  transition: all 0.3s ease;
-}
-
-.step-status.pending {
-  background: #6c757d;
-  color: white;
-}
-
-.step-status.active {
-  background: #dc3545;
-  color: white;
-  animation: statusGlow 2s ease-in-out infinite;
-}
-
-.step-status.completed {
-  background: #28a745;
-  color: white;
-}
-
-.countdown-mini {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.countdown-mini-circle {
-  width: 32px;
-  height: 32px;
-  border: 2px solid #dc3545;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  animation: countdownPulse 1s ease-in-out infinite alternate;
-}
-
-.countdown-mini-number {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #dc3545;
-}
-
-.countdown-mini-text {
-  font-size: 0.7rem;
-  color: #666;
-  font-weight: 600;
-}
-
-/* Measurement Progress */
-.measurement-progress {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin-top: 15px;
-}
-
-.progress-bar-horizontal {
-  width: 200px;
-  height: 6px;
-  background: #f0f0f0;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill-horizontal {
-  height: 100%;
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  border-radius: 3px;
-  transition: width 0.5s ease;
-}
-
-.progress-text {
-  font-size: 0.85rem;
-  color: #666;
-  font-weight: 600;
-}
-
-.retry-indicator {
-  font-size: 0.75rem;
-  color: #dc3545;
-  font-weight: 600;
-  margin-top: 5px;
-}
-
-/* Button Container */
-.continue-button-container {
-  flex-shrink: 0;
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* Continue Button */
-.continue-button {
-  width: 100%;
-  padding: 16px 14px;
-  border: none;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  color: white;
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  min-height: 60px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 5px 18px rgba(220, 38, 38, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  z-index: 1;
-}
-
-.continue-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transition: left 0.6s ease;
-}
-
-.continue-button:hover::before {
-  left: 100%;
-}
-
-.continue-button:hover:not(:disabled) {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 8px 22px rgba(220, 38, 38, 0.45);
-}
-
-.continue-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  animation: none;
-}
-
-/* Add these new styles to your existing CSS */
-
 /* Finger Removed Alert */
 .finger-removed-alert {
   position: fixed;
-  top: 20px;
+  top: 30px;
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(135deg, #ff6b6b, #ee5a52);
   color: white;
-  padding: 15px 20px;
-  border-radius: 12px;
+  padding: 18px 25px;
+  border-radius: 16px;
   box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
   z-index: 1000;
   animation: slideDown 0.5s ease-out;
   border: 2px solid #ff4757;
-  min-width: 300px;
+  min-width: 350px;
   max-width: 90%;
 }
 
@@ -882,18 +440,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 15px;
 }
 
 .alert-icon {
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   flex-shrink: 0;
 }
 
 .alert-text {
   flex: 1;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 1rem;
   text-align: center;
 }
 
@@ -901,11 +459,11 @@
   background: none;
   border: none;
   color: white;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   cursor: pointer;
   padding: 0;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -919,137 +477,7 @@
   transform: scale(1.1);
 }
 
-@keyframes slideDown {
-  0% {
-    transform: translateX(-50%) translateY(-100%);
-    opacity: 0;
-  }
-
-  100% {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-  }
-}
-
-/* Responsive design for alert */
-@media (max-width: 480px) {
-  .finger-removed-alert {
-    min-width: 280px;
-    padding: 12px 16px;
-  }
-
-  .alert-text {
-    font-size: 0.8rem;
-  }
-
-  .alert-icon {
-    font-size: 1.1rem;
-  }
-}
-
-/* Glow Animations */
-@keyframes redGlow {
-  from {
-    box-shadow: 0 5px 18px rgba(220, 53, 69, 0.35),
-      0 0 6px rgba(220, 53, 69, 0.25);
-  }
-
-  to {
-    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
-      0 0 12px rgba(220, 53, 69, 0.4),
-      0 0 20px rgba(220, 53, 69, 0.25);
-  }
-}
-
-@keyframes redStrongGlow {
-  from {
-    box-shadow: 0 8px 22px rgba(220, 53, 69, 0.45),
-      0 0 12px rgba(220, 53, 69, 0.5),
-      0 0 20px rgba(220, 53, 69, 0.35);
-  }
-
-  to {
-    box-shadow: 0 10px 25px rgba(220, 53, 69, 0.55),
-      0 0 16px rgba(220, 53, 69, 0.7),
-      0 0 28px rgba(220, 53, 69, 0.4);
-  }
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid transparent;
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.measurement-warning {
-  margin-top: 10px;
-  font-size: 0.75rem;
-  color: #dc3545;
-  text-align: center;
-  padding: 8px;
-  background: #fff5f5;
-  border-radius: 8px;
-  border: 1px solid #ffcccc;
-  font-weight: 600;
-}
-
-/* New pulse animations for different status colors */
-@keyframes measuringPulseNormal {
-
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: #17a2b8;
-  }
-
-  50% {
-    box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: #138496;
-  }
-}
-
-@keyframes measuringPulseLow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: #17a2b8;
-  }
-
-  50% {
-    box-shadow: 0 0 0 10px rgba(255, 193, 7, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: #138496;
-  }
-}
-
-@keyframes measuringPulseHigh {
-
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: #17a2b8;
-  }
-
-  50% {
-    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: #138496;
-  }
-}
-
-/* Modern Pulse Oximeter Animations */
+/* Animations */
 @keyframes modernPulse {
 
   0%,
@@ -1086,18 +514,18 @@
   }
 }
 
-@keyframes activeGlow {
+@keyframes activeGlowRed {
 
   0%,
   100% {
     box-shadow:
-      0 15px 40px rgba(231, 76, 60, 0.4),
+      0 15px 40px rgba(220, 38, 38, 0.4),
       inset 0 2px 15px rgba(255, 255, 255, 0.2);
   }
 
   50% {
     box-shadow:
-      0 20px 50px rgba(231, 76, 60, 0.6),
+      0 20px 50px rgba(220, 38, 38, 0.6),
       inset 0 2px 20px rgba(255, 255, 255, 0.3);
   }
 }
@@ -1108,28 +536,28 @@
   100% {
     transform: scale(1);
     box-shadow:
-      0 0 30px rgba(231, 76, 60, 0.8),
+      0 0 30px rgba(220, 38, 38, 0.8),
       inset 0 2px 5px rgba(255, 255, 255, 0.3);
   }
 
   25% {
     transform: scale(1.15);
     box-shadow:
-      0 0 40px rgba(231, 76, 60, 1),
+      0 0 40px rgba(220, 38, 38, 1),
       inset 0 2px 8px rgba(255, 255, 255, 0.4);
   }
 
   50% {
     transform: scale(1.1);
     box-shadow:
-      0 0 35px rgba(231, 76, 60, 0.9),
+      0 0 35px rgba(220, 38, 38, 0.9),
       inset 0 2px 6px rgba(255, 255, 255, 0.35);
   }
 
   75% {
     transform: scale(1.12);
     box-shadow:
-      0 0 38px rgba(231, 76, 60, 0.95),
+      0 0 38px rgba(220, 38, 38, 0.95),
       inset 0 2px 7px rgba(255, 255, 255, 0.38);
   }
 }
@@ -1139,14 +567,14 @@
   0%,
   100% {
     box-shadow:
-      0 0 25px rgba(52, 152, 219, 0.6),
+      0 0 25px rgba(40, 167, 69, 0.6),
       inset 0 2px 5px rgba(255, 255, 255, 0.3);
     transform: scale(1);
   }
 
   50% {
     box-shadow:
-      0 0 35px rgba(52, 152, 219, 0.8),
+      0 0 35px rgba(40, 167, 69, 0.8),
       inset 0 2px 8px rgba(255, 255, 255, 0.4);
     transform: scale(1.05);
   }
@@ -1216,500 +644,50 @@
   }
 }
 
-@keyframes shimmer {
+@keyframes slideDown {
   0% {
-    transform: rotate(45deg) translateX(-100%);
-  }
-
-  100% {
-    transform: rotate(45deg) translateX(100%);
-  }
-}
-
-/* Measurement Card Animations */
-@keyframes measuringPulse {
-
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.4), 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: #17a2b8;
-  }
-
-  50% {
-    box-shadow: 0 0 0 10px rgba(23, 162, 184, 0.2), 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: #138496;
-  }
-}
-
-@keyframes iconBounce {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  25% {
-    transform: scale(1.1);
-  }
-
-  50% {
-    transform: scale(0.95);
-  }
-
-  75% {
-    transform: scale(1.05);
-  }
-}
-
-@keyframes numberPulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-    color: #17a2b8;
-  }
-
-  50% {
-    transform: scale(1.05);
-    color: #138496;
-  }
-}
-
-@keyframes completeCelebrate {
-  0% {
-    transform: scale(1);
-  }
-
-  25% {
-    transform: scale(1.05) rotate(1deg);
-  }
-
-  50% {
-    transform: scale(1.03) rotate(-0.5deg);
-  }
-
-  75% {
-    transform: scale(1.04) rotate(0.5deg);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes iconCelebrate {
-  0% {
-    transform: scale(1);
-  }
-
-  25% {
-    transform: scale(1.2) rotate(5deg);
-  }
-
-  50% {
-    transform: scale(1.1) rotate(-3deg);
-  }
-
-  75% {
-    transform: scale(1.15) rotate(2deg);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes ripple {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
-}
-
-@keyframes statusPulse {
-
-  0%,
-  100% {
-    box-shadow: 0 2px 10px rgba(23, 162, 184, 0.3);
-    transform: scale(1);
-  }
-
-  50% {
-    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.5);
-    transform: scale(1.02);
-  }
-}
-
-@keyframes completePop {
-  0% {
-    transform: scale(0.8);
+    transform: translateX(-50%) translateY(-100%);
     opacity: 0;
   }
 
-  70% {
-    transform: scale(1.1);
+  100% {
+    transform: translateX(-50%) translateY(0);
     opacity: 1;
-  }
-
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Instruction Card Animations */
-@keyframes instructionPulse {
-
-  0%,
-  100% {
-    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.15);
-    border-color: #dc3545;
-  }
-
-  50% {
-    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.25);
-    border-color: #c82333;
-  }
-}
-
-@keyframes stepPulse {
-
-  0%,
-  100% {
-    background: white;
-    color: #dc3545;
-    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
-  }
-
-  50% {
-    background: #dc3545;
-    color: white;
-    box-shadow: 0 0 0 8px rgba(220, 53, 69, 0.2);
-  }
-}
-
-@keyframes iconFloat {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
-@keyframes statusGlow {
-
-  0%,
-  100% {
-    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
-  }
-
-  50% {
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.5);
-  }
-}
-
-@keyframes countdownPulse {
-  0% {
-    transform: scale(1);
-    border-color: #dc3545;
-  }
-
-  100% {
-    transform: scale(1.1);
-    border-color: #c82333;
-  }
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .max30102-content {
-    padding: 20px;
-    min-height: 95vh;
-    max-height: 98vh;
-    margin: 10px;
-    width: calc(100% - 20px);
-  }
-
-  .max30102-title {
-    font-size: 1.4rem;
-  }
-
-  .max30102-subtitle {
-    font-size: 0.8rem;
-  }
-
-  /* Mobile cards layout */
-  .vital-signs-cards-container {
-    gap: 12px;
-    margin: 15px 0;
-  }
-
-  .measurement-card.vital-sign-card {
-    min-width: 160px;
-    max-width: 180px;
-    min-height: 110px;
-    padding: 15px;
-  }
-
-  .measurement-card.vital-sign-card .measurement-icon {
-    width: 45px;
-    height: 45px;
-    margin-right: 12px;
-  }
-
-  .measurement-card.vital-sign-card .measurement-title {
-    font-size: 1.1rem;
-  }
-
-  .measurement-subtitle {
-    font-size: 0.75rem;
-  }
-
-  .measurement-card.vital-sign-card .value,
-  .measurement-card.vital-sign-card .placeholder {
-    font-size: 1.6rem;
-  }
-
-  .measurement-card.vital-sign-card .unit {
-    font-size: 1rem;
-  }
-
-  .measurement-card.vital-sign-card .measurement-status {
-    font-size: 0.7rem;
-    padding: 4px 8px;
-    min-width: 60px;
-  }
-
-  /* Mobile instruction cards */
-  .instruction-cards-horizontal {
-    gap: 12px;
-  }
-
-  .instruction-card-step {
-    min-width: 140px;
-    max-width: 160px;
-    padding: 15px;
-  }
-
-  .step-number-circle {
-    width: 32px;
-    height: 32px;
-    font-size: 0.9rem;
-    margin-bottom: 10px;
-  }
-
-  .step-icon {
-    font-size: 1.5rem;
-    margin-bottom: 8px;
-  }
-
-  .step-title {
-    font-size: 0.85rem;
-    margin-bottom: 6px;
-  }
-
-  .step-description {
-    font-size: 0.75rem;
-  }
-
-  .step-status {
-    font-size: 0.7rem;
-    padding: 4px 8px;
-    margin-top: 8px;
-  }
-
-  .finger-sensor {
-    width: 140px;
-    height: 140px;
-    border-radius: 20px;
-  }
-
-  .sensor-light {
-    width: 45px;
-    height: 45px;
-    margin-bottom: 12px;
-  }
-
-  .finger-placeholder {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
-  }
-
-  .sensor-status-text {
-    font-size: 0.75rem;
-  }
-
-  .continue-button {
-    padding: 16px 12px;
-    font-size: 1.1rem;
-    min-height: 60px;
   }
 }
 
 @media (max-width: 480px) {
-  .max30102-content {
-    padding: 15px;
-    margin: 5px;
-    width: calc(100% - 10px);
+  .finger-removed-alert {
+    min-width: 280px;
+    padding: 12px 16px;
   }
 
-  .max30102-title {
-    font-size: 1.3rem;
+  .alert-text {
+    font-size: 0.8rem;
   }
 
-  .max30102-subtitle {
-    font-size: 0.75rem;
-  }
-
-  /* Stack cards vertically on very small screens */
-  .vital-signs-cards-container {
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .measurement-card.vital-sign-card {
-    min-width: 100%;
-    max-width: 220px;
-    min-height: 100px;
-    padding: 12px;
-  }
-
-  .instruction-cards-horizontal {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .instruction-card-step {
-    min-width: 100%;
-    max-width: 220px;
+  .alert-icon {
+    font-size: 1.1rem;
   }
 
   .finger-sensor {
-    width: 120px;
-    height: 120px;
+    width: 160px;
+    height: 160px;
+    border-radius: 25px;
   }
 
   .sensor-light {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
+    margin-bottom: 15px;
   }
 
   .finger-placeholder {
-    font-size: 2.2rem;
-  }
-}
-
-/* High DPI Screens */
-@media (-webkit-min-device-pixel-ratio: 2),
-(min-resolution: 192dpi) {
-
-  .measurement-card.vital-sign-card,
-  .instruction-card-step,
-  .finger-sensor {
-    border-width: 1.5px;
-  }
-}
-
-/* Print Styles */
-@media print {
-  .max30102-container {
-    position: static;
-    height: auto;
-    min-height: auto;
+    font-size: 3rem;
+    margin-bottom: 12px;
   }
 
-  .max30102-content {
-    box-shadow: none;
-    border: 1px solid #000;
-    max-height: none;
-    min-height: auto;
-  }
-
-  .continue-button {
-    display: none;
-  }
-}
-
-/* Accessibility */
-@media (prefers-reduced-motion: reduce) {
-
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Focus styles for keyboard navigation */
-.measurement-card.vital-sign-card:focus,
-.instruction-card-step:focus,
-.continue-button:focus {
-  outline: 2px solid #dc3545;
-  outline-offset: 2px;
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .max30102-container {
-    background: #1a1a1a;
-  }
-
-  .max30102-content {
-    background: #2d2d2d;
-    border-color: #444;
-  }
-
-  .max30102-title {
-    color: #fff;
-  }
-
-  .max30102-subtitle {
-    color: #ccc;
-  }
-
-  .measurement-card.vital-sign-card {
-    background: #2d2d2d;
-    border-color: #444;
-  }
-
-  .measurement-card.vital-sign-card .measurement-title {
-    color: #fff;
-  }
-
-  .measurement-subtitle {
-    color: #ccc;
-  }
-
-  .measurement-card.vital-sign-card .value {
-    color: #fff;
-  }
-
-  .measurement-card.vital-sign-card .unit {
-    color: #ccc;
-  }
-
-  .instruction-card-step {
-    background: #2d2d2d;
-    border-color: #444;
-  }
-
-  .step-title {
-    color: #fff;
-  }
-
-  .step-description {
-    color: #ccc;
+  .sensor-status-text {
+    font-size: 0.8rem;
   }
 }

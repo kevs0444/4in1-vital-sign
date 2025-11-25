@@ -1,3 +1,19 @@
+import logging
+import sys
+
+# Configure logging IMMEDIATELY, before anything else
+# This ensures we capture everything and output to stdout
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)],
+    force=True
+)
+
+# Suppress noisy libraries
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
+
 from app import create_app
 from app.utils.db import engine, text
 
@@ -14,31 +30,12 @@ except Exception as e:
 app = create_app()
 
 if __name__ == '__main__':
-    print("🚀 Starting Health Monitoring System Backend...")
+    print("\n" + "="*50)
+    print("🚀 STARTING HEALTH MONITORING SYSTEM BACKEND")
+    print("="*50)
     print("📍 API available at: http://127.0.0.1:5000")
-    print("📋 Available endpoints:")
+    print("📋 Waiting for frontend connection...")
+    print("="*50 + "\n")
     
-    # Main endpoints
-    print("   MAIN:")
-    print("     GET  /api/hello")
-    print("     GET  /api/status")
-    print("     GET  /api/health")
-    print("     GET  /api/endpoints")
-    
-    # Sensor endpoints
-    print("   SENSOR:")
-    print("     POST /api/sensor/connect")
-    print("     GET  /api/sensor/status")
-    print("     POST /api/sensor/temperature/start")
-    print("     POST /api/sensor/max30102/start")
-    print("     POST /api/sensor/measurement/stop")
-    print("     GET  /api/sensor/measurements")
-    
-    # Registration endpoints
-    print("   REGISTER:")
-    print("     POST /api/register/register")
-    print("     POST /api/register/check-id")
-    print("     GET  /api/register/test-connection")
-    print("     GET  /api/register/users")
-    
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    # Disable reloader to prevent double execution and confusion
+    app.run(debug=True, host='127.0.0.1', port=5000, use_reloader=False)
