@@ -27,10 +27,16 @@ class ComplianceDetector:
         
         if AI_AVAILABLE:
             try:
-                # 1. Load Custom Feet Model
-                abs_feet_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'best.pt'))
-                print(f"Loading Feet Model from {abs_feet_path}...")
-                self.feet_model = YOLO(abs_feet_path)
+                # 1. Load New Custom Barefeet Model
+                # Path to the new barefeet model being trained
+                abs_feet_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'logs', 'yolov8_barefeet', 'weights', 'best.pt'))
+                
+                if os.path.exists(abs_feet_path):
+                    print(f"Loading Barefeet Model from {abs_feet_path}...")
+                    self.feet_model = YOLO(abs_feet_path)
+                else:
+                    print(f"Barefeet model not found at {abs_feet_path}. Waiting for training to complete.")
+                    self.feet_model = None
                 
                 # 2. Load Standard Person Model (YOLOv8n)
                 # This will download automatically if not present
@@ -64,24 +70,23 @@ class ComplianceDetector:
         """
         Camera 2 Logic: Check for Bare Feet using Custom Model.
         """
-        if frame is None or self.feet_model is None:
-            return frame, "AI Error", False
+        if frame is None:
+            return frame, "Frame Error", False
+            
+        if self.feet_model is None:
+            return frame, "Model Training/Loading...", False
 
-        # Use Custom Feet Model with lower confidence threshold
+        # Use Custom Barefeet Model
+        # Using 0.25 confidence as a balanced starting point for the new model
         results = self.feet_model(frame, verbose=False, conf=0.25)
         annotated_frame = results[0].plot()
         
         detections = results[0].boxes
         
-        # Custom Logic for Bare Feet Model
-        # The new dataset has 8 classes (0-7), all representing bare feet views.
-        # So if we see ANY class, it is compliant.
-        
         bare_feet_detected = False
         
         for box in detections:
-            # We assume the feet model only detects feet classes
-            # So any detection here is likely a foot
+            # The model is trained on 'bare_feet'
             bare_feet_detected = True
             
         if bare_feet_detected:

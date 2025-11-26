@@ -118,75 +118,10 @@ export default function BMI() {
     e.preventDefault();
   };
 
-  // Add conversion functions
-  const kgToLbs = (kg) => {
-    if (!kg) return "";
-    return (parseFloat(kg) * 2.20462).toFixed(1);
-  };
-
-  const cmToFeet = (cm) => {
-    if (!cm) return "";
-    const feet = parseFloat(cm) / 30.48;
-    const wholeFeet = Math.floor(feet);
-    const inches = Math.round((feet - wholeFeet) * 12);
-    return `${wholeFeet}'${inches}"`;
-  };
-
   const initializeSensors = async () => {
-    try {
-      setStatusMessage("Initializing measurement sensors...");
-
-      // Initialize both weight and height sensors
-      const [weightResult, heightResult] = await Promise.all([
-        sensorAPI.prepareWeight(),
-        sensorAPI.prepareHeight()
-      ]);
-
-      if (weightResult.error || heightResult.error) {
-        setStatusMessage("❌ Sensor initialization failed");
-        handleRetry();
-        return;
-      }
-
-      setStatusMessage("Ready to measure BMI. Click the button to start.");
-
-    } catch (error) {
-      console.error("Sensor initialization error:", error);
-      setStatusMessage("❌ Failed to initialize sensors");
-      handleRetry();
-    }
-  };
-
-  const startBMIMeasurement = async () => {
-    if (measurementStep === 0) {
-      // Start with weight measurement
-      await startWeightMeasurement();
-    } else if (measurementStep === 1 && weight) {
-      // Move to height measurement
-      await startHeightMeasurement();
-    } else if (measurementStep === 2 && height) {
-      // Measurements complete, navigate to next page
-      handleContinue();
-    } else if (measurementStep === 3) {
-      // All measurements complete, proceed to BodyTemp
-      navigateToBodyTemp();
-    }
-  };
-
-  const navigateToBodyTemp = () => {
-    // Prepare data to pass to next page - MERGE existing data with new BMI data
-    const measurementData = {
-      ...location.state, // User personal info from Starting page
-      weight: parseFloat(weight),
-      height: parseFloat(height),
-      bmi: calculateBMI()
-    };
-
-    console.log("🚀 BMI complete - navigating to next step with data:", measurementData);
-
-    // Determine next step dynamically
-    const nextPath = getNextStepPath('bmi', location.state?.checklist);
-    navigate(nextPath, { state: measurementData });
+    setStatusMessage("Initializing sensors...");
+    // Start with weight measurement
+    startWeightMeasurement();
   };
 
   const startCountdown = (seconds) => {
@@ -210,7 +145,7 @@ export default function BMI() {
     setCountdown(0);
   };
 
-  const clearSimulatedMeasurements = () => {
+  const clearSimulatedMeasurements = async () => {
     if (weightIntervalRef.current) {
       clearInterval(weightIntervalRef.current);
       weightIntervalRef.current = null;
@@ -219,6 +154,22 @@ export default function BMI() {
       clearInterval(heightIntervalRef.current);
       heightIntervalRef.current = null;
     }
+    setWeight("");
+    setHeight("");
+    setWeightComplete(false);
+    setHeightComplete(false);
+    setBmiComplete(false);
+    setIsMeasuring(false);
+    setWeightMeasuring(false);
+    setHeightMeasuring(false);
+    setCurrentMeasurement("");
+    setMeasurementStep(0);
+    setStatusMessage("Initializing...");
+    setProgress(0);
+    setRetryCount(0);
+    setLiveWeightData({ current: null, progress: 0, status: 'idle', elapsed: 0, total: 3 });
+    setLiveHeightData({ current: null, progress: 0, status: 'idle', elapsed: 0, total: 2 });
+    measurementStarted.current = false;
   };
 
   const startWeightMeasurement = async () => {
@@ -229,7 +180,7 @@ export default function BMI() {
       setStatusMessage("Starting weight measurement...");
       setMeasurementStep(1);
 
-      // CLEAR PREVIOUS DATA - This ensures fresh measurement each time
+      // CLEAR PREVIOUS DATA
       setWeight("");
       setWeightComplete(false);
       setLiveWeightData({
@@ -237,10 +188,9 @@ export default function BMI() {
         progress: 0,
         status: 'detecting',
         elapsed: 0,
-        total: 3  // 3 seconds for weight
+        total: 3
       });
 
-      // Start actual sensor measurement
       const response = await sensorAPI.startWeight();
 
       if (response.error) {
@@ -251,7 +201,7 @@ export default function BMI() {
 
       setStatusMessage("Please step on the scale and stand still for 3 seconds");
       measurementStarted.current = true;
-      startCountdown(3); // 3 seconds for weight
+      startCountdown(3);
       startMonitoring("weight");
 
     } catch (error) {
@@ -263,13 +213,16 @@ export default function BMI() {
 
   const startHeightMeasurement = async () => {
     try {
+      // Ensure weight sensor is shut down before starting height
+      await sensorAPI.shutdownWeight();
+
       setCurrentMeasurement("height");
       setIsMeasuring(true);
       setHeightMeasuring(true);
       setStatusMessage("Starting height measurement...");
       setMeasurementStep(2);
 
-      // CLEAR PREVIOUS DATA - This ensures fresh measurement each time
+      // CLEAR PREVIOUS DATA
       setHeight("");
       setHeightComplete(false);
       setLiveHeightData({
@@ -277,10 +230,9 @@ export default function BMI() {
         progress: 0,
         status: 'detecting',
         elapsed: 0,
-        total: 2  // 2 seconds for height
+        total: 2
       });
 
-      // Start actual sensor measurement
       const response = await sensorAPI.startHeight();
 
       if (response.error) {
@@ -291,7 +243,7 @@ export default function BMI() {
 
       setStatusMessage("Please stand under the height sensor for 2 seconds");
       measurementStarted.current = true;
-      startCountdown(2); // 2 seconds for height
+      startCountdown(2);
       startMonitoring("height");
 
     } catch (error) {
@@ -348,44 +300,55 @@ export default function BMI() {
 
         setIsMeasuring(data.measurement_active);
 
-        // Handle measurement completion - SIMPLIFIED
-        if (type === "weight" && data.weight && data.weight > 0 && !weight) {
-          setWeight(data.weight.toFixed(1));
-          setWeightMeasuring(false);
-          setWeightComplete(true);
-          setStatusMessage("✅ Weight measurement complete! Starting height measurement...");
-          setIsMeasuring(false);
-          setCurrentMeasurement("");
-          setMeasurementStep(2);
-          stopMonitoring();
-          stopCountdown();
+        // Handle measurement completion - WEIGHT
+        if (type === "weight") {
+          const isWeightComplete = (data.weight && data.weight > 0) ||
+            (data.live_data && data.live_data.status === 'complete' && data.weight);
 
-          // AUTOMATICALLY START HEIGHT MEASUREMENT AFTER WEIGHT
-          setTimeout(() => {
-            sensorAPI.shutdownWeight();
-            // Start height measurement after a short delay
+          if (isWeightComplete && !weight) {
+            const finalWeight = data.weight.toFixed(1);
+            setWeight(finalWeight);
+            setWeightMeasuring(false);
+            setWeightComplete(true);
+            setStatusMessage("✅ Weight measurement complete! Starting height measurement...");
+            setIsMeasuring(false);
+
+            // Transition to Height
+            setCurrentMeasurement("height");
+            setMeasurementStep(2);
+            stopMonitoring();
+            stopCountdown();
+
+            // Start Height Measurement after a short delay
             setTimeout(() => {
               startHeightMeasurement();
-            }, 1000);
-          }, 1000);
+            }, 2000);
+          }
         }
 
-        if (type === "height" && data.height && data.height > 100 && data.height < 220 && !height) {
-          setHeight(data.height.toFixed(1));
-          setHeightMeasuring(false);
-          setHeightComplete(true);
-          setMeasurementComplete(true);
-          setBmiComplete(true);
-          setStatusMessage("✅ All measurements complete! Click the button to continue to Body Temperature.");
-          setIsMeasuring(false);
-          setCurrentMeasurement("");
-          setMeasurementStep(3);
-          stopMonitoring();
-          stopCountdown();
+        // Handle measurement completion - HEIGHT
+        if (type === "height") {
+          const isHeightComplete = (data.height && data.height > 0) ||
+            (data.live_data && data.live_data.status === 'complete' && data.height);
 
-          setTimeout(() => {
-            sensorAPI.shutdownHeight();
-          }, 1000);
+          if (isHeightComplete && !height) {
+            const finalHeight = data.height.toFixed(1);
+            setHeight(finalHeight);
+            setHeightMeasuring(false);
+            setHeightComplete(true);
+            setMeasurementComplete(true);
+            setBmiComplete(true);
+            setStatusMessage("✅ All measurements complete! Click the button to continue to Body Temperature.");
+            setIsMeasuring(false);
+            setCurrentMeasurement("");
+            setMeasurementStep(3);
+            stopMonitoring();
+            stopCountdown();
+
+            setTimeout(() => {
+              sensorAPI.shutdownHeight();
+            }, 1000);
+          }
         }
 
         // Handle error states
@@ -424,6 +387,31 @@ export default function BMI() {
     if (pollerRef.current) {
       clearInterval(pollerRef.current);
       pollerRef.current = null;
+    }
+  };
+
+  const kgToLbs = (kg) => {
+    if (!kg) return "--";
+    return (parseFloat(kg) * 2.20462).toFixed(1);
+  };
+
+  const cmToFeet = (cm) => {
+    if (!cm) return "--'--\"";
+    const realFeet = ((cm * 0.393700) / 12);
+    const feet = Math.floor(realFeet);
+    const inches = Math.round((realFeet - feet) * 12);
+    return `${feet}'${inches}"`;
+  };
+
+  const startBMIMeasurement = () => {
+    if (measurementStep === 0) {
+      startWeightMeasurement();
+    } else if (measurementStep === 1 && weight) {
+      startHeightMeasurement();
+    } else if (measurementStep === 2 && height) {
+      handleContinue();
+    } else if (measurementStep === 3) {
+      handleContinue();
     }
   };
 

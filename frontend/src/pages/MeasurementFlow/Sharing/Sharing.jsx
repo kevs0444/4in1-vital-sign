@@ -9,6 +9,7 @@ export default function Sharing() {
   const [userData, setUserData] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [printComplete, setPrintComplete] = useState(false);
+  const [receiptContent, setReceiptContent] = useState("");
   const printFrameRef = useRef(null);
 
   useEffect(() => {
@@ -18,7 +19,11 @@ export default function Sharing() {
       setUserData(location.state);
       console.log("✅ Complete health data loaded in Sharing:", location.state);
 
-      // Auto-start printing when component loads
+      // Generate receipt content immediately when data is available
+      const content = generateReceiptContent(location.state);
+      setReceiptContent(content);
+
+      // Auto-start printing when component loads and content is ready
       setTimeout(() => {
         startAutoPrint();
       }, 1000);
@@ -35,264 +40,9 @@ export default function Sharing() {
     return () => clearTimeout(timer);
   }, [location.state, navigate]);
 
-  const directPrint = () => {
-    console.log("🖨️ Starting direct print...");
-    setIsPrinting(true);
-
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'absolute';
-    printFrame.style.left = '-9999px';
-    printFrame.style.top = '-9999px';
-    printFrame.style.width = '75mm';
-    printFrame.style.height = '0';
-    printFrame.style.border = 'none';
-
-    document.body.appendChild(printFrame);
-    printFrameRef.current = printFrame;
-
-    const receiptHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Health Assessment Receipt - ${userData?.firstName || 'Patient'}</title>
-          <style>
-            @page {
-              margin: 0;
-              padding: 0;
-              size: 80mm auto;
-            }
-            body {
-              margin: 0;
-              padding: 3mm;
-              font-family: 'Courier New', monospace;
-              font-size: 14px;
-              line-height: 1.3;
-              background: white;
-              color: black;
-              width: 74mm;
-              font-weight: bold;
-            }
-            .receipt-header {
-              text-align: center;
-              border-bottom: 2px solid #000;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
-            }
-            .section-title {
-              font-size: 16px;
-              font-weight: bold;
-              text-align: center;
-              margin: 12px 0 8px 0;
-              border-bottom: 1px solid #000;
-              padding-bottom: 4px;
-            }
-            .patient-info {
-              margin: 10px 0;
-              padding: 8px;
-              border: 2px solid #000;
-            }
-            .vital-signs {
-              margin: 10px 0;
-            }
-            .vital-item {
-              display: flex;
-              justify-content: space-between;
-              margin: 6px 0;
-              font-size: 13px;
-            }
-            .risk-assessment {
-              text-align: center;
-              margin: 12px 0;
-              padding: 10px;
-              border: 3px solid #000;
-              font-size: 15px;
-            }
-            .recommendations {
-              margin: 10px 0;
-              font-size: 12px;
-            }
-            .recommendation-item {
-              margin: 5px 0;
-              padding-left: 5px;
-            }
-            .footer {
-              margin-top: 15px;
-              padding-top: 10px;
-              border-top: 2px solid #000;
-              font-size: 10px;
-              text-align: center;
-              line-height: 1.2;
-            }
-            .divider {
-              border-bottom: 2px dashed #000;
-              margin: 10px 0;
-            }
-            .important {
-              font-weight: bold;
-              font-size: 15px;
-            }
-            .normal-range {
-              font-size: 10px;
-              color: #666;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="receipt-content">
-            ${generateReceiptContent()}
-          </div>
-        </body>
-      </html>
-    `;
-
-    printFrame.contentDocument.open();
-    printFrame.contentDocument.write(receiptHTML);
-    printFrame.contentDocument.close();
-
-    printFrame.onload = () => {
-      try {
-        setTimeout(() => {
-          printFrame.contentWindow.print();
-          setTimeout(() => {
-            document.body.removeChild(printFrame);
-            setIsPrinting(false);
-            setPrintComplete(true);
-          }, 1000);
-        }, 500);
-      } catch (error) {
-        console.error('Print failed:', error);
-        fallbackPrint();
-      }
-    };
-  };
-
-  const fallbackPrint = () => {
-    const printWindow = window.open('', '_blank');
-    const receiptHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Health Assessment Receipt - ${userData?.firstName || 'Patient'}</title>
-          <style>
-            @page {
-              margin: 0;
-              padding: 0;
-              size: 80mm auto;
-            }
-            body {
-              margin: 0;
-              padding: 3mm;
-              font-family: 'Courier New', monospace;
-              font-size: 14px;
-              line-height: 1.3;
-              background: white;
-              color: black;
-              width: 74mm;
-              font-weight: bold;
-            }
-            .receipt-header {
-              text-align: center;
-              border-bottom: 2px solid #000;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
-            }
-            .section-title {
-              font-size: 16px;
-              font-weight: bold;
-              text-align: center;
-              margin: 12px 0 8px 0;
-              border-bottom: 1px solid #000;
-              padding-bottom: 4px;
-            }
-            .patient-info {
-              margin: 10px 0;
-              padding: 8px;
-              border: 2px solid #000;
-            }
-            .vital-signs {
-              margin: 10px 0;
-            }
-            .vital-item {
-              display: flex;
-              justify-content: space-between;
-              margin: 6px 0;
-              font-size: 13px;
-            }
-            .risk-assessment {
-              text-align: center;
-              margin: 12px 0;
-              padding: 10px;
-              border: 3px solid #000;
-              font-size: 15px;
-            }
-            .recommendations {
-              margin: 10px 0;
-              font-size: 12px;
-            }
-            .recommendation-item {
-              margin: 5px 0;
-              padding-left: 5px;
-            }
-            .footer {
-              margin-top: 15px;
-              padding-top: 10px;
-              border-top: 2px solid #000;
-              font-size: 10px;
-              text-align: center;
-              line-height: 1.2;
-            }
-            .divider {
-              border-bottom: 2px dashed #000;
-              margin: 10px 0;
-            }
-            .important {
-              font-weight: bold;
-              font-size: 15px;
-            }
-            .normal-range {
-              font-size: 10px;
-              color: #666;
-            }
-          </style>
-          <script>
-            window.onload = function() {
-              setTimeout(() => {
-                window.print();
-                setTimeout(() => {
-                  window.close();
-                }, 500);
-              }, 100);
-            };
-          </script>
-        </head>
-        <body>
-          <div class="receipt-content">
-            ${generateReceiptContent()}
-          </div>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.open();
-    printWindow.document.write(receiptHTML);
-    printWindow.document.close();
-
-    setIsPrinting(false);
-    setPrintComplete(true);
-  };
-
-  const startAutoPrint = () => {
-    console.log("🖨️ Starting auto-print...");
-    console.log("📊 Printing health data:", userData);
-    setIsPrinting(true);
-
-    setTimeout(() => {
-      directPrint();
-    }, 500);
-  };
-
-  const generateReceiptContent = () => {
-    if (!userData) return "Loading health data...";
+  // Generate receipt content function (moved outside for reuse)
+  const generateReceiptContent = (data) => {
+    if (!data) return "Loading health data...";
 
     const currentDate = new Date().toLocaleDateString('en-US', {
       month: 'short',
@@ -314,61 +64,61 @@ export default function Sharing() {
 
 <div class="section-title">PATIENT INFORMATION</div>
 <div class="patient-info">
-  <div><strong>Name:</strong> ${userData.firstName || 'N/A'} ${userData.lastName || ''}</div>
-  <div><strong>Age:</strong> ${userData.age || 'N/A'} years</div>
-  <div><strong>Gender:</strong> ${userData.sex === 'male' ? 'Male' : 'Female'}</div>
-  <div><strong>BMI:</strong> ${userData.bmi || 'N/A'} (${userData.bmiCategory || 'N/A'})</div>
+  <div><strong>Name:</strong> ${data.firstName || 'N/A'} ${data.lastName || ''}</div>
+  <div><strong>Age:</strong> ${data.age || 'N/A'} years</div>
+  <div><strong>Gender:</strong> ${data.sex === 'male' ? 'Male' : 'Female'}</div>
+  <div><strong>BMI:</strong> ${data.bmi || 'N/A'} (${data.bmiCategory || 'N/A'})</div>
 </div>
 
 <div class="divider"></div>
 
 <div class="section-title">VITAL SIGNS MEASUREMENT</div>
 <div class="vital-signs">
-  ${(userData.checklist?.includes('bodytemp') || userData.temperature) ? `
+  ${(data.checklist?.includes('bodytemp') || data.temperature) ? `
   <div class="vital-item">
     <span>Body Temperature:</span>
-    <span>${userData.temperature || 'N/A'}°C</span>
+    <span>${data.temperature || 'N/A'}°C</span>
   </div>
-  <div class="normal-range">Status: ${userData.temperatureStatus || 'N/A'}</div>
+  <div class="normal-range">Status: ${data.temperatureStatus || 'N/A'}</div>
   ` : ''}
   
-  ${(userData.checklist?.includes('max30102') || userData.heartRate) ? `
+  ${(data.checklist?.includes('max30102') || data.heartRate) ? `
   <div class="vital-item">
     <span>Heart Rate:</span>
-    <span>${userData.heartRate || 'N/A'} BPM</span>
+    <span>${data.heartRate || 'N/A'} BPM</span>
   </div>
-  <div class="normal-range">Status: ${userData.heartRateStatus || 'N/A'}</div>
+  <div class="normal-range">Status: ${data.heartRateStatus || 'N/A'}</div>
   
   <div class="vital-item">
     <span>Blood Oxygen:</span>
-    <span>${userData.spo2 || 'N/A'}%</span>
+    <span>${data.spo2 || 'N/A'}%</span>
   </div>
-  <div class="normal-range">Status: ${userData.spo2Status || 'N/A'}</div>
+  <div class="normal-range">Status: ${data.spo2Status || 'N/A'}</div>
   
   <div class="vital-item">
     <span>Respiratory Rate:</span>
-    <span>${userData.respiratoryRate || 'N/A'}/min</span>
+    <span>${data.respiratoryRate || 'N/A'}/min</span>
   </div>
-  <div class="normal-range">Status: ${userData.respiratoryStatus || 'N/A'}</div>
+  <div class="normal-range">Status: ${data.respiratoryStatus || 'N/A'}</div>
   ` : ''}
   
-  ${(userData.checklist?.includes('bloodpressure') || userData.systolic) ? `
+  ${(data.checklist?.includes('bloodpressure') || data.systolic) ? `
   <div class="vital-item">
     <span>Blood Pressure:</span>
-    <span>${userData.systolic || 'N/A'}/${userData.diastolic || 'N/A'} mmHg</span>
+    <span>${data.systolic || 'N/A'}/${data.diastolic || 'N/A'} mmHg</span>
   </div>
-  <div class="normal-range">Status: ${userData.bloodPressureStatus || 'N/A'}</div>
+  <div class="normal-range">Status: ${data.bloodPressureStatus || 'N/A'}</div>
   ` : ''}
   
-  ${(userData.checklist?.includes('bmi') || userData.weight) ? `
+  ${(data.checklist?.includes('bmi') || data.weight) ? `
   <div class="vital-item">
     <span>Weight:</span>
-    <span>${userData.weight || 'N/A'} kg</span>
+    <span>${data.weight || 'N/A'} kg</span>
   </div>
   
   <div class="vital-item">
     <span>Height:</span>
-    <span>${userData.height || 'N/A'} cm</span>
+    <span>${data.height || 'N/A'} cm</span>
   </div>
   ` : ''}
 </div>
@@ -377,16 +127,16 @@ export default function Sharing() {
 
 <div class="section-title">AI RISK ASSESSMENT</div>
 <div class="risk-assessment">
-  <div class="important">RISK LEVEL: ${userData.riskLevel || 0}%</div>
-  <div class="important">CATEGORY: ${userData.riskCategory || 'N/A'}</div>
+  <div class="important">RISK LEVEL: ${data.riskLevel || 0}%</div>
+  <div class="important">CATEGORY: ${data.riskCategory || 'N/A'}</div>
 </div>
 
 <div class="divider"></div>
 
 <div class="section-title">MEDICAL RECOMMENDATIONS</div>
 <div class="recommendations">
-  ${userData.suggestions && userData.suggestions.length > 0
-        ? userData.suggestions.map((suggestion, index) =>
+  ${data.suggestions && data.suggestions.length > 0
+        ? data.suggestions.map((suggestion, index) =>
           `<div class="recommendation-item">${index + 1}. ${suggestion}</div>`
         ).join('')
         : '<div>No specific recommendations at this time</div>'
@@ -397,8 +147,8 @@ export default function Sharing() {
 
 <div class="section-title">PREVENTIVE STRATEGIES</div>
 <div class="recommendations">
-  ${userData.preventions && userData.preventions.length > 0
-        ? userData.preventions.map((prevention, index) =>
+  ${data.preventions && data.preventions.length > 0
+        ? data.preventions.map((prevention, index) =>
           `<div class="recommendation-item">${index + 1}. ${prevention}</div>`
         ).join('')
         : '<div>Maintain regular health monitoring</div>'
@@ -418,21 +168,66 @@ export default function Sharing() {
     `.trim();
   };
 
+  const directPrint = async () => {
+    console.log("🖨️ Starting direct print via Backend...");
+    console.log("📊 Printing health data:", userData);
+
+    setIsPrinting(true);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/print/receipt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log("✅ Print command sent successfully");
+        setPrintComplete(true);
+      } else {
+        throw new Error(result.error || 'Print failed');
+      }
+    } catch (error) {
+      console.error('Print failed:', error);
+      // Fallback to browser print if backend fails, but user specifically requested no dialog.
+      // We will just notify the user.
+      alert("Printing failed: " + error.message + ". Please check if the printer is connected and the backend is running. If this persists, please contact support.");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  // Fallback print removed as we want to enforce no-dialog printing via backend
+
+  const startAutoPrint = () => {
+    console.log("🖨️ Starting auto-print...");
+
+    if (!userData) {
+      console.log("⏳ User data not ready, waiting...");
+      setTimeout(startAutoPrint, 500);
+      return;
+    }
+
+    console.log("✅ Data ready, starting print...");
+    directPrint();
+  };
+
   const clearAllUserData = () => {
     console.log('🧹 Clearing all user data and resetting system...');
 
-    // Clear any stored data in localStorage/sessionStorage
     localStorage.removeItem('currentUser');
     localStorage.removeItem('userData');
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('userData');
 
-    // Clear any state management data
     if (window.reduxStore) {
       window.reduxStore.dispatch({ type: 'RESET_USER_DATA' });
     }
 
-    // Reset any global variables
     if (window.currentUserData) {
       window.currentUserData = null;
     }
@@ -443,16 +238,14 @@ export default function Sharing() {
   const handleReturnHome = () => {
     console.log('🏠 Returning to home - clearing all user data and resetting system');
 
-    // Clear all user data first
     clearAllUserData();
 
-    // Add a small delay to ensure clean state
     setTimeout(() => {
       navigate("/", {
-        replace: true,  // This prevents going back to sharing page
+        replace: true,
         state: {
           fromSharing: true,
-          reset: true  // Signal that we're resetting for new user
+          reset: true
         }
       });
     }, 100);
@@ -584,6 +377,7 @@ export default function Sharing() {
             <div>📄 Pages: Thermal Receipt Format</div>
             <div>⏱️ Status: {isPrinting ? "PRINTING" : printComplete ? "COMPLETED" : "READY"}</div>
             <div>🔄 Next: System will reset for new user</div>
+            <div>📝 Content Ready: {receiptContent && receiptContent !== "Loading health data..." ? "YES" : "NO"}</div>
           </div>
         </div>
 

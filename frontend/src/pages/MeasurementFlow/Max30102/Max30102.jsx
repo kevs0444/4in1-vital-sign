@@ -53,6 +53,8 @@ export default function Max30102() {
       clearTimeout(timer);
       stopAllTimers();
       clearFingerRemovedAlert();
+      // Removed shutdown on unmount to prevent premature shutdown in Strict Mode
+      // sensorAPI.shutdownMax30102().catch(err => console.error("Error shutting down MAX30102 on unmount:", err));
     };
   }, []);
 
@@ -322,7 +324,7 @@ export default function Max30102() {
           setStatusMessage("⚠️ Connection issue, retrying...");
         }
       }
-    }, 2000);
+    }, 500); // Reduced to 500ms for better live data responsiveness
   };
 
   const updateCurrentMeasurement = (type, value) => {
@@ -360,11 +362,19 @@ export default function Max30102() {
     stopProgressTimer();
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!measurementComplete) return;
 
     stopAllTimers();
     clearFingerRemovedAlert();
+
+    // Shutdown sensor before navigating away
+    try {
+      console.log("🔌 Shutting down MAX30102 sensor...");
+      await sensorAPI.shutdownMax30102();
+    } catch (error) {
+      console.error("Error shutting down MAX30102:", error);
+    }
 
     // Only include measurements that have actual values
     const vitalSignsData = {

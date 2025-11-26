@@ -67,7 +67,7 @@ export default function Checklist() {
   return (
     <div className="checklist-container">
       <div className={`checklist-content ${isVisible ? 'visible' : ''}`}>
-        
+
         <div className="checklist-header">
           <h1 className="checklist-title">Measurement Checklist</h1>
           <p className="checklist-subtitle">Select the vital signs you want to measure for this session.</p>
@@ -75,8 +75,8 @@ export default function Checklist() {
 
         <div className="checklist-grid">
           {processes.map(process => (
-            <div 
-              key={process.id} 
+            <div
+              key={process.id}
               className={`checklist-item ${selectedItems.includes(process.id) ? 'selected' : ''}`}
               onClick={() => toggleItem(process.id)}
             >
@@ -88,8 +88,8 @@ export default function Checklist() {
         </div>
 
         <div className="button-container">
-          <button 
-            className="start-button" 
+          <button
+            className="start-button"
             onClick={handleStart}
             disabled={selectedItems.length === 0}
           >

@@ -100,11 +100,30 @@ export default function Standby() {
           }
         } else {
           // Only attempt connection if not already connected
-          console.log('🔌 Not connected - attempting connection...');
-          await sensorAPI.connect();
-          setBackendAvailable(true);
-          console.log('✅ Backend connected successfully');
-          setSystemStatus('waiting_for_auto_tare');
+          console.log('🔌 Not connected - attempting Arduino connection...');
+          console.log('⏳ Step 1: Connecting to Arduino...');
+
+          const connectResult = await sensorAPI.connect();
+          console.log('📡 Arduino connection result:', connectResult);
+
+          if (connectResult.connected) {
+            console.log('✅ Step 1 Complete: Arduino connected to', connectResult.port);
+            console.log('⏳ Step 2: Waiting for auto-tare to complete...');
+
+            if (connectResult.auto_tare_completed) {
+              console.log('✅ Step 2 Complete: Auto-tare already done');
+              setSystemStatus('ready');
+            } else {
+              console.log('⏳ Auto-tare in progress...');
+              setSystemStatus('waiting_for_auto_tare');
+            }
+
+            setBackendAvailable(true);
+            console.log('✅ Arduino and sensors initialized successfully');
+          } else {
+            console.log('❌ Failed to connect to Arduino');
+            setSystemStatus('offline_mode');
+          }
         }
       } catch (error) {
         console.log('❌ Connection check failed:', error.message);

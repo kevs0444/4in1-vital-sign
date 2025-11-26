@@ -12,6 +12,7 @@
     "@testing-library/user-event": "^13.5.0",
     "bootstrap": "^5.3.8",
     "chart.js": "^4.5.1",
+    "esc-pos-encoder": "^3.0.0",
     "framer-motion": "^12.23.22",
     "node-thermal-printer": "^4.5.0",
     "qrcode.react": "^4.2.0",

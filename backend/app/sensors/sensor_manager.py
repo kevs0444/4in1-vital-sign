@@ -157,6 +157,7 @@ class SensorManager:
     def _parse_serial_data(self, data):
         """Parse incoming serial data"""
         logger.info(f"ARDUINO: {data}")
+        print(f"🔵 ARDUINO → {data}")
 
         # ==================== SYSTEM STATUS ====================
         if data.startswith("STATUS:"):

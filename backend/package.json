@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "esc-pos-encoder": "^3.0.0"
+  }
+}
