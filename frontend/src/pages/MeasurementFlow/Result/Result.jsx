@@ -580,7 +580,7 @@ export default function Result() {
                 </h3>
                 <div className="user-meta">
                   <span className="user-age">{userData.age || '21'} years old</span>
-                  <span className="user-sex">{userData.sex === 'male' ? 'Male' : userData.sex === 'female' ? 'Female' : 'Male'}</span>
+                  <span className="user-sex">{userData.sex ? userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1).toLowerCase() : 'N/A'}</span>
                 </div>
               </div>
             </div>

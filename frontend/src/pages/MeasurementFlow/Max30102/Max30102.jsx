@@ -238,41 +238,64 @@ export default function Max30102() {
   };
 
   const completeMeasurement = () => {
-    console.log("Measurement completed successfully");
+    console.log("🏁 Measurement completion triggered");
+    console.log(`📊 Collected readings - HR: ${heartRateReadings.length}, SpO2: ${spo2Readings.length}, RR: ${respiratoryRateReadings.length}`);
+
     stopProgressTimer();
     setIsMeasuring(false);
     setMeasurementComplete(true);
     setMeasurementStep(4);
-    setStatusMessage("✅ Measurement Complete! Final results ready.");
     setProgressPercent(100);
     setProgressSeconds(totalMeasurementTime);
     setCountdown(0);
 
-    // Calculate averages from all readings - ONLY if we have actual readings
+    // Calculate averages from all collected readings
     let avgHeartRate = "--";
     let avgSpo2 = "--";
     let avgRespiratoryRate = "--";
 
-    if (heartRateReadings.length > 0) {
-      avgHeartRate = Math.round(heartRateReadings.reduce((a, b) => a + b, 0) / heartRateReadings.length).toString();
+    // Filter out invalid readings (0 or negative values) before averaging
+    const validHeartRateReadings = heartRateReadings.filter(val => val > 0 && val < 200);
+    const validSpo2Readings = spo2Readings.filter(val => val > 0 && val <= 100);
+    const validRespiratoryRateReadings = respiratoryRateReadings.filter(val => val > 0 && val < 60);
+
+    if (validHeartRateReadings.length > 0) {
+      avgHeartRate = Math.round(validHeartRateReadings.reduce((a, b) => a + b, 0) / validHeartRateReadings.length).toString();
+      console.log(`✅ Heart Rate Average: ${avgHeartRate} BPM (from ${validHeartRateReadings.length} valid readings)`);
+    } else {
+      console.warn("⚠️ No valid heart rate readings collected");
     }
 
-    if (spo2Readings.length > 0) {
-      avgSpo2 = Math.round(spo2Readings.reduce((a, b) => a + b, 0) / spo2Readings.length).toString();
+    if (validSpo2Readings.length > 0) {
+      avgSpo2 = Math.round(validSpo2Readings.reduce((a, b) => a + b, 0) / validSpo2Readings.length).toString();
+      console.log(`✅ SpO2 Average: ${avgSpo2}% (from ${validSpo2Readings.length} valid readings)`);
+    } else {
+      console.warn("⚠️ No valid SpO2 readings collected");
     }
 
-    if (respiratoryRateReadings.length > 0) {
-      avgRespiratoryRate = Math.round(respiratoryRateReadings.reduce((a, b) => a + b, 0) / respiratoryRateReadings.length).toString();
+    if (validRespiratoryRateReadings.length > 0) {
+      avgRespiratoryRate = Math.round(validRespiratoryRateReadings.reduce((a, b) => a + b, 0) / validRespiratoryRateReadings.length).toString();
+      console.log(`✅ Respiratory Rate Average: ${avgRespiratoryRate}/min (from ${validRespiratoryRateReadings.length} valid readings)`);
+    } else {
+      console.warn("⚠️ No valid respiratory rate readings collected");
     }
 
-    console.log(`📊 Final Averages - HR: ${avgHeartRate} (${heartRateReadings.length} readings), SpO2: ${avgSpo2} (${spo2Readings.length} readings), RR: ${avgRespiratoryRate} (${respiratoryRateReadings.length} readings)`);
-
-    // Update with averaged results - only if we have actual data
+    // Update with averaged results
     setMeasurements({
       heartRate: avgHeartRate,
       spo2: avgSpo2,
       respiratoryRate: avgRespiratoryRate
     });
+
+    // Show appropriate status message
+    const hasValidData = avgHeartRate !== "--" || avgSpo2 !== "--" || avgRespiratoryRate !== "--";
+    if (hasValidData) {
+      setStatusMessage("✅ Measurement Complete! Final averaged results ready.");
+      console.log("✅ Measurement completed successfully with valid averaged data");
+    } else {
+      setStatusMessage("⚠️ Measurement completed but insufficient data. Please try again.");
+      console.warn("⚠️ Measurement completed but no valid readings were collected");
+    }
 
     stopAllTimers();
     clearFingerRemovedAlert();

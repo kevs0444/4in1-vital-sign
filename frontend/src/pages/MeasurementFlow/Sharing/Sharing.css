@@ -252,21 +252,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
 }
 
 .print-again-btn {
   position: relative;
-  padding: 2rem 5rem !important;
-  border-radius: 20px !important;
-  font-size: 2.2rem !important;
+  padding: 18px 40px !important;
+  border-radius: 12px !important;
+  font-size: 1.1rem !important;
   font-weight: 600 !important;
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   border: none !important;
-  box-shadow: 0 5px 18px rgba(220, 38, 38, 0.35);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
   transition: all 0.2s ease !important;
-  min-height: 120px;
-  min-width: 450px;
+  min-height: 60px;
+  min-width: 280px;
   touch-action: manipulation;
   overflow: hidden;
   color: white !important;
@@ -282,25 +282,26 @@
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   margin: 0;
+  cursor: pointer;
 }
 
 .print-again-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
 }
 
 .home-btn {
   position: relative;
-  padding: 2rem 5rem !important;
-  border-radius: 20px !important;
-  font-size: 2.2rem !important;
+  padding: 18px 40px !important;
+  border-radius: 12px !important;
+  font-size: 1.1rem !important;
   font-weight: 600 !important;
   background: #64748b;
   border: none !important;
-  box-shadow: 0 5px 18px rgba(100, 116, 139, 0.35);
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
   transition: all 0.2s ease !important;
-  min-height: 120px;
-  min-width: 450px;
+  min-height: 60px;
+  min-width: 280px;
   touch-action: manipulation;
   overflow: hidden;
   color: white !important;
@@ -316,6 +317,7 @@
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   margin: 0;
+  cursor: pointer;
 }
 
 .home-btn:hover {
@@ -355,7 +357,8 @@
   font-weight: 500;
 }
 
-/* Debug Console */
+/* Debug Console - REMOVED FROM UI */
+/* 
 .debug-console {
   background: #1e293b;
   color: #f1f5f9;
@@ -382,6 +385,7 @@
 .console-content div {
   margin-bottom: 4px;
 }
+*/
 
 
 

@@ -48,4 +48,18 @@ def create_app():
     app.register_blueprint(register_bp, url_prefix='/api/register')
     app.register_blueprint(login_bp, url_prefix='/api/login')
     
+    from app.routes.camera_routes import camera_bp
+    app.register_blueprint(camera_bp, url_prefix='/api/camera')
+
+    from app.routes.print_routes import print_bp
+    app.register_blueprint(print_bp, url_prefix='/api/print')
+    
+    print("\n" + "="*60)
+    print("🚀 BACKEND SERVER is READY and RUNNING")
+    print("="*60)
+    print("📡 Waiting for Arduino connection on COM port...")
+    print("💡 Connect Arduino and visit Standby page to initialize")
+    print("="*60 + "\n")
+    sys.stdout.flush()
+    
     return app

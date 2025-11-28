@@ -18,6 +18,7 @@ export default function Sharing() {
     if (location.state) {
       setUserData(location.state);
       console.log("✅ Complete health data loaded in Sharing:", location.state);
+      console.log("🔍 DEBUG - Sex value:", location.state.sex, "Type:", typeof location.state.sex);
 
       // Generate receipt content immediately when data is available
       const content = generateReceiptContent(location.state);
@@ -66,7 +67,7 @@ export default function Sharing() {
 <div class="patient-info">
   <div><strong>Name:</strong> ${data.firstName || 'N/A'} ${data.lastName || ''}</div>
   <div><strong>Age:</strong> ${data.age || 'N/A'} years</div>
-  <div><strong>Gender:</strong> ${data.sex === 'male' ? 'Male' : 'Female'}</div>
+  <div><strong>Gender:</strong> ${data.sex ? data.sex.charAt(0).toUpperCase() + data.sex.slice(1).toLowerCase() : 'N/A'}</div>
   <div><strong>BMI:</strong> ${data.bmi || 'N/A'} (${data.bmiCategory || 'N/A'})</div>
 </div>
 
@@ -311,7 +312,7 @@ export default function Sharing() {
               {userData.firstName} {userData.lastName}
             </div>
             <div className="patient-details">
-              Age: {userData.age} • {userData.sex === 'male' ? 'Male' : 'Female'} • Risk Level: {userData.riskLevel}%
+              Age: {userData?.age || 'N/A'} • {userData?.sex ? userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1).toLowerCase() : 'N/A'} • Risk Level: {userData?.riskLevel || 'N/A'}%
             </div>
           </div>
         </div>
@@ -366,20 +367,7 @@ export default function Sharing() {
           )}
         </div>
 
-        {/* Debug Console */}
-        <div className="debug-console">
-          <div className="console-header">Receipt Information</div>
-          <div className="console-content">
-            <div>🖨️ Printer: Thermal POS58 (Large Font)</div>
-            <div>👤 Patient: {userData.firstName} {userData.lastName}</div>
-            <div>📊 Risk Level: {userData.riskLevel}% ({userData.riskCategory})</div>
-            <div>📋 Measurements: Complete Health Assessment</div>
-            <div>📄 Pages: Thermal Receipt Format</div>
-            <div>⏱️ Status: {isPrinting ? "PRINTING" : printComplete ? "COMPLETED" : "READY"}</div>
-            <div>🔄 Next: System will reset for new user</div>
-            <div>📝 Content Ready: {receiptContent && receiptContent !== "Loading health data..." ? "YES" : "NO"}</div>
-          </div>
-        </div>
+
 
       </div>
     </div>
