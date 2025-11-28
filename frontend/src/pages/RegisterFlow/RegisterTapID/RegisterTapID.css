@@ -11,7 +11,7 @@
   min-height: 100vh;
   height: 100%;
   width: 100vw;
-  background: #ffffff;
+  background: #f0f2f5;
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow: hidden !important;
   padding: 20px;
@@ -106,26 +106,6 @@
 
 .step-label {
   font-size: 1.1rem;
-  color: #666;
-  font-weight: 600;
-  margin-top: 10px;
-  text-align: center;
-}
-
-/* Header Section - Match RegisterPersonalInfo styling */
-.register-tapid-header {
-  text-align: center;
-  margin-bottom: 30px;
-  flex-shrink: 0;
-  padding: 0 10px;
-}
-
-.register-tapid-title {
-  font-size: 2.8rem;
-  color: #333;
-  font-weight: 700;
-  margin-bottom: 15px;
-  line-height: 1.1;
 }
 
 .register-tapid-subtitle {
@@ -291,159 +271,6 @@
 
 .benefit-item span:last-child {
   font-size: 1.1rem;
-  color: #555;
-  font-weight: 500;
-}
-
-/* ID Scan Section */
-.id-scan-section {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  width: 100%;
-}
-
-.scanner-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.scanner-hardware {
-  position: relative;
-  width: 100%;
-  max-width: 400px;
-  height: 200px;
-  background: linear-gradient(135deg, #2d3748, #4a5568);
-  border: 6px solid #1a202c;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-}
-
-.scanner-surface {
-  width: 80%;
-  height: 60%;
-  background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
-  border: 3px solid #a0aec0;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  box-shadow: inset 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.scanner-led {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
-  animation: ledPulse 2s ease-in-out infinite;
-}
-
-.scanner-reader {
-  position: absolute;
-  bottom: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60%;
-  height: 8px;
-  background: linear-gradient(90deg, #718096, #a0aec0, #718096);
-  border-radius: 4px;
-}
-
-.scanner-glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.1), transparent 70%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.scanner-hardware.active .scanner-glow {
-  opacity: 1;
-  animation: scannerActive 1.5s ease-in-out infinite;
-}
-
-.scanner-hardware.reading .scanner-glow {
-  opacity: 1;
-  background: radial-gradient(circle at center, rgba(34, 197, 94, 0.2), transparent 70%);
-  animation: scannerReading 0.5s ease-in-out infinite;
-}
-
-.scanner-hardware.success .scanner-glow {
-  opacity: 1;
-  background: radial-gradient(circle at center, rgba(34, 197, 94, 0.3), transparent 70%);
-}
-
-.id-card-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.id-card {
-  width: 120px;
-  height: 80px;
-  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-  border: 3px solid #cbd5e1;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
-}
-
-.id-card.tapped {
-  transform: scale(1.05);
-  border-color: #22c55e;
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
-}
-
-.id-chip {
-  width: 30px;
-  height: 20px;
-  background: linear-gradient(135deg, #d1d5db, #9ca3af);
-  border-radius: 4px;
-  margin-right: 8px;
-}
-
-.id-waves {
-  width: 40px;
-  height: 8px;
-  background: linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6);
-  border-radius: 4px;
-  opacity: 0.7;
-}
-
-.rfid-symbol {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  font-size: 1.5rem;
-  background: white;
-  border-radius: 50%;
-  padding: 5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Processing Overlay */
-.processing-overlay {
-  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -915,16 +742,18 @@
   font-weight: bold;
 }
 
-/* Keyboard Styles - INSIDE THE CONTAINER */
+/* Keyboard Styles - MATCHING LOGIN.CSS */
 .register-keyboard {
   background: white;
   border-radius: 20px;
-  padding: 20px;
+  padding: 10px;
   margin-top: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   border: 1px solid #e0e0e0;
   width: 100%;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .register-keyboard-rows {
@@ -936,28 +765,33 @@
 .register-keyboard-row {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 4px;
+  flex: 1;
 }
 
 .register-keyboard-key {
   flex: 1;
-  padding: 20px 10px;
+  padding: 0.5rem 0.2rem;
   border: none;
-  border-radius: 12px;
+  border-radius: 6px;
   background: #f8f9fa;
   color: #333;
-  font-size: 1.3rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  min-height: 60px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #e9ecef;
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  user-select: none;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .register-keyboard-key:active {
@@ -970,138 +804,79 @@
 .register-keyboard-key.delete-key {
   background: #dc2626;
   color: white;
-  font-size: 1.1rem;
+  font-size: 0.8rem;
   border-color: #dc2626;
+}
+
+.register-keyboard-key.delete-key:active {
+  background: #b91c1c;
 }
 
 .register-keyboard-key.space-key {
   flex: 3;
-  font-size: 1.1rem;
+  font-size: 0.8rem;
+  background: #4a5568;
+  color: white;
+  border-color: #4a5568;
+  max-width: none;
+}
+
+.register-keyboard-key.space-key:active {
+  background: #2d3748;
 }
 
 .register-keyboard-key.shift-key {
   background: #6c757d;
   color: white;
+  font-size: 0.8rem;
   border-color: #6c757d;
 }
 
 .register-keyboard-key.shift-key.active {
   background: #dc2626;
-  transform: scale(1.05);
+  transform: scale(1.02);
   border-color: #dc2626;
 }
 
 .register-keyboard-key.shift-key:active {
-  transform: scale(0.96);
+  background: #5a6268;
 }
 
 .register-keyboard-key.symbols-key {
-  background: #6c757d;
-  color: white;
-  border-color: #6c757d;
-}
-
-.register-keyboard-key.symbols-key.active {
   background: #dc2626;
+  color: white;
+  font-size: 0.8rem;
   border-color: #dc2626;
 }
 
+.register-keyboard-key.symbols-key.active {
+  background: #b91c1c;
+  transform: scale(1.02);
+  border-color: #b91c1c;
+}
+
+.register-keyboard-key.symbols-key:active {
+  background: #b91c1c;
+}
+
 .register-keyboard-key.number-key {
-  background: #e5e7eb;
+  background: white;
+  color: #333;
   font-weight: 700;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* Animations */
-@keyframes ledPulse {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
-  }
-  50% {
-    opacity: 0.7;
-    box-shadow: 0 0 5px rgba(34, 197, 94, 0.4);
-  }
+.register-keyboard-key.number-key:active {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
 }
 
-@keyframes scannerActive {
-  0%, 100% {
-    background: radial-gradient(circle at center, rgba(59, 130, 246, 0.1), transparent 70%);
-  }
-  50% {
-    background: radial-gradient(circle at center, rgba(59, 130, 246, 0.2), transparent 70%);
-  }
-}
-
-@keyframes scannerReading {
-  0%, 100% {
-    background: radial-gradient(circle at center, rgba(34, 197, 94, 0.2), transparent 70%);
-  }
-  50% {
-    background: radial-gradient(circle at center, rgba(34, 197, 94, 0.3), transparent 70%);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.8;
-  }
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes continueButtonGlow {
-  from {
-    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4),
-                0 0 10px rgba(220, 38, 38, 0.3);
-  }
-  to {
-    box-shadow: 0 12px 30px rgba(220, 38, 38, 0.5),
-                0 0 18px rgba(220, 38, 38, 0.5),
-                0 0 30px rgba(220, 38, 38, 0.3);
-  }
-}
-
-@keyframes continueButtonStrongGlow {
-  from {
-    box-shadow: 0 12px 30px rgba(220, 38, 38, 0.5),
-                0 0 18px rgba(220, 38, 38, 0.6),
-                0 0 30px rgba(220, 38, 38, 0.4);
-  }
-  to {
-    box-shadow: 0 15px 35px rgba(220, 38, 38, 0.6),
-                0 0 25px rgba(220, 38, 38, 0.8),
-                0 0 40px rgba(220, 38, 38, 0.5);
-  }
+/* Touch Feedback */
+.touch-feedback {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
 }
 
 /* Responsive Design */
@@ -1109,213 +884,91 @@
   .register-tapid-container {
     padding: 15px;
   }
-  
+
   .register-tapid-content {
     max-width: 100%;
     max-height: 95vh;
     padding: 20px 15px;
     border-radius: 20px;
   }
-  
+
   .progress-steps {
     margin-bottom: 20px;
     padding: 0 10px;
   }
-  
+
   .step-circle {
     width: 40px;
     height: 40px;
     font-size: 1.1rem;
   }
-  
+
   .step-label {
     font-size: 0.9rem;
   }
-  
+
+  .register-step-image {
+    width: 120px;
+    height: 120px;
+  }
+
   .register-tapid-title {
     font-size: 2.2rem;
     margin-bottom: 10px;
   }
-  
+
   .register-tapid-subtitle {
     font-size: 1.2rem;
   }
-  
+
   .form-label {
     font-size: 1.1rem;
   }
-  
+
   .form-input {
     padding: 16px 14px;
     font-size: 1.2rem;
   }
-  
-  .scanner-hardware {
-    height: 180px;
-    max-width: 350px;
-  }
-  
-  .id-card {
-    width: 100px;
-    height: 70px;
-  }
-  
-  .instruction-step {
-    padding: 12px 16px;
-  }
-  
-  .step-text {
-    font-size: 1.1rem;
-  }
-  
+
   .nav-button {
     font-size: 1.4rem;
-    min-height: 60px;
-    padding: 18px;
-  }
-  
-  .register-keyboard {
-    padding: 15px;
-  }
-  
-  .register-keyboard-key {
-    padding: 16px 8px;
-    font-size: 1.1rem;
-    min-height: 50px;
-  }
-  
-  .input-hint {
-    font-size: 0.9rem;
-  }
-}
-
-@media (max-width: 600px) and (orientation: portrait) {
-  .register-tapid-title {
-    font-size: 2rem;
-  }
-  
-  .register-tapid-subtitle {
-    font-size: 1.1rem;
-  }
-  
-  .scanner-hardware {
-    height: 160px;
-    max-width: 300px;
-  }
-  
-  .instruction-steps {
-    gap: 12px;
-  }
-  
-  .instruction-step {
-    padding: 10px 14px;
-  }
-  
-  .step-number {
-    width: 25px;
-    height: 25px;
-    font-size: 1rem;
-  }
-  
-  .step-text {
-    font-size: 1rem;
-  }
-  
-  .nav-button {
-    font-size: 1.3rem;
-    min-height: 55px;
     padding: 16px;
+    min-height: 60px;
   }
-  
-  .register-keyboard-row {
-    gap: 6px;
-  }
-  
+
   .register-keyboard-key {
-    padding: 14px 6px;
-    font-size: 1rem;
-    min-height: 45px;
-  }
-  
-  .input-hint {
+    min-height: 38px;
     font-size: 0.85rem;
   }
 }
 
+/* Extra small devices */
 @media (max-width: 480px) {
-  .register-tapid-content {
-    padding: 15px 12px;
-  }
-  
   .register-tapid-title {
     font-size: 1.8rem;
   }
-  
+
   .register-tapid-subtitle {
     font-size: 1rem;
   }
-  
-  .scanner-hardware {
-    height: 140px;
-    max-width: 280px;
+
+  .step-circle {
+    width: 35px;
+    height: 35px;
+    font-size: 1rem;
   }
-  
-  .id-card {
-    width: 80px;
-    height: 60px;
+
+  .step-label {
+    font-size: 0.8rem;
   }
-  
-  .id-chip {
-    width: 25px;
-    height: 15px;
+
+  .form-input {
+    font-size: 1.1rem;
+    padding: 14px 12px;
   }
-  
-  .id-waves {
-    width: 30px;
-    height: 6px;
-  }
-  
-  .security-badge {
-    flex-direction: column;
-    text-align: center;
-    gap: 10px;
-  }
-  
+
   .nav-button {
     font-size: 1.2rem;
     min-height: 50px;
-    padding: 14px;
-  }
-  
-  .input-hint {
-    font-size: 0.8rem;
-  }
-}
-
-/* Fallback for browsers that don't support :has() */
-@supports not (selector(:has(.test))) {
-  .form-navigation.single-button .nav-button {
-    width: 100%;
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    color: white;
-    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
-    animation: continueButtonGlow 2s ease-in-out infinite alternate;
-  }
-  
-  .form-navigation.dual-buttons .back-button {
-    background: #6c757d;
-    color: white;
-    width: 100%;
-    order: 2;
-    margin-top: 8px;
-  }
-  
-  .form-navigation.dual-buttons .next-button {
-    width: 100%;
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    color: white;
-    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
-    animation: continueButtonGlow 2s ease-in-out infinite alternate;
-    order: 1;
   }
 }

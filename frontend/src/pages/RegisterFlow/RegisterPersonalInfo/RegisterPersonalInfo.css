@@ -14,7 +14,7 @@
   background: #ffffff;
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow: hidden !important;
-  padding: 20px;
+  padding: 10px;
   margin: 0;
   position: fixed;
   top: 0;
@@ -29,8 +29,10 @@
   width: 100%;
   max-width: 700px;
   height: auto;
-  max-height: 95vh;
-  padding: 30px 25px;
+  max-height: 98vh;
+  /* Maximized height */
+  padding: 20px 15px;
+  /* Reduced padding */
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
@@ -44,9 +46,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 15px;
+  /* Reduced margin */
   flex-shrink: 0;
-  padding: 0 20px;
+  padding: 0 10px;
 }
 
 .progress-step {
@@ -106,43 +109,41 @@
 
 .step-label {
   font-size: 1.1rem;
-  color: #666;
-  font-weight: 600;
-  margin-top: 10px;
-  text-align: center;
 }
 
-/* Image Section */
+/* Image Section - Centered and Larger */
 .register-image-section {
-  text-align: center;
-  margin-bottom: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 15px;
+  width: 100%;
   flex-shrink: 0;
 }
 
-.register-logo {
+.register-step-image {
   width: 180px;
   height: 180px;
   object-fit: contain;
+  /* border-radius: 20px; Optional */
 }
 
-/* Header Section - Match RegisterRole styling */
 .register-personal-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 15px;
   flex-shrink: 0;
-  padding: 0 10px;
 }
 
 .register-personal-title {
-  font-size: 2.8rem;
+  font-size: 2.2rem;
   color: #333;
   font-weight: 700;
-  margin-bottom: 15px;
-  line-height: 1.1;
+  margin-bottom: 5px;
+  line-height: 1.2;
 }
 
 .register-personal-subtitle {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   color: #666;
   line-height: 1.3;
   padding: 0 10px;
@@ -154,7 +155,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
+  /* Reduced margin */
   min-height: 0;
 }
 
@@ -169,7 +171,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: 15px;
+  /* Reduced gap */
   min-height: 0;
   overflow: hidden;
 }
@@ -189,7 +192,8 @@
   font-size: 1.3rem;
   color: #333;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  /* Reduced margin */
   text-align: left;
 }
 
@@ -215,11 +219,20 @@
   transform: translateY(-2px);
 }
 
+.form-input.active {
+  border-color: #dc2626;
+  background: #fff5f5;
+  box-shadow:
+    0 0 0 2px #dc2626,
+    0 0 0 4px rgba(220, 38, 38, 0.1);
+}
+
 /* Birthday Selector Styles */
 .birthday-selector {
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: 20px;
+  /* Reduced gap */
   width: 100%;
   min-height: 0;
   overflow: hidden;
@@ -248,7 +261,8 @@
   font-size: 1.2rem;
   color: #333;
   font-weight: 600;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
+  /* Reduced margin */
   text-align: center;
   flex-shrink: 0;
 }
@@ -372,7 +386,8 @@
 .sex-selection {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 30px;
+  gap: 20px;
+  /* Reduced gap */
   margin-top: 10px;
   min-height: 0;
   flex-shrink: 0;
@@ -380,7 +395,8 @@
 }
 
 .sex-option {
-  padding: 50px 30px;
+  padding: 30px 20px;
+  /* Reduced padding */
   border: 4px solid #e9ecef;
   border-radius: 25px;
   background: white;
@@ -393,10 +409,12 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 30px;
+  gap: 20px;
+  /* Reduced gap */
   position: relative;
   box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
-  min-height: 350px;
+  min-height: 300px;
+  /* Reduced min-height */
   height: 100%;
   width: 100%;
 }
@@ -414,7 +432,8 @@
 
 .sex-option.selected {
   border-color: #dc2626;
-  background: white; /* Keep white background */
+  background: white;
+  /* Keep white background */
   transform: translateY(-3px);
   box-shadow: 0 25px 60px rgba(220, 38, 38, 0.25);
 }
@@ -444,7 +463,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: white; /* Keep white background */
+  background: white;
+  /* Keep white background */
   padding: 30px;
   transition: all 0.3s ease;
   border: 5px solid #f1f3f4;
@@ -455,19 +475,23 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: grayscale(0.4); /* Keep some grayscale for unselected state */
+  filter: grayscale(0.4);
+  /* Keep some grayscale for unselected state */
   transition: all 0.3s ease;
 }
 
 .sex-option.selected .role-card-icon {
-  background: white; /* Keep white background */
-  border-color: #dc2626; /* Only border turns red */
+  background: white;
+  /* Keep white background */
+  border-color: #dc2626;
+  /* Only border turns red */
   transform: scale(1.1);
   box-shadow: 0 15px 40px rgba(220, 38, 38, 0.3);
 }
 
 .sex-option.selected .role-card-icon img {
-  filter: grayscale(0); /* Remove grayscale when selected */
+  filter: grayscale(0);
+  /* Remove grayscale when selected */
   transform: scale(1.15);
 }
 
@@ -479,7 +503,8 @@
 }
 
 .sex-option.selected span {
-  color: #dc2626; /* Only text turns red */
+  color: #dc2626;
+  /* Only text turns red */
   transform: scale(1.05);
 }
 
@@ -498,7 +523,8 @@
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 15px;
+  /* Reduced margin */
   flex-shrink: 0;
   width: 100%;
 }
@@ -538,7 +564,8 @@
 .form-navigation.dual-buttons .back-button {
   background: #6c757d;
   color: white;
-  order: 2; /* Places back button below */
+  order: 2;
+  /* Places back button below */
   margin-top: 8px;
 }
 
@@ -548,7 +575,8 @@
   color: white;
   box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
   animation: continueButtonGlow 2s ease-in-out infinite alternate;
-  order: 1; /* Places continue button above */
+  order: 1;
+  /* Places continue button above */
 }
 
 /* Updated :has() styles for stacked layout */
@@ -559,6 +587,7 @@
 .form-navigation:has(.back-button) .back-button {
   order: 2;
   margin-top: 8px;
+  background: #6c757d;
 }
 
 .form-navigation:has(.back-button) .next-button,
@@ -571,11 +600,13 @@
   background: #5a6268;
 }
 
-.next-button:active:not(.disabled), .submit-button:active:not(.disabled) {
+.next-button:active:not(.disabled),
+.submit-button:active:not(.disabled) {
   transform: scale(0.97);
 }
 
-.next-button:hover:not(.disabled), .submit-button:hover:not(.disabled) {
+.next-button:hover:not(.disabled),
+.submit-button:hover:not(.disabled) {
   transform: translateY(-3px);
   animation: continueButtonStrongGlow 1s ease-in-out infinite alternate;
 }
@@ -592,25 +623,27 @@
 @keyframes continueButtonGlow {
   from {
     box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4),
-                0 0 10px rgba(220, 38, 38, 0.3);
+      0 0 10px rgba(220, 38, 38, 0.3);
   }
+
   to {
     box-shadow: 0 12px 30px rgba(220, 38, 38, 0.5),
-                0 0 18px rgba(220, 38, 38, 0.5),
-                0 0 30px rgba(220, 38, 38, 0.3);
+      0 0 18px rgba(220, 38, 38, 0.5),
+      0 0 30px rgba(220, 38, 38, 0.3);
   }
 }
 
 @keyframes continueButtonStrongGlow {
   from {
     box-shadow: 0 12px 30px rgba(220, 38, 38, 0.5),
-                0 0 18px rgba(220, 38, 38, 0.6),
-                0 0 30px rgba(220, 38, 38, 0.4);
+      0 0 18px rgba(220, 38, 38, 0.6),
+      0 0 30px rgba(220, 38, 38, 0.4);
   }
+
   to {
     box-shadow: 0 15px 35px rgba(220, 38, 38, 0.6),
-                0 0 25px rgba(220, 38, 38, 0.8),
-                0 0 40px rgba(220, 38, 38, 0.5);
+      0 0 25px rgba(220, 38, 38, 0.8),
+      0 0 40px rgba(220, 38, 38, 0.5);
   }
 }
 
@@ -618,57 +651,73 @@
 .register-disclaimer {
   background: #f8f9fa;
   border-radius: 15px;
-  padding: 20px 25px;
+  padding: 15px 20px;
+  /* Reduced padding */
   text-align: center;
   border: 2px solid #e9ecef;
-  margin-top: 15px;
+  margin-top: 10px;
+  /* Reduced margin */
   flex-shrink: 0;
 }
 
 .register-disclaimer p {
-  font-size: 1.2rem;
-  color: #666;
-  line-height: 1.4;
-  margin: 0;
+  font-size: 1.1rem;
+  /* Slightly smaller */
+  gap: 4px;
+  margin-bottom: 4px;
+  flex: 1;
 }
 
-/* Keyboard Styles - INSIDE THE CONTAINER */
+/* Keyboard Styles - MATCHING LOGIN.CSS */
 .register-keyboard {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-  margin-top: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e0e0e0;
+  background: transparent;
+  /* Removed white background */
+  border-radius: 0;
+  padding: 0;
+  /* Removed padding */
+  margin-top: 10px;
+  /* Reduced margin */
+  box-shadow: none;
+  /* Removed shadow */
+  border: none;
+  /* Removed border */
   width: 100%;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .register-keyboard-row {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 4px;
+  flex: 1;
 }
 
 .register-keyboard-key {
   flex: 1;
-  padding: 20px 10px;
+  padding: 0.5rem 0.2rem;
   border: none;
-  border-radius: 12px;
+  border-radius: 6px;
   background: #f8f9fa;
   color: #333;
-  font-size: 1.3rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  min-height: 60px;
+  min-height: 48px;
+  /* Increased touch target */
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #e9ecef;
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  user-select: none;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .register-keyboard-key:active {
@@ -681,29 +730,73 @@
 .register-keyboard-key.delete-key {
   background: #dc2626;
   color: white;
-  font-size: 1.1rem;
+  font-size: 0.8rem;
   border-color: #dc2626;
+}
+
+.register-keyboard-key.delete-key:active {
+  background: #b91c1c;
 }
 
 .register-keyboard-key.space-key {
   flex: 3;
-  font-size: 1.1rem;
+  font-size: 0.8rem;
+  background: #4a5568;
+  color: white;
+  border-color: #4a5568;
+  max-width: none;
+}
+
+.register-keyboard-key.space-key:active {
+  background: #2d3748;
 }
 
 .register-keyboard-key.shift-key {
   background: #6c757d;
   color: white;
+  font-size: 0.8rem;
   border-color: #6c757d;
 }
 
 .register-keyboard-key.shift-key.active {
   background: #dc2626;
-  transform: scale(1.05);
+  transform: scale(1.02);
   border-color: #dc2626;
 }
 
 .register-keyboard-key.shift-key:active {
-  transform: scale(0.96);
+  background: #5a6268;
+}
+
+.register-keyboard-key.symbols-key {
+  background: #dc2626;
+  color: white;
+  font-size: 0.8rem;
+  border-color: #dc2626;
+}
+
+.register-keyboard-key.symbols-key.active {
+  background: #b91c1c;
+  transform: scale(1.02);
+  border-color: #b91c1c;
+}
+
+.register-keyboard-key.symbols-key:active {
+  background: #b91c1c;
+}
+
+.register-keyboard-key.number-key {
+  background: white;
+  color: #333;
+  font-weight: 700;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.register-keyboard-key.number-key:active {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
 }
 
 /* Touch Feedback */
@@ -715,285 +808,156 @@
 /* Responsive Design */
 @media (max-width: 768px) and (orientation: portrait) {
   .register-personal-container {
-    padding: 15px;
+    padding: 10px;
+    /* Restore padding to float the card */
   }
-  
+
   .register-personal-content {
     max-width: 100%;
-    max-height: 95vh;
+    max-height: 98vh;
+    /* Maximize height but keep it floating */
+    height: 100%;
     padding: 20px 15px;
-    border-radius: 20px;
+    border-radius: 24px;
+    /* Restore rounded corners */
+    border: 1px solid #e0e0e0;
+    /* Restore border */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    /* Restore shadow */
   }
-  
+
   .progress-steps {
-    margin-bottom: 20px;
-    padding: 0 10px;
+    margin-bottom: 15px;
+    padding: 0 5px;
   }
-  
+
   .step-circle {
     width: 40px;
     height: 40px;
     font-size: 1.1rem;
   }
-  
+
   .step-label {
     font-size: 0.9rem;
   }
-  
-  .register-logo {
-    width: 120px;
-    height: 120px;
+
+  .register-step-image {
+    width: 150px;
+    height: 150px;
   }
-  
+
   .register-personal-title {
-    font-size: 2.2rem;
-    margin-bottom: 10px;
+    font-size: 2rem;
+    margin-bottom: 8px;
   }
-  
+
   .register-personal-subtitle {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
   }
-  
+
   .form-label {
     font-size: 1.1rem;
   }
-  
+
   .form-input {
     padding: 16px 14px;
     font-size: 1.2rem;
   }
-  
+
   .birthday-inputs {
     height: 220px;
-    gap: 10px;
+    gap: 8px;
   }
-  
+
   .birthday-label {
     font-size: 1rem;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
-  
+
   .birthday-option {
-    padding: 14px 8px;
+    padding: 12px 8px;
     font-size: 1.1rem;
   }
-  
+
   .age-value {
     font-size: 2.5rem;
     padding: 10px 20px;
     min-width: 80px;
   }
-  
+
   .age-label {
     font-size: 1.1rem;
   }
-  
+
   .birthday-text {
     font-size: 1rem;
   }
-  
+
   /* Sex Selection Responsive */
   .sex-selection {
-    gap: 20px;
-  }
-  
-  .sex-option {
-    padding: 40px 25px;
-    min-height: 300px;
-    gap: 25px;
-  }
-  
-  .role-card-icon {
-    width: 120px;
-    height: 120px;
-    padding: 25px;
-  }
-  
-  .sex-option span {
-    font-size: 1.8rem;
-  }
-  
-  .sex-option.selected::after {
-    top: 20px;
-    right: 20px;
-    width: 35px;
-    height: 35px;
-    font-size: 18px;
-  }
-  
-  .nav-button {
-    font-size: 1.4rem;
-    min-height: 60px;
-    padding: 18px;
-  }
-  
-  .form-navigation:has(.back-button) .back-button,
-  .form-navigation:has(.back-button) .next-button,
-  .form-navigation:has(.back-button) .submit-button {
-    width: 100%;
-  }
-  
-  .register-keyboard {
-    padding: 15px;
-  }
-  
-  .register-keyboard-key {
-    padding: 16px 8px;
-    font-size: 1.1rem;
-    min-height: 50px;
-  }
-}
-
-@media (max-width: 600px) and (orientation: portrait) {
-  .birthday-inputs {
-    height: 200px;
-    gap: 8px;
-  }
-  
-  .birthday-option {
-    padding: 12px 6px;
-    font-size: 1rem;
-  }
-  
-  .age-value {
-    font-size: 2.2rem;
-    padding: 8px 16px;
-  }
-  
-  /* Sex Selection Mobile */
-  .sex-selection {
-    grid-template-columns: 1fr;
-    gap: 20px;
-    max-width: 450px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  
-  .sex-option {
-    padding: 45px 30px;
-    min-height: 280px;
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 30px;
-  }
-  
-  .role-card-icon {
-    width: 110px;
-    height: 110px;
-    padding: 22px;
-    flex-shrink: 0;
-  }
-  
-  .sex-option span {
-    font-size: 1.9rem;
-  }
-  
-  .nav-button {
-    font-size: 1.3rem;
-    min-height: 55px;
-    padding: 16px;
-  }
-  
-  .register-keyboard-row {
-    gap: 6px;
-  }
-  
-  .register-keyboard-key {
-    padding: 14px 6px;
-    font-size: 1rem;
-    min-height: 45px;
-  }
-}
-
-@media (max-width: 480px) {
-  .register-personal-content {
-    padding: 15px 12px;
-  }
-  
-  .register-personal-title {
-    font-size: 2rem;
-  }
-  
-  .register-personal-subtitle {
-    font-size: 1.1rem;
-  }
-  
-  .birthday-inputs {
-    flex-direction: column;
-    height: auto;
-    max-height: 350px;
-  }
-  
-  .birthday-column {
-    flex: none;
-    height: 100px;
-  }
-  
-  .birthday-scroll {
-    height: 80px;
-  }
-  
-  /* Sex Selection Small Mobile */
-  .sex-selection {
-    grid-template-columns: 1fr;
     gap: 15px;
   }
-  
+
   .sex-option {
-    padding: 35px 25px;
+    padding: 20px 15px;
     min-height: 250px;
+    gap: 15px;
   }
-  
+
   .role-card-icon {
     width: 100px;
     height: 100px;
     padding: 20px;
   }
-  
+
   .sex-option span {
-    font-size: 1.7rem;
+    font-size: 1.6rem;
   }
-  
-  .sex-option.selected::after {
-    top: 15px;
-    right: 15px;
-    width: 30px;
-    height: 30px;
-    font-size: 16px;
-  }
-  
+
   .nav-button {
-    font-size: 1.2rem;
-    min-height: 50px;
-    padding: 14px;
+    font-size: 1.4rem;
+    padding: 16px;
+    min-height: 60px;
+  }
+
+  .register-keyboard-key {
+    min-height: 56px;
+    /* Larger touch target for mobile */
+    font-size: 1rem;
   }
 }
 
-/* Fallback for browsers that don't support :has() */
-@supports not (selector(:has(.test))) {
-  .form-navigation.single-button .nav-button {
-    width: 100%;
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    color: white;
-    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
-    animation: continueButtonGlow 2s ease-in-out infinite alternate;
+/* Extra small devices */
+@media (max-width: 480px) {
+  .register-personal-container {
+    padding: 5px;
   }
-  
-  .form-navigation.dual-buttons .back-button {
-    background: #6c757d;
-    color: white;
-    width: 100%;
-    order: 2;
-    margin-top: 8px;
+
+  .register-personal-title {
+    font-size: 1.8rem;
   }
-  
-  .form-navigation.dual-buttons .next-button,
-  .form-navigation.dual-buttons .submit-button {
-    width: 100%;
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    color: white;
-    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
-    animation: continueButtonGlow 2s ease-in-out infinite alternate;
-    order: 1;
+
+  .register-personal-subtitle {
+    font-size: 1rem;
+  }
+
+  .step-circle {
+    width: 35px;
+    height: 35px;
+    font-size: 1rem;
+  }
+
+  .step-label {
+    font-size: 0.8rem;
+  }
+
+  .form-input {
+    font-size: 1.1rem;
+    padding: 14px 12px;
+  }
+
+  .nav-button {
+    font-size: 1.2rem;
+    min-height: 50px;
   }
 }

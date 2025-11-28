@@ -21,9 +21,11 @@ export default function RegisterPersonalInfo() {
   });
   const [isVisible, setIsVisible] = useState(false);
   const [isShift, setIsShift] = useState(false);
+  const [showSymbols, setShowSymbols] = useState(false);
   const [activeInput, setActiveInput] = useState("first");
   const [touchFeedback, setTouchFeedback] = useState(null);
-  
+  const [errorMessage, setErrorMessage] = useState("");
+
   const firstNameInputRef = useRef(null);
   const lastNameInputRef = useRef(null);
   const monthScrollRef = useRef(null);
@@ -46,15 +48,37 @@ export default function RegisterPersonalInfo() {
       document.head.appendChild(viewport);
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
-    
+
     // Prevent zooming via touch gestures
+    const handleZoomTouchStart = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    const handleZoomTouchMove = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    const handleZoomTouchEnd = (e) => {
+      if (e.touches.length > 0) {
+        e.preventDefault();
+      }
+    };
+
+    const preventZoom = (e) => {
+      e.preventDefault();
+    };
+
     document.addEventListener('touchstart', handleZoomTouchStart, { passive: false });
     document.addEventListener('touchmove', handleZoomTouchMove, { passive: false });
     document.addEventListener('touchend', handleZoomTouchEnd, { passive: false });
     document.addEventListener('gesturestart', preventZoom, { passive: false });
     document.addEventListener('gesturechange', preventZoom, { passive: false });
     document.addEventListener('gestureend', preventZoom, { passive: false });
-    
+
     return () => {
       document.removeEventListener('touchstart', handleZoomTouchStart);
       document.removeEventListener('touchmove', handleZoomTouchMove);
@@ -71,6 +95,7 @@ export default function RegisterPersonalInfo() {
   }, []);
 
   useEffect(() => {
+    setErrorMessage(""); // Clear errors on step change
     if (currentStep === 0) {
       setTimeout(() => {
         if (firstNameInputRef.current) firstNameInputRef.current.focus();
@@ -78,53 +103,31 @@ export default function RegisterPersonalInfo() {
     }
   }, [currentStep]);
 
-  // Prevent zooming functions - RENAMED
-  const handleZoomTouchStart = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleZoomTouchMove = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleZoomTouchEnd = (e) => {
-    if (e.touches.length > 0) {
-      e.preventDefault();
-    }
-  };
-
-  const preventZoom = (e) => {
-    e.preventDefault();
-  };
-
   const handleContinue = () => {
+    setErrorMessage("");
     if (currentStep === 0) {
       if (!formData.firstName.trim() || !formData.lastName.trim()) {
-        alert("Please enter both first name and last name");
+        setErrorMessage("Please enter both first name and last name");
         return;
       }
       setCurrentStep(1);
     } else if (currentStep === 1) {
       if (!formData.age.trim()) {
-        alert("Please select your birthday to calculate age");
+        setErrorMessage("Please select your birthday to calculate age");
         return;
       }
       const ageNumber = parseInt(formData.age, 10);
       if (ageNumber < 1 || ageNumber > 99) {
-        alert("Please enter a valid age (1–99)");
+        setErrorMessage("Please enter a valid age (1–99)");
         return;
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (!formData.sex) {
-        alert("Please select your biological sex");
+        setErrorMessage("Please select your biological sex");
         return;
       }
-      
+
       // FIXED: Pass personal info as an object
       navigate("/register/tapid", {
         state: {
@@ -154,15 +157,19 @@ export default function RegisterPersonalInfo() {
   // Name step functions
   const handleKeyboardPress = (key) => {
     if (key === "↑") {
-      setIsShift(true);
+      setIsShift(!isShift);
+      return;
+    }
+
+    if (key === "Sym" || key === "ABC") {
+      setShowSymbols(!showSymbols);
       return;
     }
 
     const applyFormatting = (prev, char) => {
       let nextChar = isShift ? char.toUpperCase() : char.toLowerCase();
       setIsShift(false);
-      const newText = prev + nextChar;
-      return newText.charAt(0).toUpperCase() + newText.slice(1);
+      return prev + nextChar;
     };
 
     if (key === "Del") {
@@ -184,20 +191,25 @@ export default function RegisterPersonalInfo() {
         setFormData(prev => ({ ...prev, lastName: applyFormatting(prev.lastName, key) }));
       }
     }
+
+    // Clear error message on input
+    if (errorMessage) setErrorMessage("");
   };
 
   // Birthday selection functions
   const handleBirthdaySelect = (type, value) => {
     setFormData(prev => {
       const newData = { ...prev, [type === 'month' ? 'birthMonth' : type === 'day' ? 'birthDay' : 'birthYear']: value };
-      
+
       if (newData.birthMonth && newData.birthDay && newData.birthYear) {
         const age = calculateAgeFromBirthday(newData.birthYear, newData.birthMonth, newData.birthDay);
         newData.age = age.toString();
       }
-      
+
       return newData;
     });
+    // Clear error message on selection
+    if (errorMessage) setErrorMessage("");
   };
 
   const calculateAgeFromBirthday = (year, month, day) => {
@@ -205,11 +217,11 @@ export default function RegisterPersonalInfo() {
     const birthDate = new Date(year, month - 1, day);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    
+
     return age;
   };
 
@@ -225,6 +237,8 @@ export default function RegisterPersonalInfo() {
     setFormData(prev => ({ ...prev, sex }));
     setTouchFeedback(sex);
     setTimeout(() => setTouchFeedback(null), 200);
+    // Clear error message on selection
+    if (errorMessage) setErrorMessage("");
   };
 
   const handleSexTouchStart = (item) => {
@@ -253,12 +267,23 @@ export default function RegisterPersonalInfo() {
     }
   };
 
-  const keyboardKeys = [
+  const alphabetKeys = [
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
     ["↑", "Z", "X", "C", "V", "B", "N", "M", "Del"],
-    ["Space"],
+    ["Sym", "Space", "-"],
   ];
+
+  const symbolKeys = [
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+    ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")"],
+    ["-", "_", "+", "=", "{", "}", "[", "]", "|"],
+    [".", ",", "?", "!", "'", '"', ":", ";", "Del"],
+    ["ABC", "~", "`", "\\", "/", "Space"],
+  ];
+
+  const keyboardKeys = showSymbols ? symbolKeys : alphabetKeys;
 
   return (
     <div className="register-personal-container">
@@ -278,10 +303,10 @@ export default function RegisterPersonalInfo() {
         {/* Image */}
         {steps[currentStep].image && (
           <div className="register-image-section">
-            <img 
-              src={steps[currentStep].image} 
-              alt={steps[currentStep].title} 
-              className="register-logo" 
+            <img
+              src={steps[currentStep].image}
+              alt={steps[currentStep].title}
+              className="register-step-image"
             />
           </div>
         )}
@@ -291,6 +316,22 @@ export default function RegisterPersonalInfo() {
           <h1 className="register-personal-title">{steps[currentStep].title}</h1>
           <p className="register-personal-subtitle">{steps[currentStep].subtitle}</p>
         </div>
+
+        {/* Inline Error Message */}
+        {errorMessage && (
+          <div className="inline-error-message" style={{
+            color: '#dc2626',
+            backgroundColor: '#fef2f2',
+            padding: '10px',
+            borderRadius: '8px',
+            marginBottom: '15px',
+            textAlign: 'center',
+            fontWeight: '500',
+            border: '1px solid #fecaca'
+          }}>
+            ⚠️ {errorMessage}
+          </div>
+        )}
 
         {/* Step Content */}
         <div className="form-container">
@@ -305,11 +346,17 @@ export default function RegisterPersonalInfo() {
                     ref={firstNameInputRef}
                     id="firstName"
                     type="text"
-                    className="form-input"
+                    className={`form-input ${activeInput === 'first' ? 'active' : ''}`}
                     placeholder="Juan"
                     value={formData.firstName}
-                    onFocus={() => setActiveInput("first")}
+                    onFocus={(e) => {
+                      e.preventDefault();
+                      e.target.blur();
+                      setActiveInput("first");
+                    }}
                     readOnly
+                    inputMode="none"
+                    autoComplete="off"
                   />
                 </div>
 
@@ -321,11 +368,17 @@ export default function RegisterPersonalInfo() {
                     ref={lastNameInputRef}
                     id="lastName"
                     type="text"
-                    className="form-input"
+                    className={`form-input ${activeInput === 'last' ? 'active' : ''}`}
                     placeholder="Dela Cruz"
                     value={formData.lastName}
-                    onFocus={() => setActiveInput("last")}
+                    onFocus={(e) => {
+                      e.preventDefault();
+                      e.target.blur();
+                      setActiveInput("last");
+                    }}
                     readOnly
+                    inputMode="none"
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -353,7 +406,7 @@ export default function RegisterPersonalInfo() {
                           ))}
                         </div>
                       </div>
-                      
+
                       <div className="birthday-column">
                         <label className="birthday-label">Day</label>
                         <div className="birthday-scroll day-scroll" ref={dayScrollRef}>
@@ -368,7 +421,7 @@ export default function RegisterPersonalInfo() {
                           ))}
                         </div>
                       </div>
-                      
+
                       <div className="birthday-column">
                         <label className="birthday-label">Year</label>
                         <div className="birthday-scroll year-scroll" ref={yearScrollRef}>
@@ -387,7 +440,7 @@ export default function RegisterPersonalInfo() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="age-display-section">
                       <div className="age-result">
                         <span className="age-label">Your Age:</span>
@@ -398,10 +451,10 @@ export default function RegisterPersonalInfo() {
                       {formData.birthMonth && formData.birthDay && formData.birthYear && (
                         <div className="birthday-confirmation">
                           <span className="birthday-text">
-                            Born on {new Date(formData.birthYear, formData.birthMonth - 1, formData.birthDay).toLocaleDateString('en-US', { 
-                              month: 'long', 
-                              day: 'numeric', 
-                              year: 'numeric' 
+                            Born on {new Date(formData.birthYear, formData.birthMonth - 1, formData.birthDay).toLocaleDateString('en-US', {
+                              month: 'long',
+                              day: 'numeric',
+                              year: 'numeric'
                             })}
                           </span>
                         </div>
@@ -444,10 +497,10 @@ export default function RegisterPersonalInfo() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="register-disclaimer">
                 <p>
-                  We ask for your biological sex to provide accurate BMI calculations and health assessments. 
+                  We ask for your biological sex to provide accurate BMI calculations and health assessments.
                   This information will not be shared publicly.
                 </p>
               </div>
@@ -465,7 +518,7 @@ export default function RegisterPersonalInfo() {
             {getButtonText()}
             {isStepValid() && <span className="button-arrow">→</span>}
           </button>
-          
+
           {currentStep > 0 && (
             <button className="nav-button back-button" onClick={handleBack}>
               ← Back
@@ -481,18 +534,21 @@ export default function RegisterPersonalInfo() {
                 {row.map((key) => (
                   <button
                     key={key}
-                    className={`register-keyboard-key ${
-                      key === "Del"
-                        ? "delete-key"
-                        : key === "Space"
-                        ? "space-key"
-                        : key === "↑"
-                        ? `shift-key ${isShift ? "active" : ""}`
-                        : ""
-                    }`}
+                    className={`register-keyboard-key ${key === "↑" && isShift ? "active" : ""
+                      } ${key === "Sym" && showSymbols ? "active" : ""
+                      } ${key === "Del" ? "delete-key" : ""
+                      } ${key === "Space" ? "space-key" : ""
+                      } ${key === "↑" ? "shift-key" : ""
+                      } ${key === "Sym" || key === "ABC" ? "symbols-key" : ""
+                      } ${!isNaN(key) && key !== " " ? "number-key" : ""
+                      }`}
                     onClick={() => handleKeyboardPress(key)}
                   >
-                    {key === "Space" ? "Space" : key}
+                    {key === "↑" ? "SHIFT" :
+                      key === "Del" ? "DELETE" :
+                        key === "Space" ? "SPACE" :
+                          key === "Sym" ? "SYMBOLS" :
+                            key === "ABC" ? "ABC" : key}
                   </button>
                 ))}
               </div>

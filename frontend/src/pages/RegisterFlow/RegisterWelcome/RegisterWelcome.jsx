@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Row, Col, Button, Modal, Form } from "react-bootstrap";
+import { Button, Modal } from "react-bootstrap";
 import { motion } from "framer-motion";
 import "./RegisterWelcome.css";
 import logo from "../../../assets/images/welcome.png";
 
 export default function RegisterWelcome() {
   const navigate = useNavigate();
-  const [isVisible, setIsVisible] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
@@ -21,15 +20,37 @@ export default function RegisterWelcome() {
       document.head.appendChild(viewport);
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
-    
+
     // Prevent zooming via touch gestures
+    const handleTouchStart = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      if (e.touches.length > 0) {
+        e.preventDefault();
+      }
+    };
+
+    const preventZoom = (e) => {
+      e.preventDefault();
+    };
+
     document.addEventListener('touchstart', handleTouchStart, { passive: false });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd, { passive: false });
     document.addEventListener('gesturestart', preventZoom, { passive: false });
     document.addEventListener('gesturechange', preventZoom, { passive: false });
     document.addEventListener('gestureend', preventZoom, { passive: false });
-    
+
     return () => {
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
@@ -39,36 +60,6 @@ export default function RegisterWelcome() {
       document.removeEventListener('gestureend', preventZoom);
     };
   }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Prevent zooming functions
-  const handleTouchStart = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchMove = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = (e) => {
-    if (e.touches.length > 0) {
-      e.preventDefault();
-    }
-  };
-
-  const preventZoom = (e) => {
-    e.preventDefault();
-  };
 
   const handleContinue = () => {
     navigate("/register/role");
@@ -82,102 +73,94 @@ export default function RegisterWelcome() {
   const handleCloseTerms = () => setShowTerms(false);
 
   return (
-    <Container fluid className="register-container d-flex align-items-center justify-content-center min-vh-100">
-      <Row className="justify-content-center w-100">
-        <Col xs={12} md={10} lg={8} xl={7} className="text-center">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="register-content"
-          >
-            {/* Logo */}
-            <div className="register-logo mb-3">
-              <div className="logo-main-circle">
-                <img 
-                  src={logo} 
-                  alt="4 in Juan Logo" 
-                  className="juan-logo"
-                />
-              </div>
-            </div>
+    <div className="register-container">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="register-content"
+      >
+        {/* Header - Matches RegisterRole structure */}
+        <div className="register-header">
+          <h1 className="register-title">
+            4 in <span className="juan-red">Juan</span> Registration
+          </h1>
+          <p className="register-subtitle">
+            Creating health profiles for{" "}
+            <span className="juan-nowrap">
+              every<span className="juan-red">Juan</span>
+            </span>
+          </p>
+        </div>
 
-            {/* Welcome Message */}
-            <div className="register-message mb-3">
-              <h1 className="main-title mb-2">
-                4 in <span className="juan-red">Juan</span> Registration
-              </h1>
-              <p className="motto mb-3">
-                Creating health profiles for{" "}
-                <span className="juan-nowrap">
-                  every<span className="juan-red">Juan</span>
-                </span>
+        {/* Card Section - Matches RegisterRole structure */}
+        <div className="register-card-section">
+          <div className="register-welcome-card">
+            <div className="register-card-icon">
+              <img
+                src={logo}
+                alt="4 in Juan Logo"
+                className="register-icon-image"
+              />
+            </div>
+            <div className="register-card-content">
+              <h3 className="register-card-title">Welcome!</h3>
+              <p className="register-card-description">
+                We'll guide you through creating your personal health profile to ensure accurate monitoring and personalized health insights.
               </p>
-              <div className="register-subtitle text-muted">
-                <p className="mb-1">Welcome to the 4 in Juan registration process!</p>
-                <p>We'll guide you through creating your personal health profile</p>
-                <p>to ensure accurate monitoring and personalized health insights.</p>
-              </div>
             </div>
+          </div>
+        </div>
 
-            {/* Terms and Conditions & Button Container */}
-            <div className="action-section">
-              {/* Terms and Conditions */}
-              <div className="terms-section mb-4">
-                <div className="terms-checkbox">
-                  <input
-                    type="checkbox"
-                    id="termsCheckbox"
-                    className="terms-checkbox-input"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  />
-                  <label htmlFor="termsCheckbox" className="terms-checkbox-label">
-                    I agree to the{" "}
-                    <Button 
-                      variant="link" 
-                      className="terms-link" 
-                      onClick={handleShowTerms}
-                    >
-                      Terms and Conditions
-                    </Button>
-                  </label>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.8 }}
-                className="button-section"
-              >
+        {/* Controls - Matches RegisterRole structure */}
+        <div className="register-controls">
+          {/* Terms and Conditions */}
+          <div className="terms-section">
+            <div className="terms-checkbox">
+              <input
+                type="checkbox"
+                id="termsCheckbox"
+                className="terms-checkbox-input"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+              />
+              <label htmlFor="termsCheckbox" className="terms-checkbox-label">
+                I agree to the{" "}
                 <Button
-                  className="back-button"
-                  onClick={handleBack}
-                  size="lg"
+                  variant="link"
+                  className="terms-link"
+                  onClick={handleShowTerms}
                 >
-                  Back to Login
+                  Terms and Conditions
                 </Button>
-                <Button
-                  className="continue-button"
-                  onClick={handleContinue}
-                  disabled={!acceptedTerms}
-                  size="lg"
-                >
-                  Start Registration
-                </Button>
-              </motion.div>
+              </label>
             </div>
-          </motion.div>
-        </Col>
-      </Row>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="button-section">
+            <button
+              className="continue-button"
+              onClick={handleContinue}
+              disabled={!acceptedTerms}
+            >
+              Start Registration
+            </button>
+            <button
+              className="back-button"
+              onClick={handleBack}
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Terms and Conditions Modal */}
-      <Modal 
-        show={showTerms} 
-        onHide={handleCloseTerms} 
-        size="lg" 
+      <Modal
+        show={showTerms}
+        onHide={handleCloseTerms}
+        size="lg"
         centered
         className="terms-modal"
       >
@@ -258,8 +241,8 @@ export default function RegisterWelcome() {
           <Button variant="outline-secondary" onClick={handleCloseTerms}>
             Close
           </Button>
-          <Button 
-            variant="danger" 
+          <Button
+            variant="danger"
             onClick={() => {
               setAcceptedTerms(true);
               handleCloseTerms();
@@ -269,6 +252,6 @@ export default function RegisterWelcome() {
           </Button>
         </Modal.Footer>
       </Modal>
-    </Container>
+    </div>
   );
 }

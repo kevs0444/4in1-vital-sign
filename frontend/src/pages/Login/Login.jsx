@@ -10,7 +10,9 @@ import {
   RadioButtonChecked,
   CheckCircle,
   Error,
-  Schedule
+  Schedule,
+  Visibility,
+  VisibilityOff
 } from '@mui/icons-material';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Login.css';
@@ -28,6 +30,7 @@ export default function LoginPage() {
   const [activeInput, setActiveInput] = useState('schoolNumber');
   const [rfidStatus, setRfidStatus] = useState('ready');
   const [connectionStatus, setConnectionStatus] = useState('checking');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const schoolNumberInputRef = useRef(null);
@@ -232,7 +235,7 @@ export default function LoginPage() {
   };
 
   // FIXED: Manual login also navigates to measurement welcome with user data
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
@@ -495,38 +498,63 @@ export default function LoginPage() {
                   )}
                 </AnimatePresence>
 
-                <Form onSubmit={handleSubmit} className="login-form">
-                  <div className="form-group">
-                    <label className="form-label">School Number</label>
+                <Form onSubmit={handleLogin}>
+                  <Form.Group className="mb-3" controlId="schoolNumber">
+                    <Form.Label>Student / Employee Number</Form.Label>
                     <input
                       ref={schoolNumberInputRef}
                       type="text"
                       name="schoolNumber"
-                      onFocus={() => handleInputFocus('schoolNumber')}
+                      onFocus={() => {
+                        // Blur immediately to prevent keyboard
+                        if (schoolNumberInputRef.current) schoolNumberInputRef.current.blur();
+                        handleInputFocus('schoolNumber');
+                      }}
                       placeholder="Enter your school number"
                       className={`form-input ${activeInput === 'schoolNumber' ? 'active' : ''}`}
                       disabled={isLoading || rfidLoading}
                       defaultValue=""
+                      inputMode="none"
+                      autoComplete="off"
+                      readOnly
                     />
-                  </div>
+                  </Form.Group>
 
-                  <div className="form-group">
-                    <label className="form-label">Password</label>
-                    <input
-                      ref={passwordInputRef}
-                      type="password"
-                      name="password"
-                      onFocus={() => handleInputFocus('password')}
-                      placeholder="Enter your password"
-                      className={`form-input ${activeInput === 'password' ? 'active' : ''}`}
-                      disabled={isLoading || rfidLoading}
-                      defaultValue=""
-                    />
-                  </div>
+                  <Form.Group className="mb-4" controlId="password">
+                    <Form.Label>Password</Form.Label>
+                    <div className="password-input-wrapper">
+                      <input
+                        ref={passwordInputRef}
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        onFocus={() => {
+                          // Blur immediately to prevent keyboard
+                          if (passwordInputRef.current) passwordInputRef.current.blur();
+                          handleInputFocus('password');
+                        }}
+                        placeholder="Enter your password"
+                        className={`form-input ${activeInput === 'password' ? 'active' : ''}`}
+                        disabled={isLoading || rfidLoading}
+                        defaultValue=""
+                        inputMode="none"
+                        autoComplete="off"
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle-btn"
+                        onClick={() => setShowPassword(!showPassword)}
+                        tabIndex="-1"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </button>
+                    </div>
+                  </Form.Group>
 
                   <Button
+                    variant="primary"
                     type="submit"
-                    className="login-button"
+                    className="login-button w-100"
                     disabled={isLoading || rfidLoading}
                   >
                     {isLoading || rfidLoading ? (

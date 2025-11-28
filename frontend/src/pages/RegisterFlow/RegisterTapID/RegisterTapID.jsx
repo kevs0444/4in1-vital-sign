@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import "./RegisterTapID.css";
+import logo from "../../../assets/images/logo.png";
 
 export default function RegisterTapID() {
   const navigate = useNavigate();
@@ -18,7 +20,7 @@ export default function RegisterTapID() {
   const [isShift, setIsShift] = useState(false);
   const [showSymbols, setShowSymbols] = useState(false);
   const [activeInput, setActiveInput] = useState("idNumber");
-  const [showNotification, setShowNotification] = useState({ show: false, message: "", type: "" });
+  const [errorMessage, setErrorMessage] = useState("");
   const [idRegistered, setIdRegistered] = useState(false);
   const [scannerStatus, setScannerStatus] = useState("ready");
   const [rfidCode, setRfidCode] = useState("");
@@ -32,25 +34,47 @@ export default function RegisterTapID() {
   const rfidDataRef = useRef('');
   const rfidTimeoutRef = useRef(null);
 
+  // Use a ref to track state for the event listener to avoid stale closures
+  const stateRef = useRef({
+    isScanning,
+    idRegistered,
+    currentStep,
+    formData,
+    userType: location.state?.userType || "rtu-students",
+    personalInfo: location.state?.personalInfo || {}
+  });
+
+  // Update state ref whenever relevant state changes
+  useEffect(() => {
+    stateRef.current = {
+      isScanning,
+      idRegistered,
+      currentStep,
+      formData,
+      userType: location.state?.userType || "rtu-students",
+      personalInfo: location.state?.personalInfo || {}
+    };
+  }, [isScanning, idRegistered, currentStep, formData, location.state]);
+
   const userType = location.state?.userType || "rtu-students";
   const personalInfo = location.state?.personalInfo || {};
   const isEmployee = userType === "rtu-employees";
 
   const steps = [
-    { 
+    {
       title: isEmployee ? "Enter Employee Number" : "Enter Student Number",
-      subtitle: isEmployee 
-        ? "Your official RTU employee identification number" 
+      subtitle: isEmployee
+        ? "Your official RTU employee identification number"
         : "Your official RTU student identification number",
       type: "idNumber"
     },
-    { 
-      title: "Contact Information", 
+    {
+      title: "Contact Information",
       subtitle: "We'll use these for important updates and account recovery",
       type: "contact"
     },
-    { 
-      title: "Register your ID", 
+    {
+      title: "Register your ID",
       subtitle: "RFID scanner is active - Tap your ID card anytime",
       type: "id"
     }
@@ -66,15 +90,37 @@ export default function RegisterTapID() {
       document.head.appendChild(viewport);
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
-    
+
     // Prevent zooming via touch gestures
+    const handleZoomTouchStart = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    const handleZoomTouchMove = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    const handleZoomTouchEnd = (e) => {
+      if (e.touches.length > 0) {
+        e.preventDefault();
+      }
+    };
+
+    const preventZoom = (e) => {
+      e.preventDefault();
+    };
+
     document.addEventListener('touchstart', handleZoomTouchStart, { passive: false });
     document.addEventListener('touchmove', handleZoomTouchMove, { passive: false });
     document.addEventListener('touchend', handleZoomTouchEnd, { passive: false });
     document.addEventListener('gesturestart', preventZoom, { passive: false });
     document.addEventListener('gesturechange', preventZoom, { passive: false });
     document.addEventListener('gestureend', preventZoom, { passive: false });
-    
+
     return () => {
       document.removeEventListener('touchstart', handleZoomTouchStart);
       document.removeEventListener('touchmove', handleZoomTouchMove);
@@ -82,8 +128,7 @@ export default function RegisterTapID() {
       document.removeEventListener('gesturestart', preventZoom);
       document.removeEventListener('gesturechange', preventZoom);
       document.removeEventListener('gestureend', preventZoom);
-      document.removeEventListener('keydown', handleGlobalKeyDown);
-      
+
       if (rfidTimeoutRef.current) {
         clearTimeout(rfidTimeoutRef.current);
       }
@@ -100,69 +145,92 @@ export default function RegisterTapID() {
     return isEmployee ? "Employee Number" : "Student Number";
   };
 
-  // Prevent zooming functions
-  const handleZoomTouchStart = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleZoomTouchMove = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleZoomTouchEnd = (e) => {
-    if (e.touches.length > 0) {
-      e.preventDefault();
-    }
-  };
-
-  const preventZoom = (e) => {
-    e.preventDefault();
-  };
-
   // Auto-focus inputs when step changes
   useEffect(() => {
+    setErrorMessage(""); // Clear errors on step change
     if (currentStep === 0 && idNumberInputRef.current) {
       setTimeout(() => idNumberInputRef.current.focus(), 300);
     } else if (currentStep === 1 && emailInputRef.current) {
       setTimeout(() => emailInputRef.current.focus(), 300);
-    } else if (currentStep === 2) {
-      // Initialize RFID scanner when on step 2
-      initializeRFIDScanner();
     }
   }, [currentStep]);
 
-  // Real RFID scanner initialization
-  const initializeRFIDScanner = () => {
-    console.log("🔄 Initializing RFID Scanner Hardware...");
-    setScannerStatus("ready");
-    
-    // Setup RFID scanner listener
-    setupRfidScanner();
+  // Process RFID scan data
+  const processRfidScan = async (rfidData) => {
+    console.log('🎫 RFID Card Detected (RAW):', rfidData);
+
+    setIsCardTapped(true);
+    setScannerStatus("reading");
+    setIsScanning(true);
+    setScanProgress(30); // Start at 30% immediately
+    setErrorMessage(""); // Clear previous errors
+
+    try {
+      // FAST Step 1: Card detection and reading (300ms)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setScanProgress(60);
+
+      // USE EXACT RFID DATA - NO MODIFICATIONS, NO PREFIX, NO SLICING
+      const generatedRFID = rfidData; // Use the exact data from scanner
+      setRfidCode(generatedRFID);
+
+      // FAST Step 2: Writing user data to card (400ms)
+      setScannerStatus("processing");
+      await new Promise(resolve => setTimeout(resolve, 400));
+      setScanProgress(85);
+
+      // FAST Step 3: Verification and finalization (300ms)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setScanProgress(100);
+      setScannerStatus("success");
+
+      completeIDRegistration(generatedRFID);
+
+    } catch (err) {
+      console.error('RFID registration error:', err);
+      setScannerStatus("error");
+      setErrorMessage("RFID registration failed. Please try again.");
+      setIsScanning(false);
+      setIsCardTapped(false);
+    }
   };
 
-  // RFID Scanner Setup - LISTENS TO ALL KEYBOARD INPUT
-  const setupRfidScanner = () => {
-    console.log('🔔 RFID Scanner Active - Ready to accept ID cards');
-    
-    // Listen to ALL keyboard events on the entire document
-    document.addEventListener('keydown', handleGlobalKeyDown);
-    
-    // Auto-focus on hidden RFID input
+  // Complete the registration process
+  const completeIDRegistration = (rfidCode) => {
+    console.log("✅ ID Registration completed!");
+    setIsScanning(false);
+    setIdRegistered(true);
+
+    const currentState = stateRef.current;
+
+    // Prepare ALL registration data to pass to RegisterDataSaved
+    const completeRegistrationData = {
+      userType: currentState.userType,
+      personalInfo: currentState.personalInfo,
+      idNumber: currentState.formData.idNumber,
+      password: currentState.formData.password,
+      email: currentState.formData.email,
+      mobile: currentState.formData.mobile,
+      rfidCode: rfidCode, // EXACT RFID DATA - NO MODIFICATIONS
+      registrationDate: new Date().toISOString()
+    };
+
+    console.log('📦 Passing complete data to RegisterDataSaved:', completeRegistrationData);
+
+    // Navigate to data saved screen with ALL registration data
     setTimeout(() => {
-      if (rfidInputRef.current) {
-        rfidInputRef.current.focus();
-      }
-    }, 500);
+      navigate("/register/saved", {
+        state: completeRegistrationData
+      });
+    }, 1500); // Faster redirect
   };
 
-  // Handle ALL keyboard input for RFID scanning
-  const handleGlobalKeyDown = (e) => {
+  // Handle ALL keyboard input for RFID scanning - STABLE CALLBACK
+  const handleGlobalKeyDown = useCallback((e) => {
+    const currentState = stateRef.current;
+
     // Ignore if we're already processing RFID or not on step 2
-    if (isScanning || idRegistered || currentStep !== 2) {
+    if (currentState.isScanning || currentState.idRegistered || currentState.currentStep !== 2) {
       return;
     }
 
@@ -178,9 +246,9 @@ export default function RegisterTapID() {
     } else if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
       // Accumulate alphanumeric characters (RFID data)
       rfidDataRef.current += e.key;
-      
+
       // Auto-detect RFID after certain length (some scanners don't send Enter)
-      if (rfidDataRef.current.length >= 8 && !isScanning) {
+      if (rfidDataRef.current.length >= 8 && !currentState.isScanning) {
         rfidTimeoutRef.current = setTimeout(() => {
           if (rfidDataRef.current.length >= 8) {
             processRfidScan(rfidDataRef.current);
@@ -189,104 +257,47 @@ export default function RegisterTapID() {
         }, 50); // Faster detection
       }
     }
-  };
+  }, []); // Empty dependency array because we use stateRef
 
-  // Process RFID scan data with NO MODIFICATIONS - USE EXACT DATA
-  const processRfidScan = async (rfidData) => {
-    console.log('🎫 RFID Card Detected (RAW):', rfidData);
-    
-    setIsCardTapped(true);
-    setScannerStatus("reading");
-    setIsScanning(true);
-    setScanProgress(30); // Start at 30% immediately
-    
-    try {
-      // FAST Step 1: Card detection and reading (300ms)
-      await new Promise(resolve => setTimeout(resolve, 300));
-      setScanProgress(60);
-      
-      // USE EXACT RFID DATA - NO MODIFICATIONS, NO PREFIX, NO SLICING
-      const generatedRFID = rfidData; // Use the exact data from scanner
-      setRfidCode(generatedRFID);
-      
-      // FAST Step 2: Writing user data to card (400ms)
-      setScannerStatus("processing");
-      await new Promise(resolve => setTimeout(resolve, 400));
-      setScanProgress(85);
-      
-      // FAST Step 3: Verification and finalization (300ms)
-      await new Promise(resolve => setTimeout(resolve, 300));
-      setScanProgress(100);
-      setScannerStatus("success");
-      
-      completeIDRegistration(generatedRFID);
-      
-    } catch (err) {
-      console.error('RFID registration error:', err);
-      setScannerStatus("ready");
-      setShowNotification({ 
-        show: true, 
-        message: "❌ RFID registration failed. Please try again.", 
-        type: "error" 
-      });
-      setIsScanning(false);
-      setIsCardTapped(false);
+  // Manage RFID Scanner Listener
+  useEffect(() => {
+    if (currentStep === 2) {
+      console.log('🔔 RFID Scanner Active - Ready to accept ID cards');
+      document.addEventListener('keydown', handleGlobalKeyDown);
+
+      // Auto-focus on hidden RFID input
+      setTimeout(() => {
+        if (rfidInputRef.current) {
+          rfidInputRef.current.focus();
+        }
+      }, 500);
+
+      return () => {
+        console.log('🔕 RFID Scanner Deactivated');
+        document.removeEventListener('keydown', handleGlobalKeyDown);
+      };
     }
-  };
-
-  // Complete the registration process
-  const completeIDRegistration = (rfidCode) => {
-    console.log("✅ ID Registration completed!");
-    setIsScanning(false);
-    setIdRegistered(true);
-    
-    // Prepare ALL registration data to pass to RegisterDataSaved
-    const completeRegistrationData = {
-      userType: userType,
-      personalInfo: personalInfo,
-      idNumber: formData.idNumber,
-      password: formData.password,
-      email: formData.email,
-      mobile: formData.mobile,
-      rfidCode: rfidCode, // EXACT RFID DATA - NO MODIFICATIONS
-      registrationDate: new Date().toISOString()
-    };
-
-    console.log('📦 Passing complete data to RegisterDataSaved:', completeRegistrationData);
-    
-    // Navigate to data saved screen with ALL registration data
-    setTimeout(() => {
-      navigate("/register/saved", {
-        state: completeRegistrationData
-      });
-    }, 1500); // Faster redirect
-  };
-
-  const showAlert = (message, type = "error") => {
-    setShowNotification({ show: true, message, type });
-    setTimeout(() => {
-      setShowNotification({ show: false, message: "", type: "" });
-    }, 3000);
-  };
+  }, [currentStep, handleGlobalKeyDown]);
 
   const handleContinue = () => {
+    setErrorMessage("");
     if (currentStep === 0) {
       if (!validateIDNumber(formData.idNumber)) {
-        showAlert(`Please enter a valid ${getIdNumberLabel()} (numbers and hyphens only)`, "error");
+        setErrorMessage(`Please enter a valid ${getIdNumberLabel()} (numbers and hyphens only)`);
         return;
       }
       if (!validatePassword(formData.password)) {
-        showAlert("Password must be between 6 and 10 characters", "error");
+        setErrorMessage("Password must be between 6 and 10 characters");
         return;
       }
       setCurrentStep(1);
     } else if (currentStep === 1) {
       if (!validateEmail(formData.email)) {
-        showAlert("Please enter a valid email address", "error");
+        setErrorMessage("Please enter a valid email address");
         return;
       }
       if (!validateMobile(formData.mobile)) {
-        showAlert("Please enter a valid Philippine mobile number (09XXXXXXXXX)", "error");
+        setErrorMessage("Please enter a valid Philippine mobile number (09XXXXXXXXX)");
         return;
       }
       setCurrentStep(2);
@@ -323,6 +334,7 @@ export default function RegisterTapID() {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (errorMessage) setErrorMessage(""); // Clear error on input
   };
 
   const togglePasswordVisibility = () => {
@@ -331,13 +343,13 @@ export default function RegisterTapID() {
 
   const formatMobileNumber = (value) => {
     let cleaned = value.replace(/\D/g, '');
-    
+
     if (!cleaned.startsWith('09')) {
       cleaned = '09' + cleaned.replace(/^09/, '');
     }
-    
+
     cleaned = cleaned.slice(0, 11);
-    
+
     if (cleaned.length > 4) {
       return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7)}`;
     }
@@ -399,9 +411,9 @@ export default function RegisterTapID() {
       } else if (activeInput === "email") {
         setFormData(prev => ({ ...prev, email: applyFormatting(prev.email, key) }));
       } else {
-        setFormData(prev => ({ 
-          ...prev, 
-          mobile: formatMobileNumber(applyFormatting(prev.mobile.replace(/\s/g, ''), key)) 
+        setFormData(prev => ({
+          ...prev,
+          mobile: formatMobileNumber(applyFormatting(prev.mobile.replace(/\s/g, ''), key))
         }));
       }
     }
@@ -432,17 +444,19 @@ export default function RegisterTapID() {
   const getScannerStatusText = () => {
     switch (scannerStatus) {
       case "ready":
-        return "🟢 Scanner Initializing...";
+        return "Scanner Ready - Tap Your ID Card";
       case "active":
-        return "🔵 Scanner Ready - Tap Your ID Card";
+        return "Scanner Ready - Tap Your ID Card";
       case "reading":
-        return "🟡 Reading ID Card...";
+        return "Reading ID Card...";
       case "processing":
-        return "🟠 Writing Data to Card...";
+        return "Writing Data to Card...";
       case "success":
-        return "✅ Registration Complete!";
+        return "Registration Complete!";
+      case "error":
+        return "Scan Failed - Try Again";
       default:
-        return "🟢 Scanner Ready";
+        return "Scanner Ready";
     }
   };
 
@@ -451,7 +465,7 @@ export default function RegisterTapID() {
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
     ["↑", "Z", "X", "C", "V", "B", "N", "M", "Del"],
-    ["Sym", "Space", "-", "@", ".", "_"],
+    ["Sym", "Space", "-"],
   ];
 
   const symbolKeys = [
@@ -467,7 +481,7 @@ export default function RegisterTapID() {
   return (
     <div className="register-tapid-container">
       <div className="register-tapid-content">
-        
+
         {/* HIDDEN RFID INPUT - CAPTURES ALL SCANNER INPUT */}
         <input
           ref={rfidInputRef}
@@ -486,7 +500,7 @@ export default function RegisterTapID() {
           autoComplete="off"
           autoFocus
         />
-        
+
         {/* Progress Steps */}
         <div className="progress-steps">
           {steps.map((step, index) => (
@@ -495,11 +509,20 @@ export default function RegisterTapID() {
                 {currentStep > index ? '✓' : index + 1}
               </div>
               <span className="step-label">
-                {step.type === 'idNumber' ? (isEmployee ? 'Emp ID' : 'Stud ID') : 
-                 step.type === 'contact' ? 'Contact' : 'ID Tap'}
+                {step.type === 'idNumber' ? (isEmployee ? 'Emp ID' : 'Stud ID') :
+                  step.type === 'contact' ? 'Contact' : 'ID Tap'}
               </span>
             </div>
           ))}
+        </div>
+
+        {/* Image Section - ADDED */}
+        <div className="register-image-section">
+          <img
+            src={logo}
+            alt="Registration Step"
+            className="register-step-image"
+          />
         </div>
 
         {/* Header */}
@@ -508,15 +531,19 @@ export default function RegisterTapID() {
           <p className="register-tapid-subtitle">{steps[currentStep].subtitle}</p>
         </div>
 
-        {/* Notification */}
-        {showNotification.show && (
-          <div className={`notification ${showNotification.type}`}>
-            <div className="notification-icon">
-              {showNotification.type === "error" ? "⚠️" : "✅"}
-            </div>
-            <div className="notification-message">
-              {showNotification.message}
-            </div>
+        {/* Inline Error Message */}
+        {errorMessage && (
+          <div className="inline-error-message" style={{
+            color: '#dc2626',
+            backgroundColor: '#fef2f2',
+            padding: '10px',
+            borderRadius: '8px',
+            marginBottom: '15px',
+            textAlign: 'center',
+            fontWeight: '500',
+            border: '1px solid #fecaca'
+          }}>
+            ⚠️ {errorMessage}
           </div>
         )}
 
@@ -538,9 +565,13 @@ export default function RegisterTapID() {
                     placeholder={getIdNumberPlaceholder()}
                     value={formData.idNumber}
                     onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                    onFocus={() => handleInputFocus("idNumber")}
+                    onFocus={() => {
+                      if (idNumberInputRef.current) idNumberInputRef.current.blur();
+                      handleInputFocus("idNumber");
+                    }}
                     autoComplete="off"
                     readOnly
+                    inputMode="none"
                   />
                   <div className="input-hint">
                     Numbers and hyphens only (e.g., {isEmployee ? "2023-001" : "2022-200901"})
@@ -565,10 +596,14 @@ export default function RegisterTapID() {
                           handleInputChange('password', e.target.value);
                         }
                       }}
-                      onFocus={() => handleInputFocus("password")}
-                      autoComplete="new-password"
+                      onFocus={() => {
+                        if (passwordInputRef.current) passwordInputRef.current.blur();
+                        handleInputFocus("password");
+                      }}
+                      autoComplete="off"
                       readOnly
                       maxLength={10}
+                      inputMode="none"
                     />
                     <button
                       type="button"
@@ -578,7 +613,7 @@ export default function RegisterTapID() {
                       {showPassword ? "👁️" : "👁️‍🗨️"}
                     </button>
                   </div>
-                  
+
                   {/* Simple password guidelines */}
                   <div className="password-guidelines">
                     <span className="guideline-text">
@@ -590,7 +625,7 @@ export default function RegisterTapID() {
                 <div className="security-note">
                   <div className="security-icon">🎓</div>
                   <p>
-                    {isEmployee 
+                    {isEmployee
                       ? "Your employee number will be used for official identification and record keeping."
                       : "Your student number will be used for official identification and academic records."
                     }
@@ -604,7 +639,6 @@ export default function RegisterTapID() {
           {currentStep === 1 && (
             <div className="form-phase active">
               <div className="form-groups">
-                {/* Email Input */}
                 <div className="form-group">
                   <label htmlFor="email" className="form-label">
                     Email Address
@@ -614,259 +648,189 @@ export default function RegisterTapID() {
                     id="email"
                     type="email"
                     className={`form-input ${activeInput === 'email' ? 'active' : ''}`}
-                    placeholder="your.email@example.com"
+                    placeholder="juan.delacruz@rtu.edu.ph"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    onFocus={() => handleInputFocus("email")}
-                    autoComplete="email"
+                    onFocus={() => {
+                      if (emailInputRef.current) emailInputRef.current.blur();
+                      handleInputFocus("email");
+                    }}
+                    autoComplete="off"
                     readOnly
+                    inputMode="none"
                   />
                 </div>
 
-                {/* Mobile Input */}
                 <div className="form-group">
                   <label htmlFor="mobile" className="form-label">
-                    Philippine Mobile Number
+                    Mobile Number
                   </label>
                   <input
                     ref={mobileInputRef}
                     id="mobile"
                     type="tel"
                     className={`form-input ${activeInput === 'mobile' ? 'active' : ''}`}
-                    placeholder="09XX XXX XXXX"
+                    placeholder="0912 345 6789"
                     value={formData.mobile}
-                    onChange={(e) => handleInputChange('mobile', formatMobileNumber(e.target.value))}
-                    onFocus={() => handleInputFocus("mobile")}
-                    autoComplete="tel"
+                    onChange={(e) => handleInputChange('mobile', e.target.value)}
+                    onFocus={() => {
+                      if (mobileInputRef.current) mobileInputRef.current.blur();
+                      handleInputFocus("mobile");
+                    }}
+                    autoComplete="off"
                     readOnly
+                    inputMode="none"
                   />
                 </div>
-                
-                <div className="contact-explanation">
-                  <h4>Contact Information</h4>
-                  <p>We'll use your email for important updates and your mobile number for quick TapID login and security verification.</p>
-                  
-                  <div className="contact-benefits">
-                    <div className="benefit-item">
-                      <span className="benefit-icon">📧</span>
-                      <span>Email for account recovery and notifications</span>
-                    </div>
-                    <div className="benefit-item">
-                      <span className="benefit-icon">📱</span>
-                      <span>Mobile for quick TapID access and SMS verification</span>
-                    </div>
-                    <div className="benefit-item">
-                      <span className="benefit-icon">🔒</span>
-                      <span>Both are encrypted and secure</span>
-                    </div>
-                  </div>
+
+                <div className="security-note">
+                  <div className="security-icon">🔒</div>
+                  <p>
+                    We'll use these details to send you important health updates and account recovery information.
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Step 3: RFID Tap */}
+          {/* Step 3: RFID Registration - MODERNIZED */}
           {currentStep === 2 && (
             <div className="form-phase active">
-              <div className="form-groups">
-                <div className="id-scan-section">
-                  {/* Real RFID Scanner Hardware */}
-                  <div className="scanner-container">
-                    <div className={`scanner-hardware ${scannerStatus}`}>
-                      <div className="scanner-led"></div>
-                      <div className="scanner-surface">
-                        <div className="id-card-placeholder">
-                          <div className={`id-card ${isCardTapped ? 'tapped' : ''}`}>
-                            <div className="id-chip"></div>
-                            <div className="id-waves"></div>
-                            <div className="rfid-symbol">📡</div>
-                          </div>
+              <div className="rfid-registration-section">
+                <motion.div
+                  className="rfid-scanner-container"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  {/* Scanner Visual */}
+                  <div className={`rfid-scanner-visual ${isScanning ? 'scanning' : ''} ${idRegistered ? 'success' : ''}`}>
+                    {/* Outer pulsing rings */}
+                    <motion.div
+                      className="scanner-ring ring-1"
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <motion.div
+                      className="scanner-ring ring-2"
+                      animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                    />
+
+                    {/* Central Icon */}
+                    <div className="scanner-core">
+                      <motion.div
+                        animate={isScanning ? { rotate: 360 } : { rotate: 0 }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      >
+                        <div className="scanner-icon">
+                          {idRegistered ? "✅" : "📡"}
                         </div>
-                      </div>
-                      <div className="scanner-reader"></div>
-                      <div className="scanner-glow"></div>
-                      
-                      {scannerStatus === "processing" && (
-                        <div className="processing-overlay">
-                          <div className="spinner"></div>
-                          <p>Writing Data to Card...</p>
-                        </div>
-                      )}
-                      
-                      {scannerStatus === "success" && (
-                        <div className="success-overlay">
-                          <div className="success-checkmark">✓</div>
-                          <p>Registration Complete!</p>
-                        </div>
-                      )}
+                      </motion.div>
                     </div>
 
-                    <div className="scan-status">
-                      <div className={`status-indicator ${scannerStatus}`}>
-                        {getScannerStatusText()}
-                      </div>
-                    </div>
+                    {/* Scanning Beam */}
+                    {isScanning && (
+                      <motion.div
+                        className="scanner-beam"
+                        initial={{ top: "0%" }}
+                        animate={{ top: "100%" }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                      />
+                    )}
                   </div>
 
-                  {/* Progress Bar */}
-                  {isScanning && (
-                    <div className="scan-progress">
-                      <div className="progress-bar">
-                        <div 
-                          className="progress-fill" 
-                          style={{ width: `${scanProgress}%` }}
-                        ></div>
-                      </div>
-                      <p className="progress-text">
-                        {scanProgress < 60 && "Reading card data..."}
-                        {scanProgress >= 60 && scanProgress < 85 && "Writing user information..."}
-                        {scanProgress >= 85 && scanProgress < 100 && "Finalizing registration..."}
-                        {scanProgress === 100 && "Registration Complete!"}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* RFID Scanner Status */}
-                  <div className="physical-tap-area">
-                    <p className="tap-instruction">
-                      {scannerStatus === "ready" 
-                        ? "🔄 Initializing RFID Scanner..." 
-                        : scannerStatus === "active"
-                        ? "🔵 Scanner Ready - Tap Any ID Card"
-                        : scannerStatus === "reading"
-                        ? "🟡 Reading Card Data..."
-                        : scannerStatus === "processing"
-                        ? "🟠 Writing Data to Card..."
-                        : "✅ Registration Complete!"}
+                  {/* Status Text */}
+                  <motion.div
+                    className="rfid-status-text"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <h3>{getScannerStatusText()}</h3>
+                    <p>
+                      {idRegistered
+                        ? "Your ID has been successfully registered!"
+                        : "Place your ID card near the scanner to register it."}
                     </p>
-                    
-                    {/* Scanner Information */}
-                    <div className="scanner-info">
-                      <div className="info-item">
-                        <span className="info-label">Scanner Status:</span>
-                        <span className={`info-value ${scannerStatus}`}>
-                          {scannerStatus === "ready" ? "Initializing" :
-                           scannerStatus === "active" ? "Ready" :
-                           scannerStatus === "reading" ? "Reading" :
-                           scannerStatus === "processing" ? "Processing" :
-                           "Complete"}
-                        </span>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-label">RFID Data:</span>
-                        <span className="info-value">
-                          {rfidCode || "Waiting for card..."}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  </motion.div>
 
-                  {/* Instructions */}
-                  <div className="scan-instructions">
-                    <h3>Automatic ID Card Registration</h3>
-                    <p>RFID scanner is active and ready - Simply tap your ID card on the scanner</p>
-                    <div className="instruction-steps">
-                      <div className="instruction-step">
-                        <span className="step-number">1</span>
-                        <span className="step-text">RFID scanner is automatically active</span>
+                  {/* Modern Progress Bar */}
+                  {isScanning && (
+                    <motion.div
+                      className="scan-progress-container-modern"
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: "100%" }}
+                    >
+                      <div className="progress-label">
+                        <span>Processing...</span>
+                        <span>{scanProgress}%</span>
                       </div>
-                      <div className="instruction-step">
-                        <span className="step-number">2</span>
-                        <span className="step-text">Tap your ID card on any RFID scanner</span>
+                      <div className="progress-track">
+                        <motion.div
+                          className="progress-fill"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${scanProgress}%` }}
+                          transition={{ type: "spring", stiffness: 50 }}
+                        />
                       </div>
-                      <div className="instruction-step">
-                        <span className="step-number">3</span>
-                        <span className="step-text">Registration will start automatically</span>
-                      </div>
-                      <div className="instruction-step">
-                        <span className="step-number">4</span>
-                        <span className="step-text">Wait for the process to complete</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Success Message */}
-                  {idRegistered && (
-                    <div className="registration-complete">
-                      <div className="success-badge">
-                        <span className="success-icon">✅</span>
-                        <span className="success-text">
-                          ID Successfully Registered! 
-                          <br />
-                          <small>RFID Code: {rfidCode}</small>
-                          <br />
-                          <small>Redirecting to confirmation...</small>
-                        </span>
-                      </div>
-                    </div>
+                    </motion.div>
                   )}
-                </div>
-                
-                <div className="security-badge">
-                  <div className="lock-icon">🔒</div>
-                  <div className="security-text">
-                    <strong>Secure ID Registration</strong>
-                    <span>Your information will be encrypted and saved to your ID</span>
-                  </div>
-                </div>
+                </motion.div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Custom Keyboard - Only show for steps 0 and 1 */}
-        {(currentStep === 0 || currentStep === 1) && (
-          <div className="register-keyboard">
-            <div className="register-keyboard-rows">
-              {keyboardKeys.map((row, rowIndex) => (
-                <div key={rowIndex} className="register-keyboard-row">
-                  {row.map((key) => (
-                    <button
-                      key={key}
-                      className={`register-keyboard-key ${
-                        key === "Del"
-                          ? "delete-key"
-                          : key === "Space"
-                          ? "space-key"
-                          : key === "↑"
-                          ? `shift-key ${isShift ? "active" : ""}`
-                          : (key === "Sym" || key === "ABC")
-                          ? `symbols-key ${showSymbols ? "active" : ""}`
-                          : ""
-                      } ${rowIndex === 0 ? 'number-key' : ''}`}
-                      onClick={() => handleKeyboardPress(key)}
-                    >
-                      {key === "Space" ? "Space" : 
-                       key === "↑" ? "⇧" : 
-                       key === "Sym" ? "Sym" :
-                       key === "ABC" ? "ABC" : key}
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Navigation Buttons */}
         <div className={`form-navigation ${currentStep > 0 ? 'dual-buttons' : 'single-button'}`}>
-          {currentStep !== 2 && (
+          {currentStep < 2 && (
             <button
               className={`nav-button next-button ${!isStepValid() ? "disabled" : ""}`}
               onClick={handleContinue}
               disabled={!isStepValid()}
             >
               {getButtonText()}
-              {isStepValid() && <span className="button-arrow">→</span>}
+              <span className="button-arrow">→</span>
             </button>
           )}
-          
-          {currentStep > 0 && (
+
+          {currentStep > 0 && !idRegistered && (
             <button className="nav-button back-button" onClick={handleBack}>
               ← Back
             </button>
           )}
         </div>
+
+        {/* Input Methods - Only show for first two steps */}
+        {currentStep < 2 && (
+          <div className="register-keyboard">
+            {keyboardKeys.map((row, rowIndex) => (
+              <div key={rowIndex} className="register-keyboard-row">
+                {row.map((key) => (
+                  <button
+                    key={key}
+                    className={`register-keyboard-key ${key === "↑" && isShift ? "active" : ""
+                      } ${key === "Sym" && showSymbols ? "active" : ""
+                      } ${key === "Del" ? "delete-key" : ""
+                      } ${key === "Space" ? "space-key" : ""
+                      } ${key === "↑" ? "shift-key" : ""
+                      } ${key === "Sym" || key === "ABC" ? "symbols-key" : ""
+                      } ${!isNaN(key) && key !== " " ? "number-key" : ""
+                      }`}
+                    onClick={() => handleKeyboardPress(key)}
+                  >
+                    {key === "↑" ? "SHIFT" :
+                      key === "Del" ? "DELETE" :
+                        key === "Space" ? "SPACE" :
+                          key === "Sym" ? "SYMBOLS" :
+                            key === "ABC" ? "ABC" : key}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
