@@ -25,6 +25,7 @@ export default function RegisterPersonalInfo() {
   const [activeInput, setActiveInput] = useState("first");
   const [touchFeedback, setTouchFeedback] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({ firstName: false, lastName: false });
 
   const firstNameInputRef = useRef(null);
   const lastNameInputRef = useRef(null);
@@ -96,7 +97,9 @@ export default function RegisterPersonalInfo() {
 
   useEffect(() => {
     setErrorMessage(""); // Clear errors on step change
+    setFieldErrors({ firstName: false, lastName: false });
     if (currentStep === 0) {
+      setShowSymbols(false); // Ensure alphabet layout for name step
       setTimeout(() => {
         if (firstNameInputRef.current) firstNameInputRef.current.focus();
       }, 300);
@@ -106,7 +109,14 @@ export default function RegisterPersonalInfo() {
   const handleContinue = () => {
     setErrorMessage("");
     if (currentStep === 0) {
-      if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      const firstNameValid = formData.firstName.trim().length > 0;
+      const lastNameValid = formData.lastName.trim().length > 0;
+
+      if (!firstNameValid || !lastNameValid) {
+        setFieldErrors({
+          firstName: !firstNameValid,
+          lastName: !lastNameValid
+        });
         setErrorMessage("Please enter both first name and last name");
         return;
       }
@@ -149,13 +159,26 @@ export default function RegisterPersonalInfo() {
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+      setErrorMessage("");
     } else {
-      navigate(-1); // Go back to previous page (RegisterRole)
+      navigate(-1);
     }
   };
 
-  // Name step functions
   const handleKeyboardPress = (key) => {
+    // Restrict input for Name Step: Only letters allowed
+    if (currentStep === 0) {
+      // Block numbers and symbol switch
+      if (/^[0-9]$/.test(key) || key === "Sym") {
+        return;
+      }
+      // Block other symbols if they somehow appear (except valid controls)
+      const validControls = ["Del", "Space", "↑", "ABC"];
+      if (!validControls.includes(key) && !/^[a-zA-Z]$/.test(key)) {
+        return;
+      }
+    }
+
     if (key === "↑") {
       setIsShift(!isShift);
       return;
@@ -187,8 +210,10 @@ export default function RegisterPersonalInfo() {
     } else {
       if (activeInput === "first") {
         setFormData(prev => ({ ...prev, firstName: applyFormatting(prev.firstName, key) }));
+        if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: false }));
       } else {
         setFormData(prev => ({ ...prev, lastName: applyFormatting(prev.lastName, key) }));
+        if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: false }));
       }
     }
 
@@ -267,16 +292,15 @@ export default function RegisterPersonalInfo() {
     }
   };
 
+  // Updated alphabet keys without number row
   const alphabetKeys = [
-    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
     ["↑", "Z", "X", "C", "V", "B", "N", "M", "Del"],
-    ["Sym", "Space", "-"],
+    ["Space"],
   ];
 
   const symbolKeys = [
-    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")"],
     ["-", "_", "+", "=", "{", "}", "[", "]", "|"],
     [".", ",", "?", "!", "'", '"', ":", ";", "Del"],
@@ -287,8 +311,8 @@ export default function RegisterPersonalInfo() {
 
   return (
     <div className="register-personal-container">
-      <div className="register-personal-content">
-        {/* Progress Steps */}
+      <div className={`register-personal-content ${currentStep === 0 ? 'name-step-mode' : ''}`}>
+        {/* Progress Steps - Moved outside main area to prevent cropping */}
         <div className="progress-steps">
           {steps.map((step, index) => (
             <div key={index} className={`progress-step ${currentStep === index ? 'active' : currentStep > index ? 'completed' : ''}`}>
@@ -300,233 +324,229 @@ export default function RegisterPersonalInfo() {
           ))}
         </div>
 
-        {/* Image */}
-        {steps[currentStep].image && (
-          <div className="register-image-section">
-            <img
-              src={steps[currentStep].image}
-              alt={steps[currentStep].title}
-              className="register-step-image"
-            />
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="register-personal-header">
-          <h1 className="register-personal-title">{steps[currentStep].title}</h1>
-          <p className="register-personal-subtitle">{steps[currentStep].subtitle}</p>
-        </div>
-
-        {/* Inline Error Message */}
-        {errorMessage && (
-          <div className="inline-error-message" style={{
-            color: '#dc2626',
-            backgroundColor: '#fef2f2',
-            padding: '10px',
-            borderRadius: '8px',
-            marginBottom: '15px',
-            textAlign: 'center',
-            fontWeight: '500',
-            border: '1px solid #fecaca'
-          }}>
-            ⚠️ {errorMessage}
-          </div>
-        )}
-
-        {/* Step Content */}
-        <div className="form-container">
-          {currentStep === 0 && (
-            <div className="form-phase active">
-              <div className="form-groups">
-                <div className="form-group">
-                  <label htmlFor="firstName" className="form-label">
-                    First Name
-                  </label>
-                  <input
-                    ref={firstNameInputRef}
-                    id="firstName"
-                    type="text"
-                    className={`form-input ${activeInput === 'first' ? 'active' : ''}`}
-                    placeholder="Juan"
-                    value={formData.firstName}
-                    onFocus={(e) => {
-                      e.preventDefault();
-                      e.target.blur();
-                      setActiveInput("first");
-                    }}
-                    readOnly
-                    inputMode="none"
-                    autoComplete="off"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="lastName" className="form-label">
-                    Last Name
-                  </label>
-                  <input
-                    ref={lastNameInputRef}
-                    id="lastName"
-                    type="text"
-                    className={`form-input ${activeInput === 'last' ? 'active' : ''}`}
-                    placeholder="Dela Cruz"
-                    value={formData.lastName}
-                    onFocus={(e) => {
-                      e.preventDefault();
-                      e.target.blur();
-                      setActiveInput("last");
-                    }}
-                    readOnly
-                    inputMode="none"
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
+        <div className="register-main-area">
+          {/* Image */}
+          {steps[currentStep].image && (
+            <div className="register-image-section">
+              <img
+                src={steps[currentStep].image}
+                alt={steps[currentStep].title}
+                className="register-step-image"
+              />
             </div>
           )}
 
-          {currentStep === 1 && (
-            <div className="form-phase active">
-              <div className="form-groups">
-                <div className="form-group full-width">
-                  <label className="form-label">Select Your Birthday</label>
-                  <div className="birthday-selector">
-                    <div className="birthday-inputs">
-                      <div className="birthday-column">
-                        <label className="birthday-label">Month</label>
-                        <div className="birthday-scroll month-scroll" ref={monthScrollRef}>
-                          {Array.from({ length: 12 }, (_, i) => (
-                            <div
-                              key={i}
-                              className={`birthday-option ${formData.birthMonth === i + 1 ? 'selected' : ''}`}
-                              onClick={() => handleBirthdaySelect('month', i + 1)}
-                            >
-                              {new Date(2000, i).toLocaleString('default', { month: 'long' })}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+          {/* Header */}
+          <div className="register-personal-header">
+            <h1 className="register-personal-title">{steps[currentStep].title}</h1>
+            <p className="register-personal-subtitle">{steps[currentStep].subtitle}</p>
+          </div>
 
-                      <div className="birthday-column">
-                        <label className="birthday-label">Day</label>
-                        <div className="birthday-scroll day-scroll" ref={dayScrollRef}>
-                          {Array.from({ length: 31 }, (_, i) => (
-                            <div
-                              key={i}
-                              className={`birthday-option ${formData.birthDay === i + 1 ? 'selected' : ''}`}
-                              onClick={() => handleBirthdaySelect('day', i + 1)}
-                            >
-                              {i + 1}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+          {/* Step Content */}
+          <div className="form-container">
+            {currentStep === 0 && (
+              <div className="form-phase active">
+                <div className="form-groups">
+                  <div className="form-group">
+                    <label htmlFor="firstName" className="form-label">
+                      First Name
+                    </label>
+                    <input
+                      ref={firstNameInputRef}
+                      id="firstName"
+                      type="text"
+                      className={`form-input ${activeInput === 'first' ? 'active' : ''} ${fieldErrors.firstName ? 'error' : ''}`}
+                      placeholder="Juan"
+                      value={formData.firstName}
+                      onFocus={(e) => {
+                        e.preventDefault();
+                        e.target.blur();
+                        setActiveInput("first");
+                        if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: false }));
+                      }}
+                      readOnly
+                      inputMode="none"
+                      autoComplete="off"
+                    />
+                  </div>
 
-                      <div className="birthday-column">
-                        <label className="birthday-label">Year</label>
-                        <div className="birthday-scroll year-scroll" ref={yearScrollRef}>
-                          {Array.from({ length: 100 }, (_, i) => {
-                            const year = new Date().getFullYear() - i;
-                            return (
+                  <div className="form-group">
+                    <label htmlFor="lastName" className="form-label">
+                      Last Name
+                    </label>
+                    <input
+                      ref={lastNameInputRef}
+                      id="lastName"
+                      type="text"
+                      className={`form-input ${activeInput === 'last' ? 'active' : ''} ${fieldErrors.lastName ? 'error' : ''}`}
+                      placeholder="Dela Cruz"
+                      value={formData.lastName}
+                      onFocus={(e) => {
+                        e.preventDefault();
+                        e.target.blur();
+                        setActiveInput("last");
+                        if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: false }));
+                      }}
+                      readOnly
+                      inputMode="none"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 1 && (
+              <div className="form-phase active">
+                <div className="form-groups">
+                  <div className="form-group full-width">
+                    <label className="form-label">Select Your Birthday</label>
+                    <p className="scroll-instruction">Scroll to select</p>
+                    <div className="birthday-selector">
+                      <div className="birthday-inputs">
+                        <div className="birthday-column">
+                          <label className="birthday-label">Month</label>
+                          <div className="birthday-scroll month-scroll" ref={monthScrollRef}>
+                            {Array.from({ length: 12 }, (_, i) => (
                               <div
-                                key={year}
-                                className={`birthday-option ${formData.birthYear === year ? 'selected' : ''}`}
-                                onClick={() => handleBirthdaySelect('year', year)}
+                                key={i}
+                                className={`birthday-option ${formData.birthMonth === i + 1 ? 'selected' : ''}`}
+                                onClick={() => handleBirthdaySelect('month', i + 1)}
                               >
-                                {year}
+                                {new Date(2000, i).toLocaleString('default', { month: 'long' })}
                               </div>
-                            );
-                          })}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <div className="age-display-section">
-                      <div className="age-result">
-                        <span className="age-label">Your Age:</span>
-                        <div className="age-value">
-                          {calculateAge() > 0 ? calculateAge() : '--'}
+                        <div className="birthday-column">
+                          <label className="birthday-label">Day</label>
+                          <div className="birthday-scroll day-scroll" ref={dayScrollRef}>
+                            {Array.from({ length: 31 }, (_, i) => (
+                              <div
+                                key={i}
+                                className={`birthday-option ${formData.birthDay === i + 1 ? 'selected' : ''}`}
+                                onClick={() => handleBirthdaySelect('day', i + 1)}
+                              >
+                                {i + 1}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      {formData.birthMonth && formData.birthDay && formData.birthYear && (
-                        <div className="birthday-confirmation">
-                          <span className="birthday-text">
-                            Born on {new Date(formData.birthYear, formData.birthMonth - 1, formData.birthDay).toLocaleDateString('en-US', {
-                              month: 'long',
-                              day: 'numeric',
-                              year: 'numeric'
+
+                        <div className="birthday-column">
+                          <label className="birthday-label">Year</label>
+                          <div className="birthday-scroll year-scroll" ref={yearScrollRef}>
+                            {Array.from({ length: 100 }, (_, i) => {
+                              const year = new Date().getFullYear() - i;
+                              return (
+                                <div
+                                  key={year}
+                                  className={`birthday-option ${formData.birthYear === year ? 'selected' : ''}`}
+                                  onClick={() => handleBirthdaySelect('year', year)}
+                                >
+                                  {year}
+                                </div>
+                              );
                             })}
-                          </span>
+                          </div>
                         </div>
-                      )}
+                      </div>
+
+                      <div className="age-display-section">
+                        <div className="age-result">
+                          <span className="age-label">Your Age:</span>
+                          <div className="age-value">
+                            {calculateAge() > 0 ? calculateAge() : '--'}
+                          </div>
+                        </div>
+                        {formData.birthMonth && formData.birthDay && formData.birthYear && (
+                          <div className="birthday-confirmation">
+                            <span className="birthday-text">
+                              Born on {new Date(formData.birthYear, formData.birthMonth - 1, formData.birthDay).toLocaleDateString('en-US', {
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {currentStep === 2 && (
-            <div className="form-phase active">
-              <div className="form-groups">
-                <div className="form-group full-width">
-                  <label className="form-label">Biological Sex</label>
-                  <div className="sex-selection">
-                    <div
-                      className={`sex-option ${formData.sex === "male" ? "selected" : ""} ${touchFeedback === "male" ? "touch-feedback" : ""}`}
-                      onClick={() => handleSexSelect("male")}
-                      onTouchStart={() => handleSexTouchStart("male")}
-                      onTouchEnd={handleSexTouchEnd}
-                    >
-                      <div className="role-card-icon">
-                        <img src={maleIcon} alt="Male" />
+            {currentStep === 2 && (
+              <div className="form-phase active">
+                <div className="form-groups">
+                  <div className="form-group full-width">
+                    <label className="form-label">Biological Sex</label>
+                    <div className="sex-selection">
+                      <div
+                        className={`sex-option ${formData.sex === "male" ? "selected" : ""} ${touchFeedback === "male" ? "touch-feedback" : ""}`}
+                        onClick={() => handleSexSelect("male")}
+                        onTouchStart={() => handleSexTouchStart("male")}
+                        onTouchEnd={handleSexTouchEnd}
+                      >
+                        <div className="role-card-icon">
+                          <img src={maleIcon} alt="Male" />
+                        </div>
+                        <span>Male</span>
                       </div>
-                      <span>Male</span>
-                    </div>
-                    <div
-                      className={`sex-option ${formData.sex === "female" ? "selected" : ""} ${touchFeedback === "female" ? "touch-feedback" : ""}`}
-                      onClick={() => handleSexSelect("female")}
-                      onTouchStart={() => handleSexTouchStart("female")}
-                      onTouchEnd={handleSexTouchEnd}
-                    >
-                      <div className="role-card-icon">
-                        <img src={femaleIcon} alt="Female" />
+                      <div
+                        className={`sex-option ${formData.sex === "female" ? "selected" : ""} ${touchFeedback === "female" ? "touch-feedback" : ""}`}
+                        onClick={() => handleSexSelect("female")}
+                        onTouchStart={() => handleSexTouchStart("female")}
+                        onTouchEnd={handleSexTouchEnd}
+                      >
+                        <div className="role-card-icon">
+                          <img src={femaleIcon} alt="Female" />
+                        </div>
+                        <span>Female</span>
                       </div>
-                      <span>Female</span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="register-disclaimer">
-                <p>
-                  We ask for your biological sex to provide accurate BMI calculations and health assessments.
-                  This information will not be shared publicly.
-                </p>
+                <div className="register-disclaimer">
+                  <p>
+                    We ask for your biological sex to provide accurate BMI calculations and health assessments.
+                    This information will not be shared publicly.
+                  </p>
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* Inline Error Message */}
+          {errorMessage && (
+            <div className="inline-error-message">
+              ⚠️ {errorMessage}
             </div>
           )}
-        </div>
 
-        {/* Navigation Buttons - UPDATED STACKED LAYOUT */}
-        <div className={`form-navigation ${currentStep > 0 ? 'dual-buttons' : 'single-button'}`}>
-          <button
-            className={`nav-button ${currentStep === 2 ? "submit-button" : "next-button"} ${!isStepValid() ? "disabled" : ""}`}
-            onClick={handleContinue}
-            disabled={!isStepValid()}
-          >
-            {getButtonText()}
-            {isStepValid() && <span className="button-arrow">→</span>}
-          </button>
-
-          {currentStep > 0 && (
-            <button className="nav-button back-button" onClick={handleBack}>
-              ← Back
+          {/* Navigation Buttons - UPDATED STACKED LAYOUT */}
+          <div className={`form-navigation ${currentStep > 0 ? 'dual-buttons' : 'single-button'}`}>
+            <button
+              className={`nav-button ${currentStep === 2 ? "submit-button" : "next-button"} ${!isStepValid() ? "disabled" : ""}`}
+              onClick={handleContinue}
+              disabled={!isStepValid()}
+            >
+              {getButtonText()}
+              {isStepValid() && <span className="button-arrow">→</span>}
             </button>
-          )}
+
+            {currentStep > 0 && (
+              <button className="nav-button back-button" onClick={handleBack}>
+                ← Back
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Input Methods */}
+        {/* Input Methods - Keyboard only for Name step */}
         {currentStep === 0 && (
           <div className="register-keyboard">
             {keyboardKeys.map((row, rowIndex) => (
@@ -540,7 +560,6 @@ export default function RegisterPersonalInfo() {
                       } ${key === "Space" ? "space-key" : ""
                       } ${key === "↑" ? "shift-key" : ""
                       } ${key === "Sym" || key === "ABC" ? "symbols-key" : ""
-                      } ${!isNaN(key) && key !== " " ? "number-key" : ""
                       }`}
                     onClick={() => handleKeyboardPress(key)}
                   >

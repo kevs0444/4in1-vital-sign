@@ -153,12 +153,10 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent);
   animation: scanning 2s infinite;
 }
 
@@ -166,6 +164,7 @@
   0% {
     left: -100%;
   }
+
   100% {
     left: 100%;
   }
@@ -208,9 +207,12 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -319,9 +321,48 @@
 .form-input.active {
   border-color: #dc2626;
   background: #fff5f5;
-  box-shadow: 
+  box-shadow:
     0 0 0 2px #dc2626,
     0 0 0 4px rgba(220, 38, 38, 0.1);
+}
+
+/* Password Input Styling */
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper .form-input {
+  padding-right: 3rem;
+  /* Space for the eye icon */
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: color 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.password-toggle-btn:hover {
+  color: #dc2626;
+}
+
+.password-toggle-btn:focus {
+  outline: none;
 }
 
 .login-button {
@@ -569,6 +610,7 @@
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -587,8 +629,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Touch optimization */
@@ -596,18 +643,20 @@
   .login-button:hover:not(:disabled) {
     transform: none;
   }
-  
+
   .register-link:hover {
     transform: none;
   }
-  
+
   .login-keyboard-key:hover {
     background: #f8f9fa;
   }
 }
 
 /* Prevent text selection */
-.login-button, .login-keyboard-key, .register-link {
+.login-button,
+.login-keyboard-key,
+.register-link {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -616,7 +665,7 @@
 }
 
 /* Ensure proper flex behavior */
-.login-content > * {
+.login-content>* {
   min-height: 0;
 }
 
@@ -626,17 +675,17 @@
     max-width: 768px;
     max-height: 1366px;
   }
-  
+
   .login-card-section {
     flex: 0 0 25%;
     padding: 0.8rem 1.2rem;
   }
-  
+
   .login-manual-section {
     flex: 0 0 45%;
     padding: 1rem 1.2rem;
   }
-  
+
   .login-keyboard-section {
     flex: 0 0 30%;
     padding: 0.5rem;
@@ -649,47 +698,47 @@
     flex: 0 0 22%;
     padding: 0.6rem 1rem;
   }
-  
+
   .login-manual-section {
     flex: 0 0 48%;
     padding: 0.8rem 1rem;
   }
-  
+
   .login-keyboard-section {
     flex: 0 0 30%;
     padding: 0.4rem;
   }
-  
+
   .card-icon {
     width: 50px;
     height: 50px;
     margin-bottom: 0.5rem;
   }
-  
+
   .card-title {
     font-size: 1.4rem;
     margin-bottom: 0.4rem;
   }
-  
+
   .card-subtitle {
     font-size: 0.85rem;
     margin-bottom: 0.6rem;
   }
-  
+
   .login-title {
     font-size: 1.4rem;
   }
-  
+
   .form-input {
     min-height: 45px;
     padding: 0.8rem;
   }
-  
+
   .login-button {
     min-height: 55px;
     padding: 1rem !important;
   }
-  
+
   .login-keyboard-key {
     min-height: 38px;
     font-size: 0.85rem;
@@ -705,7 +754,8 @@
   text-size-adjust: none;
 }
 
-html, body {
+html,
+body {
   -ms-content-zooming: none;
   -ms-touch-action: manipulation;
   touch-action: manipulation;

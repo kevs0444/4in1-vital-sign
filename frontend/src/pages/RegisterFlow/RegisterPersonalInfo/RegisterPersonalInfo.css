@@ -21,6 +21,8 @@
   left: 0;
   right: 0;
   bottom: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .register-personal-content {
@@ -30,9 +32,7 @@
   max-width: 700px;
   height: auto;
   max-height: 98vh;
-  /* Maximized height */
   padding: 20px 15px;
-  /* Reduced padding */
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
@@ -47,7 +47,6 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
-  /* Reduced margin */
   flex-shrink: 0;
   padding: 0 10px;
 }
@@ -125,7 +124,6 @@
   width: 180px;
   height: 180px;
   object-fit: contain;
-  /* border-radius: 20px; Optional */
 }
 
 .register-personal-header {
@@ -136,28 +134,22 @@
 
 .register-personal-title {
   font-size: 2.2rem;
-  color: #333;
-  font-weight: 700;
-  margin-bottom: 5px;
-  line-height: 1.2;
+  min-height: 0;
+  margin-bottom: 8px;
 }
 
 .register-personal-subtitle {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   color: #666;
-  line-height: 1.3;
-  padding: 0 10px;
+  margin-bottom: 0;
 }
 
-/* Form Container */
 .form-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  margin-bottom: 10px;
-  /* Reduced margin */
   min-height: 0;
+  overflow: hidden;
 }
 
 .form-phase {
@@ -172,14 +164,6 @@
   display: flex;
   flex-direction: column;
   gap: 15px;
-  /* Reduced gap */
-  min-height: 0;
-  overflow: hidden;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
   min-height: 0;
 }
 
@@ -193,8 +177,25 @@
   color: #333;
   font-weight: 600;
   margin-bottom: 8px;
-  /* Reduced margin */
   text-align: left;
+}
+
+.scroll-instruction {
+  font-size: 1.1rem;
+  color: #dc2626;
+  margin-top: -5px;
+  margin-bottom: 10px;
+  text-align: left;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.scroll-instruction::before {
+  content: '↕';
+  font-size: 1.2rem;
+  font-weight: bold;
 }
 
 /* Form Inputs - Match RegisterRole card styling */
@@ -210,41 +211,54 @@
   -webkit-tap-highlight-color: transparent;
   color: #333;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  width: 100%;
 }
 
 .form-input:focus {
   outline: none;
   border-color: #dc2626;
   box-shadow: 0 6px 20px rgba(220, 38, 38, 0.2);
-  transform: translateY(-2px);
 }
 
-.form-input.active {
+.form-input.error {
   border-color: #dc2626;
-  background: #fff5f5;
-  box-shadow:
-    0 0 0 2px #dc2626,
-    0 0 0 4px rgba(220, 38, 38, 0.1);
+  background-color: #fef2f2;
 }
 
-/* Birthday Selector Styles */
-.birthday-selector {
+/* Name Step Specific Layout */
+.name-step-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.name-inputs-container {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  /* Reduced gap */
-  width: 100%;
+  margin-bottom: 20px;
+}
+
+/* Birthday Step - Increased height for scrollable areas */
+.birthday-step-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  gap: 20px;
 }
 
 .birthday-inputs {
   display: flex;
   gap: 15px;
   justify-content: space-between;
-  height: 280px;
+  height: 350px;
+  /* Increased height to show minimum 5 options */
   min-height: 0;
   overflow: hidden;
+  flex: 1;
 }
 
 .birthday-column {
@@ -262,7 +276,6 @@
   color: #333;
   font-weight: 600;
   margin-bottom: 10px;
-  /* Reduced margin */
   text-align: center;
   flex-shrink: 0;
 }
@@ -279,26 +292,27 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
   min-height: 0;
+  touch-action: pan-y;
 }
 
 .birthday-scroll::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .birthday-scroll::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .birthday-scroll::-webkit-scrollbar-thumb {
   background: #dc2626;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .birthday-option {
-  padding: 16px 10px;
+  padding: 18px 10px;
   text-align: center;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   font-weight: 600;
   color: #666;
   cursor: pointer;
@@ -306,6 +320,11 @@
   border-bottom: 1px solid #f0f0f0;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  min-height: 60px;
+  /* Ensures minimum 5 options are visible with 350px height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .birthday-option:last-child {
@@ -328,43 +347,45 @@
 .birthday-option.selected::before {
   content: '✓';
   position: absolute;
-  left: 8px;
+  left: 12px;
   font-weight: bold;
+  font-size: 1.1rem;
 }
 
-/* Age Display Section */
+/* Age Display Section - More space */
 .age-display-section {
   text-align: center;
-  padding: 15px;
+  padding: 20px;
   background: #f8f9fa;
   border-radius: 15px;
   border: 2px solid #e9ecef;
   min-height: 0;
   flex-shrink: 0;
+  margin-top: 10px;
 }
 
 .age-result {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 15px;
 }
 
 .age-label {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   color: #666;
   font-weight: 600;
 }
 
 .age-value {
-  font-size: 3rem;
+  font-size: 3.2rem;
   font-weight: 800;
   color: #dc2626;
   background: white;
   border-radius: 12px;
-  padding: 12px 25px;
-  min-width: 100px;
+  padding: 15px 30px;
+  min-width: 120px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   border: 3px solid #dc2626;
 }
@@ -372,31 +393,36 @@
 .birthday-confirmation {
   background: white;
   border-radius: 10px;
-  padding: 10px 15px;
+  padding: 12px 15px;
   border: 2px solid #dc2626;
 }
 
 .birthday-text {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   color: #333;
   font-weight: 600;
 }
 
-/* Sex Selection - LARGE UNIFORM CARDS with border-only selection */
+/* Sex Selection - Centered content */
+.sex-step-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .sex-selection {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  /* Reduced gap */
   margin-top: 10px;
   min-height: 0;
-  flex-shrink: 0;
+  flex: 1;
   width: 100%;
 }
 
 .sex-option {
   padding: 30px 20px;
-  /* Reduced padding */
   border: 4px solid #e9ecef;
   border-radius: 25px;
   background: white;
@@ -409,12 +435,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  /* Reduced gap */
+  gap: 25px;
   position: relative;
   box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
   min-height: 300px;
-  /* Reduced min-height */
   height: 100%;
   width: 100%;
 }
@@ -433,7 +457,6 @@
 .sex-option.selected {
   border-color: #dc2626;
   background: white;
-  /* Keep white background */
   transform: translateY(-3px);
   box-shadow: 0 25px 60px rgba(220, 38, 38, 0.25);
 }
@@ -464,7 +487,6 @@
   justify-content: center;
   border-radius: 50%;
   background: white;
-  /* Keep white background */
   padding: 30px;
   transition: all 0.3s ease;
   border: 5px solid #f1f3f4;
@@ -476,22 +498,18 @@
   height: 100%;
   object-fit: contain;
   filter: grayscale(0.4);
-  /* Keep some grayscale for unselected state */
   transition: all 0.3s ease;
 }
 
 .sex-option.selected .role-card-icon {
   background: white;
-  /* Keep white background */
   border-color: #dc2626;
-  /* Only border turns red */
   transform: scale(1.1);
   box-shadow: 0 15px 40px rgba(220, 38, 38, 0.3);
 }
 
 .sex-option.selected .role-card-icon img {
   filter: grayscale(0);
-  /* Remove grayscale when selected */
   transform: scale(1.15);
 }
 
@@ -504,100 +522,70 @@
 
 .sex-option.selected span {
   color: #dc2626;
-  /* Only text turns red */
   transform: scale(1.05);
 }
 
-/* Sex Selection Container to match birthday selector */
-.sex-selection-container {
-  width: 100%;
-  min-height: 400px;
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
+/* Disclaimer */
+.register-disclaimer {
+  text-align: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin-top: 15px;
+  border: 1px solid #e9ecef;
 }
 
-/* Updated Navigation Buttons - Stacked layout */
+.register-disclaimer p {
+  font-size: 1rem;
+  color: #666;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Navigation Buttons - UPDATED STACKED LAYOUT */
 .form-navigation {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  margin-top: 15px;
-  /* Reduced margin */
+  gap: 8px;
+  margin-top: 20px;
   flex-shrink: 0;
-  width: 100%;
+}
+
+.form-navigation.single-button {
+  margin-top: 0;
 }
 
 .nav-button {
+  padding: 20px;
   border: none;
-  border-radius: 18px;
-  font-size: 1.6rem;
+  border-radius: 15px;
+  font-size: 1.5rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  font-family: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-  min-height: 70px;
-  padding: 20px;
   width: 100%;
 }
 
-/* Single button (first step - name) - RED THEME */
-.form-navigation.single-button .nav-button {
+.next-button,
+.submit-button {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   color: white;
   box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
   animation: continueButtonGlow 2s ease-in-out infinite alternate;
 }
 
-/* Dual buttons (age and sex steps) - STACKED VERTICALLY */
-.form-navigation.dual-buttons {
-  flex-direction: column;
-}
-
-.form-navigation.dual-buttons .back-button {
+.back-button {
   background: #6c757d;
   color: white;
   order: 2;
-  /* Places back button below */
-  margin-top: 8px;
-}
-
-.form-navigation.dual-buttons .next-button,
-.form-navigation.dual-buttons .submit-button {
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  color: white;
-  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
-  animation: continueButtonGlow 2s ease-in-out infinite alternate;
-  order: 1;
-  /* Places continue button above */
-}
-
-/* Updated :has() styles for stacked layout */
-.form-navigation:has(.back-button) {
-  flex-direction: column;
-}
-
-.form-navigation:has(.back-button) .back-button {
-  order: 2;
-  margin-top: 8px;
-  background: #6c757d;
-}
-
-.form-navigation:has(.back-button) .next-button,
-.form-navigation:has(.back-button) .submit-button {
-  order: 1;
-}
-
-.back-button:active {
-  transform: scale(0.97);
-  background: #5a6268;
 }
 
 .next-button:active:not(.disabled),
@@ -609,6 +597,11 @@
 .submit-button:hover:not(.disabled) {
   transform: translateY(-3px);
   animation: continueButtonStrongGlow 1s ease-in-out infinite alternate;
+}
+
+.back-button:active {
+  transform: scale(0.97);
+  background: #5a6268;
 }
 
 .nav-button.disabled {
@@ -633,54 +626,14 @@
   }
 }
 
-@keyframes continueButtonStrongGlow {
-  from {
-    box-shadow: 0 12px 30px rgba(220, 38, 38, 0.5),
-      0 0 18px rgba(220, 38, 38, 0.6),
-      0 0 30px rgba(220, 38, 38, 0.4);
-  }
-
-  to {
-    box-shadow: 0 15px 35px rgba(220, 38, 38, 0.6),
-      0 0 25px rgba(220, 38, 38, 0.8),
-      0 0 40px rgba(220, 38, 38, 0.5);
-  }
-}
-
-/* Disclaimer */
-.register-disclaimer {
-  background: #f8f9fa;
-  border-radius: 15px;
-  padding: 15px 20px;
-  /* Reduced padding */
-  text-align: center;
-  border: 2px solid #e9ecef;
-  margin-top: 10px;
-  /* Reduced margin */
-  flex-shrink: 0;
-}
-
-.register-disclaimer p {
-  font-size: 1.1rem;
-  /* Slightly smaller */
-  gap: 4px;
-  margin-bottom: 4px;
-  flex: 1;
-}
-
-/* Keyboard Styles - MATCHING LOGIN.CSS */
+/* Keyboard Styles - UPDATED without number keys */
 .register-keyboard {
   background: transparent;
-  /* Removed white background */
   border-radius: 0;
   padding: 0;
-  /* Removed padding */
   margin-top: 10px;
-  /* Reduced margin */
   box-shadow: none;
-  /* Removed shadow */
   border: none;
-  /* Removed border */
   width: 100%;
   flex-shrink: 0;
   display: flex;
@@ -709,15 +662,7 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   min-height: 48px;
-  /* Increased touch target */
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  border: 1px solid #e5e7eb;
-  user-select: none;
-  flex-shrink: 0;
-  box-sizing: border-box;
 }
 
 .register-keyboard-key:active {
@@ -785,45 +730,40 @@
   background: #b91c1c;
 }
 
-.register-keyboard-key.number-key {
-  background: white;
-  color: #333;
-  font-weight: 700;
-  border-color: #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.register-keyboard-key.number-key:active {
-  background: #dc2626;
-  color: white;
-  border-color: #dc2626;
-}
-
 /* Touch Feedback */
 .touch-feedback {
-  transform: scale(0.95);
-  transition: transform 0.1s ease;
+  min-height: 0;
+  padding-bottom: 10px;
+}
+
+/* Error Message */
+.inline-error-message {
+  color: #dc2626;
+  background-color: #fef2f2;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 15px;
+  text-align: center;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+  font-size: 1.1rem;
+  flex-shrink: 0;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) and (orientation: portrait) {
   .register-personal-container {
     padding: 10px;
-    /* Restore padding to float the card */
   }
 
   .register-personal-content {
     max-width: 100%;
     max-height: 98vh;
-    /* Maximize height but keep it floating */
     height: 100%;
     padding: 20px 15px;
     border-radius: 24px;
-    /* Restore rounded corners */
     border: 1px solid #e0e0e0;
-    /* Restore border */
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-    /* Restore shadow */
   }
 
   .progress-steps {
@@ -842,122 +782,276 @@
   }
 
   .register-step-image {
-    width: 150px;
-    height: 150px;
+    width: 200px;
+    height: 200px;
   }
 
   .register-personal-title {
     font-size: 2rem;
     margin-bottom: 8px;
   }
-
-  .register-personal-subtitle {
-    font-size: 1.1rem;
-  }
-
-  .form-label {
-    font-size: 1.1rem;
-  }
-
-  .form-input {
-    padding: 16px 14px;
-    font-size: 1.2rem;
-  }
-
-  .birthday-inputs {
-    height: 220px;
-    gap: 8px;
-  }
-
-  .birthday-label {
-    font-size: 1rem;
-    margin-bottom: 8px;
-  }
-
-  .birthday-option {
-    padding: 12px 8px;
-    font-size: 1.1rem;
-  }
-
-  .age-value {
-    font-size: 2.5rem;
-    padding: 10px 20px;
-    min-width: 80px;
-  }
-
-  .age-label {
-    font-size: 1.1rem;
-  }
-
-  .birthday-text {
-    font-size: 1rem;
-  }
-
-  /* Sex Selection Responsive */
-  .sex-selection {
-    gap: 15px;
-  }
-
-  .sex-option {
-    padding: 20px 15px;
-    min-height: 250px;
-    gap: 15px;
-  }
-
-  .role-card-icon {
-    width: 100px;
-    height: 100px;
-    padding: 20px;
-  }
-
-  .sex-option span {
-    font-size: 1.6rem;
-  }
-
-  .nav-button {
-    font-size: 1.4rem;
-    padding: 16px;
-    min-height: 60px;
-  }
-
-  .register-keyboard-key {
-    min-height: 56px;
-    /* Larger touch target for mobile */
-    font-size: 1rem;
-  }
 }
 
-/* Extra small devices */
-@media (max-width: 480px) {
+/* Name Step Mode - 70/30 Split */
+.register-personal-content.name-step-mode {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 0;
+}
+
+.register-personal-content.name-step-mode .register-main-area {
+  flex: 7;
+  /* 70% */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 10px;
+}
+
+.register-personal-content.name-step-mode .register-keyboard {
+  flex: 3;
+  /* 30% */
+  min-height: 0;
+  margin-top: 0;
+  padding: 10px 5px;
+
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+/* Adjustments for Name Step elements to fit in 70% */
+.register-personal-content.name-step-mode .register-step-image {
+  width: 180px;
+  margin-bottom: 4px;
+  flex: 1;
+}
+
+.register-keyboard-key {
+  flex: 1;
+  padding: 0.5rem 0.2rem;
+  border: none;
+  border-radius: 6px;
+  background: #f8f9fa;
+  color: #333;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 48px;
+  display: flex;
+}
+
+.register-keyboard-key:active {
+  background: #dc2626;
+  color: white;
+  transform: scale(0.95);
+  border-color: #dc2626;
+}
+
+.register-keyboard-key.delete-key {
+  background: #dc2626;
+  color: white;
+  font-size: 0.8rem;
+  border-color: #dc2626;
+}
+
+.register-keyboard-key.delete-key:active {
+  background: #b91c1c;
+}
+
+.register-keyboard-key.space-key {
+  flex: 3;
+  font-size: 0.8rem;
+  background: #4a5568;
+  color: white;
+  border-color: #4a5568;
+  max-width: none;
+}
+
+.register-keyboard-key.space-key:active {
+  background: #2d3748;
+}
+
+.register-keyboard-key.shift-key {
+  background: #6c757d;
+  color: white;
+  font-size: 0.8rem;
+  border-color: #6c757d;
+}
+
+.register-keyboard-key.shift-key.active {
+  background: #dc2626;
+  transform: scale(1.02);
+  border-color: #dc2626;
+}
+
+.register-keyboard-key.shift-key:active {
+  background: #5a6268;
+}
+
+.register-keyboard-key.symbols-key {
+  background: #dc2626;
+  color: white;
+  font-size: 0.8rem;
+  border-color: #dc2626;
+}
+
+.register-keyboard-key.symbols-key.active {
+  background: #b91c1c;
+  transform: scale(1.02);
+  border-color: #b91c1c;
+}
+
+.register-keyboard-key.symbols-key:active {
+  background: #b91c1c;
+}
+
+/* Touch Feedback */
+.touch-feedback {
+  min-height: 0;
+  padding-bottom: 10px;
+}
+
+/* Error Message */
+.inline-error-message {
+  color: #dc2626;
+  background-color: #fef2f2;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 15px;
+  text-align: center;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) and (orientation: portrait) {
   .register-personal-container {
-    padding: 5px;
+    padding: 10px;
   }
 
-  .register-personal-title {
-    font-size: 1.8rem;
+  .register-personal-content {
+    max-width: 100%;
+    max-height: 98vh;
+    height: 100%;
+    padding: 20px 15px;
+    border-radius: 24px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   }
 
-  .register-personal-subtitle {
-    font-size: 1rem;
+  .progress-steps {
+    margin-bottom: 15px;
+    padding: 0 5px;
   }
 
   .step-circle {
-    width: 35px;
-    height: 35px;
-    font-size: 1rem;
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
   }
 
   .step-label {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
   }
 
-  .form-input {
-    font-size: 1.1rem;
-    padding: 14px 12px;
+  .register-step-image {
+    width: 200px;
+    height: 200px;
   }
 
-  .nav-button {
-    font-size: 1.2rem;
-    min-height: 50px;
+  .register-personal-title {
+    font-size: 2rem;
+    margin-bottom: 8px;
   }
+}
+
+/* Name Step Mode - 70/30 Split */
+.register-personal-content.name-step-mode {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 0;
+}
+
+.register-personal-content.name-step-mode .register-main-area {
+  flex: 7;
+  /* 70% */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 10px;
+}
+
+.register-personal-content.name-step-mode .register-keyboard {
+  flex: 3;
+  /* 30% */
+  min-height: 0;
+  margin-top: 0;
+  padding: 10px 5px;
+
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+/* Adjustments for Name Step elements to fit in 70% */
+.register-personal-content.name-step-mode .register-step-image {
+  width: 180px;
+  /* Restored to default size */
+  height: 180px;
+  margin-bottom: 10px;
+}
+
+.register-personal-content.name-step-mode .register-personal-title {
+  font-size: 1.6rem;
+  margin-bottom: 4px;
+}
+
+.register-personal-content.name-step-mode .register-personal-subtitle {
+  font-size: 1rem;
+}
+
+.register-personal-content.name-step-mode .form-groups {
+  gap: 15px;
+}
+
+.register-personal-content.name-step-mode .form-input {
+  padding: 25px 30px;
+  /* Larger padding */
+  font-size: 2rem;
+  /* Larger font size */
+  border-width: 3px;
+  border-radius: 18px;
+  height: auto;
+}
+
+.register-personal-content.name-step-mode .form-label {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+}
+
+.register-personal-content.name-step-mode .nav-button {
+  padding: 20px;
+  min-height: 80px;
+  /* Larger button */
+  font-size: 1.8rem;
+  border-radius: 18px;
+}
+
+.register-personal-content.name-step-mode .form-navigation {
+  margin-top: 25px;
+  margin-bottom: 20px;
+}
+
+.register-personal-content.name-step-mode .register-keyboard-key {
+  min-height: 0;
+  height: 100%;
+  font-size: 1.1rem;
 }

@@ -516,14 +516,16 @@ export default function RegisterTapID() {
           ))}
         </div>
 
-        {/* Image Section - ADDED */}
-        <div className="register-image-section">
-          <img
-            src={logo}
-            alt="Registration Step"
-            className="register-step-image"
-          />
-        </div>
+        {/* Image Section - Only show when keyboard is NOT present (Step 2) */}
+        {currentStep === 2 && (
+          <div className="register-image-section">
+            <img
+              src={logo}
+              alt="Registration Step"
+              className="register-step-image"
+            />
+          </div>
+        )}
 
         {/* Header */}
         <div className="register-tapid-header">
