@@ -465,7 +465,7 @@ export default function RegisterTapID() {
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
     ["↑", "Z", "X", "C", "V", "B", "N", "M", "Del"],
-    ["Sym", "Space", "-"],
+    ["Sym", "Space", currentStep === 1 ? "@" : "-"]
   ];
 
   const symbolKeys = [
@@ -480,33 +480,34 @@ export default function RegisterTapID() {
 
   return (
     <div className="register-tapid-container">
-      <div className="register-tapid-content">
+      {/* HIDDEN RFID INPUT - CAPTURES ALL SCANNER INPUT */}
+      <input
+        ref={rfidInputRef}
+        type="text"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '1px',
+          height: '1px',
+          opacity: 0,
+          border: 'none',
+          background: 'transparent',
+          pointerEvents: 'none'
+        }}
+        autoComplete="off"
+        autoFocus
+      />
 
-        {/* HIDDEN RFID INPUT - CAPTURES ALL SCANNER INPUT */}
-        <input
-          ref={rfidInputRef}
-          type="text"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '1px',
-            height: '1px',
-            opacity: 0,
-            border: 'none',
-            background: 'transparent',
-            pointerEvents: 'none'
-          }}
-          autoComplete="off"
-          autoFocus
-        />
+      {/* Main Content Area - WRAPPED */}
+      <div className={`register-tapid-content ${currentStep < 2 ? 'keyboard-visible-mode' : ''}`}>
 
-        {/* Progress Steps */}
+        {/* Progress Steps - INSIDE MAIN AREA */}
         <div className="progress-steps">
           {steps.map((step, index) => (
             <div key={index} className={`progress-step ${currentStep === index ? 'active' : currentStep > index ? 'completed' : ''}`}>
               <div className="step-circle">
-                {currentStep > index ? '✓' : index + 1}
+                {currentStep > index ? '✓' : index + 4}
               </div>
               <span className="step-label">
                 {step.type === 'idNumber' ? (isEmployee ? 'Emp ID' : 'Stud ID') :
@@ -516,295 +517,289 @@ export default function RegisterTapID() {
           ))}
         </div>
 
-        {/* Image Section - Only show when keyboard is NOT present (Step 2) */}
-        {currentStep === 2 && (
-          <div className="register-image-section">
-            <img
-              src={logo}
-              alt="Registration Step"
-              className="register-step-image"
-            />
+        <div className="register-main-area">
+          {/* Image Section - Only show when keyboard is NOT present (Step 2) */}
+          {currentStep === 2 && (
+            <div className="register-image-section">
+              <img
+                src={logo}
+                alt="Registration Step"
+                className="register-step-image"
+              />
+            </div>
+          )}
+
+          {/* Header */}
+          <div className="register-tapid-header">
+            <h1 className="register-tapid-title">{steps[currentStep].title}</h1>
+            <p className="register-tapid-subtitle">{steps[currentStep].subtitle}</p>
           </div>
-        )}
 
-        {/* Header */}
-        <div className="register-tapid-header">
-          <h1 className="register-tapid-title">{steps[currentStep].title}</h1>
-          <p className="register-tapid-subtitle">{steps[currentStep].subtitle}</p>
-        </div>
+          {/* Inline Error Message */}
+          {errorMessage && (
+            <div className="inline-error-message" style={{
+              color: '#dc2626',
+              backgroundColor: '#fef2f2',
+              padding: '10px',
+              borderRadius: '8px',
+              marginBottom: '15px',
+              textAlign: 'center',
+              fontWeight: '500',
+              border: '1px solid #fecaca'
+            }}>
+              ⚠️ {errorMessage}
+            </div>
+          )}
 
-        {/* Inline Error Message */}
-        {errorMessage && (
-          <div className="inline-error-message" style={{
-            color: '#dc2626',
-            backgroundColor: '#fef2f2',
-            padding: '10px',
-            borderRadius: '8px',
-            marginBottom: '15px',
-            textAlign: 'center',
-            fontWeight: '500',
-            border: '1px solid #fecaca'
-          }}>
-            ⚠️ {errorMessage}
-          </div>
-        )}
-
-        {/* Step Content */}
-        <div className="form-container">
-          {/* Step 1: Student/Employee Number & Password */}
-          {currentStep === 0 && (
-            <div className="form-phase active">
-              <div className="form-groups">
-                <div className="form-group">
-                  <label htmlFor="idNumber" className="form-label">
-                    {getIdNumberLabel()}
-                  </label>
-                  <input
-                    ref={idNumberInputRef}
-                    id="idNumber"
-                    type="text"
-                    className={`form-input ${activeInput === 'idNumber' ? 'active' : ''}`}
-                    placeholder={getIdNumberPlaceholder()}
-                    value={formData.idNumber}
-                    onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                    onFocus={() => {
-                      if (idNumberInputRef.current) idNumberInputRef.current.blur();
-                      handleInputFocus("idNumber");
-                    }}
-                    autoComplete="off"
-                    readOnly
-                    inputMode="none"
-                  />
-                  <div className="input-hint">
-                    Numbers and hyphens only (e.g., {isEmployee ? "2023-001" : "2022-200901"})
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="password" className="form-label">
-                    Create Password
-                  </label>
-                  <div className="password-input-container">
+          {/* Step Content */}
+          <div className="form-container">
+            {/* Step 1: Student/Employee Number & Password */}
+            {currentStep === 0 && (
+              <div className="form-phase active">
+                <div className="form-groups">
+                  <div className="form-group">
+                    <label htmlFor="idNumber" className="form-label">
+                      {getIdNumberLabel()}
+                    </label>
                     <input
-                      ref={passwordInputRef}
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      className={`form-input ${activeInput === 'password' ? 'active' : ''} ${formData.password.length >= 10 ? 'max-length' : ''}`}
-                      placeholder="Enter 6-10 characters"
-                      value={formData.password}
-                      onChange={(e) => {
-                        // Only allow input up to 10 characters
-                        if (e.target.value.length <= 10) {
-                          handleInputChange('password', e.target.value);
-                        }
-                      }}
+                      ref={idNumberInputRef}
+                      id="idNumber"
+                      type="text"
+                      className={`form-input ${activeInput === 'idNumber' ? 'active' : ''}`}
+                      placeholder={getIdNumberPlaceholder()}
+                      value={formData.idNumber}
+                      onChange={(e) => handleInputChange('idNumber', e.target.value)}
                       onFocus={() => {
-                        if (passwordInputRef.current) passwordInputRef.current.blur();
-                        handleInputFocus("password");
+                        if (idNumberInputRef.current) idNumberInputRef.current.blur();
+                        handleInputFocus("idNumber");
                       }}
                       autoComplete="off"
                       readOnly
-                      maxLength={10}
                       inputMode="none"
                     />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={togglePasswordVisibility}
-                    >
-                      {showPassword ? "👁️" : "👁️‍🗨️"}
-                    </button>
+                    <div className="input-hint">
+                      Numbers and hyphens only (e.g., {isEmployee ? "2023-001" : "2022-200901"})
+                    </div>
                   </div>
 
-                  {/* Simple password guidelines */}
-                  <div className="password-guidelines">
-                    <span className="guideline-text">
-                      {formData.password.length > 0 ? `${formData.password.length}/10 characters` : '6-10 characters'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="security-note">
-                  <div className="security-icon">🎓</div>
-                  <p>
-                    {isEmployee
-                      ? "Your employee number will be used for official identification and record keeping."
-                      : "Your student number will be used for official identification and academic records."
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Email & SMS in one phase */}
-          {currentStep === 1 && (
-            <div className="form-phase active">
-              <div className="form-groups">
-                <div className="form-group">
-                  <label htmlFor="email" className="form-label">
-                    Email Address
-                  </label>
-                  <input
-                    ref={emailInputRef}
-                    id="email"
-                    type="email"
-                    className={`form-input ${activeInput === 'email' ? 'active' : ''}`}
-                    placeholder="juan.delacruz@rtu.edu.ph"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    onFocus={() => {
-                      if (emailInputRef.current) emailInputRef.current.blur();
-                      handleInputFocus("email");
-                    }}
-                    autoComplete="off"
-                    readOnly
-                    inputMode="none"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="mobile" className="form-label">
-                    Mobile Number
-                  </label>
-                  <input
-                    ref={mobileInputRef}
-                    id="mobile"
-                    type="tel"
-                    className={`form-input ${activeInput === 'mobile' ? 'active' : ''}`}
-                    placeholder="0912 345 6789"
-                    value={formData.mobile}
-                    onChange={(e) => handleInputChange('mobile', e.target.value)}
-                    onFocus={() => {
-                      if (mobileInputRef.current) mobileInputRef.current.blur();
-                      handleInputFocus("mobile");
-                    }}
-                    autoComplete="off"
-                    readOnly
-                    inputMode="none"
-                  />
-                </div>
-
-                <div className="security-note">
-                  <div className="security-icon">🔒</div>
-                  <p>
-                    We'll use these details to send you important health updates and account recovery information.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: RFID Registration - MODERNIZED */}
-          {currentStep === 2 && (
-            <div className="form-phase active">
-              <div className="rfid-registration-section">
-                <motion.div
-                  className="rfid-scanner-container"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  {/* Scanner Visual */}
-                  <div className={`rfid-scanner-visual ${isScanning ? 'scanning' : ''} ${idRegistered ? 'success' : ''}`}>
-                    {/* Outer pulsing rings */}
-                    <motion.div
-                      className="scanner-ring ring-1"
-                      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                    <motion.div
-                      className="scanner-ring ring-2"
-                      animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                    />
-
-                    {/* Central Icon */}
-                    <div className="scanner-core">
-                      <motion.div
-                        animate={isScanning ? { rotate: 360 } : { rotate: 0 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  <div className="form-group">
+                    <label htmlFor="password" className="form-label">
+                      Create Password
+                    </label>
+                    <div className="password-input-container">
+                      <input
+                        ref={passwordInputRef}
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        className={`form-input ${activeInput === 'password' ? 'active' : ''} ${formData.password.length >= 10 ? 'max-length' : ''}`}
+                        placeholder="Enter 6-10 characters"
+                        value={formData.password}
+                        onChange={(e) => {
+                          if (e.target.value.length <= 10) {
+                            handleInputChange('password', e.target.value);
+                          }
+                        }}
+                        onFocus={() => {
+                          if (passwordInputRef.current) passwordInputRef.current.blur();
+                          handleInputFocus("password");
+                        }}
+                        autoComplete="off"
+                        readOnly
+                        maxLength={10}
+                        inputMode="none"
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle"
+                        onClick={togglePasswordVisibility}
                       >
-                        <div className="scanner-icon">
-                          {idRegistered ? "✅" : "📡"}
-                        </div>
-                      </motion.div>
+                        {showPassword ? "👁️" : "👁️‍🗨️"}
+                      </button>
+                    </div>
+                    <div className="password-guidelines">
+                      <span className="guideline-text">
+                        {formData.password.length > 0 ? `${formData.password.length}/10 characters` : '6-10 characters'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="security-note">
+                    <div className="security-icon">🎓</div>
+                    <p>
+                      {isEmployee
+                        ? "Your employee number will be used for official identification and record keeping."
+                        : "Your student number will be used for official identification and academic records."
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Email & SMS */}
+            {currentStep === 1 && (
+              <div className="form-phase active">
+                <div className="form-groups">
+                  <div className="form-group">
+                    <label htmlFor="email" className="form-label">
+                      Email Address
+                    </label>
+                    <input
+                      ref={emailInputRef}
+                      id="email"
+                      type="email"
+                      className={`form-input ${activeInput === 'email' ? 'active' : ''}`}
+                      placeholder="juan.delacruz@rtu.edu.ph"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      onFocus={() => {
+                        if (emailInputRef.current) emailInputRef.current.blur();
+                        handleInputFocus("email");
+                      }}
+                      autoComplete="off"
+                      readOnly
+                      inputMode="none"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="mobile" className="form-label">
+                      Mobile Number
+                    </label>
+                    <input
+                      ref={mobileInputRef}
+                      id="mobile"
+                      type="tel"
+                      className={`form-input ${activeInput === 'mobile' ? 'active' : ''}`}
+                      placeholder="0912 345 6789"
+                      value={formData.mobile}
+                      onChange={(e) => handleInputChange('mobile', e.target.value)}
+                      onFocus={() => {
+                        if (mobileInputRef.current) mobileInputRef.current.blur();
+                        handleInputFocus("mobile");
+                      }}
+                      autoComplete="off"
+                      readOnly
+                      inputMode="none"
+                    />
+                  </div>
+
+                  <div className="security-note">
+                    <div className="security-icon">🔒</div>
+                    <p>
+                      We'll use these details to send you important health updates and account recovery information.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: RFID Registration */}
+            {currentStep === 2 && (
+              <div className="form-phase active">
+                <div className="rfid-registration-section">
+                  <motion.div
+                    className="rfid-scanner-container"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    {/* Scanner Visual */}
+                    <div className={`rfid-scanner-visual ${isScanning ? 'scanning' : ''} ${idRegistered ? 'success' : ''}`}>
+                      <motion.div
+                        className="scanner-ring ring-1"
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      />
+                      <motion.div
+                        className="scanner-ring ring-2"
+                        animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                      />
+                      <div className="scanner-core">
+                        <motion.div
+                          animate={isScanning ? { rotate: 360 } : { rotate: 0 }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        >
+                          <div className="scanner-icon">
+                            {idRegistered ? "✅" : "📡"}
+                          </div>
+                        </motion.div>
+                      </div>
+                      {isScanning && (
+                        <motion.div
+                          className="scanner-beam"
+                          initial={{ top: "0%" }}
+                          animate={{ top: "100%" }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                        />
+                      )}
                     </div>
 
-                    {/* Scanning Beam */}
+                    {/* Status Text */}
+                    <motion.div
+                      className="rfid-status-text"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <h3>{getScannerStatusText()}</h3>
+                      <p>
+                        {idRegistered
+                          ? "Your ID has been successfully registered!"
+                          : "Place your ID card near the scanner to register it."}
+                      </p>
+                    </motion.div>
+
+                    {/* Progress Bar */}
                     {isScanning && (
                       <motion.div
-                        className="scanner-beam"
-                        initial={{ top: "0%" }}
-                        animate={{ top: "100%" }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                      />
+                        className="scan-progress-container-modern"
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: "100%" }}
+                      >
+                        <div className="progress-label">
+                          <span>Processing...</span>
+                          <span>{scanProgress}%</span>
+                        </div>
+                        <div className="progress-track">
+                          <motion.div
+                            className="progress-fill"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${scanProgress}%` }}
+                            transition={{ type: "spring", stiffness: 50 }}
+                          />
+                        </div>
+                      </motion.div>
                     )}
-                  </div>
-
-                  {/* Status Text */}
-                  <motion.div
-                    className="rfid-status-text"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <h3>{getScannerStatusText()}</h3>
-                    <p>
-                      {idRegistered
-                        ? "Your ID has been successfully registered!"
-                        : "Place your ID card near the scanner to register it."}
-                    </p>
                   </motion.div>
-
-                  {/* Modern Progress Bar */}
-                  {isScanning && (
-                    <motion.div
-                      className="scan-progress-container-modern"
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: "100%" }}
-                    >
-                      <div className="progress-label">
-                        <span>Processing...</span>
-                        <span>{scanProgress}%</span>
-                      </div>
-                      <div className="progress-track">
-                        <motion.div
-                          className="progress-fill"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${scanProgress}%` }}
-                          transition={{ type: "spring", stiffness: 50 }}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </motion.div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Navigation Buttons */}
+          <div className={`form-navigation ${currentStep > 0 ? 'dual-buttons' : 'single-button'}`}>
+            {currentStep < 2 && (
+              <button
+                className={`nav-button next-button ${!isStepValid() ? "disabled" : ""}`}
+                onClick={handleContinue}
+                disabled={!isStepValid()}
+              >
+                {getButtonText()}
+                <span className="button-arrow">→</span>
+              </button>
+            )}
+
+            {currentStep > 0 && !idRegistered && (
+              <button className="nav-button back-button" onClick={handleBack}>
+                ← Back
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Navigation Buttons */}
-        <div className={`form-navigation ${currentStep > 0 ? 'dual-buttons' : 'single-button'}`}>
-          {currentStep < 2 && (
-            <button
-              className={`nav-button next-button ${!isStepValid() ? "disabled" : ""}`}
-              onClick={handleContinue}
-              disabled={!isStepValid()}
-            >
-              {getButtonText()}
-              <span className="button-arrow">→</span>
-            </button>
-          )}
-
-          {currentStep > 0 && !idRegistered && (
-            <button className="nav-button back-button" onClick={handleBack}>
-              ← Back
-            </button>
-          )}
-        </div>
-
-        {/* Input Methods - Only show for first two steps */}
+        {/* Keyboard */}
         {currentStep < 2 && (
           <div className="register-keyboard">
             {keyboardKeys.map((row, rowIndex) => (
