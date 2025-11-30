@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Modal, Button } from "react-bootstrap";
 import "./RegisterPersonalInfo.css";
 import nameImage from "../../../assets/images/name.png";
 import ageImage from "../../../assets/images/age.png";
@@ -26,6 +27,7 @@ export default function RegisterPersonalInfo() {
   const [touchFeedback, setTouchFeedback] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState({ firstName: false, lastName: false });
+  const [showExitModal, setShowExitModal] = useState(false);
 
   const firstNameInputRef = useRef(null);
   const lastNameInputRef = useRef(null);
@@ -153,8 +155,17 @@ export default function RegisterPersonalInfo() {
       setCurrentStep(currentStep - 1);
       setErrorMessage("");
     } else {
-      navigate(-1);
+      setShowExitModal(true);
     }
+  };
+
+  const handleExit = () => {
+    setShowExitModal(true);
+  };
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    navigate("/login");
   };
 
   const handleKeyboardPress = (key) => {
@@ -323,6 +334,11 @@ export default function RegisterPersonalInfo() {
             </div>
           ))}
         </div>
+
+        {/* Close Button */}
+        <button className="close-button" onClick={handleExit}>
+          ×
+        </button>
 
         <div className="register-main-area">
           {/* Image */}
@@ -581,6 +597,29 @@ export default function RegisterPersonalInfo() {
           </div>
         )}
       </div>
+
+      {/* Exit Confirmation Modal */}
+      <Modal
+        show={showExitModal}
+        onHide={() => setShowExitModal(false)}
+        centered
+        className="exit-modal"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Exit Registration?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to cancel registering? Your progress will not be saved.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowExitModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirmExit}>
+            Yes, Exit
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

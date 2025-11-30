@@ -36,6 +36,7 @@
   flex-direction: column;
   border: 1px solid #e0e0e0;
   overflow-y: auto;
+  position: relative;
 }
 
 /* Header - Optimized for 768x1366 */
@@ -282,37 +283,6 @@
   background: #6c757d;
 }
 
-/* Back Button Styles */
-.back-button {
-  width: 100%;
-  padding: 16px 20px;
-  border: none;
-  border-radius: 12px;
-  background: #f1f3f4;
-  color: #5f6368;
-  font-size: 1.2rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  min-height: 55px;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.back-button:hover {
-  background: #e8eaed;
-  color: #333;
-}
-
-.back-button:active {
-  transform: scale(0.98);
-}
-
 /* Role-specific button colors */
 .continue-button.rtu-employees {
   background: linear-gradient(135deg, #16a34a, #15803d);
@@ -385,8 +355,7 @@
     font-size: 1rem;
   }
 
-  .continue-button,
-  .back-button {
+  .continue-button {
     padding: 14px 18px;
     font-size: 1.1rem;
     min-height: 50px;
@@ -415,8 +384,7 @@
     height: 90px;
   }
 
-  .continue-button,
-  .back-button {
+  .continue-button {
     font-size: 1.1rem;
     padding: 12px 16px;
     min-height: 48px;
@@ -426,8 +394,7 @@
 /* Extra small devices */
 @media (max-width: 480px) {
 
-  .continue-button,
-  .back-button {
+  .continue-button {
     font-size: 1rem;
     padding: 10px 14px;
     min-height: 45px;
@@ -450,19 +417,67 @@
   }
 }
 
-/* Modal Styles */
+/* Close Button */
+.close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 3rem;
+  color: #dc2626;
+  cursor: pointer;
+  z-index: 10;
+  padding: 5px;
+  line-height: 0.8;
+  transition: transform 0.2s;
+}
+
+.close-button:hover {
+  transform: scale(1.1);
+}
+
+/* Exit Modal Styling */
 .exit-modal .modal-content {
   border-radius: 20px;
   border: none;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .exit-modal .modal-header {
-  border-bottom: 1px solid #e9ecef;
-  border-radius: 20px 20px 0 0;
+  border-bottom: none;
+  padding: 20px 25px 10px;
+}
+
+.exit-modal .modal-title {
+  font-weight: 700;
+  color: #333;
+}
+
+.exit-modal .modal-body {
+  padding: 10px 25px 20px;
+  font-size: 1.1rem;
+  color: #666;
 }
 
 .exit-modal .modal-footer {
-  border-top: 1px solid #e9ecef;
-  border-radius: 0 0 20px 20px;
+  border-top: none;
+  padding: 0 25px 25px;
+}
+
+.exit-modal .btn-secondary {
+  background-color: #f1f3f5;
+  border: none;
+  color: #495057;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 10px;
+}
+
+.exit-modal .btn-danger {
+  background-color: #dc2626;
+  border: none;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 10px;
 }

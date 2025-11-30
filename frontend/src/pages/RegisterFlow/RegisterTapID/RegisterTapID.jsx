@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Modal, Button } from "react-bootstrap";
 import { motion } from "framer-motion";
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import "./RegisterTapID.css";
@@ -27,6 +28,7 @@ export default function RegisterTapID() {
   const [scannerStatus, setScannerStatus] = useState("ready");
   const [rfidCode, setRfidCode] = useState("");
   const [isCardTapped, setIsCardTapped] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   const idNumberInputRef = useRef(null);
   const passwordInputRef = useRef(null);
@@ -304,6 +306,15 @@ export default function RegisterTapID() {
     }
   };
 
+  const handleExit = () => {
+    setShowExitModal(true);
+  };
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    navigate("/login");
+  };
+
   const validateIDNumber = (idNumber) => {
     // Allow only numbers and hyphens, minimum 3 characters
     const idRegex = /^[0-9-]+$/;
@@ -533,6 +544,11 @@ export default function RegisterTapID() {
             </div>
           ))}
         </div>
+
+        {/* Close Button */}
+        <button className="close-button" onClick={handleExit}>
+          ×
+        </button>
 
         <div className="register-main-area">
           {/* Header - Only for Step 0 and 1 */}
@@ -1050,6 +1066,29 @@ export default function RegisterTapID() {
           </div>
         )}
       </div>
+
+      {/* Exit Confirmation Modal */}
+      <Modal
+        show={showExitModal}
+        onHide={() => setShowExitModal(false)}
+        centered
+        className="exit-modal"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Exit Registration?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to cancel registering? Your progress will not be saved.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowExitModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirmExit}>
+            Yes, Exit
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

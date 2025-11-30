@@ -1018,130 +1018,6 @@
   overflow-y: auto;
   min-height: 0;
   /* Crucial for nested flex scrolling */
-}
-
-.register-keyboard-key.number-key {
-  background: white;
-  color: #333;
-  font-weight: 700;
-  border-color: #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.register-keyboard-key.number-key:active {
-  background: #dc2626;
-  color: white;
-  border-color: #dc2626;
-}
-
-/* Touch Feedback */
-.touch-feedback {
-  transform: scale(0.95);
-  transition: transform 0.1s ease;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) and (orientation: portrait) {
-  .register-tapid-container {
-    padding: 15px;
-  }
-
-  .register-tapid-content {
-    max-width: 100%;
-    max-height: 95vh;
-    padding: 20px 15px;
-    border-radius: 20px;
-  }
-
-  .progress-steps {
-    margin-bottom: 20px;
-    padding: 0 10px;
-  }
-
-  .step-circle {
-    width: 40px;
-    height: 40px;
-    font-size: 1.1rem;
-  }
-
-  .step-label {
-    font-size: 0.9rem;
-  }
-
-  .register-step-image {
-    width: 120px;
-    height: 120px;
-  }
-
-  .register-tapid-title {
-    font-size: 2.2rem;
-    margin-bottom: 10px;
-  }
-
-  .register-tapid-subtitle {
-    font-size: 1.2rem;
-  }
-
-  .form-label {
-    font-size: 1.1rem;
-  }
-
-  .form-input {
-    padding: 16px 14px;
-    font-size: 1.2rem;
-  }
-
-  .nav-button {
-    font-size: 1.4rem;
-    padding: 16px;
-    min-height: 60px;
-  }
-
-  .register-keyboard-key {
-    min-height: 38px;
-    font-size: 0.85rem;
-  }
-}
-
-/* Extra small devices */
-@media (max-width: 480px) {
-  .register-tapid-title {
-    font-size: 1.8rem;
-  }
-
-  .register-tapid-subtitle {
-    font-size: 1rem;
-  }
-
-  .step-circle {
-    width: 35px;
-    height: 35px;
-    font-size: 1rem;
-  }
-
-  .step-label {
-    font-size: 0.8rem;
-  }
-
-  .form-input {
-    font-size: 1.1rem;
-    padding: 14px 12px;
-  }
-
-  .nav-button {
-    font-size: 1.2rem;
-    min-height: 50px;
-  }
-}
-
-/* Main Content Area - Wraps everything except progress steps */
-.register-main-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  min-height: 0;
-  /* Crucial for nested flex scrolling */
   width: 100%;
   padding-right: 5px;
   /* Space for scrollbar */
@@ -1204,203 +1080,6 @@
 .register-tapid-content.keyboard-visible-mode .register-tapid-subtitle {
   font-size: 1rem;
 }
-
-/* Main Content Area - Wraps everything except progress steps */
-.register-main-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  min-height: 0;
-  /* Crucial for nested flex scrolling */
-}
-
-.register-keyboard-key.number-key {
-  background: white;
-  color: #333;
-  font-weight: 700;
-  border-color: #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.register-keyboard-key.number-key:active {
-  background: #dc2626;
-  color: white;
-  border-color: #dc2626;
-}
-
-/* Touch Feedback */
-.touch-feedback {
-  transform: scale(0.95);
-  transition: transform 0.1s ease;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) and (orientation: portrait) {
-  .register-tapid-container {
-    padding: 15px;
-  }
-
-  .register-tapid-content {
-    max-width: 100%;
-    max-height: 95vh;
-    padding: 20px 15px;
-    border-radius: 20px;
-  }
-
-  .progress-steps {
-    margin-bottom: 20px;
-    padding: 0 10px;
-  }
-
-  .step-circle {
-    width: 40px;
-    height: 40px;
-    font-size: 1.1rem;
-  }
-
-  .step-label {
-    font-size: 0.9rem;
-  }
-
-  .register-step-image {
-    width: 120px;
-    height: 120px;
-  }
-
-  .register-tapid-title {
-    font-size: 2.2rem;
-    margin-bottom: 10px;
-  }
-
-  .register-tapid-subtitle {
-    font-size: 1.2rem;
-  }
-
-  .form-label {
-    font-size: 1.1rem;
-  }
-
-  .form-input {
-    padding: 16px 14px;
-    font-size: 1.2rem;
-  }
-
-  .nav-button {
-    font-size: 1.4rem;
-    padding: 16px;
-    min-height: 60px;
-  }
-
-  .register-keyboard-key {
-    min-height: 38px;
-    font-size: 0.85rem;
-  }
-}
-
-/* Extra small devices */
-@media (max-width: 480px) {
-  .register-tapid-title {
-    font-size: 1.8rem;
-  }
-
-  .register-tapid-subtitle {
-    font-size: 1rem;
-  }
-
-  .step-circle {
-    width: 35px;
-    height: 35px;
-    font-size: 1rem;
-  }
-
-  .step-label {
-    font-size: 0.8rem;
-  }
-
-  .form-input {
-    font-size: 1.1rem;
-    padding: 14px 12px;
-  }
-
-  .nav-button {
-    font-size: 1.2rem;
-    min-height: 50px;
-  }
-}
-
-/* Main Content Area - Wraps everything except progress steps */
-.register-main-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  min-height: 0;
-  /* Crucial for nested flex scrolling */
-  width: 100%;
-  padding-right: 5px;
-  /* Space for scrollbar */
-}
-
-/* Custom Scrollbar for main area */
-.register-main-area::-webkit-scrollbar {
-  width: 6px;
-}
-
-.register-main-area::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.register-main-area::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
-}
-
-/* Keyboard Visible Mode - 70/30 Split (Matches RegisterPersonalInfo) */
-.register-tapid-content.keyboard-visible-mode {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding-bottom: 0;
-}
-
-.register-tapid-content.keyboard-visible-mode .register-main-area {
-  flex: 7;
-  /* 70% */
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding-bottom: 10px;
-}
-
-.register-tapid-content.keyboard-visible-mode .register-keyboard {
-  flex: 3;
-  /* 30% */
-  min-height: 0;
-  margin-top: 0;
-  padding: 10px 5px;
-  border-top: 1px solid #eee;
-  background: #f8f9fa;
-}
-
-/* Adjustments for elements in keyboard mode */
-.register-tapid-content.keyboard-visible-mode .register-tapid-header {
-  flex-shrink: 0;
-  margin-bottom: 10px;
-}
-
-.register-tapid-content.keyboard-visible-mode .register-tapid-title {
-  font-size: 1.8rem;
-  margin-bottom: 5px;
-}
-
-.register-tapid-content.keyboard-visible-mode .register-tapid-subtitle {
-  font-size: 1rem;
-}
-
-
 
 /* Ensure keyboard keys match RegisterPersonalInfo size */
 .register-keyboard-key {
@@ -1793,6 +1472,7 @@
   text-align: center;
   width: 100%;
 }
+
 /* Email Suggestions - Gmail-style */
 .email-suggestions {
   display: flex;
@@ -1837,6 +1517,7 @@
     opacity: 0;
     transform: translateY(-5px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1890,7 +1571,8 @@
 
 /* Ensure scanner stage fits well */
 .scanner-stage {
-  transform: scale(0.9); /* Slightly scale down if needed to fit */
+  transform: scale(0.9);
+  /* Slightly scale down if needed to fit */
   margin-top: -10px;
 }
 
@@ -1898,62 +1580,7 @@
 /* Update Keyboard Keys - Add Border */
 .register-keyboard-key {
   border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-/* New ID Placeholder Styles */
-.id-structure-placeholder {
-  background: #f1f5f9;
-  border: 2px dashed #cbd5e1;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-}
-
-.id-scan-line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: #dc2626;
-  box-shadow: 0 0 4px #dc2626;
-  animation: scanPhoto 2s linear infinite;
-}
-
-.id-placeholder-lines {
-  width: 60%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.id-p-line {
-  height: 4px;
-  background: #e2e8f0;
-  border-radius: 2px;
-}
-
-.id-p-line.l1 { width: 100%; }
-.id-p-line.l2 { width: 70%; }
-
-@keyframes scanPhoto {
-  0% { top: 0%; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
-}
-
-
-/* Update Keyboard Keys - Add Border */
-.register-keyboard-key {
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 /* New ID Placeholder Styles */
@@ -1991,9 +1618,86 @@
 }
 
 @keyframes scanPhoto {
-  0% { top: 0%; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
+/* Close Button */
+.close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 3rem;
+  color: #dc2626;
+  cursor: pointer;
+  z-index: 10;
+  padding: 5px;
+  line-height: 0.8;
+  transition: transform 0.2s;
+}
+
+.close-button:hover {
+  transform: scale(1.1);
+}
+
+/* Exit Modal Styling */
+.exit-modal .modal-content {
+  border-radius: 20px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.exit-modal .modal-header {
+  border-bottom: none;
+  padding: 20px 25px 10px;
+}
+
+.exit-modal .modal-title {
+  font-weight: 700;
+  color: #333;
+}
+
+.exit-modal .modal-body {
+  padding: 10px 25px 20px;
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.exit-modal .modal-footer {
+  border-top: none;
+  padding: 0 25px 25px;
+}
+
+.exit-modal .btn-secondary {
+  background-color: #f1f3f5;
+  border: none;
+  color: #495057;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 10px;
+}
+
+.exit-modal .btn-danger {
+  background-color: #dc2626;
+  border: none;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 10px;
+}

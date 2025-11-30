@@ -127,6 +127,7 @@ export default function RegisterRole() {
   return (
     <div className="role-container">
       <div className="role-content">
+        <button className="close-button" onClick={handleBack}>×</button>
         <div className="role-header">
           <h1 className="role-title">Choose Your Category</h1>
           <p className="role-subtitle">Select the option that best describes your relationship with Rizal Technological University</p>
@@ -214,12 +215,6 @@ export default function RegisterRole() {
               disabled={!selectedRole}
             >
               {getButtonText()}
-            </button>
-            <button
-              className="back-button"
-              onClick={handleBack}
-            >
-              Back to Login
             </button>
           </div>
         </div>

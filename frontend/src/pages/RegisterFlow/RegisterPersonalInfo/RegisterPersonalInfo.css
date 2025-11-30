@@ -1055,6 +1055,202 @@
   height: 100%;
   font-size: 1.1rem;
 }
+
+/* Center title and subtitle */
+.register-personal-title {
+  text-align: center;
+  width: 100%;
+}
+
+.register-personal-subtitle {
+  text-align: center;
+  width: 100%;
+}
+
+/* Gender-specific border colors */
+.sex-option:first-child {
+  border-color: #3b82f6 !important;
+}
+
+.sex-option:first-child:hover {
+  border-color: #2563eb !important;
+}
+
+.sex-option:first-child.selected {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 25px 60px rgba(59, 130, 246, 0.25) !important;
+}
+
+.sex-option:first-child.selected::after {
+  background: #3b82f6 !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4) !important;
+}
+
+.sex-option:first-child.selected .role-card-icon {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3) !important;
+}
+
+.sex-option:last-child {
+  border-color: #ec4899 !important;
+}
+
+.register-keyboard-key.symbols-key.active {
+  background: #b91c1c;
+  transform: scale(1.02);
+  border-color: #b91c1c;
+}
+
+.register-keyboard-key.symbols-key:active {
+  background: #b91c1c;
+}
+
+/* Touch Feedback */
+.touch-feedback {
+  min-height: 0;
+  padding-bottom: 10px;
+}
+
+/* Error Message */
+.inline-error-message {
+  color: #dc2626;
+  background-color: #fef2f2;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 15px;
+  text-align: center;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) and (orientation: portrait) {
+  .register-personal-container {
+    padding: 10px;
+  }
+
+  .register-personal-content {
+    max-width: 100%;
+    max-height: 98vh;
+    height: 100%;
+    padding: 20px 15px;
+    border-radius: 24px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  .progress-steps {
+    margin-bottom: 15px;
+    padding: 0 5px;
+  }
+
+  .step-circle {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .step-label {
+    font-size: 0.9rem;
+  }
+
+  .register-step-image {
+    width: 200px;
+    height: 200px;
+  }
+
+  .register-personal-title {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+}
+
+/* Name Step Mode - 70/30 Split */
+.register-personal-content.name-step-mode {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 0;
+}
+
+.register-personal-content.name-step-mode .register-main-area {
+  flex: 7;
+  /* 70% */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 10px;
+}
+
+.register-personal-content.name-step-mode .register-keyboard {
+  flex: 3;
+  /* 30% */
+  min-height: 0;
+  margin-top: 0;
+  padding: 10px 5px;
+
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+/* Adjustments for Name Step elements to fit in 70% */
+.register-personal-content.name-step-mode .register-step-image {
+  width: 180px;
+  /* Restored to default size */
+  height: 180px;
+  margin-bottom: 10px;
+}
+
+.register-personal-content.name-step-mode .register-personal-title {
+  font-size: 1.6rem;
+  margin-bottom: 4px;
+}
+
+.register-personal-content.name-step-mode .register-personal-subtitle {
+  font-size: 1rem;
+}
+
+.register-personal-content.name-step-mode .form-groups {
+  gap: 15px;
+}
+
+.register-personal-content.name-step-mode .form-input {
+  padding: 25px 30px;
+  /* Larger padding */
+  font-size: 2rem;
+  /* Larger font size */
+  border-width: 3px;
+  border-radius: 18px;
+  height: auto;
+}
+
+.register-personal-content.name-step-mode .form-label {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+}
+
+.register-personal-content.name-step-mode .nav-button {
+  padding: 20px;
+  min-height: 80px;
+  /* Larger button */
+  font-size: 1.8rem;
+  border-radius: 18px;
+}
+
+.register-personal-content.name-step-mode .form-navigation {
+  margin-top: 25px;
+  margin-bottom: 20px;
+}
+
+.register-personal-content.name-step-mode .register-keyboard-key {
+  min-height: 0;
+  height: 100%;
+  font-size: 1.1rem;
+}
+
 /* Center title and subtitle */
 .register-personal-title {
   text-align: center;
@@ -1111,4 +1307,273 @@
 .sex-option:last-child.selected .role-card-icon {
   border-color: #ec4899 !important;
   box-shadow: 0 15px 40px rgba(236, 72, 153, 0.3) !important;
+}
+
+/* Touch Feedback */
+.touch-feedback {
+  min-height: 0;
+  padding-bottom: 10px;
+}
+
+/* Error Message */
+.inline-error-message {
+  color: #dc2626;
+  background-color: #fef2f2;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 15px;
+  text-align: center;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) and (orientation: portrait) {
+  .register-personal-container {
+    padding: 10px;
+  }
+
+  .register-personal-content {
+    max-width: 100%;
+    max-height: 98vh;
+    height: 100%;
+    padding: 20px 15px;
+    border-radius: 24px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  .progress-steps {
+    margin-bottom: 15px;
+    padding: 0 5px;
+  }
+
+  .step-circle {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .step-label {
+    font-size: 0.9rem;
+  }
+
+  .register-step-image {
+    width: 200px;
+    height: 200px;
+  }
+
+  .register-personal-title {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+}
+
+/* Name Step Mode - 70/30 Split */
+.register-personal-content.name-step-mode {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 0;
+}
+
+.register-personal-content.name-step-mode .register-main-area {
+  flex: 7;
+  /* 70% */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 10px;
+}
+
+.register-personal-content.name-step-mode .register-keyboard {
+  flex: 3;
+  /* 30% */
+  min-height: 0;
+  margin-top: 0;
+  padding: 10px 5px;
+
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+/* Adjustments for Name Step elements to fit in 70% */
+.register-personal-content.name-step-mode .register-step-image {
+  width: 180px;
+  /* Restored to default size */
+  height: 180px;
+  margin-bottom: 10px;
+}
+
+.register-personal-content.name-step-mode .register-personal-title {
+  font-size: 1.6rem;
+  margin-bottom: 4px;
+}
+
+.register-personal-content.name-step-mode .register-personal-subtitle {
+  font-size: 1rem;
+}
+
+.register-personal-content.name-step-mode .form-groups {
+  gap: 15px;
+}
+
+.register-personal-content.name-step-mode .form-input {
+  padding: 25px 30px;
+  /* Larger padding */
+  font-size: 2rem;
+  /* Larger font size */
+  border-width: 3px;
+  border-radius: 18px;
+  height: auto;
+}
+
+.register-personal-content.name-step-mode .form-label {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+}
+
+.register-personal-content.name-step-mode .nav-button {
+  padding: 20px;
+  min-height: 80px;
+  /* Larger button */
+  font-size: 1.8rem;
+  border-radius: 18px;
+}
+
+.register-personal-content.name-step-mode .form-navigation {
+  margin-top: 25px;
+  margin-bottom: 20px;
+}
+
+.register-personal-content.name-step-mode .register-keyboard-key {
+  min-height: 0;
+  height: 100%;
+  font-size: 1.1rem;
+}
+
+/* Center title and subtitle */
+.register-personal-title {
+  text-align: center;
+  width: 100%;
+}
+
+.register-personal-subtitle {
+  text-align: center;
+  width: 100%;
+}
+
+/* Gender-specific border colors */
+.sex-option:first-child {
+  border-color: #3b82f6 !important;
+}
+
+.sex-option:first-child:hover {
+  border-color: #2563eb !important;
+}
+
+.sex-option:first-child.selected {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 25px 60px rgba(59, 130, 246, 0.25) !important;
+}
+
+.sex-option:first-child.selected::after {
+  background: #3b82f6 !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4) !important;
+}
+
+.sex-option:first-child.selected .role-card-icon {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3) !important;
+}
+
+.sex-option:last-child {
+  border-color: #ec4899 !important;
+}
+
+.sex-option:last-child:hover {
+  border-color: #db2777 !important;
+}
+
+.sex-option:last-child.selected {
+  border-color: #ec4899 !important;
+  box-shadow: 0 25px 60px rgba(236, 72, 153, 0.25) !important;
+}
+
+.sex-option:last-child.selected::after {
+  background: #ec4899 !important;
+  box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4) !important;
+}
+
+.sex-option:last-child.selected .role-card-icon {
+  border-color: #ec4899 !important;
+  box-shadow: 0 15px 40px rgba(236, 72, 153, 0.3) !important;
+}
+
+/* Close Button */
+.close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 3rem;
+  color: #dc2626;
+  cursor: pointer;
+  z-index: 10;
+  padding: 5px;
+  line-height: 0.8;
+  transition: transform 0.2s;
+}
+
+.close-button:hover {
+  transform: scale(1.1);
+}
+
+/* Exit Modal Styling */
+.exit-modal .modal-content {
+  border-radius: 20px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.exit-modal .modal-header {
+  border-bottom: none;
+  padding: 20px 25px 10px;
+}
+
+.exit-modal .modal-title {
+  font-weight: 700;
+  color: #333;
+}
+
+.exit-modal .modal-body {
+  padding: 10px 25px 20px;
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.exit-modal .modal-footer {
+  border-top: none;
+  padding: 0 25px 25px;
+}
+
+.exit-modal .btn-secondary {
+  background-color: #f1f3f5;
+  border: none;
+  color: #495057;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 10px;
+}
+
+.exit-modal .btn-danger {
+  background-color: #dc2626;
+  border: none;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 10px;
 }
