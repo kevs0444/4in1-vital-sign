@@ -147,14 +147,9 @@ export default function RegisterTapID() {
     return isEmployee ? "Employee Number" : "Student Number";
   };
 
-  // Auto-focus inputs when step changes
+  // Auto-focus removed to prevent keyboard popup
   useEffect(() => {
     setErrorMessage(""); // Clear errors on step change
-    if (currentStep === 0 && idNumberInputRef.current) {
-      setTimeout(() => idNumberInputRef.current.focus(), 300);
-    } else if (currentStep === 1 && emailInputRef.current) {
-      setTimeout(() => emailInputRef.current.focus(), 300);
-    }
   }, [currentStep]);
 
   // Process RFID scan data
@@ -267,12 +262,7 @@ export default function RegisterTapID() {
       console.log('🔔 RFID Scanner Active - Ready to accept ID cards');
       document.addEventListener('keydown', handleGlobalKeyDown);
 
-      // Auto-focus on hidden RFID input
-      setTimeout(() => {
-        if (rfidInputRef.current) {
-          rfidInputRef.current.focus();
-        }
-      }, 500);
+      // Auto-focus removed to prevent keyboard popup
 
       return () => {
         console.log('🔕 RFID Scanner Deactivated');
@@ -523,7 +513,7 @@ export default function RegisterTapID() {
           pointerEvents: 'none'
         }}
         autoComplete="off"
-        autoFocus
+      // autoFocus removed
       />
 
       {/* Main Content Area - WRAPPED */}

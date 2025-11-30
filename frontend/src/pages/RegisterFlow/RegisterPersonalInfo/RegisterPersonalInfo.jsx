@@ -84,15 +84,8 @@ export default function RegisterPersonalInfo() {
       document.removeEventListener('touchstart', handleZoomTouchStart);
       document.removeEventListener('touchmove', handleZoomTouchMove);
       document.removeEventListener('touchend', handleZoomTouchEnd);
-      document.removeEventListener('gesturestart', preventZoom);
-      document.removeEventListener('gesturechange', preventZoom);
-      document.removeEventListener('gestureend', preventZoom);
+      setErrorMessage("");
     };
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -101,9 +94,7 @@ export default function RegisterPersonalInfo() {
     if (currentStep === 0) {
       setShowSymbols(false); // Ensure alphabet layout for name step
       setIsShift(true); // Auto-shift for first name
-      setTimeout(() => {
-        if (firstNameInputRef.current) firstNameInputRef.current.focus();
-      }, 300);
+      setActiveInput("first"); // Ensure first name is active
     }
   }, [currentStep]);
 

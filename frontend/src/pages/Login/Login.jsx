@@ -97,25 +97,10 @@ export default function LoginPage() {
     };
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // RFID Scanner Setup - LISTENS TO ALL KEYBOARD INPUT
   const setupRfidScanner = () => {
     console.log('🔔 RFID Scanner Active - Ready to accept any card');
     console.log('🎫 RFID Format: Numeric only (exact number from scanner)');
-
-    // Listen to ALL keyboard events on the entire document
     document.addEventListener('keydown', handleGlobalKeyDown);
-
-    // Auto-focus on hidden RFID input
-    setTimeout(() => {
-      if (rfidInputRef.current) {
-        rfidInputRef.current.focus();
-      }
-    }, 500);
   };
 
   // FIXED: Handle ALL keyboard input for RFID scanning with null check
@@ -268,13 +253,29 @@ export default function LoginPage() {
           }
         });
       } else {
-        setError(response.message); // No emoji prefix
+        // Use the specific message from the backend if available
+        const specificMessage = response.message || 'Invalid credentials';
+        setError(specificMessage);
         setIsLoading(false);
       }
 
     } catch (err) {
       console.error('❌ Manual login error:', err);
-      setError('Login failed. Please check your credentials and try again.'); // No emoji prefix
+
+      // Determine specific error message
+      let errorMessage = 'Login failed. Please check your credentials and try again.';
+
+      if (err.message) {
+        if (err.message.includes('Network Error') || err.message.includes('Failed to fetch')) {
+          errorMessage = 'Network Error: Cannot connect to server. Please ensure the backend is running.';
+        } else if (err.message.includes('401') || err.message.includes('404')) {
+          errorMessage = 'Invalid School Number or Password.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+
+      setError(errorMessage);
       setIsLoading(false);
     }
   };
@@ -441,7 +442,7 @@ export default function LoginPage() {
                   pointerEvents: 'none'
                 }}
                 autoComplete="off"
-                autoFocus
+              // autoFocus removed
               />
 
               {/* TOP SECTION - ID CARD FORMAT (25%) */}

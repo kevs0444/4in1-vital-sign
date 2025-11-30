@@ -12,13 +12,13 @@ const TIMEOUTS = {
 const fetchWithTimeout = async (url, options = {}, timeout = TIMEOUTS.MEDIUM) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
+
   try {
     console.log(`🌐 API Call: ${options.method || 'GET'} ${url}`);
     if (options.body) {
       console.log(`📦 Request Body:`, JSON.parse(options.body));
     }
-    
+
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
@@ -27,19 +27,29 @@ const fetchWithTimeout = async (url, options = {}, timeout = TIMEOUTS.MEDIUM) =>
         ...options.headers,
       }
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ HTTP error! status: ${response.status}`, errorText);
-      throw new Error(`HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.message) errorMessage = errorData.message;
+      } catch (e) {
+        // If not JSON, try text
+        try {
+          const errorText = await response.text();
+          if (errorText) errorMessage = errorText;
+        } catch (e2) { }
+      }
+      console.error(`❌ API Request Failed: ${errorMessage}`);
+      throw new Error(errorMessage);
     }
-    
+
     const result = await response.json();
     console.log(`✅ API Response:`, result);
     return result;
-    
+
   } catch (error) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
@@ -60,10 +70,10 @@ export const checkBackendStatus = async () => {
     return { available: true, ...response };
   } catch (error) {
     console.error('Backend status check failed:', error);
-    return { 
-      available: false, 
+    return {
+      available: false,
       error: 'Backend unavailable',
-      details: error.message 
+      details: error.message
     };
   }
 };
@@ -74,7 +84,7 @@ export const checkBackendStatus = async () => {
 export const loginWithRFID = async (rfidTag) => {
   try {
     console.log(`🎫 Attempting RFID login with tag: ${rfidTag}`);
-    
+
     const response = await fetchWithTimeout(`${API_URL}/login/login`, {
       method: 'POST',
       body: JSON.stringify({ rfid_tag: rfidTag }),
@@ -102,12 +112,12 @@ export const loginWithRFID = async (rfidTag) => {
         message: response.message
       };
     }
-    
+
   } catch (error) {
     console.error('❌ RFID login API error:', error);
     return {
       success: false,
-      message: 'Network error. Please try again.'
+      message: error.message || 'Network error. Please try again.'
     };
   }
 };
@@ -116,12 +126,12 @@ export const loginWithRFID = async (rfidTag) => {
 export const loginWithCredentials = async (schoolNumber, password) => {
   try {
     console.log(`🔑 Attempting manual login with school_number: ${schoolNumber}`);
-    
+
     const response = await fetchWithTimeout(`${API_URL}/login/login`, {
       method: 'POST',
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         school_number: schoolNumber,
-        password: password 
+        password: password
       }),
     }, TIMEOUTS.MEDIUM);
 
@@ -147,12 +157,12 @@ export const loginWithCredentials = async (schoolNumber, password) => {
         message: response.message
       };
     }
-    
+
   } catch (error) {
     console.error('❌ Manual login API error:', error);
     return {
       success: false,
-      message: 'Network error. Please try again.'
+      message: error.message || 'Network error. Please try again.'
     };
   }
 };
@@ -347,7 +357,7 @@ export const isNurse = () => hasRole('Nurse');
 export const registerUser = async (userData) => {
   try {
     console.log('📤 Sending registration data to backend:', userData);
-    
+
     const response = await fetchWithTimeout(`${API_URL}/register/register`, {
       method: 'POST',
       body: JSON.stringify({
@@ -385,7 +395,7 @@ export const registerUser = async (userData) => {
         message: response.message
       };
     }
-    
+
   } catch (error) {
     console.error('❌ Registration API error:', error);
     return {
@@ -526,7 +536,7 @@ export const deleteMeasurement = async (measurementId) => {
 
 export const sensorAPI = {
   // ==================== CONNECTION & GENERAL ====================
-  
+
   // Connect to Arduino
   connect: async () => {
     try {
@@ -536,10 +546,10 @@ export const sensorAPI = {
       }, TIMEOUTS.LONG);
     } catch (error) {
       console.error('Error connecting to Arduino:', error);
-      return { 
-        connected: false, 
-        error: 'Failed to connect to Arduino', 
-        details: error.message 
+      return {
+        connected: false,
+        error: 'Failed to connect to Arduino',
+        details: error.message
       };
     }
   },
@@ -553,10 +563,10 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error disconnecting from Arduino:', error);
-      return { 
-        status: 'error', 
+      return {
+        status: 'error',
         error: 'Failed to disconnect from Arduino',
-        details: error.message 
+        details: error.message
       };
     }
   },
@@ -568,10 +578,10 @@ export const sensorAPI = {
       return await fetchWithTimeout(`${API_URL}/sensor/status`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting sensor status:', error);
-      return { 
-        connected: false, 
+      return {
+        connected: false,
         error: 'Failed to get sensor status',
-        details: error.message 
+        details: error.message
       };
     }
   },
@@ -583,9 +593,9 @@ export const sensorAPI = {
       return await fetchWithTimeout(`${API_URL}/sensor/system_status`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting system status:', error);
-      return { 
-        connected: false, 
-        connection_established: false, 
+      return {
+        connected: false,
+        connection_established: false,
         sensors_ready: {},
         error: 'Failed to get system status',
         details: error.message
@@ -602,10 +612,10 @@ export const sensorAPI = {
       }, TIMEOUTS.LONG);
     } catch (error) {
       console.error('Error initializing system:', error);
-      return { 
-        status: 'error', 
+      return {
+        status: 'error',
         error: 'Failed to initialize system',
-        details: error.message 
+        details: error.message
       };
     }
   },
@@ -619,9 +629,9 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error resetting measurements:', error);
-      return { 
-        error: 'Failed to reset measurements', 
-        details: error.message 
+      return {
+        error: 'Failed to reset measurements',
+        details: error.message
       };
     }
   },
@@ -635,10 +645,10 @@ export const sensorAPI = {
       }, TIMEOUTS.LONG);
     } catch (error) {
       console.error('Error forcing reconnect:', error);
-      return { 
-        status: 'error', 
+      return {
+        status: 'error',
         error: 'Failed to force reconnect',
-        details: error.message 
+        details: error.message
       };
     }
   },
@@ -650,9 +660,9 @@ export const sensorAPI = {
       return await fetchWithTimeout(`${API_URL}/sensor/measurements`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting measurements:', error);
-      return { 
-        error: 'Failed to get measurements', 
-        details: error.message 
+      return {
+        error: 'Failed to get measurements',
+        details: error.message
       };
     }
   },
@@ -666,10 +676,10 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error shutting down all sensors:', error);
-      return { 
-        status: 'error', 
+      return {
+        status: 'error',
         error: 'Failed to shutdown all sensors',
-        details: error.message 
+        details: error.message
       };
     }
   },
@@ -683,9 +693,9 @@ export const sensorAPI = {
       }, TIMEOUTS.MEDIUM);
     } catch (error) {
       console.error('Error starting weight measurement:', error);
-      return { 
-        error: 'Failed to start weight measurement', 
-        details: error.message 
+      return {
+        error: 'Failed to start weight measurement',
+        details: error.message
       };
     }
   },
@@ -695,8 +705,8 @@ export const sensorAPI = {
       return await fetchWithTimeout(`${API_URL}/sensor/weight/status`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting weight status:', error);
-      return { 
-        status: 'error', 
+      return {
+        status: 'error',
         message: 'Failed to get weight status',
         details: error.message,
         measurement_active: false,
@@ -714,9 +724,9 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error preparing weight sensor:', error);
-      return { 
-        error: 'Failed to prepare weight sensor', 
-        details: error.message 
+      return {
+        error: 'Failed to prepare weight sensor',
+        details: error.message
       };
     }
   },
@@ -730,9 +740,9 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error shutting down weight sensor:', error);
-      return { 
-        error: 'Failed to shutdown weight sensor', 
-        details: error.message 
+      return {
+        error: 'Failed to shutdown weight sensor',
+        details: error.message
       };
     }
   },
@@ -746,9 +756,9 @@ export const sensorAPI = {
       }, TIMEOUTS.MEDIUM);
     } catch (error) {
       console.error('Error starting height measurement:', error);
-      return { 
-        error: 'Failed to start height measurement', 
-        details: error.message 
+      return {
+        error: 'Failed to start height measurement',
+        details: error.message
       };
     }
   },
@@ -758,8 +768,8 @@ export const sensorAPI = {
       return await fetchWithTimeout(`${API_URL}/sensor/height/status`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting height status:', error);
-      return { 
-        status: 'error', 
+      return {
+        status: 'error',
         message: 'Failed to get height status',
         details: error.message,
         measurement_active: false,
@@ -777,9 +787,9 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error preparing height sensor:', error);
-      return { 
-        error: 'Failed to prepare height sensor', 
-        details: error.message 
+      return {
+        error: 'Failed to prepare height sensor',
+        details: error.message
       };
     }
   },
@@ -793,9 +803,9 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error shutting down height sensor:', error);
-      return { 
-        error: 'Failed to shutdown height sensor', 
-        details: error.message 
+      return {
+        error: 'Failed to shutdown height sensor',
+        details: error.message
       };
     }
   },
@@ -809,9 +819,9 @@ export const sensorAPI = {
       }, TIMEOUTS.MEDIUM);
     } catch (error) {
       console.error('Error starting temperature measurement:', error);
-      return { 
-        error: 'Failed to start temperature measurement', 
-        details: error.message 
+      return {
+        error: 'Failed to start temperature measurement',
+        details: error.message
       };
     }
   },
@@ -821,8 +831,8 @@ export const sensorAPI = {
       return await fetchWithTimeout(`${API_URL}/sensor/temperature/status`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting temperature status:', error);
-      return { 
-        status: 'error', 
+      return {
+        status: 'error',
         message: 'Failed to get temperature status',
         details: error.message,
         measurement_active: false,
@@ -841,9 +851,9 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error preparing temperature sensor:', error);
-      return { 
-        error: 'Failed to prepare temperature sensor', 
-        details: error.message 
+      return {
+        error: 'Failed to prepare temperature sensor',
+        details: error.message
       };
     }
   },
@@ -857,9 +867,9 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error shutting down temperature sensor:', error);
-      return { 
-        error: 'Failed to shutdown temperature sensor', 
-        details: error.message 
+      return {
+        error: 'Failed to shutdown temperature sensor',
+        details: error.message
       };
     }
   },
@@ -873,9 +883,9 @@ export const sensorAPI = {
       }, TIMEOUTS.LONG);
     } catch (error) {
       console.error('Error starting MAX30102 measurement:', error);
-      return { 
-        error: 'Failed to start MAX30102 measurement', 
-        details: error.message 
+      return {
+        error: 'Failed to start MAX30102 measurement',
+        details: error.message
       };
     }
   },
@@ -885,8 +895,8 @@ export const sensorAPI = {
       return await fetchWithTimeout(`${API_URL}/sensor/max30102/status`, {}, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error getting MAX30102 status:', error);
-      return { 
-        status: 'error', 
+      return {
+        status: 'error',
         message: 'Failed to get MAX30102 status',
         details: error.message,
         measurement_active: false,
@@ -920,9 +930,9 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error preparing MAX30102 sensor:', error);
-      return { 
-        error: 'Failed to prepare MAX30102 sensor', 
-        details: error.message 
+      return {
+        error: 'Failed to prepare MAX30102 sensor',
+        details: error.message
       };
     }
   },
@@ -936,9 +946,9 @@ export const sensorAPI = {
       }, TIMEOUTS.SHORT);
     } catch (error) {
       console.error('Error shutting down MAX30102 sensor:', error);
-      return { 
-        error: 'Failed to shutdown MAX30102 sensor', 
-        details: error.message 
+      return {
+        error: 'Failed to shutdown MAX30102 sensor',
+        details: error.message
       };
     }
   },
@@ -948,7 +958,7 @@ export const sensorAPI = {
     try {
       console.log('👆 Checking finger detection...');
       const status = await sensorAPI.getMax30102Status();
-      
+
       return {
         finger_detected: status.finger_detected,
         ir_value: status.ir_value || 0,
@@ -967,138 +977,4 @@ export const sensorAPI = {
       };
     }
   },
-
-  // Check if measurement is complete
-  isMax30102MeasurementComplete: async () => {
-    try {
-      const status = await sensorAPI.getMax30102Status();
-      
-      return {
-        complete: status.final_result_shown || false,
-        has_valid_data: Boolean(status.final_results && 
-                               (status.final_results.heart_rate || status.final_results.spo2)),
-        final_results: status.final_results || {},
-        timestamp: new Date().toISOString()
-      };
-    } catch (error) {
-      console.error('Error checking measurement completion:', error);
-      return {
-        complete: false,
-        has_valid_data: false,
-        final_results: {},
-        error: error.message
-      };
-    }
-  }
 };
-
-// ==================== UTILITY FUNCTIONS ====================
-
-// Test all backend connections
-export const testAllConnections = async () => {
-  try {
-    console.log('🔍 Testing all backend connections...');
-    
-    const backendStatus = await checkBackendStatus();
-    const loginTest = await testLoginConnection();
-    const registrationTest = await testRegistrationConnection();
-    
-    const allSystemsGo = backendStatus.available && loginTest.success && registrationTest.success;
-    
-    console.log('📊 Connection Test Results:', {
-      backend: backendStatus.available,
-      login: loginTest.success,
-      registration: registrationTest.success,
-      allSystemsGo
-    });
-    
-    return {
-      backend: backendStatus,
-      login: loginTest,
-      registration: registrationTest,
-      allSystemsGo
-    };
-  } catch (error) {
-    console.error('Connection test failed:', error);
-    return {
-      backend: { available: false, error: error.message },
-      login: { success: false, error: error.message },
-      registration: { success: false, error: error.message },
-      allSystemsGo: false
-    };
-  }
-};
-
-// Clear all local storage (for debugging)
-export const clearAllStorage = () => {
-  try {
-    localStorage.clear();
-    console.log('🧹 All local storage cleared');
-    return true;
-  } catch (error) {
-    console.error('Error clearing storage:', error);
-    return false;
-  }
-};
-
-// Get login session info
-export const getSessionInfo = () => {
-  try {
-    const user = getCurrentUser();
-    const loginTime = localStorage.getItem('loginTime');
-    
-    return {
-      isAuthenticated: isAuthenticated(),
-      user: user,
-      loginTime: loginTime,
-      sessionDuration: loginTime ? Math.floor((new Date() - new Date(loginTime)) / 1000) : 0
-    };
-  } catch (error) {
-    console.error('Error getting session info:', error);
-    return {
-      isAuthenticated: false,
-      user: null,
-      loginTime: null,
-      sessionDuration: 0
-    };
-  }
-};
-
-// Validate session
-export const validateSession = () => {
-  const session = getSessionInfo();
-  
-  if (!session.isAuthenticated) {
-    console.log('🚫 Session not authenticated');
-    return false;
-  }
-  
-  // Optional: Add session timeout logic here
-  const maxSessionDuration = 24 * 60 * 60; // 24 hours in seconds
-  if (session.sessionDuration > maxSessionDuration) {
-    console.log('⏰ Session expired');
-    logoutUser();
-    return false;
-  }
-  
-  console.log('✅ Session valid');
-  return true;
-};
-
-// Get complete user data for navigation - NEW FUNCTION
-export const getUserDataForNavigation = () => {
-  const user = getCurrentUser();
-  if (!user) return null;
-  
-  return {
-    firstName: user.firstName,
-    lastName: user.lastName,
-    age: user.age,
-    sex: user.sex,
-    schoolNumber: user.schoolNumber,
-    role: user.role
-  };
-};
-
-// Export for backward compatibility
-export default sensorAPI;
