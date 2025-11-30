@@ -25,25 +25,40 @@
 .modern-rfid-wrapper {
     position: relative;
     z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 600px;
+    width: 100%;
 }
 
-/* Enhance scanner stage for card context */
+/* Enhanced scanner stage for card context */
 .scanner-stage {
     background: radial-gradient(circle at center, rgba(220, 38, 38, 0.03) 0%, transparent 70%);
     border-radius: 20px;
-    padding: 20px;
+    padding: 30px;
     margin-bottom: 20px;
     position: relative;
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Status display card enhancement */
 .modern-status-display {
     background: white;
     border-radius: 16px;
-    padding: 20px;
+    padding: 25px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
     border: 1px solid rgba(220, 38, 38, 0.1);
     transition: all 0.3s ease;
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
 }
 
 .modern-status-display:hover {
@@ -140,5 +155,548 @@
 
     50% {
         transform: translate(-20px, -20px);
+    }
+}
+
+/* Enhanced Virtual ID Card Styles - RED THEME */
+.virtual-id-card {
+    width: 350px;
+    height: 220px;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border-radius: 18px;
+    padding: 25px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 25px 50px rgba(220, 38, 38, 0.3);
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    perspective: 1000px;
+    transform-style: preserve-3d;
+    margin: 25px 0;
+}
+
+.virtual-id-card.registered {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.card-content {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-header-bar {
+    height: 5px;
+    background: linear-gradient(90deg, #fecaca, #f87171, #fecaca);
+    border-radius: 3px;
+    margin-bottom: 20px;
+    animation: headerShine 3s ease-in-out infinite;
+}
+
+.card-chip {
+    width: 45px;
+    height: 35px;
+    background: linear-gradient(135deg, #fef2f2, #fecaca);
+    border-radius: 6px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.card-chip::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.4) 50%, transparent 60%);
+    animation: chipShine 2s ease-in-out infinite;
+}
+
+.card-body-elements {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+}
+
+.card-photo-box {
+    width: 90px;
+    height: 110px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+}
+
+.id-scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #dc2626;
+    box-shadow: 0 0 8px #dc2626;
+    animation: scanPhoto 2s linear infinite;
+    z-index: 2;
+}
+
+.id-placeholder-lines {
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.id-p-line {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 2px;
+}
+
+.id-p-line.l1 {
+    width: 100%;
+}
+
+.id-p-line.l2 {
+    width: 70%;
+}
+
+.id-p-line.l3 {
+    width: 85%;
+}
+
+.card-lines-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+}
+
+.card-line {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+}
+
+.card-line.w-75 {
+    width: 75%;
+}
+
+.card-line.w-50 {
+    width: 50%;
+}
+
+.card-line.w-100 {
+    width: 100%;
+}
+
+.card-line.w-60 {
+    width: 60%;
+}
+
+.card-line.w-85 {
+    width: 85%;
+}
+
+/* Scanner Device */
+.modern-scanner-device {
+    width: 220px;
+    height: 25px;
+    background: linear-gradient(135deg, #374151, #4b5563);
+    border-radius: 12px 12px 0 0;
+    position: relative;
+    margin-bottom: -12px;
+    z-index: 3;
+}
+
+.modern-scanner-device::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 25px;
+    right: 25px;
+    height: 12px;
+    background: #dc2626;
+    border-radius: 6px;
+    opacity: 0.8;
+}
+
+.modern-scanner-device.active::before {
+    animation: scannerGlow 1s ease-in-out infinite alternate;
+}
+
+.scanner-surface {
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 170px;
+    height: 35px;
+    background: linear-gradient(135deg, #6b7280, #9ca3af);
+    border-radius: 10px 10px 0 0;
+}
+
+.scanner-emitter {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 12px;
+    background: #1f2937;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+}
+
+.emitter-light {
+    width: 100px;
+    height: 4px;
+    background: #dc2626;
+    border-radius: 2px;
+    opacity: 0;
+}
+
+.modern-scanner-device.active .emitter-light {
+    animation: emitterPulse 0.5s ease-in-out infinite alternate;
+}
+
+/* Animations */
+@keyframes headerShine {
+
+    0%,
+    100% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes chipShine {
+
+    0%,
+    100% {
+        transform: translateX(-100%);
+    }
+
+    50% {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes scannerGlow {
+    0% {
+        opacity: 0.4;
+        box-shadow: 0 0 15px #dc2626;
+    }
+
+    100% {
+        opacity: 1;
+        box-shadow: 0 0 25px #dc2626, 0 0 35px #dc2626;
+    }
+}
+
+@keyframes emitterPulse {
+    0% {
+        opacity: 0.4;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes scanPhoto {
+    0% {
+        top: 0%;
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        top: 100%;
+        opacity: 0;
+    }
+}
+
+/* Scan Laser Beam */
+.scan-laser-beam {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #dc2626, transparent);
+    box-shadow: 0 0 15px #dc2626;
+    z-index: 4;
+}
+
+/* Success Badge */
+.card-success-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70px;
+    height: 70px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+    box-shadow: 0 0 40px rgba(34, 197, 94, 0.6);
+    z-index: 10;
+}
+
+/* Modern Progress */
+.modern-progress-wrapper {
+    width: 100%;
+    margin-top: 25px;
+}
+
+.progress-value {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #dc2626;
+    margin-bottom: 10px;
+}
+
+.modern-progress-track {
+    width: 100%;
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.modern-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #dc2626, #ef4444);
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(220, 38, 38, 0.5);
+}
+
+/* Status Content */
+.status-content h2 {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    color: #1f2937;
+}
+
+.status-content .status-title.ready {
+    color: #dc2626;
+}
+
+.status-content .status-title.active {
+    color: #dc2626;
+}
+
+.status-content .status-title.reading {
+    color: #d97706;
+}
+
+.status-content .status-title.processing {
+    color: #7c3aed;
+}
+
+.status-content .status-title.success {
+    color: #059669;
+}
+
+.status-description {
+    font-size: 1.2rem;
+    color: #6b7280;
+    line-height: 1.6;
+}
+
+/* Floating Particles */
+.particles-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.floating-particle {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    background: #dc2626;
+    border-radius: 50%;
+    opacity: 0;
+}
+
+/* Enhanced Tap ID Container */
+.tap-id-card-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 700px;
+    padding: 30px;
+}
+
+.tap-id-image-wrapper {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tap-id-main-image {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 25px rgba(220, 38, 38, 0.3));
+}
+
+.tap-id-text-content {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.tap-id-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.tap-id-subtitle {
+    font-size: 1.4rem;
+    color: #6b7280;
+    max-width: 450px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* Centered Animations */
+.scanner-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.modern-rfid-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.tap-id-card-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .virtual-id-card {
+        width: 300px;
+        height: 190px;
+        padding: 20px;
+    }
+
+    .tap-id-main-image {
+        width: 160px;
+        height: 160px;
+    }
+
+    .tap-id-title {
+        font-size: 2rem;
+    }
+
+    .tap-id-subtitle {
+        font-size: 1.2rem;
+    }
+
+    .modern-status-display {
+        padding: 20px;
+    }
+
+    .modern-rfid-wrapper {
+        min-height: 550px;
+    }
+
+    .scanner-stage {
+        max-width: 400px;
+    }
+}
+
+@media (max-width: 480px) {
+    .virtual-id-card {
+        width: 280px;
+        height: 170px;
+        padding: 15px;
+    }
+
+    .card-photo-box {
+        width: 75px;
+        height: 95px;
+    }
+
+    .tap-id-main-image {
+        width: 140px;
+        height: 140px;
+    }
+
+    .tap-id-title {
+        font-size: 1.8rem;
+    }
+
+    .tap-id-subtitle {
+        font-size: 1.1rem;
+    }
+
+    .tap-id-card-container {
+        min-height: 500px;
+        padding: 20px;
+    }
+
+    .scanner-stage {
+        max-width: 350px;
+        padding: 20px;
     }
 }
