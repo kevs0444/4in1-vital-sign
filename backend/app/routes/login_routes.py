@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import text
 from app.utils.db import get_db
+from werkzeug.security import check_password_hash
 
 login_bp = Blueprint('login', __name__)
 
@@ -130,28 +131,51 @@ def handle_manual_login(school_number, password):
         
         print(f"🔍 Searching for school_number: {school_number}")
         
-        # Query user by school_number and password (plain text for now)
+        # Query user by school_number only, fetch password hash
         query = text("""
             SELECT user_id, rfid_tag, firstname, lastname, role, school_number, 
-                   email, mobile_number, age, sex, created_at
+                   email, mobile_number, age, sex, created_at, password
             FROM users 
-            WHERE school_number = :school_number AND password = :password
+            WHERE school_number = :school_number
         """)
         
         result = db.execute(query, {
-            'school_number': school_number,
-            'password': password
+            'school_number': school_number
         })
         user = result.fetchone()
         
         if not user:
-            print(f"❌ Invalid credentials for school_number: {school_number}")
+            print(f"❌ User not found for school_number: {school_number}")
+            return jsonify({
+                'success': False,
+                'message': '❌ Invalid School Number or password'
+            }), 401
+            
+        # Verify password
+        stored_password = user[11] # Password is the 12th column (index 11)
+        
+        is_valid = False
+        if stored_password:
+            # Try verifying as hash
+            try:
+                if check_password_hash(stored_password, password):
+                    is_valid = True
+            except:
+                pass
+                
+            # If hash verification failed, try plain text (for legacy users)
+            if not is_valid and stored_password == password:
+                is_valid = True
+                print("⚠️ Authenticated with legacy plain text password")
+        
+        if not is_valid:
+            print(f"❌ Invalid password for school_number: {school_number}")
             return jsonify({
                 'success': False,
                 'message': '❌ Invalid School Number or password'
             }), 401
         
-        # Convert row to dictionary
+        # Convert row to dictionary (excluding password)
         user_dict = {
             'user_id': user[0],
             'rfid_tag': user[1],

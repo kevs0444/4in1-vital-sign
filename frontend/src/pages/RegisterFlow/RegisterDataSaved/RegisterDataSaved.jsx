@@ -1,5 +1,5 @@
 // src/pages/RegisterFlow/RegisterDataSaved.jsx - FIXED RFID PROCESSING & MODERN UI
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./RegisterDataSaved.css";
 
@@ -88,34 +88,6 @@ export default function RegisterDataSaved() {
     return `${prefix}-${timestamp}-${randomPart}`;
   };
 
-  // Main effect for registration and countdown
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 100);
-
-    if (!hasSavedRef.current && registrationData.personalInfo) {
-      hasSavedRef.current = true;
-      console.log('🚀 Starting registration process...');
-      saveRegistrationToDatabase();
-    }
-
-    const countdownInterval = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          if (registrationStatus === 'success' || isDuplicate) {
-            handleContinue();
-            return 0;
-          }
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-      clearInterval(countdownInterval);
-    };
-  }, [registrationStatus, isDuplicate]);
-
   // Process RFID - Use EXACT numbers from scanner (NO CUTTING)
   const processRfidForRegistration = (rawRfid) => {
     console.log('🔢 Processing RFID for registration:', rawRfid);
@@ -147,8 +119,12 @@ export default function RegisterDataSaved() {
     return roleMap[userType] || "Student";
   };
 
+  const handleContinue = useCallback(() => {
+    navigate("/login");
+  }, [navigate]);
+
   // Enhanced registration function
-  const saveRegistrationToDatabase = async () => {
+  const saveRegistrationToDatabase = useCallback(async () => {
     try {
       console.log('💾 Saving registration data to database');
 
@@ -233,11 +209,35 @@ export default function RegisterDataSaved() {
       }
       hasSavedRef.current = false;
     }
-  };
+  }, [registrationData, handleContinue]);
 
-  const handleContinue = () => {
-    navigate("/login");
-  };
+  // Main effect for registration and countdown
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 100);
+
+    if (!hasSavedRef.current && registrationData.personalInfo) {
+      hasSavedRef.current = true;
+      console.log('🚀 Starting registration process...');
+      saveRegistrationToDatabase();
+    }
+
+    const countdownInterval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          if (registrationStatus === 'success' || isDuplicate) {
+            handleContinue();
+            return 0;
+          }
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(countdownInterval);
+    };
+  }, [registrationStatus, isDuplicate, saveRegistrationToDatabase, handleContinue, registrationData.personalInfo]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Just now";
