@@ -1,0 +1,144 @@
+/* Modern Card Structure for Tap ID Phase (Step 2 only) */
+.form-phase.active:has(.modern-rfid-wrapper) {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 24px;
+    padding: 25px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    border: none;
+    position: relative;
+    overflow: hidden;
+    animation: cardFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-phase.active:has(.modern-rfid-wrapper)::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #dc2626, #f87171, #dc2626);
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+}
+
+.modern-rfid-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+/* Enhance scanner stage for card context */
+.scanner-stage {
+    background: radial-gradient(circle at center, rgba(220, 38, 38, 0.03) 0%, transparent 70%);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+/* Status display card enhancement */
+.modern-status-display {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(220, 38, 38, 0.1);
+    transition: all 0.3s ease;
+}
+
+.modern-status-display:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* Card fade-in animation */
+@keyframes cardFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Shimmer effect for top border */
+@keyframes shimmer {
+    0% {
+        background-position: 0% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Pulse animation for card when scanning */
+.form-phase.active:has(.modern-scanner-device.active) {
+    animation: cardPulse 2s ease-in-out infinite;
+}
+
+@keyframes cardPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(220, 38, 38, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 25px 70px rgba(220, 38, 38, 0.2), 0 0 0 1px rgba(220, 38, 38, 0.3), 0 0 30px rgba(220, 38, 38, 0.15);
+    }
+}
+
+/* Success state for card */
+.form-phase.active:has(.modern-scanner-device.success) {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-color: #22c55e;
+    animation: successPulse 0.8s ease-out;
+}
+
+.form-phase.active:has(.modern-scanner-device.success)::before {
+    background: linear-gradient(90deg, #22c55e, #4ade80, #22c55e);
+}
+
+@keyframes successPulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Floating decorative elements */
+.form-phase.active:has(.modern-rfid-wrapper)::after {
+    content: '';
+    position: absolute;
+    bottom: -50px;
+    right: -50px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(220, 38, 38, 0.05) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 0;
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(-20px, -20px);
+    }
+}

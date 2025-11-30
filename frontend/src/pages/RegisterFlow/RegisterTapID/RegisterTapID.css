@@ -1842,3 +1842,158 @@
     transform: translateY(0);
   }
 }
+
+/* Tap ID Card Structure Styles */
+.tap-id-card-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+}
+
+.tap-id-image-wrapper {
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.tap-id-main-image {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.1));
+}
+
+.tap-id-text-content {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.tap-id-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.tap-id-subtitle {
+  font-size: 1.1rem;
+  color: #666;
+  max-width: 90%;
+  margin: 0 auto;
+  line-height: 1.4;
+}
+
+/* Ensure scanner stage fits well */
+.scanner-stage {
+  transform: scale(0.9); /* Slightly scale down if needed to fit */
+  margin-top: -10px;
+}
+
+
+/* Update Keyboard Keys - Add Border */
+.register-keyboard-key {
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* New ID Placeholder Styles */
+.id-structure-placeholder {
+  background: #f1f5f9;
+  border: 2px dashed #cbd5e1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.id-scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #dc2626;
+  box-shadow: 0 0 4px #dc2626;
+  animation: scanPhoto 2s linear infinite;
+}
+
+.id-placeholder-lines {
+  width: 60%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.id-p-line {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+}
+
+.id-p-line.l1 { width: 100%; }
+.id-p-line.l2 { width: 70%; }
+
+@keyframes scanPhoto {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+
+/* Update Keyboard Keys - Add Border */
+.register-keyboard-key {
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* New ID Placeholder Styles */
+.id-structure-placeholder {
+  background: #f1f5f9;
+  border: 2px dashed #cbd5e1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.id-scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #dc2626;
+  box-shadow: 0 0 4px #dc2626;
+  animation: scanPhoto 2s linear infinite;
+  z-index: 2;
+}
+
+.card-internal-icon {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+  opacity: 0.8;
+  filter: grayscale(0.2);
+}
+
+@keyframes scanPhoto {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+

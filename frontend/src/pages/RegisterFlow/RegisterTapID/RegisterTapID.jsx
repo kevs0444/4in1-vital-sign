@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import "./RegisterTapID.css";
+import "./TapIDCardStyles.css";
 import tapIdImage from "../../../assets/icons/tap-id-icon.png";
 
 export default function RegisterTapID() {
@@ -544,22 +545,13 @@ export default function RegisterTapID() {
         </div>
 
         <div className="register-main-area">
-          {/* Image Section - Replaced logo with tapIdImage */}
-          {currentStep === 2 && (
-            <div className="register-image-section">
-              <img
-                src={tapIdImage}
-                alt="Tap ID"
-                className="register-step-image"
-              />
+          {/* Header - Only for Step 0 and 1 */}
+          {currentStep !== 2 && (
+            <div className="register-tapid-header">
+              <h1 className="register-tapid-title">{steps[currentStep].title}</h1>
+              <p className="register-tapid-subtitle">{steps[currentStep].subtitle}</p>
             </div>
           )}
-
-          {/* Header */}
-          <div className="register-tapid-header">
-            <h1 className="register-tapid-title">{steps[currentStep].title}</h1>
-            <p className="register-tapid-subtitle">{steps[currentStep].subtitle}</p>
-          </div>
 
           {/* Inline Error Message */}
           {errorMessage && (
@@ -758,151 +750,170 @@ export default function RegisterTapID() {
             {/* Step 3: RFID Registration - MODERN REWORK */}
             {currentStep === 2 && (
               <div className="form-phase active">
-                <div className="modern-rfid-wrapper">
-                  <div className="scanner-stage">
-                    {/* Floating Particles */}
-                    <div className="particles-container">
-                      {[...Array(5)].map((_, i) => (
-                        <motion.div
-                          key={i}
-                          className="floating-particle"
-                          animate={{
-                            y: [0, -100],
-                            opacity: [0, 1, 0],
-                          }}
-                          transition={{
-                            duration: 2 + Math.random(),
-                            repeat: Infinity,
-                            delay: Math.random() * 2,
-                            ease: "linear"
-                          }}
-                          style={{
-                            left: `${20 + Math.random() * 60}%`,
-                          }}
-                        />
-                      ))}
-                    </div>
-
-                    {/* The Scanner Device */}
-                    <div className={`modern-scanner-device ${isScanning ? 'active' : ''} ${idRegistered ? 'success' : ''}`}>
-                      <div className="scanner-surface">
-                        <div className="scanner-grid"></div>
-                        <div className="scanner-emitter">
-                          <div className="emitter-light"></div>
-                        </div>
-                      </div>
-                      <div className="scanner-base"></div>
-                    </div>
-
-                    {/* The Virtual ID Card - REVERTED TO CSS */}
-                    <motion.div
-                      className={`virtual-id-card ${idRegistered ? 'registered' : ''}`}
-                      initial={{ y: -20, rotateX: 10 }}
-                      animate={
-                        isScanning
-                          ? { y: 10, rotateX: 0, scale: 0.95 }
-                          : idRegistered
-                            ? { y: -30, rotateX: 0, scale: 1.05, rotateY: 360 }
-                            : { y: -20, rotateX: 10 }
-                      }
-                      transition={
-                        idRegistered
-                          ? { duration: 0.8, ease: "backOut" }
-                          : { duration: 0.4, ease: "easeInOut" }
-                      }
-                    >
-                      <div className="card-content">
-                        <div className="card-header-bar"></div>
-                        <div className="card-chip"></div>
-                        <div className="card-body-elements">
-                          <div className="card-photo-box">
-                            <div className="photo-placeholder">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div className="card-lines-group">
-                            <div className="card-line w-75"></div>
-                            <div className="card-line w-50"></div>
-                            <div className="card-line w-100"></div>
-                          </div>
-                        </div>
-
-                        {/* Scanning Laser Effect */}
-                        {isScanning && (
-                          <motion.div
-                            className="scan-laser-beam"
-                            animate={{ top: ["0%", "100%"] }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                          />
-                        )}
-                        {/* Success Badge */}
-                        {idRegistered && (
-                          <motion.div
-                            className="card-success-badge"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: 0.5, type: "spring" }}
-                          >
-                            ✓
-                          </motion.div>
-                        )}
-                      </div>
-                    </motion.div>
-
-                    {/* Connection Rings */}
-                    {isScanning && (
-                      <div className="connection-rings">
-                        <motion.div
-                          className="c-ring r1"
-                          animate={{ scale: [1, 1.5], opacity: [0.8, 0] }}
-                          transition={{ duration: 1.5, repeat: Infinity }}
-                        />
-                        <motion.div
-                          className="c-ring r2"
-                          animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
-                          transition={{ duration: 1.5, delay: 0.5, repeat: Infinity }}
-                        />
-                      </div>
-                    )}
+                <div className="tap-id-card-container">
+                  {/* Image */}
+                  <div className="tap-id-image-wrapper">
+                    <img
+                      src={tapIdImage}
+                      alt="Tap ID"
+                      className="tap-id-main-image"
+                    />
                   </div>
 
-                  {/* Modern Status Display */}
-                  <div className="modern-status-display">
-                    <motion.div
-                      key={scannerStatus}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="status-content"
-                    >
-                      <h2 className={`status-title ${scannerStatus}`}>
-                        {idRegistered ? "Registration Complete!" : isScanning ? "Registering ID..." : "Tap ID Card"}
-                      </h2>
-                      <p className="status-description">
-                        {idRegistered
-                          ? "Your ID has been successfully linked. Redirecting..."
-                          : isScanning
-                            ? "Please hold your card steady on the scanner."
-                            : "Place your RFID card on the reader to begin registration."}
-                      </p>
-                    </motion.div>
+                  {/* Title & Subtitle */}
+                  <div className="tap-id-text-content">
+                    <h1 className="tap-id-title">{steps[currentStep].title}</h1>
+                    <p className="tap-id-subtitle">{steps[currentStep].subtitle}</p>
+                  </div>
 
-                    {/* Modern Progress Bar */}
-                    {isScanning && (
-                      <div className="modern-progress-wrapper">
-                        <div className="progress-value">{scanProgress}%</div>
-                        <div className="modern-progress-track">
+                  {/* Animation Wrapper */}
+                  <div className="modern-rfid-wrapper">
+                    <div className="scanner-stage">
+                      {/* Floating Particles */}
+                      <div className="particles-container">
+                        {[...Array(5)].map((_, i) => (
                           <motion.div
-                            className="modern-progress-bar"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${scanProgress}%` }}
-                            transition={{ type: "spring", stiffness: 100 }}
+                            key={i}
+                            className="floating-particle"
+                            animate={{
+                              y: [0, -100],
+                              opacity: [0, 1, 0],
+                            }}
+                            transition={{
+                              duration: 2 + Math.random(),
+                              repeat: Infinity,
+                              delay: Math.random() * 2,
+                              ease: "linear"
+                            }}
+                            style={{
+                              left: `${20 + Math.random() * 60}%`,
+                            }}
+                          />
+                        ))}
+                      </div>
+
+                      {/* The Scanner Device */}
+                      <div className={`modern-scanner-device ${isScanning ? 'active' : ''} ${idRegistered ? 'success' : ''}`}>
+                        <div className="scanner-surface">
+                          <div className="scanner-grid"></div>
+                          <div className="scanner-emitter">
+                            <div className="emitter-light"></div>
+                          </div>
+                        </div>
+                        <div className="scanner-base"></div>
+                      </div>
+
+                      {/* The Virtual ID Card */}
+                      <motion.div
+                        className={`virtual-id-card ${idRegistered ? 'registered' : ''}`}
+                        initial={{ y: -20, rotateX: 10 }}
+                        animate={
+                          isScanning
+                            ? { y: 10, rotateX: 0, scale: 0.95 }
+                            : idRegistered
+                              ? { y: -30, rotateX: 0, scale: 1.05, rotateY: 360 }
+                              : { y: -20, rotateX: 10 }
+                        }
+                        transition={
+                          idRegistered
+                            ? { duration: 0.8, ease: "backOut" }
+                            : { duration: 0.4, ease: "easeInOut" }
+                        }
+                      >
+                        <div className="card-content">
+                          <div className="card-header-bar"></div>
+                          <div className="card-chip"></div>
+                          <div className="card-body-elements">
+                            <div className="card-photo-box">
+                              <div className="photo-placeholder id-structure-placeholder">
+                                <div className="id-scan-line"></div>
+                                <div className="id-placeholder-lines">
+                                  <div className="id-p-line l1"></div>
+                                  <div className="id-p-line l2"></div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="card-lines-group">
+                              <div className="card-line w-75"></div>
+                              <div className="card-line w-50"></div>
+                              <div className="card-line w-100"></div>
+                            </div>
+                          </div>
+
+                          {/* Scanning Laser Effect */}
+                          {isScanning && (
+                            <motion.div
+                              className="scan-laser-beam"
+                              animate={{ top: ["0%", "100%"] }}
+                              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                            />
+                          )}
+                          {/* Success Badge */}
+                          {idRegistered && (
+                            <motion.div
+                              className="card-success-badge"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.5, type: "spring" }}
+                            >
+                              ✓
+                            </motion.div>
+                          )}
+                        </div>
+                      </motion.div>
+
+                      {/* Connection Rings */}
+                      {isScanning && (
+                        <div className="connection-rings">
+                          <motion.div
+                            className="c-ring r1"
+                            animate={{ scale: [1, 1.5], opacity: [0.8, 0] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                          />
+                          <motion.div
+                            className="c-ring r2"
+                            animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
+                            transition={{ duration: 1.5, delay: 0.5, repeat: Infinity }}
                           />
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+
+                    {/* Modern Status Display */}
+                    <div className="modern-status-display">
+                      <motion.div
+                        key={scannerStatus}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="status-content"
+                      >
+                        <h2 className={`status-title ${scannerStatus}`}>
+                          {idRegistered ? "Registration Complete!" : isScanning ? "Registering ID..." : "Tap ID Card"}
+                        </h2>
+                        <p className="status-description">
+                          {idRegistered
+                            ? "Your ID has been successfully linked. Redirecting..."
+                            : isScanning
+                              ? "Please hold your card steady on the scanner."
+                              : "Place your RFID card on the reader to begin registration."}
+                        </p>
+                      </motion.div>
+
+                      {/* Modern Progress Bar */}
+                      {isScanning && (
+                        <div className="modern-progress-wrapper">
+                          <div className="progress-value">{scanProgress}%</div>
+                          <div className="modern-progress-track">
+                            <motion.div
+                              className="modern-progress-bar"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${scanProgress}%` }}
+                              transition={{ type: "spring", stiffness: 100 }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
