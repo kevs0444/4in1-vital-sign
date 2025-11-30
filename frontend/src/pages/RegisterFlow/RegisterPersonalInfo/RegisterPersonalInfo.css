@@ -1055,3 +1055,60 @@
   height: 100%;
   font-size: 1.1rem;
 }
+/* Center title and subtitle */
+.register-personal-title {
+  text-align: center;
+  width: 100%;
+}
+
+.register-personal-subtitle {
+  text-align: center;
+  width: 100%;
+}
+
+/* Gender-specific border colors */
+.sex-option:first-child {
+  border-color: #3b82f6 !important;
+}
+
+.sex-option:first-child:hover {
+  border-color: #2563eb !important;
+}
+
+.sex-option:first-child.selected {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 25px 60px rgba(59, 130, 246, 0.25) !important;
+}
+
+.sex-option:first-child.selected::after {
+  background: #3b82f6 !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4) !important;
+}
+
+.sex-option:first-child.selected .role-card-icon {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3) !important;
+}
+
+.sex-option:last-child {
+  border-color: #ec4899 !important;
+}
+
+.sex-option:last-child:hover {
+  border-color: #db2777 !important;
+}
+
+.sex-option:last-child.selected {
+  border-color: #ec4899 !important;
+  box-shadow: 0 25px 60px rgba(236, 72, 153, 0.25) !important;
+}
+
+.sex-option:last-child.selected::after {
+  background: #ec4899 !important;
+  box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4) !important;
+}
+
+.sex-option:last-child.selected .role-card-icon {
+  border-color: #ec4899 !important;
+  box-shadow: 0 15px 40px rgba(236, 72, 153, 0.3) !important;
+}

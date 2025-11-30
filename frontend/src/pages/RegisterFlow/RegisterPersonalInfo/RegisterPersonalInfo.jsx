@@ -100,6 +100,7 @@ export default function RegisterPersonalInfo() {
     setFieldErrors({ firstName: false, lastName: false });
     if (currentStep === 0) {
       setShowSymbols(false); // Ensure alphabet layout for name step
+      setIsShift(true); // Auto-shift for first name
       setTimeout(() => {
         if (firstNameInputRef.current) firstNameInputRef.current.focus();
       }, 300);
@@ -190,23 +191,31 @@ export default function RegisterPersonalInfo() {
     }
 
     const applyFormatting = (prev, char) => {
-      let nextChar = isShift ? char.toUpperCase() : char.toLowerCase();
+      // Smart Casing: Auto-capitalize if start of string or after space
+      const isStartOrAfterSpace = prev.length === 0 || prev.slice(-1) === ' ';
+      let nextChar = (isStartOrAfterSpace || isShift) ? char.toUpperCase() : char.toLowerCase();
       setIsShift(false);
       return prev + nextChar;
     };
 
     if (key === "Del") {
+      let newVal;
       if (activeInput === "first") {
-        setFormData(prev => ({ ...prev, firstName: prev.firstName.slice(0, -1) }));
+        newVal = formData.firstName.slice(0, -1);
+        setFormData(prev => ({ ...prev, firstName: newVal }));
       } else {
-        setFormData(prev => ({ ...prev, lastName: prev.lastName.slice(0, -1) }));
+        newVal = formData.lastName.slice(0, -1);
+        setFormData(prev => ({ ...prev, lastName: newVal }));
       }
+      // Smart Shift: Activate if field becomes empty or ends in space
+      setIsShift(newVal.length === 0 || newVal.slice(-1) === ' ');
     } else if (key === "Space") {
       if (activeInput === "first") {
         setFormData(prev => ({ ...prev, firstName: prev.firstName + " " }));
       } else {
         setFormData(prev => ({ ...prev, lastName: prev.lastName + " " }));
       }
+      setIsShift(true); // Auto-shift after space
     } else {
       if (activeInput === "first") {
         setFormData(prev => ({ ...prev, firstName: applyFormatting(prev.firstName, key) }));
@@ -362,6 +371,9 @@ export default function RegisterPersonalInfo() {
                         e.preventDefault();
                         e.target.blur();
                         setActiveInput("first");
+                        // Smart Shift: Activate if empty or ends in space
+                        const val = formData.firstName;
+                        setIsShift(val.length === 0 || val.slice(-1) === ' ');
                         if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: false }));
                       }}
                       readOnly
@@ -385,6 +397,9 @@ export default function RegisterPersonalInfo() {
                         e.preventDefault();
                         e.target.blur();
                         setActiveInput("last");
+                        // Smart Shift: Activate if empty or ends in space
+                        const val = formData.lastName;
+                        setIsShift(val.length === 0 || val.slice(-1) === ' ');
                         if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: false }));
                       }}
                       readOnly

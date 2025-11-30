@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import "./RegisterTapID.css";
-import logo from "../../../assets/images/logo.png";
+import tapIdImage from "../../../assets/icons/tap-id-icon.png";
 
 export default function RegisterTapID() {
   const navigate = useNavigate();
@@ -337,6 +338,31 @@ export default function RegisterTapID() {
     if (errorMessage) setErrorMessage(""); // Clear error on input
   };
 
+  const handleDomainSelect = (domain) => {
+    const [username] = formData.email.split('@');
+    setFormData(prev => ({ ...prev, email: username + '@' + domain }));
+    if (emailInputRef.current) {
+      emailInputRef.current.focus();
+    }
+  };
+
+  const calculatePasswordStrength = (password) => {
+    if (!password) return { score: 0, label: "Enter password", color: "#e2e8f0" };
+
+    let score = 0;
+    if (password.length > 6) score += 1;
+    if (password.length >= 8) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+    if (score <= 2) return { score: 1, label: "Weak", color: "#ef4444" };
+    if (score <= 4) return { score: 2, label: "Medium", color: "#f59e0b" };
+    return { score: 3, label: "Strong", color: "#22c55e" };
+  };
+
+  const passwordStrength = calculatePasswordStrength(formData.password);
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -473,7 +499,7 @@ export default function RegisterTapID() {
     ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")"],
     ["-", "_", "+", "=", "{", "}", "[", "]", "|"],
     [".", ",", "?", "!", "'", '"', ":", ";", "Del"],
-    ["ABC", "~", "`", "\\", "/", "Space"],
+    ["ABC", "~", "Space", "`", "\\", "/"],
   ];
 
   const keyboardKeys = showSymbols ? symbolKeys : alphabetKeys;
@@ -518,12 +544,12 @@ export default function RegisterTapID() {
         </div>
 
         <div className="register-main-area">
-          {/* Image Section - Only show when keyboard is NOT present (Step 2) */}
+          {/* Image Section - Replaced logo with tapIdImage */}
           {currentStep === 2 && (
             <div className="register-image-section">
               <img
-                src={logo}
-                alt="Registration Step"
+                src={tapIdImage}
+                alt="Tap ID"
                 className="register-step-image"
               />
             </div>
@@ -613,9 +639,30 @@ export default function RegisterTapID() {
                         className="password-toggle"
                         onClick={togglePasswordVisibility}
                       >
-                        {showPassword ? "👁️" : "👁️‍🗨️"}
+                        {showPassword ? <VisibilityOff style={{ fontSize: '1.3rem', color: '#666' }} /> : <Visibility style={{ fontSize: '1.3rem', color: '#666' }} />}
                       </button>
                     </div>
+
+                    {/* Password Strength Meter */}
+                    {formData.password.length > 0 && (
+                      <div className="password-strength-container">
+                        <div className="strength-bars">
+                          {[1, 2, 3].map((level) => (
+                            <div
+                              key={level}
+                              className="strength-bar"
+                              style={{
+                                backgroundColor: level <= passwordStrength.score ? passwordStrength.color : '#e2e8f0'
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <span className="strength-label" style={{ color: passwordStrength.color }}>
+                          {passwordStrength.label}
+                        </span>
+                      </div>
+                    )}
+
                     <div className="password-guidelines">
                       <span className="guideline-text">
                         {formData.password.length > 0 ? `${formData.password.length}/10 characters` : '6-10 characters'}
@@ -649,7 +696,7 @@ export default function RegisterTapID() {
                       id="email"
                       type="email"
                       className={`form-input ${activeInput === 'email' ? 'active' : ''}`}
-                      placeholder="juan.delacruz@rtu.edu.ph"
+                      placeholder="juandelacruz@gmail.com"
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       onFocus={() => {
@@ -660,6 +707,20 @@ export default function RegisterTapID() {
                       readOnly
                       inputMode="none"
                     />
+                    {activeInput === 'email' && formData.email.includes('@') && (
+                      <div className="email-suggestions">
+                        {["gmail.com", "rtu.edu.ph", "yahoo.com", "outlook.com", "icloud.com"].map((domain) => (
+                          <button
+                            key={domain}
+                            type="button"
+                            className="email-suggestion-chip"
+                            onClick={() => handleDomainSelect(domain)}
+                          >
+                            {domain}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -694,85 +755,155 @@ export default function RegisterTapID() {
               </div>
             )}
 
-            {/* Step 3: RFID Registration */}
+            {/* Step 3: RFID Registration - MODERN REWORK */}
             {currentStep === 2 && (
               <div className="form-phase active">
-                <div className="rfid-registration-section">
-                  <motion.div
-                    className="rfid-scanner-container"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    {/* Scanner Visual */}
-                    <div className={`rfid-scanner-visual ${isScanning ? 'scanning' : ''} ${idRegistered ? 'success' : ''}`}>
-                      <motion.div
-                        className="scanner-ring ring-1"
-                        animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      />
-                      <motion.div
-                        className="scanner-ring ring-2"
-                        animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                      />
-                      <div className="scanner-core">
+                <div className="modern-rfid-wrapper">
+                  <div className="scanner-stage">
+                    {/* Floating Particles */}
+                    <div className="particles-container">
+                      {[...Array(5)].map((_, i) => (
                         <motion.div
-                          animate={isScanning ? { rotate: 360 } : { rotate: 0 }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        >
-                          <div className="scanner-icon">
-                            {idRegistered ? "✅" : "📡"}
-                          </div>
-                        </motion.div>
-                      </div>
-                      {isScanning && (
-                        <motion.div
-                          className="scanner-beam"
-                          initial={{ top: "0%" }}
-                          animate={{ top: "100%" }}
-                          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                          key={i}
+                          className="floating-particle"
+                          animate={{
+                            y: [0, -100],
+                            opacity: [0, 1, 0],
+                          }}
+                          transition={{
+                            duration: 2 + Math.random(),
+                            repeat: Infinity,
+                            delay: Math.random() * 2,
+                            ease: "linear"
+                          }}
+                          style={{
+                            left: `${20 + Math.random() * 60}%`,
+                          }}
                         />
-                      )}
+                      ))}
                     </div>
 
-                    {/* Status Text */}
+                    {/* The Scanner Device */}
+                    <div className={`modern-scanner-device ${isScanning ? 'active' : ''} ${idRegistered ? 'success' : ''}`}>
+                      <div className="scanner-surface">
+                        <div className="scanner-grid"></div>
+                        <div className="scanner-emitter">
+                          <div className="emitter-light"></div>
+                        </div>
+                      </div>
+                      <div className="scanner-base"></div>
+                    </div>
+
+                    {/* The Virtual ID Card - REVERTED TO CSS */}
                     <motion.div
-                      className="rfid-status-text"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
+                      className={`virtual-id-card ${idRegistered ? 'registered' : ''}`}
+                      initial={{ y: -20, rotateX: 10 }}
+                      animate={
+                        isScanning
+                          ? { y: 10, rotateX: 0, scale: 0.95 }
+                          : idRegistered
+                            ? { y: -30, rotateX: 0, scale: 1.05, rotateY: 360 }
+                            : { y: -20, rotateX: 10 }
+                      }
+                      transition={
+                        idRegistered
+                          ? { duration: 0.8, ease: "backOut" }
+                          : { duration: 0.4, ease: "easeInOut" }
+                      }
                     >
-                      <h3>{getScannerStatusText()}</h3>
-                      <p>
+                      <div className="card-content">
+                        <div className="card-header-bar"></div>
+                        <div className="card-chip"></div>
+                        <div className="card-body-elements">
+                          <div className="card-photo-box">
+                            <div className="photo-placeholder">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="card-lines-group">
+                            <div className="card-line w-75"></div>
+                            <div className="card-line w-50"></div>
+                            <div className="card-line w-100"></div>
+                          </div>
+                        </div>
+
+                        {/* Scanning Laser Effect */}
+                        {isScanning && (
+                          <motion.div
+                            className="scan-laser-beam"
+                            animate={{ top: ["0%", "100%"] }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                          />
+                        )}
+                        {/* Success Badge */}
+                        {idRegistered && (
+                          <motion.div
+                            className="card-success-badge"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.5, type: "spring" }}
+                          >
+                            ✓
+                          </motion.div>
+                        )}
+                      </div>
+                    </motion.div>
+
+                    {/* Connection Rings */}
+                    {isScanning && (
+                      <div className="connection-rings">
+                        <motion.div
+                          className="c-ring r1"
+                          animate={{ scale: [1, 1.5], opacity: [0.8, 0] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        />
+                        <motion.div
+                          className="c-ring r2"
+                          animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
+                          transition={{ duration: 1.5, delay: 0.5, repeat: Infinity }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Modern Status Display */}
+                  <div className="modern-status-display">
+                    <motion.div
+                      key={scannerStatus}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="status-content"
+                    >
+                      <h2 className={`status-title ${scannerStatus}`}>
+                        {idRegistered ? "Registration Complete!" : isScanning ? "Registering ID..." : "Tap ID Card"}
+                      </h2>
+                      <p className="status-description">
                         {idRegistered
-                          ? "Your ID has been successfully registered!"
-                          : "Place your ID card near the scanner to register it."}
+                          ? "Your ID has been successfully linked. Redirecting..."
+                          : isScanning
+                            ? "Please hold your card steady on the scanner."
+                            : "Place your RFID card on the reader to begin registration."}
                       </p>
                     </motion.div>
 
-                    {/* Progress Bar */}
+                    {/* Modern Progress Bar */}
                     {isScanning && (
-                      <motion.div
-                        className="scan-progress-container-modern"
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: "100%" }}
-                      >
-                        <div className="progress-label">
-                          <span>Processing...</span>
-                          <span>{scanProgress}%</span>
-                        </div>
-                        <div className="progress-track">
+                      <div className="modern-progress-wrapper">
+                        <div className="progress-value">{scanProgress}%</div>
+                        <div className="modern-progress-track">
                           <motion.div
-                            className="progress-fill"
+                            className="modern-progress-bar"
                             initial={{ width: 0 }}
                             animate={{ width: `${scanProgress}%` }}
-                            transition={{ type: "spring", stiffness: 50 }}
+                            transition={{ type: "spring", stiffness: 100 }}
                           />
                         </div>
-                      </motion.div>
+                      </div>
                     )}
-                  </motion.div>
+                  </div>
                 </div>
               </div>
             )}
