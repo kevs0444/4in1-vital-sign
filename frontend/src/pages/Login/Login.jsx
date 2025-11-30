@@ -402,8 +402,6 @@ export default function LoginPage() {
         return '✅ System Ready';
       case 'error':
         return '❌ System Offline';
-      default:
-        return '🔍 Checking connection...';
     }
   };
 
@@ -484,21 +482,6 @@ export default function LoginPage() {
                   <p className="login-subtitle">Enter your credentials below</p>
                 </div>
 
-                <AnimatePresence>
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Alert variant="danger" className="login-alert">
-                        {error}
-                      </Alert>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
                 <Form onSubmit={handleLogin}>
                   <Form.Group className="mb-3" controlId="schoolNumber">
                     <Form.Label>Student / Employee Number</Form.Label>
@@ -550,6 +533,22 @@ export default function LoginPage() {
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </button>
                     </div>
+
+                    {/* Inline Error Message */}
+                    <AnimatePresence>
+                      {error && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                          animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
+                          exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="login-inline-error"
+                        >
+                          <Error style={{ fontSize: '0.9rem' }} />
+                          <span>{error}</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </Form.Group>
 
                   <Button

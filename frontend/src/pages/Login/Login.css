@@ -758,6 +758,396 @@
 * {
   -webkit-touch-callout: none;
   -webkit-text-size-adjust: none;
+}
+
+.login-keyboard-key.space-key {
+  flex: 3;
+  font-size: 0.8rem;
+  background: #4a5568;
+  color: white;
+  border-color: #4a5568;
+  max-width: none;
+}
+
+.login-keyboard-key.space-key:active {
+  background: #2d3748;
+}
+
+.login-keyboard-key.shift-key {
+  background: #6c757d;
+  color: white;
+  font-size: 0.8rem;
+  border-color: #6c757d;
+}
+
+.login-keyboard-key.shift-key.active {
+  background: #dc2626;
+  transform: scale(1.02);
+  border-color: #dc2626;
+}
+
+.login-keyboard-key.shift-key:active {
+  background: #5a6268;
+}
+
+.login-keyboard-key.symbols-key {
+  background: #dc2626;
+  color: white;
+  font-size: 0.8rem;
+  border-color: #dc2626;
+}
+
+.login-keyboard-key.symbols-key.active {
+  background: #b91c1c;
+  transform: scale(1.02);
+  border-color: #b91c1c;
+}
+
+.login-keyboard-key.symbols-key:active {
+  background: #b91c1c;
+}
+
+.login-keyboard-key.number-key {
+  background: white;
+  color: #333;
+  font-weight: 700;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.login-keyboard-key.number-key:active {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+/* Spinner animation */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Touch optimization */
+@media (hover: none) and (pointer: coarse) {
+  .login-button:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .register-link:hover {
+    transform: none;
+  }
+
+  .login-keyboard-key:hover {
+    background: #f8f9fa;
+  }
+}
+
+/* Prevent text selection */
+.login-button,
+.login-keyboard-key,
+.register-link {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure proper flex behavior */
+.login-content>* {
+  min-height: 0;
+}
+
+/* Specific optimization for 768x1366 */
+@media (max-height: 1366px) and (max-width: 768px) {
+  .login-container {
+    max-width: 768px;
+    max-height: 1366px;
+  }
+
+  .login-card-section {
+    flex: 0 0 25%;
+    padding: 0.8rem 1.2rem;
+  }
+
+  .login-manual-section {
+    flex: 0 0 45%;
+    padding: 1rem 1.2rem;
+  }
+
+  .login-keyboard-section {
+    flex: 0 0 30%;
+    padding: 0.5rem;
+  }
+}
+
+/* Extra optimization for very small heights */
+@media (max-height: 800px) {
+  .login-card-section {
+    flex: 0 0 22%;
+    padding: 0.6rem 1rem;
+  }
+
+  .login-manual-section {
+    flex: 0 0 48%;
+    padding: 0.8rem 1rem;
+  }
+
+  .login-keyboard-section {
+    flex: 0 0 30%;
+    padding: 0.4rem;
+  }
+
+  .card-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 0.5rem;
+  }
+
+  .card-title {
+    font-size: 1.4rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .card-subtitle {
+    font-size: 0.85rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .login-title {
+    font-size: 1.4rem;
+  }
+
+  .form-input {
+    min-height: 45px;
+    padding: 0.8rem;
+  }
+
+  .login-button {
+    min-height: 55px;
+    padding: 1rem !important;
+  }
+
+  .login-keyboard-key {
+    min-height: 38px;
+    font-size: 0.85rem;
+  }
+}
+
+/* Additional zoom prevention */
+* {
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+html,
+body {
+  border-color: #4a5568;
+  max-width: none;
+}
+
+.login-keyboard-key.space-key:active {
+  background: #2d3748;
+}
+
+.login-keyboard-key.shift-key {
+  background: #6c757d;
+  color: white;
+  font-size: 0.8rem;
+  border-color: #6c757d;
+}
+
+.login-keyboard-key.shift-key.active {
+  background: #dc2626;
+  transform: scale(1.02);
+  border-color: #dc2626;
+}
+
+.login-keyboard-key.shift-key:active {
+  background: #5a6268;
+}
+
+.login-keyboard-key.symbols-key {
+  background: #dc2626;
+  color: white;
+  font-size: 0.8rem;
+  border-color: #dc2626;
+}
+
+.login-keyboard-key.symbols-key.active {
+  background: #b91c1c;
+  transform: scale(1.02);
+  border-color: #b91c1c;
+}
+
+.login-keyboard-key.symbols-key:active {
+  background: #b91c1c;
+}
+
+.login-keyboard-key.number-key {
+  background: white;
+  color: #333;
+  font-weight: 700;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.login-keyboard-key.number-key:active {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+/* Spinner animation */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Touch optimization */
+@media (hover: none) and (pointer: coarse) {
+  .login-button:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .register-link:hover {
+    transform: none;
+  }
+
+  .login-keyboard-key:hover {
+    background: #f8f9fa;
+  }
+}
+
+/* Prevent text selection */
+.login-button,
+.login-keyboard-key,
+.register-link {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure proper flex behavior */
+.login-content>* {
+  min-height: 0;
+}
+
+/* Specific optimization for 768x1366 */
+@media (max-height: 1366px) and (max-width: 768px) {
+  .login-container {
+    max-width: 768px;
+    max-height: 1366px;
+  }
+
+  .login-card-section {
+    flex: 0 0 25%;
+    padding: 0.8rem 1.2rem;
+  }
+
+  .login-manual-section {
+    flex: 0 0 45%;
+    padding: 1rem 1.2rem;
+  }
+
+  .login-keyboard-section {
+    flex: 0 0 30%;
+    padding: 0.5rem;
+  }
+}
+
+/* Extra optimization for very small heights */
+@media (max-height: 800px) {
+  .login-card-section {
+    flex: 0 0 22%;
+    padding: 0.6rem 1rem;
+  }
+
+  .login-manual-section {
+    flex: 0 0 48%;
+    padding: 0.8rem 1rem;
+  }
+
+  .login-keyboard-section {
+    flex: 0 0 30%;
+    padding: 0.4rem;
+  }
+
+  .card-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 0.5rem;
+  }
+
+  .card-title {
+    font-size: 1.4rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .card-subtitle {
+    font-size: 0.85rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .login-title {
+    font-size: 1.4rem;
+  }
+
+  .form-input {
+    min-height: 45px;
+    padding: 0.8rem;
+  }
+
+  .login-button {
+    min-height: 55px;
+    padding: 1rem !important;
+  }
+
+  .login-keyboard-key {
+    min-height: 38px;
+    font-size: 0.85rem;
+  }
+}
+
+/* Additional zoom prevention */
+* {
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: none;
   -moz-text-size-adjust: none;
   -ms-text-size-adjust: none;
   text-size-adjust: none;
@@ -768,4 +1158,24 @@ body {
   -ms-content-zooming: none;
   -ms-touch-action: manipulation;
   touch-action: manipulation;
+}
+
+/* Inline Error Styles */
+.login-inline-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #dc2626;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.5rem 0.8rem;
+  background: #fff5f5;
+  border-radius: 8px;
+  border: 1px solid #fee2e2;
+  overflow: hidden;
+}
+
+.login-inline-error .MuiSvgIcon-root {
+  font-size: 1.1rem !important;
+  flex-shrink: 0;
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Modal, Button } from "react-bootstrap";
 import "./RegisterRole.css";
 import employeeIcon from "../../../assets/icons/employee-icon.png";
 import studentIcon from "../../../assets/icons/student-icon.png";
@@ -8,6 +9,7 @@ export default function RegisterRole() {
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState(null);
   const [touchFeedback, setTouchFeedback] = useState(null);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // Add viewport meta tag to prevent zooming
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function RegisterRole() {
       document.head.appendChild(viewport);
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
-    
+
     // Prevent zooming via touch gestures
     document.addEventListener('touchstart', handleGlobalTouchStart, { passive: false });
     document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
@@ -27,7 +29,7 @@ export default function RegisterRole() {
     document.addEventListener('gesturestart', preventZoom, { passive: false });
     document.addEventListener('gesturechange', preventZoom, { passive: false });
     document.addEventListener('gestureend', preventZoom, { passive: false });
-    
+
     return () => {
       document.removeEventListener('touchstart', handleGlobalTouchStart);
       document.removeEventListener('touchmove', handleGlobalTouchMove);
@@ -103,6 +105,15 @@ export default function RegisterRole() {
     }
   };
 
+  const handleBack = () => {
+    setShowExitModal(true);
+  };
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    navigate("/login");
+  };
+
   const getButtonText = () => {
     if (!selectedRole) return "Select a category to continue";
     return "Continue to Next Step";
@@ -131,10 +142,10 @@ export default function RegisterRole() {
             style={{ '--role-color': roles[0].color }}
           >
             <div className="role-card-icon">
-              <img 
-                src={roles[0].icon} 
-                alt={`${roles[0].title} Icon`} 
-                className="role-icon-image" 
+              <img
+                src={roles[0].icon}
+                alt={`${roles[0].title} Icon`}
+                className="role-icon-image"
               />
             </div>
             <div className="role-card-content">
@@ -157,10 +168,10 @@ export default function RegisterRole() {
             style={{ '--role-color': roles[1].color }}
           >
             <div className="role-card-icon">
-              <img 
-                src={roles[1].icon} 
-                alt={`${roles[1].title} Icon`} 
-                className="role-icon-image" 
+              <img
+                src={roles[1].icon}
+                alt={`${roles[1].title} Icon`}
+                className="role-icon-image"
               />
             </div>
             <div className="role-card-content">
@@ -178,7 +189,7 @@ export default function RegisterRole() {
         <div className="role-controls">
           <div className="selected-role-info">
             {selectedRole && (
-              <div 
+              <div
                 className="selection-confirmation"
                 style={{
                   borderColor: roles.find(r => r.id === selectedRole)?.color,
@@ -193,9 +204,9 @@ export default function RegisterRole() {
               </div>
             )}
           </div>
-          
+
           <div className="continue-button-container">
-            <button 
+            <button
               className={getButtonClass()}
               onClick={handleContinue}
               onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.97)'}
@@ -204,9 +215,38 @@ export default function RegisterRole() {
             >
               {getButtonText()}
             </button>
+            <button
+              className="back-button"
+              onClick={handleBack}
+            >
+              Back to Login
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Exit Confirmation Modal */}
+      <Modal
+        show={showExitModal}
+        onHide={() => setShowExitModal(false)}
+        centered
+        className="exit-modal"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Exit Registration?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to go back to login? Your progress will not be saved.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowExitModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirmExit}>
+            Yes, Exit
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }
