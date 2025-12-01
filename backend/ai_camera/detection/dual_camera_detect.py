@@ -1,7 +1,7 @@
 import cv2
 import sys
 import os
-from ultralytics import YOLO
+import time
 
 # Global flag to check if AI is available
 AI_AVAILABLE = False
@@ -21,33 +21,44 @@ except Exception as e:
     print(f"Warning: {AI_ERROR_MSG}")
 
 class ComplianceDetector:
-    def __init__(self, feet_model_path='../models/best.pt', person_model_path='yolov8n.pt'):
-        self.feet_model = None
+    def __init__(self, person_model_path='yolov8n.pt', custom_model_path='models/best.pt'):
         self.person_model = None
+        self.feet_model = None
+        self.class_names = {}
         
         if AI_AVAILABLE:
             try:
-                # 1. Load New Custom Barefeet Model
-                # Path to the new barefeet model being trained
-                abs_feet_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'logs', 'yolov8_barefeet', 'weights', 'best.pt'))
-                
-                if os.path.exists(abs_feet_path):
-                    print(f"Loading Barefeet Model from {abs_feet_path}...")
-                    self.feet_model = YOLO(abs_feet_path)
-                else:
-                    print(f"Barefeet model not found at {abs_feet_path}. Waiting for training to complete.")
-                    self.feet_model = None
-                
-                # 2. Load Standard Person Model (YOLOv8n)
-                # This will download automatically if not present
+                # 1. Load Standard Person Model (YOLOv8n) for Body Detection
                 print(f"Loading Person Model from {person_model_path}...")
                 self.person_model = YOLO(person_model_path)
                 
-                print("All Models loaded successfully.")
+                # 2. Load Custom Feet Model (best.pt)
+                # Check if OpenVINO model exists for optimization
+                openvino_path = custom_model_path.replace('.pt', '_openvino_model')
+                if os.path.exists(openvino_path):
+                    print(f"Loading Optimized OpenVINO Model: {openvino_path}")
+                    self.feet_model = YOLO(openvino_path, task='detect')
+                elif os.path.exists(custom_model_path):
+                    print(f"Loading Custom Feet Model: {custom_model_path}")
+                    self.feet_model = YOLO(custom_model_path)
+                    
+                    # OPTIONAL: Auto-export to OpenVINO for Intel CPU acceleration
+                    # Uncomment the next lines to auto-optimize on first run
+                    # print("Optimizing model for Intel CPU (OpenVINO)...")
+                    # self.feet_model.export(format='openvino')
+                    # self.feet_model = YOLO(openvino_path, task='detect')
+                else:
+                    print(f"Custom model not found at {custom_model_path}. Feet detection disabled.")
+                
+                if self.feet_model:
+                    self.class_names = self.feet_model.names
+                    print(f"Feet Model Classes: {self.class_names}")
+                    
+                print("AI Models loaded successfully.")
             except Exception as e:
                 print(f"Failed to load models: {e}")
-                self.feet_model = None
                 self.person_model = None
+                self.feet_model = None
         else:
             print("AI is unavailable. Running in pass-through mode.")
 
@@ -59,7 +70,8 @@ class ComplianceDetector:
             return frame, False
 
         # Use Standard Model, Class 0 = Person
-        results = self.person_model(frame, verbose=False, classes=[0]) 
+        # conf=0.5 ensures we don't detect ghosts
+        results = self.person_model(frame, verbose=False, classes=[0], conf=0.5) 
         annotated_frame = results[0].plot()
         
         # Check if person is detected
@@ -68,38 +80,57 @@ class ComplianceDetector:
 
     def detect_feet_compliance(self, frame):
         """
-        Camera 2 Logic: Check for Bare Feet using Custom Model.
+        Camera 2 Logic: Check for Barefeet/Socks vs Footwear.
+        Returns:
+            frame: Annotated frame
+            status_text: "Valid", "Invalid", or "Waiting"
+            is_compliant: True/False
         """
-        if frame is None:
-            return frame, "Frame Error", False
-            
-        if self.feet_model is None:
-            return frame, "Model Training/Loading...", False
+        if frame is None or self.feet_model is None:
+            return frame, "AI Not Loaded", False
 
-        # Use Custom Barefeet Model
-        # Using 0.25 confidence as a balanced starting point for the new model
-        results = self.feet_model(frame, verbose=False, conf=0.25)
+        # Run Inference
+        # conf=0.4: Moderate confidence threshold
+        results = self.feet_model(frame, verbose=False, conf=0.4)
         annotated_frame = results[0].plot()
         
         detections = results[0].boxes
         
-        bare_feet_detected = False
+        # Logic Counters
+        feet_count = 0
+        socks_count = 0
+        shoe_count = 0
         
         for box in detections:
-            # The model is trained on 'bare_feet'
-            bare_feet_detected = True
+            cls_id = int(box.cls[0])
+            class_name = self.class_names.get(cls_id, "unknown").lower()
             
-        if bare_feet_detected:
-            status = "COMPLIANT: Bare Feet Detected"
-            is_compliant = True
-            # Draw green border
-            h, w = frame.shape[:2]
-            cv2.rectangle(annotated_frame, (0,0), (w,h), (0,255,0), 10)
-        else:
-            status = "WAITING: Please step on scale barefoot"
+            if "barefeet" in class_name:
+                feet_count += 1
+            elif "socks" in class_name:
+                socks_count += 1
+            elif "footwear" in class_name:
+                shoe_count += 1
+        
+        # --- DECISION LOGIC ---
+        status_text = "Waiting..."
+        is_compliant = False
+        color = (0, 255, 255) # Yellow (Waiting)
+
+        if shoe_count > 0:
+            status_text = "INVALID: Footwear Detected"
             is_compliant = False
-            # Draw orange border
-            h, w = frame.shape[:2]
-            cv2.rectangle(annotated_frame, (0,0), (w,h), (0,165,255), 10)
-            
-        return annotated_frame, status, is_compliant
+            color = (0, 0, 255) # Red
+        elif feet_count > 0 or socks_count > 0:
+            status_text = "VALID: Ready to Measure"
+            is_compliant = True
+            color = (0, 255, 0) # Green
+        else:
+            status_text = "Waiting for Feet..."
+            is_compliant = False
+            color = (0, 255, 255) # Yellow
+
+        # Draw Status on Frame
+        cv2.putText(annotated_frame, status_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+        
+        return annotated_frame, status_text, is_compliant
