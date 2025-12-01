@@ -10,21 +10,16 @@ import threading
 # Add parent directory to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# from detection.simple_detect import PersonDetector
-
 class DatasetCollectorGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Weight Platform - Dataset Collector")
-        self.root.geometry("1280x720")
+        self.root.title("Universal Dataset Collector - 4in1 Vital Sign")
+        self.root.geometry("1400x850")
         self.root.configure(bg="#1e1e1e")
 
         # Configuration
-        # Default to Camera Roll, but user can change it
         self.base_save_dir = r"C:\Users\VitalSign\Pictures\Camera Roll"
         self.camera_index = 0
-        self.camera_index = 0
-        # self.detector = PersonDetector() # Removed as per request
         
         # State
         self.cap = None
@@ -35,6 +30,13 @@ class DatasetCollectorGUI:
         self.crop_start = None
         self.is_drawing = False
         self.zoom_factor = 1.0
+        
+        # Modes
+        self.modes = {
+            "Weight (Feet)": ["platform", "barefeet", "socks", "footwear"],
+            "Body (Wearables)": ["no_wearables", "watch", "smart_watch", "bracelet", "necklace", "glasses"]
+        }
+        self.current_mode = "Weight (Feet)"
         
         self.setup_ui()
         
@@ -51,37 +53,50 @@ class DatasetCollectorGUI:
         # --- Header ---
         header = tk.Frame(self.root, bg="#2d2d2d", height=50)
         header.pack(fill=tk.X)
-        tk.Label(header, text="Weight Platform Data Collector", font=("Segoe UI", 16, "bold"), bg="#2d2d2d", fg="white").pack(side=tk.LEFT, padx=20, pady=5)
+        tk.Label(header, text="Universal Dataset Collector", font=("Segoe UI", 16, "bold"), bg="#2d2d2d", fg="white").pack(side=tk.LEFT, padx=20, pady=5)
         
         # --- Sidebar (Controls) ---
-        # Width increased slightly for better spacing
-        sidebar = tk.Frame(self.root, bg="#252526", width=320)
+        sidebar = tk.Frame(self.root, bg="#252526", width=340)
         sidebar.pack(side=tk.RIGHT, fill=tk.Y, padx=0, pady=0)
         sidebar.pack_propagate(False)
         
-        # 1. Save Directory (Compact)
+        # 1. Camera & Mode Settings
+        settings_group = tk.LabelFrame(sidebar, text="System Settings", font=("Segoe UI", 10, "bold"), bg="#252526", fg="white")
+        settings_group.pack(fill=tk.X, padx=10, pady=10)
+        
+        # Camera Select
+        tk.Label(settings_group, text="Camera Source:", font=("Segoe UI", 9), bg="#252526", fg="#aaaaaa").pack(anchor="w", padx=5)
+        self.cam_combo = ttk.Combobox(settings_group, values=["Camera 0", "Camera 1", "Camera 2"], state="readonly")
+        self.cam_combo.current(0)
+        self.cam_combo.pack(fill=tk.X, padx=5, pady=(0, 5))
+        self.cam_combo.bind("<<ComboboxSelected>>", self.change_camera)
+        
+        # Mode Select
+        tk.Label(settings_group, text="Collection Mode:", font=("Segoe UI", 9), bg="#252526", fg="#aaaaaa").pack(anchor="w", padx=5)
+        self.mode_combo = ttk.Combobox(settings_group, values=list(self.modes.keys()), state="readonly")
+        self.mode_combo.current(0)
+        self.mode_combo.pack(fill=tk.X, padx=5, pady=(0, 5))
+        self.mode_combo.bind("<<ComboboxSelected>>", self.change_mode)
+
+        # 2. Save Directory
         dir_frame = tk.Frame(sidebar, bg="#252526")
-        dir_frame.pack(fill=tk.X, padx=10, pady=(10, 5))
+        dir_frame.pack(fill=tk.X, padx=10, pady=5)
         tk.Label(dir_frame, text="Save To:", font=("Segoe UI", 10, "bold"), bg="#252526", fg="white").pack(anchor="w")
         self.lbl_save_dir = tk.Label(dir_frame, text=self.get_short_path(self.base_save_dir), font=("Segoe UI", 8), bg="#252526", fg="#aaaaaa", wraplength=300, justify=tk.LEFT)
         self.lbl_save_dir.pack(fill=tk.X)
         ttk.Button(dir_frame, text="Change Folder...", command=self.change_save_directory).pack(fill=tk.X, pady=2)
 
-        # 2. Zoom Controls (High Priority - Moved Up)
-        zoom_group = tk.LabelFrame(sidebar, text="Digital Zoom", font=("Segoe UI", 10, "bold"), bg="#252526", fg="white")
-        zoom_group.pack(fill=tk.X, padx=10, pady=5)
-        
-        zoom_btns = tk.Frame(zoom_group, bg="#252526")
-        zoom_btns.pack(fill=tk.X, padx=5, pady=5)
-        
-        ttk.Button(zoom_btns, text="-", width=5, command=self.zoom_out).pack(side=tk.LEFT, padx=5)
-        self.lbl_zoom = tk.Label(zoom_btns, text="1.0x", font=("Segoe UI", 12, "bold"), bg="#252526", fg="#00ff00", width=6)
-        self.lbl_zoom.pack(side=tk.LEFT, padx=5)
-        ttk.Button(zoom_btns, text="+", width=5, command=self.zoom_in).pack(side=tk.LEFT, padx=5)
-
-        # 3. Brightness / Filter
+        # 3. Image Adjustments
         filter_group = tk.LabelFrame(sidebar, text="Image Adjustments", font=("Segoe UI", 10, "bold"), bg="#252526", fg="white")
         filter_group.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Zoom
+        zoom_frame = tk.Frame(filter_group, bg="#252526")
+        zoom_frame.pack(fill=tk.X, padx=5, pady=2)
+        ttk.Button(zoom_frame, text="-", width=4, command=self.zoom_out).pack(side=tk.LEFT)
+        self.lbl_zoom = tk.Label(zoom_frame, text="1.0x", font=("Segoe UI", 10, "bold"), bg="#252526", fg="#00ff00", width=6)
+        self.lbl_zoom.pack(side=tk.LEFT, padx=5)
+        ttk.Button(zoom_frame, text="+", width=4, command=self.zoom_in).pack(side=tk.LEFT)
         
         # Brightness
         tk.Label(filter_group, text="Brightness", font=("Segoe UI", 9), bg="#252526", fg="#aaaaaa").pack(anchor="w", padx=5)
@@ -92,30 +107,24 @@ class DatasetCollectorGUI:
         # Rotation
         tk.Label(filter_group, text="Rotation / Angle", font=("Segoe UI", 9), bg="#252526", fg="#aaaaaa").pack(anchor="w", padx=5, pady=(5,0))
         self.rotation_var = tk.DoubleVar(value=0.0)
-        self.scale_rotation = tk.Scale(filter_group, from_=-45.0, to=45.0, resolution=0.5, orient=tk.HORIZONTAL, variable=self.rotation_var, bg="#252526", fg="white", highlightthickness=0, showvalue=True)
+        self.scale_rotation = tk.Scale(filter_group, from_=-180.0, to=180.0, resolution=90.0, orient=tk.HORIZONTAL, variable=self.rotation_var, bg="#252526", fg="white", highlightthickness=0, showvalue=True)
         self.scale_rotation.pack(fill=tk.X, padx=5)
         
         ttk.Button(filter_group, text="Reset Adjustments", command=self.reset_adjustments).pack(fill=tk.X, padx=5, pady=5)
 
-        # 4. Class Selection
-        class_group = tk.LabelFrame(sidebar, text="Class Selection", font=("Segoe UI", 10, "bold"), bg="#252526", fg="white")
-        class_group.pack(fill=tk.X, padx=10, pady=5)
+        # 4. Class Selection (Dynamic)
+        self.class_group = tk.LabelFrame(sidebar, text="Class Selection", font=("Segoe UI", 10, "bold"), bg="#252526", fg="white")
+        self.class_group.pack(fill=tk.X, padx=10, pady=5)
         
-        self.var_class_name = tk.StringVar(value="barefeet")
-        self.entry_class = ttk.Entry(class_group, textvariable=self.var_class_name, font=("Segoe UI", 11))
+        self.var_class_name = tk.StringVar(value="")
+        self.entry_class = ttk.Entry(self.class_group, textvariable=self.var_class_name, font=("Segoe UI", 11))
         self.entry_class.pack(fill=tk.X, padx=5, pady=5)
         
-        # Quick Buttons
-        btn_frame = tk.Frame(class_group, bg="#252526")
-        btn_frame.pack(fill=tk.X, padx=5, pady=2)
+        self.btn_frame = tk.Frame(self.class_group, bg="#252526")
+        self.btn_frame.pack(fill=tk.X, padx=5, pady=2)
         
-        def set_class(name):
-            self.var_class_name.set(name)
-            
-        ttk.Button(btn_frame, text="✔ Empty Platform", command=lambda: set_class("platform")).pack(fill=tk.X, pady=1)
-        ttk.Button(btn_frame, text="✔ Barefoot", command=lambda: set_class("barefeet")).pack(fill=tk.X, pady=1)
-        ttk.Button(btn_frame, text="✔ Socks", command=lambda: set_class("socks")).pack(fill=tk.X, pady=1)
-        ttk.Button(btn_frame, text="✔ Footwear", command=lambda: set_class("footwear")).pack(fill=tk.X, pady=1)
+        # Initial population of buttons
+        self.update_class_buttons()
 
         # 5. Crop & View Controls
         crop_group = tk.Frame(sidebar, bg="#252526")
@@ -139,10 +148,8 @@ class DatasetCollectorGUI:
         tk.Label(cap_group, text="Draw box on video to crop.\nPress SPACE to capture.", font=("Segoe UI", 8), bg="#252526", fg="#888888").pack(pady=5)
 
         # --- Main Content (Video) ---
-        # Using a smaller frame for video to "minimize camera space" as requested, 
-        # but keeping it expandable so it doesn't look broken.
         content = tk.Frame(self.root, bg="#1e1e1e")
-        content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=20) # Increased padding to center/shrink slightly
+        content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=20)
 
         self.canvas = tk.Canvas(content, bg="black", cursor="cross")
         self.canvas.pack(fill=tk.BOTH, expand=True)
@@ -151,6 +158,37 @@ class DatasetCollectorGUI:
         self.canvas.bind("<ButtonPress-1>", self.on_mouse_down)
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
+
+    def update_class_buttons(self):
+        # Clear existing buttons
+        for widget in self.btn_frame.winfo_children():
+            widget.destroy()
+            
+        classes = self.modes[self.current_mode]
+        
+        # Set default class
+        if classes:
+            self.var_class_name.set(classes[0])
+            
+        for cls in classes:
+            ttk.Button(self.btn_frame, text=f"✔ {cls.replace('_', ' ').title()}", 
+                      command=lambda c=cls: self.var_class_name.set(c)).pack(fill=tk.X, pady=1)
+
+    def change_mode(self, event):
+        self.current_mode = self.mode_combo.get()
+        self.update_class_buttons()
+        print(f"Switched to mode: {self.current_mode}")
+
+    def change_camera(self, event):
+        selection = self.cam_combo.get()
+        idx = int(selection.split(" ")[1])
+        self.camera_index = idx
+        self.running = False # Stop loop
+        time.sleep(0.5) # Wait for thread to stop
+        self.running = True
+        self.thread = threading.Thread(target=self.video_loop)
+        self.thread.daemon = True
+        self.thread.start()
 
     def get_short_path(self, path):
         if len(path) > 40:
@@ -196,7 +234,6 @@ class DatasetCollectorGUI:
         val = self.brightness_var.get()
         if val == 1.0:
             return frame
-        # Efficient brightness adjustment
         return cv2.convertScaleAbs(frame, alpha=val, beta=0)
 
     def apply_rotation(self, frame):
@@ -207,12 +244,18 @@ class DatasetCollectorGUI:
         h, w = frame.shape[:2]
         center = (w // 2, h // 2)
         
-        # Calculate rotation matrix
         M = cv2.getRotationMatrix2D(center, angle, 1.0)
         
-        # Perform rotation
-        # Use borderReplicate to avoid black borders if possible, or constant black
-        return cv2.warpAffine(frame, M, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+        # Calculate new bounding box to avoid cutting off corners
+        cos = abs(M[0, 0])
+        sin = abs(M[0, 1])
+        new_w = int((h * sin) + (w * cos))
+        new_h = int((h * cos) + (w * sin))
+        
+        M[0, 2] += (new_w / 2) - center[0]
+        M[1, 2] += (new_h / 2) - center[1]
+        
+        return cv2.warpAffine(frame, M, (new_w, new_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0,0,0))
 
     def apply_square_crop(self, frame):
         if not self.square_mode_var.get():
@@ -235,7 +278,7 @@ class DatasetCollectorGUI:
                 # 1. Apply Zoom
                 frame = self.apply_zoom(frame)
                 
-                # 2. Apply Rotation (New)
+                # 2. Apply Rotation (New - with resize)
                 frame = self.apply_rotation(frame)
                 
                 # 3. Apply Square Crop
@@ -263,7 +306,11 @@ class DatasetCollectorGUI:
                 canvas_w = self.canvas.winfo_width()
                 canvas_h = self.canvas.winfo_height()
                 if canvas_w > 1 and canvas_h > 1:
-                    img = img.resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
+                    # Maintain aspect ratio
+                    img_w, img_h = img.size
+                    ratio = min(canvas_w/img_w, canvas_h/img_h)
+                    new_size = (int(img_w*ratio), int(img_h*ratio))
+                    img = img.resize(new_size, Image.Resampling.LANCZOS)
                 
                 self.display_image = ImageTk.PhotoImage(image=img)
                 self.root.after(0, self.update_canvas, self.display_image)
@@ -277,7 +324,10 @@ class DatasetCollectorGUI:
 
     def update_canvas(self, imgtk):
         self.canvas.imgtk = imgtk
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=imgtk)
+        # Center image
+        c_w = self.canvas.winfo_width()
+        c_h = self.canvas.winfo_height()
+        self.canvas.create_image(c_w//2, c_h//2, anchor=tk.CENTER, image=imgtk)
 
     # --- Mouse Handling for Crop ---
     def on_mouse_down(self, event):
@@ -296,23 +346,36 @@ class DatasetCollectorGUI:
         c_w = self.canvas.winfo_width()
         c_h = self.canvas.winfo_height()
         
-        # Get Frame Dimensions
-        if hasattr(self, 'original_frame'):
-            f_h, f_w = self.original_frame.shape[:2]
+        # Get Frame Dimensions (Displayed)
+        if hasattr(self, 'display_image'):
+            d_w = self.display_image.width()
+            d_h = self.display_image.height()
             
-            # Calculate Scale
-            scale_x = f_w / c_w
-            scale_y = f_h / c_h
+            # Offset due to centering
+            offset_x = (c_w - d_w) // 2
+            offset_y = (c_h - d_h) // 2
             
-            # Calculate Rect in Frame Coordinates
-            x = int(min(start_x, end_x) * scale_x)
-            y = int(min(start_y, end_y) * scale_y)
-            w = int(abs(end_x - start_x) * scale_x)
-            h = int(abs(end_y - start_y) * scale_y)
+            # Adjust mouse coords to image coords
+            img_start_x = start_x - offset_x
+            img_start_y = start_y - offset_y
+            img_end_x = end_x - offset_x
+            img_end_y = end_y - offset_y
             
-            if w > 10 and h > 10: # Minimum size
-                self.crop_rect = (x, y, w, h)
-                print(f"Crop Area Set: {self.crop_rect}")
+            # Get Original Frame Dimensions
+            if hasattr(self, 'original_frame'):
+                f_h, f_w = self.original_frame.shape[:2]
+                
+                scale_x = f_w / d_w
+                scale_y = f_h / d_h
+                
+                x = int(min(img_start_x, img_end_x) * scale_x)
+                y = int(min(img_start_y, img_end_y) * scale_y)
+                w = int(abs(img_end_x - img_start_x) * scale_x)
+                h = int(abs(img_end_y - img_start_y) * scale_y)
+                
+                if w > 10 and h > 10:
+                    self.crop_rect = (x, y, w, h)
+                    print(f"Crop Area Set: {self.crop_rect}")
 
     def reset_crop(self):
         self.crop_rect = None

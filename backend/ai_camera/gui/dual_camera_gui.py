@@ -48,6 +48,14 @@ class CameraThread(threading.Thread):
                 # Zoom
                 if self.zoom_factor > 1.0:
                     frame = self.apply_zoom(frame, self.zoom_factor)
+
+                # Square Crop (If enabled for this camera)
+                if getattr(self, 'apply_square_crop', False):
+                    h, w = frame.shape[:2]
+                    min_dim = min(h, w)
+                    start_x = (w - min_dim) // 2
+                    start_y = (h - min_dim) // 2
+                    frame = frame[start_y:start_y+min_dim, start_x:start_x+min_dim]
                 
                 # Detection
                 try:
@@ -104,8 +112,12 @@ class DualCameraSystem:
         self.setup_ui()
         
         # Start Threads
+        # Body Cam: Normal (1.0x)
         self.thread_body = CameraThread(self.cam1_idx, self.body_detection_wrapper, zoom_factor=1.0, name="Body Cam")
-        self.thread_feet = CameraThread(self.cam2_idx, self.feet_detection_wrapper, zoom_factor=1.0, name="Feet Cam")
+        
+        # Feet Cam: Zoomed (1.3x) to match training data
+        self.thread_feet = CameraThread(self.cam2_idx, self.feet_detection_wrapper, zoom_factor=1.3, name="Feet Cam")
+        self.thread_feet.apply_square_crop = True # Enable square crop flag
         
         self.thread_body.start()
         self.thread_feet.start()

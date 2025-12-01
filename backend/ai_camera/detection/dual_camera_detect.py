@@ -21,10 +21,20 @@ except Exception as e:
     print(f"Warning: {AI_ERROR_MSG}")
 
 class ComplianceDetector:
-    def __init__(self, person_model_path='yolov8n.pt', custom_model_path='models/best.pt'):
+    def __init__(self, person_model_path='models/yolov8n.pt', custom_model_path='models/best.pt'):
         self.person_model = None
         self.feet_model = None
         self.class_names = {}
+        
+        # Ensure models directory exists
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        models_dir = os.path.join(base_dir, 'models')
+        if not os.path.exists(models_dir):
+            os.makedirs(models_dir)
+            
+        # Update paths to be absolute
+        person_model_path = os.path.join(base_dir, person_model_path)
+        custom_model_path = os.path.join(base_dir, custom_model_path)
         
         if AI_AVAILABLE:
             try:
@@ -35,18 +45,14 @@ class ComplianceDetector:
                 # 2. Load Custom Feet Model (best.pt)
                 # Check if OpenVINO model exists for optimization
                 openvino_path = custom_model_path.replace('.pt', '_openvino_model')
-                if os.path.exists(openvino_path):
-                    print(f"Loading Optimized OpenVINO Model: {openvino_path}")
-                    self.feet_model = YOLO(openvino_path, task='detect')
-                elif os.path.exists(custom_model_path):
+                
+                # FORCE PYTORCH FOR NOW (Debugging)
+                if os.path.exists(custom_model_path):
                     print(f"Loading Custom Feet Model: {custom_model_path}")
                     self.feet_model = YOLO(custom_model_path)
-                    
-                    # OPTIONAL: Auto-export to OpenVINO for Intel CPU acceleration
-                    # Uncomment the next lines to auto-optimize on first run
-                    # print("Optimizing model for Intel CPU (OpenVINO)...")
-                    # self.feet_model.export(format='openvino')
-                    # self.feet_model = YOLO(openvino_path, task='detect')
+                elif os.path.exists(openvino_path):
+                     print(f"Loading Optimized OpenVINO Model: {openvino_path}")
+                     self.feet_model = YOLO(openvino_path, task='detect')
                 else:
                     print(f"Custom model not found at {custom_model_path}. Feet detection disabled.")
                 
