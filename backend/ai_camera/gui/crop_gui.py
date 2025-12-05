@@ -34,7 +34,7 @@ class DatasetCollectorGUI:
         # Modes
         self.modes = {
             "Weight (Feet)": ["platform", "barefeet", "socks", "footwear"],
-            "Body (Wearables)": ["no_wearables", "watch", "smart_watch", "bracelet", "necklace", "glasses"]
+            "Body (Wearables)": ["null", "id_lace", "bag", "cap", "watch"]
         }
         self.current_mode = "Weight (Feet)"
         
@@ -135,9 +135,9 @@ class DatasetCollectorGUI:
         
         ttk.Button(crop_group, text="Reset Crop Region", command=self.reset_crop).pack(fill=tk.X, pady=2)
 
-        # 6. Capture (Bottom)
+        # 6. Capture
         cap_group = tk.Frame(sidebar, bg="#252526")
-        cap_group.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=20)
+        cap_group.pack(fill=tk.X, padx=10, pady=20)
         
         self.lbl_count = tk.Label(cap_group, text="Captures: 0", font=("Segoe UI", 12), bg="#252526", fg="#00ff00")
         self.lbl_count.pack(pady=(0, 5))
@@ -207,7 +207,7 @@ class DatasetCollectorGUI:
         self.update_zoom_label()
 
     def zoom_out(self):
-        self.zoom_factor = max(self.zoom_factor - 0.1, 1.0)
+        self.zoom_factor = max(self.zoom_factor - 0.1, 0.5)
         self.update_zoom_label()
 
     def update_zoom_label(self):
@@ -222,13 +222,30 @@ class DatasetCollectorGUI:
             return frame
         
         h, w = frame.shape[:2]
-        new_h, new_w = int(h / self.zoom_factor), int(w / self.zoom_factor)
         
-        top = (h - new_h) // 2
-        left = (w - new_w) // 2
-        
-        cropped = frame[top:top+new_h, left:left+new_w]
-        return cv2.resize(cropped, (w, h))
+        if self.zoom_factor > 1.0:
+            # Zoom IN (Crop & Resize Up)
+            new_h, new_w = int(h / self.zoom_factor), int(w / self.zoom_factor)
+            top = (h - new_h) // 2
+            left = (w - new_w) // 2
+            cropped = frame[top:top+new_h, left:left+new_w]
+            return cv2.resize(cropped, (w, h))
+        else:
+            # Zoom OUT (Resize Down & Pad)
+            new_h, new_w = int(h * self.zoom_factor), int(w * self.zoom_factor)
+            resized = cv2.resize(frame, (new_w, new_h))
+            
+            # Create black canvas
+            canvas = cv2.copyMakeBorder(
+                resized, 
+                top=(h - new_h) // 2, 
+                bottom=(h - new_h) - (h - new_h) // 2,
+                left=(w - new_w) // 2, 
+                right=(w - new_w) - (w - new_w) // 2,
+                borderType=cv2.BORDER_CONSTANT, 
+                value=[0, 0, 0]
+            )
+            return canvas
 
     def apply_brightness(self, frame):
         val = self.brightness_var.get()

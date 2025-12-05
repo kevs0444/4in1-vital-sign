@@ -13,11 +13,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from detection.dual_camera_detect import ComplianceDetector
 
 class CameraThread(threading.Thread):
-    def __init__(self, camera_index, detector_func, zoom_factor=1.0, name="Camera"):
+    def __init__(self, camera_index, detector_func, zoom_factor=1.0, flip_vertical=False, name="Camera"):
         super().__init__()
         self.camera_index = camera_index
         self.detector_func = detector_func
         self.zoom_factor = zoom_factor
+        self.flip_vertical = flip_vertical
         self.name_str = name
         self.cap = None
         self.running = True
@@ -44,6 +45,10 @@ class CameraThread(threading.Thread):
                 curr_time = time.time()
                 self.fps = 1 / (curr_time - self.last_time) if (curr_time - self.last_time) > 0 else 0
                 self.last_time = curr_time
+
+                # Flip Vertical (if enabled)
+                if self.flip_vertical:
+                    frame = cv2.flip(frame, 0) # 0 = Vertical Flip
 
                 # Zoom
                 if self.zoom_factor > 1.0:
@@ -112,8 +117,8 @@ class DualCameraSystem:
         self.setup_ui()
         
         # Start Threads
-        # Body Cam: Normal (1.0x)
-        self.thread_body = CameraThread(self.cam1_idx, self.body_detection_wrapper, zoom_factor=1.0, name="Body Cam")
+        # Body Cam: Normal (1.0x), Flipped Vertically
+        self.thread_body = CameraThread(self.cam1_idx, self.body_detection_wrapper, zoom_factor=1.0, flip_vertical=True, name="Body Cam")
         
         # Feet Cam: Zoomed (1.3x) to match training data
         self.thread_feet = CameraThread(self.cam2_idx, self.feet_detection_wrapper, zoom_factor=1.3, name="Feet Cam")
