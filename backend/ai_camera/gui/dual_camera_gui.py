@@ -131,9 +131,7 @@ class DualCameraSystem:
 
     def body_detection_wrapper(self, frame):
         # Adapt detect_body to return (frame, status, flag)
-        annotated_frame, detected = self.detector.detect_body(frame)
-        status = "User Detected" if detected else "No User Detected"
-        return annotated_frame, status, detected
+        return self.detector.detect_body(frame)
 
     def feet_detection_wrapper(self, frame):
         # detect_feet_compliance already returns (frame, status, is_compliant)
