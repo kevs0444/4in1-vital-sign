@@ -127,56 +127,67 @@ export default function MeasurementWelcome() {
   };
 
   return (
-    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 welcome-container">
-      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 welcome-content page-transition`}>
-        <button className="close-button" onClick={handleExit}>←</button>
-        {/* Logo */}
-        <div className="d-flex justify-content-center mb-4 welcome-logo">
-          <div className="logo-main-circle">
-            <img
-              src={logo}
-              alt="4 in Juan Logo"
-              className="juan-logo"
-            />
-          </div>
-        </div>
+    <div className="register-container">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="register-content"
+      >
+        {/* Back Arrow Button */}
+        <button className="close-button" onClick={handleExit}>
+          ←
+        </button>
 
-        {/* Welcome Message */}
-        <div className="text-center mb-5 welcome-message">
-          <h1 className="main-title mb-3">
+        {/* Header */}
+        <div className="register-header">
+          <h1 className="register-title">
             Welcome, {userData.firstName || "User"}!
           </h1>
-          <p className="motto mb-4 fs-5">
+          <p className="register-subtitle">
             Ready to check your vital signs with{" "}
-            <span className="every-juan fw-bold">
-              4 in <span className="juan-red text-danger">Juan</span>
+            <span className="juan-nowrap">
+              4 in <span className="juan-red">Juan</span>
             </span>
           </p>
+        </div>
 
-          <div className="welcome-subtitle text-muted">
-            <p className="mb-1">Before we begin, please review and accept our Terms and Conditions</p>
-            <p>to ensure accurate monitoring and personalized health insights.</p>
+        {/* Card Section */}
+        <div className="register-card-section">
+          <div className="register-welcome-card">
+            <div className="register-card-icon">
+              <img
+                src={logo}
+                alt="4 in Juan Logo"
+                className="register-icon-image"
+              />
+            </div>
+            <div className="register-card-content">
+              <h3 className="register-card-title">Let's Get Started!</h3>
+              <p className="register-card-description">
+                Before we begin, please review and accept our Terms and Conditions to ensure accurate monitoring and personalized health insights.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Terms and Conditions & Button Container */}
-        <div className="action-section text-center">
+        {/* Controls */}
+        <div className="register-controls">
           {/* Terms and Conditions */}
-          <div className="d-flex justify-content-center mb-4 terms-section">
-            <div className="form-check terms-checkbox d-flex align-items-center gap-2">
+          <div className="terms-section">
+            <div className="terms-checkbox">
               <input
                 type="checkbox"
                 id="termsCheckbox"
-                className="form-check-input mt-0"
+                className="terms-checkbox-input"
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
-                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
               />
-              <label htmlFor="termsCheckbox" className="form-check-label terms-checkbox-label ms-2 cursor-pointer">
+              <label htmlFor="termsCheckbox" className="terms-checkbox-label">
                 I agree to the{" "}
                 <Button
                   variant="link"
-                  className="terms-link p-0 text-decoration-underline fw-bold"
+                  className="terms-link"
                   onClick={handleShowTerms}
                 >
                   Terms and Conditions
@@ -185,20 +196,18 @@ export default function MeasurementWelcome() {
             </div>
           </div>
 
-          {/* Action Button */}
-          <div className="button-section d-flex flex-column gap-3 align-items-center">
-            <Button
-              className="continue-button btn-danger rounded-pill px-5 py-3 fw-bold shadow"
+          {/* Action Buttons */}
+          <div className="button-section">
+            <button
+              className="continue-button"
               onClick={handleContinue}
               disabled={!acceptedTerms}
-              size="lg"
-              style={{ minWidth: '300px' }}
             >
               OK, Let's Start
-            </Button>
+            </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Modern Exit Confirmation Popup Modal */}
       {showExitModal && (

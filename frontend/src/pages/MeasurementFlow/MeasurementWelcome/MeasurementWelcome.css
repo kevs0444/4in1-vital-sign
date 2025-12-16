@@ -1,5 +1,3 @@
-/* Import Outfit Font applied globally in style.css */
-
 /* Red Theme Color Palette */
 :root {
   /* Text Colors */
@@ -8,226 +6,248 @@
   --text-color: #5a5a5a;
   --light-text: #8a8a8a;
 
-  /* Background */
-  --background-color: #ffffff;
-  --surface-color: #f8f9fa;
-
   /* Red Colors */
-  --red-50: #641220;
-  --red-100: #6e1423;
-  --red-200: #85182a;
-  --red-300: #a11d33;
-  --red-400: #a71e34;
   --red-500: #dc2626;
   --red-600: #b91c1c;
-  --red-700: #991b1b;
-  --red-800: #da1e37;
-  --red-900: #e01e37;
-  --red-accent: #dc2626;
 
   /* Gray Colors for Borders */
   --border-gray: #e0e0e0;
   --border-light: #e9ecef;
-  --border-hover: #d0d0d0;
-
-  /* Gradients */
-  --red-gradient: linear-gradient(135deg, var(--red-600) 0%, var(--red-800) 100%);
-
-  /* Shadows - UPDATED: All gray shadows */
-  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.12);
-  --shadow-gray: 0 4px 12px rgba(0, 0, 0, 0.15);
-  /* Replaced shadow-red */
-  --shadow-modal: 0 10px 40px rgba(0, 0, 0, 0.15);
-  --shadow-large: 0 20px 40px rgba(0, 0, 0, 0.1);
-
-  /* Border Radius */
-  --border-radius: 12px;
-  --border-radius-lg: 20px;
 }
 
-/* Global Styles */
-html,
-body {
+/* GLOBAL RESET */
+.register-container * {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  overflow: hidden;
-  height: 100%;
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  -ms-touch-action: manipulation;
-  touch-action: manipulation;
-  -ms-content-zooming: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  -webkit-text-size-adjust: none;
-  -moz-text-size-adjust: none;
-  -ms-text-size-adjust: none;
-  text-size-adjust: none;
 }
 
-/* Container - Visuals only */
-.welcome-container {
+.register-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
   background: #ffffff;
   font-family: 'Outfit', sans-serif;
-  padding: 1.5rem;
-  box-sizing: border-box;
+  padding: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
-/* Content Box - Dynamic sizing */
-.welcome-content {
-  background: #ffffff;
-  border-radius: 2rem;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  border: 1px solid var(--border-gray);
-  overflow: hidden;
-  position: relative;
-  width: 100%;
-  max-width: 750px;
-  height: auto;
-  min-height: auto;
-  padding: 2.5rem 2rem;
-}
-
-/* Logo Section - Reduced size for dynamic container */
-.welcome-logo {
-  position: relative;
-  margin: 0 auto;
-  width: min(200px, 30vh);
-  aspect-ratio: 1;
-  z-index: 4;
-}
-
-.logo-main-circle {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
+/* Main Content Card */
+.register-content {
   background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  padding: 40px 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow-y: auto;
+}
+
+/* Back Arrow */
+.close-button {
+  position: absolute;
+  top: 25px;
+  left: 25px;
+  background: none;
+  border: none;
+  font-size: 2.5rem;
+  color: var(--red-500);
+  cursor: pointer;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-soft);
-  /* Gray shadow */
-  border: 2px solid var(--border-light);
-  overflow: hidden;
-  margin: 0 auto;
-  transition: all 0.3s ease;
-  touch-action: manipulation;
+  line-height: 1;
 }
 
-.logo-main-circle:hover {
-  transform: scale(1.02);
-  box-shadow: var(--shadow-medium);
-  /* Gray shadow */
-  border-color: var(--border-hover);
-}
-
-.juan-logo {
-  width: 85%;
-  height: 85%;
-  object-fit: cover;
-  border-radius: 50%;
-  filter: brightness(1.05) contrast(1.05);
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Title Section */
-.welcome-message {
-  margin: 0 auto;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 100%;
-  max-width: 100%;
-  position: relative;
-  z-index: 4;
-}
-
-/* UPDATED: Main title 10% larger than other text */
-.main-title {
-  color: var(--main-title-color);
-  font-size: 4rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  margin: 0;
+/* Header */
+.register-header {
   text-align: center;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+.register-title {
+  font-size: 2.2rem;
+  color: #333;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.register-subtitle {
+  font-size: 1.3rem;
+  color: #666;
 }
 
 .juan-red {
-  color: var(--red-accent);
-  font-weight: 700;
+  color: var(--red-500);
 }
 
-.subtitle {
-  color: var(--subtitle-color);
-  font-size: 2.25rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-  margin: 0;
-  opacity: 0.9;
-  text-align: center;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-.motto {
-  color: var(--text-color);
-  font-size: 1.8rem;
-  font-weight: 400;
-  font-style: italic;
-  opacity: 0.8;
-  line-height: 1.3;
-  margin: 0;
-  text-align: center;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* NEW: Keep "every Juan" together on the same line */
 .juan-nowrap {
   white-space: nowrap;
-  display: inline-block;
 }
 
-.welcome-subtitle {
-  color: var(--text-color);
-  font-size: 1.35rem;
-  font-weight: 400;
-  opacity: 0.8;
-  line-height: 1.5;
-  margin-top: 1rem;
-  text-align: center;
-  position: relative;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
+/* Illustration Section */
+.register-card-section {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 30px;
 }
 
-.welcome-subtitle p {
-  margin: 0.6rem 0;
+.register-welcome-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
+}
+
+.register-card-icon {
+  width: 280px;
+  height: 280px;
+  padding: 20px;
+  border-radius: 40px;
+  background: white;
+  border: 5px solid #f1f3f4;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.register-icon-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.register-card-title {
+  font-size: 2rem;
+  color: #333;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.register-card-description {
+  font-size: 1.1rem;
+  color: #666;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Controls Section (Terms + Button) */
+.register-controls {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Terms Checkbox */
+.terms-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.terms-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.terms-checkbox-input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--red-500);
+  cursor: pointer;
+}
+
+.terms-checkbox-label {
+  font-size: 1.1rem;
+  color: #555;
+  cursor: pointer;
+}
+
+.terms-link {
+  color: var(--red-500) !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.terms-link:hover {
+  text-decoration: underline;
+}
+
+/* Main Button Wrapper */
+.button-section {
+  width: 100%;
+  width: 500px;
+  max-width: 100%;
+}
+
+.continue-button {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.continue-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+.continue-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #6c757d;
+  box-shadow: none;
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+  .register-content {
+    padding: 20px;
+  }
+
+  .register-card-icon {
+    width: 200px;
+    height: 200px;
+  }
+
+  .register-controls,
+  .button-section {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .button-section {
+    width: 100%;
+  }
 }
 
 /* Action Section - NEW: Container for terms and button */
