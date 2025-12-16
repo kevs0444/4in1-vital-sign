@@ -285,3 +285,186 @@
 .close-button:hover {
   transform: scale(1.1);
 }
+
+/* Modern Exit Popup Modal */
+.exit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.exit-modal-content {
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 24px;
+  padding: 40px 35px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow:
+    0 25px 80px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.exit-modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #dc2626, #f87171, #dc2626);
+  background-size: 200% 100%;
+  animation: shimmerWarning 2s linear infinite;
+}
+
+@keyframes shimmerWarning {
+  0% {
+    background-position: 0% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.exit-modal-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #fecaca;
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.2);
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.2);
+  }
+
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 12px 35px rgba(220, 38, 38, 0.3);
+  }
+}
+
+.exit-modal-icon span {
+  font-size: 2.5rem;
+}
+
+.exit-modal-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #dc2626;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.exit-modal-message {
+  font-size: 1.15rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin-bottom: 30px;
+  padding: 0 10px;
+}
+
+.exit-modal-buttons {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+.exit-modal-button {
+  border: none;
+  border-radius: 14px;
+  padding: 16px 30px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  flex: 1;
+  max-width: 180px;
+}
+
+.exit-modal-button.secondary {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+  box-shadow: 0 6px 20px rgba(107, 114, 128, 0.3);
+}
+
+.exit-modal-button.secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(107, 114, 128, 0.4);
+}
+
+.exit-modal-button.primary {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+}
+
+.exit-modal-button.primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(220, 38, 38, 0.5);
+}
+
+.exit-modal-button:active {
+  transform: translateY(-1px);
+}
+
+/* Responsive adjustments for Exit Modal */
+@media (max-width: 480px) {
+  .exit-modal-content {
+    padding: 30px 25px;
+    margin: 15px;
+  }
+
+  .exit-modal-icon {
+    width: 70px;
+    height: 70px;
+  }
+
+  .exit-modal-icon span {
+    font-size: 2rem;
+  }
+
+  .exit-modal-title {
+    font-size: 1.5rem;
+  }
+
+  .exit-modal-message {
+    font-size: 1.05rem;
+  }
+
+  .exit-modal-buttons {
+    flex-direction: column;
+  }
+
+  .exit-modal-button {
+    max-width: 100%;
+    padding: 14px 30px;
+    font-size: 1rem;
+  }
+}

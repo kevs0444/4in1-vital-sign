@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Modal, Button } from "react-bootstrap";
+import { motion } from "framer-motion";
 import "./BMI.css";
 import "../main-components-measurement.css";
 import weightIcon from "../../../assets/icons/weight-icon.png";
@@ -745,18 +745,39 @@ export default function BMI() {
         </div>
       </div>
 
-      <Modal show={showExitModal} onHide={() => setShowExitModal(false)} centered className="exit-modal">
-        <Modal.Header closeButton>
-          <Modal.Title>Exit Measurement?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Do you want to go back or cancel the measurement?</p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowExitModal(false)}>Cancel</Button>
-          <Button variant="danger" onClick={confirmExit}>Exit Measurement</Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Modern Exit Confirmation Popup Modal */}
+      {showExitModal && (
+        <div className="exit-modal-overlay" onClick={() => setShowExitModal(false)}>
+          <motion.div
+            className="exit-modal-content"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="exit-modal-icon">
+              <span>🚪</span>
+            </div>
+            <h2 className="exit-modal-title">Exit Measurement?</h2>
+            <p className="exit-modal-message">Do you want to go back to login and cancel the measurement?</p>
+            <div className="exit-modal-buttons">
+              <button
+                className="exit-modal-button secondary"
+                onClick={() => setShowExitModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="exit-modal-button primary"
+                onClick={confirmExit}
+              >
+                Yes, Exit
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

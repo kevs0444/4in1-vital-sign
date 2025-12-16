@@ -536,7 +536,7 @@ export default function Max30102() {
           </div>
         )}
 
-        {/* Progress Bar */}
+        {/* Progress bar for Step X of Y */}
         <div className="w-100 mb-4">
           <div className="measurement-progress-bar">
             <div className="measurement-progress-fill" style={{ width: `${getProgressInfo('max30102', location.state?.checklist).percentage}%` }}></div>

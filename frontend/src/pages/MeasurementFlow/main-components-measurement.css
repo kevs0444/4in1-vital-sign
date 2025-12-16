@@ -72,32 +72,34 @@
     font-weight: 500;
 }
 
-/* Typography */
+/* Typography - Modern & Less Overwhelming */
 .measurement-title {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     color: var(--text-primary);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
 }
 
 .measurement-title-accent {
     color: var(--primary-color);
+    font-weight: 600;
 }
 
 .measurement-subtitle {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.6;
+    font-weight: 400;
 }
 
 /* Measurement Card Generic Styling (Layout handled by Bootstrap) */
 .measurement-card {
     background: white;
-    border-radius: 24px;
+    border-radius: 20px;
     border: 2px solid var(--border-color);
-    padding: 30px;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    padding: 28px;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     position: relative;
     overflow: hidden;
     display: flex;
@@ -107,7 +109,7 @@
 }
 
 .measurement-card:hover {
-    transform: translateY(-5px) scale(1.02);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-md);
     border-color: var(--primary-color);
 }
@@ -119,8 +121,8 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.05), transparent);
-    transition: left 0.6s ease;
+    background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.03), transparent);
+    transition: left 0.5s ease;
     z-index: 0;
 }
 
@@ -130,19 +132,19 @@
 
 .measurement-card.active {
     border-color: var(--primary-color);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
 }
 
 .measurement-card.completed {
     border-color: var(--success-color);
-    background: linear-gradient(135deg, #f0fff4, #ffffff);
+    background: linear-gradient(135deg, #f8fff9, #ffffff);
 }
 
 /* Icons */
 .measurement-icon {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 15px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
 }
 
 .measurement-icon img {
@@ -151,38 +153,38 @@
     object-fit: contain;
 }
 
-/* Values */
+/* Values - Modern & Readable */
 .measurement-value-container {
     display: flex;
     align-items: baseline;
     justify-content: center;
-    gap: 10px;
-    margin: 15px 0;
+    gap: 8px;
+    margin: 16px 0;
     position: relative;
     z-index: 1;
 }
 
 .measurement-value {
-    font-size: 3.5rem;
-    font-weight: 800;
+    font-size: 3.2rem;
+    font-weight: 700;
     color: var(--text-primary);
     line-height: 1;
 }
 
 .measurement-unit {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
     color: var(--text-secondary);
-    font-weight: 600;
+    font-weight: 500;
 }
 
-/* Badges */
+/* Badges - Softer Design */
 .measurement-status-badge {
-    font-size: 1rem;
-    font-weight: 700;
-    padding: 10px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 10px 24px;
     border-radius: 50px;
     display: inline-block;
-    min-width: 140px;
+    min-width: 130px;
     text-align: center;
     transition: all 0.3s ease;
     z-index: 1;
@@ -196,19 +198,20 @@
 .measurement-status-badge.active {
     background: var(--secondary-color);
     color: white;
-    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.25);
     animation: pulse-red 2s infinite;
 }
 
 .measurement-status-badge.complete {
     background: var(--success-color);
     color: white;
-    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.25);
 }
 
 .measurement-status-badge.warning {
     background: var(--warning-color);
     color: #212529;
+    font-weight: 600;
 }
 
 .measurement-status-badge.error {
@@ -216,11 +219,11 @@
     color: white;
 }
 
-/* Instruction Cards */
+/* Instruction Cards - Modern & Clean */
 .instruction-card {
-    padding: 25px;
+    padding: 24px 20px;
     background: white;
-    border-radius: 20px;
+    border-radius: 18px;
     border: 2px solid var(--border-color);
     transition: all 0.3s ease;
     text-align: center;
@@ -232,33 +235,33 @@
 }
 
 .instruction-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-sm);
     border-color: var(--primary-color);
 }
 
 .instruction-card.active {
     border-color: var(--secondary-color);
-    background: linear-gradient(135deg, #fff5f5, #ffffff);
+    background: linear-gradient(135deg, #fff8f8, #ffffff);
 }
 
 .instruction-card.completed {
     border-color: var(--success-color);
-    background: linear-gradient(135deg, #f0fff4, #ffffff);
+    background: linear-gradient(135deg, #f8fff9, #ffffff);
 }
 
 .instruction-step-number {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     background: var(--primary-color);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin: 0 auto 15px auto;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0 auto 14px auto;
 }
 
 .instruction-card.completed .instruction-step-number {
@@ -266,14 +269,14 @@
 }
 
 .instruction-icon {
-    font-size: 2.2rem;
+    font-size: 2rem;
     margin-bottom: 10px;
     display: block;
 }
 
 .instruction-title {
     font-size: 1.1rem;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--text-primary);
     margin-bottom: 8px;
 }
@@ -281,8 +284,9 @@
 .instruction-text {
     font-size: 0.95rem;
     color: var(--text-secondary);
-    line-height: 1.4;
+    line-height: 1.5;
     margin: 0;
+    font-weight: 400;
 }
 
 /* Buttons */
@@ -382,32 +386,38 @@
     transform: translateY(0);
 }
 
-/* Back Arrow Button (formerly Close Button) */
-/* Back Arrow Button (formerly Close Button) */
+/* Back Arrow Button - Compact button at top-left */
 .close-button {
     position: absolute;
-    top: 25px;
-    left: 25px;
-    /* Moved to left */
-    right: auto;
-    background: none;
-    border: none;
-    font-size: 3rem;
+    top: 15px;
+    left: 15px;
+    background: rgba(220, 38, 38, 0.1);
+    border: 2px solid #dc2626;
+    border-radius: 50%;
+    font-size: 1.8rem;
     color: #dc2626;
     cursor: pointer;
-    z-index: 10;
+    z-index: 100;
     padding: 0;
-    width: 50px;
-    height: 50px;
+    width: 45px;
+    height: 45px;
     line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
 }
 
 .close-button:hover {
     transform: scale(1.1);
+    background: #dc2626;
+    color: white;
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+}
+
+.close-button:active {
+    transform: scale(0.95);
 }
 
 .spinner {
