@@ -208,14 +208,14 @@ export default function Saving() {
   const currentStep = steps[currentStepIndex];
 
   return (
-    <div className="saving-page">
-      <div className={`saving-container ${isVisible ? 'visible' : ''}`}>
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 saving-page">
+      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 saving-container page-transition`} style={{ maxWidth: '800px', width: '100%' }}>
 
-        {/* Header Section - THIS IS THE ONLY CHECK */}
-        <div className="header-section">
-          <div className="main-icon">
-            <div className={`icon-circle ${isSaving ? 'saving' : 'success'}`}>
-              <svg viewBox="0 0 24 24" fill="none">
+        {/* Header Section */}
+        <div className="text-center mb-5 header-section">
+          <div className="mb-4 d-flex justify-content-center">
+            <div className={`icon-circle ${isSaving ? 'saving' : 'success'}`} style={{ width: '80px', height: '80px', padding: '15px', borderRadius: '50%', background: isSaving ? '#e0f2fe' : '#dcfce7', color: isSaving ? '#0ea5e9' : '#16a34a' }}>
+              <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
                 {isSaving ? (
                   <>
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -230,10 +230,10 @@ export default function Saving() {
               </svg>
             </div>
           </div>
-          <h1 className="main-title">
+          <h1 className="fw-bold mb-2 main-title">
             {isSaving ? "Saving Your Health Data" : "Health Profile Complete!"}
           </h1>
-          <p className="subtitle">
+          <p className="text-muted fs-5 subtitle">
             {isSaving
               ? `Processing ${currentStepIndex + 1} of ${steps.length} health assessments...`
               : `All ${steps.length} health metrics securely saved and analyzed`
@@ -243,67 +243,76 @@ export default function Saving() {
 
         {/* Progress Section */}
         {isSaving && currentStep && (
-          <div className="progress-section">
-            <div className="progress-visual">
-              <div className="progress-ring">
-                <div className="ring-bg"></div>
-                <div
-                  className="ring-fill"
-                  style={{
-                    transform: `rotate(${getProgressPercentage() * 3.6}deg)`
-                  }}
-                ></div>
-                <div className="ring-center">
-                  <div className="pulse-dot"></div>
-                  <span className="progress-count">
-                    {currentStepIndex + 1}/{steps.length}
-                  </span>
+          <div className="row justify-content-center mb-5 progress-section">
+            <div className="col-12 col-md-5 d-flex justify-content-center mb-4 mb-md-0">
+              <div className="progress-visual" style={{ width: '200px', height: '200px' }}>
+                <div className="progress-ring position-relative w-100 h-100">
+                  <div className="ring-bg position-absolute w-100 h-100 border rounded-circle" style={{ borderColor: '#f1f5f9', borderWidth: '10px' }}></div>
+                  {/* Note: Rotation logic kept for visual consistency if needed, but simplified structure */}
+                  <div
+                    className="ring-fill position-absolute w-100 h-100 rounded-circle"
+                    style={{
+                      border: '10px solid #ef4444',
+                      borderRightColor: 'transparent',
+                      borderBottomColor: 'transparent',
+                      transform: `rotate(${getProgressPercentage() * 3.6}deg)`,
+                      transition: 'transform 0.5s ease-out'
+                    }}
+                  ></div>
+                  <div className="ring-center position-absolute top-50 start-50 translate-middle text-center">
+                    <div className="pulse-dot bg-danger rounded-circle mx-auto mb-2" style={{ width: '12px', height: '12px' }}></div>
+                    <span className="h4 fw-bold text-dark d-block">
+                      {currentStepIndex + 1}/{steps.length}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className={`current-step-card ${isStepAnimating ? 'animating' : ''}`}>
-              <div className="step-icon">
-                {currentStep.icon}
-              </div>
-              <h3 className="step-title">{currentStep.title}</h3>
-              <p className="step-description">{currentStep.description}</p>
-
-              <div className="step-details">
-                {currentStep.details.map((detail, index) => (
-                  <div key={index} className="detail-item">
-                    <span className="detail-label">{detail.label}:</span>
-                    <span className="detail-value">{detail.value}</span>
+            <div className="col-12 col-md-7">
+              <div className={`card border-0 bg-light p-4 h-100 current-step-card ${isStepAnimating ? 'animating' : ''}`}>
+                <div className="d-flex align-items-center gap-3 mb-3">
+                  <div className="text-danger" style={{ width: '30px' }}>
+                    {currentStep.icon}
                   </div>
-                ))}
-              </div>
+                  <h3 className="h5 fw-bold mb-0 step-title">{currentStep.title}</h3>
+                </div>
+                <p className="text-muted mb-3 step-description">{currentStep.description}</p>
 
-              <div className="step-status">
-                <div className="status-dot"></div>
-                {isStepAnimating ? 'Complete!' : 'Processing...'}
+                <div className="step-details bg-white rounded p-3 mb-3 border">
+                  {currentStep.details.map((detail, index) => (
+                    <div key={index} className="d-flex justify-content-between mb-2 last-mb-0 detail-item">
+                      <span className="text-muted small detail-label">{detail.label}:</span>
+                      <span className="fw-bold small detail-value">{detail.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="d-flex align-items-center gap-2 text-primary small fw-bold mt-auto step-status">
+                  <div className="spinner-grow spinner-grow-sm" role="status"></div>
+                  {isStepAnimating ? 'Complete!' : 'Processing...'}
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Success Section - NO CHECK EMOJI HERE */}
+        {/* Success Section */}
         {saveComplete && (
-          <div className="success-section">
-            {/* NO CHECK ELEMENT HERE - ONLY IN HEADER */}
-
-            <div className="success-message">
-              <h2>Health Profile Complete!</h2>
-              <p>Your comprehensive health assessment has been securely stored and is ready for sharing with healthcare providers.</p>
+          <div className="text-center mb-5 success-section">
+            <div className="success-message mb-4">
+              <h2 className="h4 fw-bold mb-2">Health Profile Complete!</h2>
+              <p className="text-muted">Your comprehensive health assessment has been securely stored and is ready for sharing with healthcare providers.</p>
             </div>
 
             {/* Completed Steps Summary */}
-            <div className="completed-summary">
-              <div className="summary-title">Completed Health Assessments</div>
-              <div className="completed-steps-list">
+            <div className="completed-summary text-start mx-auto" style={{ maxWidth: '500px' }}>
+              <div className="fw-bold text-muted mb-3 text-uppercase small">Completed Health Assessments</div>
+              <div className="d-flex flex-column gap-2">
                 {completedSteps.map((step, index) => (
-                  <div key={index} className="completed-step-item">
-                    <span className="completed-step-name">{step}</span>
-                    <span className="completed-step-status">Completed</span>
+                  <div key={index} className="d-flex align-items-center justify-content-between p-2 bg-light rounded border">
+                    <span className="fw-medium">{step}</span>
+                    <span className="badge bg-success">Completed</span>
                   </div>
                 ))}
               </div>
@@ -312,31 +321,28 @@ export default function Saving() {
         )}
 
         {/* Navigation Info */}
-        <div className="nav-info">
+        <div className="text-center mb-4 nav-info">
           {saveComplete && (
-            <div className="redirect-message">
-              <div className="loading-indicator">
-                <div className="dot"></div>
-                <div className="dot"></div>
-                <div className="dot"></div>
-              </div>
+            <div className="d-flex align-items-center justify-content-center gap-2 text-muted">
+              <div className="spinner-border spinner-border-sm" role="status"></div>
               <span>Preparing sharing options...</span>
             </div>
           )}
         </div>
 
         {/* Security Footer */}
-        <div className="security-footer">
-          <div className="security-badge">
-            <div className="lock-icon">
-              <svg viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2" />
-                <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <div className="text-center border-top pt-4">
+          <div className="d-inline-flex align-items-center gap-2 text-muted small">
+            <div style={{ width: '16px' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" />
               </svg>
             </div>
-            <div className="security-text">
+            <div>
               <strong>HIPAA Compliant Storage</strong>
-              <span>End-to-end encryption • Healthcare privacy standards</span>
+              <span className="mx-2">•</span>
+              <span>End-to-end encryption</span>
             </div>
           </div>
         </div>

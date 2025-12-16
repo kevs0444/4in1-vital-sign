@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import "./Starting.css";
 import logo from "../../../assets/images/logo.png";
 
@@ -7,6 +8,7 @@ export default function Starting() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const [userData, setUserData] = useState({
     firstName: "",
     lastName: "",
@@ -105,6 +107,17 @@ export default function Starting() {
     });
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  const handleExit = () => setShowExitModal(true);
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    navigate("/login");
+  };
+
   // Format the display name
   const getDisplayName = () => {
     if (userData.firstName && userData.lastName) {
@@ -138,86 +151,81 @@ export default function Starting() {
   };
 
   return (
-    <div className="starting-container">
-      <div className={`starting-content ${isVisible ? 'visible' : ''}`}>
 
-        {/* Logo */}
-        <div className="starting-logo">
-          <img
-            src={logo}
-            alt="VitalSign AI Logo"
-            className="logo-image"
-          />
-        </div>
+    <div className="starting-container container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 bg-white">
+      <div className={`starting-content card border-0 shadow-lg p-4 p-md-5 mx-3 ${isVisible ? 'visible' : ''}`}>
+        <button className="close-button" onClick={handleExit}>←</button>
 
-        {/* Title */}
-        <div className="starting-header">
-          <h1 className="starting-title">Ready to Begin!</h1>
-          <p className="starting-subtitle">Let's start gathering your vital signs</p>
-        </div>
-
-        {/* Personal Info Summary */}
-        <div className="personal-info-summary">
-          <h2 className="summary-title">Your Information</h2>
-          <div className="info-grid">
-            <div className="info-item">
-              <span className="info-label">Name:</span>
-              <span className="info-value">
-                {getDisplayName()}
-              </span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Age:</span>
-              <span className="info-value">{getAgeDisplay()}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Sex:</span>
-              <span className="info-value">{getSexDisplay()}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Role:</span>
-              <span className="info-value">{getRoleDisplay()}</span>
-            </div>
+        {/* Logo - Centered with text-center */}
+        <div className="starting-logo d-flex justify-content-center mb-4">
+          <div className="logo-main-circle">
+            <img
+              src={logo}
+              alt="VitalSign AI Logo"
+              className="logo-image img-fluid rounded-circle"
+            />
           </div>
         </div>
 
-        {/* Measurement Instructions */}
-        <div className="measurement-instructions">
-          <h3 className="instructions-title">What's Next?</h3>
-          <div className="instructions-list">
-            <div className="instruction-item">
-              <div className="instruction-icon">⚖️</div>
-              <div className="instruction-text">
-                <strong>BMI Calculation</strong>
-                <span>We'll measure your weight and height for BMI</span>
+        {/* Title */}
+        <div className="starting-header text-center mb-4">
+          <h1 className="starting-title display-4 fw-bold text-danger mb-2">Ready to Begin!</h1>
+          <p className="starting-subtitle lead text-secondary">Let's start gathering your vital signs</p>
+        </div>
+
+        {/* Personal Info Summary - Clean visual without boxes */}
+        <div className="personal-info-summary w-100 mb-4 px-md-5">
+          <div className="info-grid d-flex flex-wrap justify-content-center gap-4">
+            <div className="info-item-clean">
+              <span className="info-label">Name</span>
+              <span className="info-value">{getDisplayName()}</span>
+            </div>
+            <div className="info-item-clean">
+              <span className="info-label">Age</span>
+              <span className="info-value">{getAgeDisplay()}</span>
+            </div>
+            <div className="info-item-clean">
+              <span className="info-label">Sex</span>
+              <span className="info-value">{getSexDisplay()}</span>
+            </div>
+            {userData.role && (
+              <div className="info-item-clean">
+                <span className="info-label">Role</span>
+                <span className="info-value">{getRoleDisplay()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Measurement Instructions - Orientation Guidelines */}
+        <div className="measurement-instructions mb-5 w-100 px-md-5">
+          <div className="instructions-list d-flex flex-column gap-3 align-items-center">
+            <div className="instruction-item-clean">
+              <span className="instruction-icon">🧘</span>
+              <div className="d-flex flex-column text-start">
+                <span className="instruction-text fw-bold">Relax & Stay Still</span>
+                <span className="instruction-subtext text-secondary">Breathe normally and keep calm during the process</span>
               </div>
             </div>
-            <div className="instruction-item">
-              <div className="instruction-icon">🌡️</div>
-              <div className="instruction-text">
-                <strong>Body Temperature</strong>
-                <span>Non-contact temperature scanning</span>
+            <div className="instruction-item-clean">
+              <span className="instruction-icon">👋</span>
+              <div className="d-flex flex-column text-start">
+                <span className="instruction-text fw-bold">Ask for Assistance</span>
+                <span className="instruction-subtext text-secondary">Our medical staff is here to help if you need anything</span>
               </div>
             </div>
-            <div className="instruction-item">
-              <div className="instruction-icon">❤️</div>
-              <div className="instruction-text">
-                <strong>Pulse Oximeter</strong>
-                <span>Finger sensor for Heart Rate, spO2 and Respiratory Rate</span>
-              </div>
-            </div>
-            <div className="instruction-item">
-              <div className="instruction-icon">🩺</div>
-              <div className="instruction-text">
-                <strong>Blood Pressure</strong>
-                <span>Cuff measurement for systolic and diastolic pressure</span>
+            <div className="instruction-item-clean">
+              <span className="instruction-icon">🧥</span>
+              <div className="d-flex flex-column text-start">
+                <span className="instruction-text fw-bold">Remove Accessories</span>
+                <span className="instruction-subtext text-secondary">Please remove watch, cap, shoes, id lace, and other accessories</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Start Button */}
-        <div className="starting-actions">
+        <div className="starting-actions text-center mt-2 d-flex flex-column gap-3 w-100 align-items-center">
           <button
             className="start-button"
             onClick={handleStartMeasurements}
@@ -226,6 +234,40 @@ export default function Starting() {
           </button>
         </div>
       </div>
+
+      {/* Modern Exit Confirmation Popup Modal */}
+      {showExitModal && (
+        <div className="exit-modal-overlay" onClick={() => setShowExitModal(false)}>
+          <motion.div
+            className="exit-modal-content"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="exit-modal-icon">
+              <span>🚪</span>
+            </div>
+            <h2 className="exit-modal-title">Exit Measurement?</h2>
+            <p className="exit-modal-message">Do you want to go back to login and cancel the measurement?</p>
+            <div className="exit-modal-buttons">
+              <button
+                className="exit-modal-button secondary"
+                onClick={() => setShowExitModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="exit-modal-button primary"
+                onClick={confirmExit}
+              >
+                Yes, Exit
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

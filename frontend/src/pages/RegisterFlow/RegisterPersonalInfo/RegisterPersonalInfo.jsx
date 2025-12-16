@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Modal, Button } from "react-bootstrap";
+import { motion } from "framer-motion";
 import "./RegisterPersonalInfo.css";
 import nameImage from "../../../assets/images/name.png";
 import ageImage from "../../../assets/images/age.png";
@@ -10,15 +11,16 @@ import femaleIcon from "../../../assets/icons/female-icon.png";
 export default function RegisterPersonalInfo() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentStep, setCurrentStep] = useState(0); // 0: Name, 1: Age, 2: Sex
+  // Initialize step from navigation state if available (e.g. coming back from TapID)
+  const [currentStep, setCurrentStep] = useState(location.state?.step || 0); // 0: Name, 1: Age, 2: Sex
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    age: "",
-    sex: "",
-    birthMonth: null,
-    birthDay: null,
-    birthYear: null
+    firstName: location.state?.personalInfo?.firstName || "",
+    lastName: location.state?.personalInfo?.lastName || "",
+    age: location.state?.personalInfo?.age ? location.state.personalInfo.age.toString() : "",
+    sex: location.state?.personalInfo?.sex || "",
+    birthMonth: location.state?.personalInfo?.birthMonth || null,
+    birthDay: location.state?.personalInfo?.birthDay || null,
+    birthYear: location.state?.personalInfo?.birthYear || null
   });
   const [isVisible, setIsVisible] = useState(false);
   const [isShift, setIsShift] = useState(false);
@@ -28,6 +30,10 @@ export default function RegisterPersonalInfo() {
   const [errorMessage, setErrorMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState({ firstName: false, lastName: false });
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showAgeWarningModal, setShowAgeWarningModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateModalTitle, setDuplicateModalTitle] = useState("Already Registered");
+  const [duplicateModalMessage, setDuplicateModalMessage] = useState("");
 
   const firstNameInputRef = useRef(null);
   const lastNameInputRef = useRef(null);
@@ -100,7 +106,18 @@ export default function RegisterPersonalInfo() {
     }
   }, [currentStep]);
 
-  const handleContinue = () => {
+  // Auto-detect age restriction when birthday is fully selected
+  useEffect(() => {
+    if (currentStep === 1 && formData.birthMonth && formData.birthDay && formData.birthYear) {
+      const ageNumber = parseInt(formData.age, 10);
+      // Logic update: Ask for guidance if 15 or below. 15+ is allowed.
+      if (!isNaN(ageNumber) && ageNumber <= 15) {
+        setShowAgeWarningModal(true);
+      }
+    }
+  }, [currentStep, formData.birthMonth, formData.birthDay, formData.birthYear, formData.age]);
+
+  const handleContinue = async () => {
     setErrorMessage("");
     if (currentStep === 0) {
       const firstNameValid = formData.firstName.trim().length > 0;
@@ -121,8 +138,12 @@ export default function RegisterPersonalInfo() {
         return;
       }
       const ageNumber = parseInt(formData.age, 10);
-      if (ageNumber < 1 || ageNumber > 99) {
-        setErrorMessage("Please enter a valid age (1–99)");
+      if (ageNumber <= 15) {
+        setShowAgeWarningModal(true);
+        return;
+      }
+      if (ageNumber > 99) {
+        setErrorMessage("Please enter a valid age up to 99");
         return;
       }
       setCurrentStep(2);
@@ -130,6 +151,54 @@ export default function RegisterPersonalInfo() {
       if (!formData.sex) {
         setErrorMessage("Please select your biological sex");
         return;
+      }
+
+      // Check for duplicate personal info before proceeding
+      console.log('🔍 Checking for duplicate personal info...');
+      console.log('Data to check:', {
+        firstname: formData.firstName.trim(),
+        lastname: formData.lastName.trim(),
+        age: parseInt(formData.age, 10),
+        sex: formData.sex,
+        birthMonth: formData.birthMonth,
+        birthDay: formData.birthDay,
+        birthYear: formData.birthYear
+      });
+
+      try {
+        const checkResponse = await fetch('http://localhost:5000/api/register/check-personal-info', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            firstname: formData.firstName.trim(),
+            lastname: formData.lastName.trim(),
+            age: parseInt(formData.age, 10),
+            sex: formData.sex,
+            birthMonth: formData.birthMonth,
+            birthDay: formData.birthDay,
+            birthYear: formData.birthYear
+          })
+        });
+
+        console.log('📡 Response status:', checkResponse.status);
+        const checkResult = await checkResponse.json();
+        console.log('📊 Check result:', checkResult);
+
+        if (checkResult.exists) {
+          console.log('❌ Duplicate found! Showing modal...');
+          setDuplicateModalTitle("User Already Registered");
+          setDuplicateModalMessage(checkResult.message || "A user with the same personal information already exists. If this is you, please login instead.");
+          setShowDuplicateModal(true);
+          return;
+        }
+
+        console.log('✅ No duplicate found, proceeding to next step...');
+      } catch (error) {
+        console.error('❌ Error checking personal info:', error);
+        // Show an error message if the check fails completely
+        console.warn('⚠️ Could not verify personal info uniqueness, proceeding anyway');
       }
 
       // FIXED: Pass personal info as an object
@@ -155,7 +224,8 @@ export default function RegisterPersonalInfo() {
       setCurrentStep(currentStep - 1);
       setErrorMessage("");
     } else {
-      setShowExitModal(true);
+      // Navigate back to Role Selection
+      navigate("/register/role");
     }
   };
 
@@ -295,7 +365,8 @@ export default function RegisterPersonalInfo() {
       case 0:
         return formData.firstName.trim() && formData.lastName.trim();
       case 1:
-        return formData.age && parseInt(formData.age, 10) >= 1 && parseInt(formData.age, 10) <= 99;
+        // Allow if age > 15
+        return formData.age && parseInt(formData.age, 10) > 15 && parseInt(formData.age, 10) <= 99;
       case 2:
         return formData.sex !== "";
       default:
@@ -335,9 +406,9 @@ export default function RegisterPersonalInfo() {
           ))}
         </div>
 
-        {/* Close Button */}
-        <button className="close-button" onClick={handleExit}>
-          ×
+        {/* Back Arrow Button */}
+        <button className="close-button" onClick={handleBack}>
+          ←
         </button>
 
         <div className="register-main-area">
@@ -550,7 +621,7 @@ export default function RegisterPersonalInfo() {
           )}
 
           {/* Navigation Buttons - UPDATED STACKED LAYOUT */}
-          <div className={`form-navigation ${currentStep > 0 ? 'dual-buttons' : 'single-button'}`}>
+          <div className="form-navigation">
             <button
               className={`nav-button ${currentStep === 2 ? "submit-button" : "next-button"} ${!isStepValid() ? "disabled" : ""}`}
               onClick={handleContinue}
@@ -559,12 +630,6 @@ export default function RegisterPersonalInfo() {
               {getButtonText()}
               {isStepValid() && <span className="button-arrow">→</span>}
             </button>
-
-            {currentStep > 0 && (
-              <button className="nav-button back-button" onClick={handleBack}>
-                ← Back
-              </button>
-            )}
           </div>
         </div>
 
@@ -620,6 +685,99 @@ export default function RegisterPersonalInfo() {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Age Warning Modal */}
+      <Modal
+        show={showAgeWarningModal}
+        onHide={() => setShowAgeWarningModal(false)}
+        centered
+        className="exit-modal"
+      >
+        <Modal.Header closeButton style={{ borderBottom: 'none', padding: '20px 25px 10px' }}>
+          <Modal.Title style={{ fontWeight: '700', color: '#dc2626' }}>Age Restriction</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ padding: '10px 25px 20px', fontSize: '1.2rem', color: '#333' }}>
+          <p>For users <strong>15 years old and below</strong>, please ask for guidance from our medical staff before proceeding.</p>
+        </Modal.Body>
+        <Modal.Footer style={{ borderTop: 'none', padding: '0 25px 25px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowAgeWarningModal(false);
+              // Reset all birthday fields to default
+              setFormData(prev => ({ ...prev, birthMonth: null, birthDay: null, birthYear: null, age: "" }));
+            }}
+            style={{
+              backgroundColor: '#f1f3f5',
+              border: 'none',
+              color: '#333',
+              fontWeight: '600',
+              padding: '12px 20px',
+              borderRadius: '12px',
+              fontSize: '1rem',
+              flex: 1
+            }}
+          >
+            Retry
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => navigate('/login')}
+            style={{
+              backgroundColor: '#dc2626',
+              border: 'none',
+              fontWeight: '600',
+              padding: '12px 20px',
+              borderRadius: '12px',
+              fontSize: '1rem',
+              flex: 1
+            }}
+          >
+            Understood
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Duplicate Personal Info Popup Modal - Modern Style */}
+      {showDuplicateModal && (
+        <div className="duplicate-rfid-overlay" onClick={() => setShowDuplicateModal(false)}>
+          <motion.div
+            className="duplicate-rfid-modal"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="duplicate-modal-icon">
+              <span>⚠️</span>
+            </div>
+            <h2 className="duplicate-modal-title">{duplicateModalTitle}</h2>
+            <p className="duplicate-modal-message">{duplicateModalMessage}</p>
+            <div style={{ display: 'flex', gap: '12px', width: '100%', justifyContent: 'center' }}>
+              <button
+                className="duplicate-modal-button"
+                style={{ flex: 1, maxWidth: '180px' }}
+                onClick={() => setShowDuplicateModal(false)}
+              >
+                Try Again
+              </button>
+              <button
+                className="duplicate-modal-button"
+                style={{
+                  flex: 1,
+                  maxWidth: '180px',
+                  background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                  boxShadow: '0 8px 25px rgba(55, 65, 81, 0.4)'
+                }}
+                onClick={() => navigate('/login')}
+              >
+                Go to Login
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

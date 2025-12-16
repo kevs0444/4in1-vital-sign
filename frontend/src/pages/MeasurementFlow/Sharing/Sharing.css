@@ -1,31 +1,17 @@
-/* Sharing.css - Connected to Saving Data */
 .share-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
+  /* Layout handled by Bootstrap */
   background: #f8fafc;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  padding: 20px;
+  font-family: 'Outfit', sans-serif;
 }
 
 .share-content {
   background: white;
   border-radius: 20px;
-  padding: 40px 30px;
-  width: 100%;
-  max-width: 850px;
+  /* padding handled by bootstrap p-4 p-md-5 */
+  /* width and max-width handled */
   box-shadow: 0 20px 40px rgba(220, 38, 38, 0.1);
   text-align: center;
-  opacity: 0;
-  transform: translateY(20px);
   transition: all 0.6s ease;
-
-}
-
-.share-content.visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 /* Header */

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Modal, Button } from "react-bootstrap";
 import "./BMI.css";
 import "../main-components-measurement.css";
 import weightIcon from "../../../assets/icons/weight-icon.png";
@@ -21,6 +22,7 @@ export default function BMI() {
   const [retryCount, setRetryCount] = useState(0);
   const [measurementStep, setMeasurementStep] = useState(0); // 0: not started, 1: weight, 2: height, 3: complete
   const [countdown, setCountdown] = useState(0);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // Interactive state variables
   const [weightMeasuring, setWeightMeasuring] = useState(false);
@@ -403,6 +405,23 @@ export default function BMI() {
     return `${feet}'${inches}"`;
   };
 
+
+
+  const handleBack = () => {
+    if (measurementStep > 0) {
+      clearSimulatedMeasurements();
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleExit = () => setShowExitModal(true);
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    navigate("/login");
+  };
+
   const startBMIMeasurement = () => {
     if (measurementStep === 0) {
       startWeightMeasurement();
@@ -551,46 +570,46 @@ export default function BMI() {
   const progressInfo = getProgressInfo('bmi', location.state?.checklist);
 
   return (
-    <div className="measurement-container">
-      <div className={`measurement-content ${isVisible ? 'visible' : ''}`}>
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container">
+      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
+        <button className="close-button" onClick={handleExit}>←</button>
+
         {/* Progress bar for Step X of Y */}
-        <div className="measurement-progress-container">
+        <div className="w-100 mb-4">
           <div className="measurement-progress-bar">
             <div className="measurement-progress-fill" style={{ width: `${progressInfo.percentage}%` }}></div>
           </div>
           <span className="measurement-progress-step">Step {progressInfo.currentStep} of {progressInfo.totalSteps} - BMI</span>
         </div>
 
-        <div className="measurement-header">
+        <div className="text-center mb-4">
           <h1 className="measurement-title">Body Mass Index <span className="measurement-title-accent">(BMI)</span></h1>
           <p className="measurement-subtitle">{statusMessage}</p>
           {retryCount > 0 && (
-            <div className="retry-indicator">
+            <div className="retry-indicator text-warning fw-bold">
               Retry attempt: {retryCount}/{MAX_RETRIES}
             </div>
           )}
           {isMeasuring && progress > 0 && (
-            <div className="measurement-progress-container" style={{ width: '50%', margin: '0 auto' }}>
+            <div className="w-50 mx-auto mt-2">
               <div className="measurement-progress-bar">
                 <div
                   className="measurement-progress-fill"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <span className="measurement-progress-step" style={{ textAlign: 'center' }}>{Math.round(progress)}%</span>
+              <span className="measurement-progress-step text-center d-block">{Math.round(progress)}%</span>
             </div>
           )}
         </div>
 
-        <div className="measurement-display-section">
-          {/* 2 cards on top (weight & height), 1 card below (BMI result) */}
-          <div className="measurement-grid-2-1">
-            {/* Top Row - Weight and Height Cards */}
-            <div className="measurement-row">
-              {/* Weight Card */}
-              <div className={`measurement-card ${weightMeasuring ? 'active' : ''} ${weightComplete ? 'completed' : ''}`}>
-                <div className="measurement-icon" style={{ width: '60px', height: '60px', marginBottom: '15px' }}>
-                  <img src={weightIcon} alt="Weight Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        <div className="w-100">
+          <div className="row g-4 justify-content-center mb-4">
+            {/* Weight Card */}
+            <div className="col-12 col-md-6">
+              <div className={`measurement-card h-100 ${weightMeasuring ? 'active' : ''} ${weightComplete ? 'completed' : ''}`}>
+                <div className="measurement-icon">
+                  <img src={weightIcon} alt="Weight Icon" />
                 </div>
                 <h3 className="instruction-title">Weight</h3>
                 <div className="measurement-value-container">
@@ -599,7 +618,7 @@ export default function BMI() {
                   </span>
                   <span className="measurement-unit">kg</span>
                 </div>
-                <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '10px' }}>
+                <div className="text-muted small mb-3">
                   {weight ? `${kgToLbs(weight)} lbs` :
                     (liveWeightData.current ? `${kgToLbs(liveWeightData.current.toFixed(1))} lbs` : "--.-- lbs")}
                 </div>
@@ -607,11 +626,13 @@ export default function BMI() {
                   {getWeightStatusText()}
                 </span>
               </div>
+            </div>
 
-              {/* Height Card */}
-              <div className={`measurement-card ${heightMeasuring ? 'active' : ''} ${heightComplete ? 'completed' : ''}`}>
-                <div className="measurement-icon" style={{ width: '60px', height: '60px', marginBottom: '15px' }}>
-                  <img src={heightIcon} alt="Height Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            {/* Height Card */}
+            <div className="col-12 col-md-6">
+              <div className={`measurement-card h-100 ${heightMeasuring ? 'active' : ''} ${heightComplete ? 'completed' : ''}`}>
+                <div className="measurement-icon">
+                  <img src={heightIcon} alt="Height Icon" />
                 </div>
                 <h3 className="instruction-title">Height</h3>
                 <div className="measurement-value-container">
@@ -620,7 +641,7 @@ export default function BMI() {
                   </span>
                   <span className="measurement-unit">cm</span>
                 </div>
-                <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '10px' }}>
+                <div className="text-muted small mb-3">
                   {height ? `${cmToFeet(height)}` :
                     (liveHeightData.current ? `${cmToFeet(liveHeightData.current.toFixed(1))}` : "--'--\"")}
                 </div>
@@ -630,10 +651,10 @@ export default function BMI() {
               </div>
             </div>
 
-            {/* Bottom Row - BMI Result Card */}
-            <div className="measurement-row">
-              <div className={`measurement-card ${bmiComplete ? 'completed' : ''}`} style={{ minWidth: '300px' }}>
-                <h3 className="instruction-title" style={{ fontSize: '1.5rem' }}>BMI Result</h3>
+            {/* BMI Result Card - Full Width on small screens, centered */}
+            <div className="col-12">
+              <div className={`measurement-card ${bmiComplete ? 'completed' : ''}`}>
+                <h3 className="instruction-title fs-3">BMI Result</h3>
                 <div className="measurement-value-container">
                   <span className="measurement-value">
                     {bmi || "--.--"}
@@ -642,7 +663,7 @@ export default function BMI() {
                 </div>
                 {bmi && (
                   <>
-                    <div className={`measurement-status-badge ${bmiCategory.class}`} style={{ marginBottom: '10px' }}>
+                    <div className={`measurement-status-badge ${bmiCategory.class} mb-3`}>
                       {bmiCategory.category}
                     </div>
                     <div className="instruction-text">
@@ -660,51 +681,57 @@ export default function BMI() {
           </div>
 
           {/* INSTRUCTION DISPLAY */}
-          <div className="measurement-instruction-container">
-            <div className="instruction-cards">
+          <div className="w-100 mt-4">
+            <div className="row g-3 justify-content-center">
               {/* Step 1 Card */}
-              <div className={`instruction-card ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
-                <div className="instruction-step-number">1</div>
-                <div className="instruction-icon">⚖️</div>
-                <h4 className="instruction-title">Measure Weight</h4>
-                <p className="instruction-text">
-                  Stand still for 3 seconds
-                </p>
+              <div className="col-12 col-md-4">
+                <div className={`instruction-card h-100 ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
+                  <div className="instruction-step-number">1</div>
+                  <div className="instruction-icon">⚖️</div>
+                  <h4 className="instruction-title">Measure Weight</h4>
+                  <p className="instruction-text">
+                    Stand still for 3 seconds
+                  </p>
+                </div>
               </div>
 
               {/* Step 2 Card */}
-              <div className={`instruction-card ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
-                <div className="instruction-step-number">2</div>
-                <div className="instruction-icon">📏</div>
-                <h4 className="instruction-title">Measure Height</h4>
-                <p className="instruction-text">
-                  Stand still under height sensor for 2 seconds
-                </p>
-                {isMeasuring && countdown > 0 && (
-                  <div style={{ color: '#dc2626', fontWeight: 'bold', marginTop: '5px' }}>
-                    {countdown}s
-                  </div>
-                )}
+              <div className="col-12 col-md-4">
+                <div className={`instruction-card h-100 ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
+                  <div className="instruction-step-number">2</div>
+                  <div className="instruction-icon">📏</div>
+                  <h4 className="instruction-title">Measure Height</h4>
+                  <p className="instruction-text">
+                    Stand still under height sensor for 2 seconds
+                  </p>
+                  {isMeasuring && countdown > 0 && (
+                    <div className="text-danger fw-bold mt-2">
+                      {countdown}s
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Step 3 Card */}
-              <div className={`instruction-card ${measurementStep >= 3 ? 'completed' : ''}`}>
-                <div className="instruction-step-number">3</div>
-                <div className="instruction-icon">✅</div>
-                <h4 className="instruction-title">Complete</h4>
-                <p className="instruction-text">
-                  {measurementComplete
-                    ? "BMI calculated! Continue to Body Temperature"
-                    : "BMI will be calculated automatically"
-                  }
-                </p>
+              <div className="col-12 col-md-4">
+                <div className={`instruction-card h-100 ${measurementStep >= 3 ? 'completed' : ''}`}>
+                  <div className="instruction-step-number">3</div>
+                  <div className="instruction-icon">✅</div>
+                  <h4 className="instruction-title">Complete</h4>
+                  <p className="instruction-text">
+                    {measurementComplete
+                      ? "BMI calculated! Continue to Body Temperature"
+                      : "BMI will be calculated automatically"
+                    }
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* UPDATED BUTTON SECTION */}
-        <div className="measurement-action-container">
+        {/* ACTION BUTTON */}
+        <div className="measurement-navigation mt-5">
           <button
             className="measurement-button"
             onClick={startBMIMeasurement}
@@ -717,6 +744,19 @@ export default function BMI() {
           </button>
         </div>
       </div>
+
+      <Modal show={showExitModal} onHide={() => setShowExitModal(false)} centered className="exit-modal">
+        <Modal.Header closeButton>
+          <Modal.Title>Exit Measurement?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Do you want to go back or cancel the measurement?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowExitModal(false)}>Cancel</Button>
+          <Button variant="danger" onClick={confirmExit}>Exit Measurement</Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

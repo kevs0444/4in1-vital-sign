@@ -29,6 +29,9 @@ export default function RegisterTapID() {
   const [rfidCode, setRfidCode] = useState("");
   const [isCardTapped, setIsCardTapped] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateRfidMessage, setDuplicateRfidMessage] = useState("");
+  const [duplicateModalTitle, setDuplicateModalTitle] = useState("Already Registered");
 
   const idNumberInputRef = useRef(null);
   const passwordInputRef = useRef(null);
@@ -149,9 +152,20 @@ export default function RegisterTapID() {
     return isEmployee ? "Employee Number" : "Student Number";
   };
 
-  // Auto-focus removed to prevent keyboard popup
+  // Auto-focus email input when reaching contact step
   useEffect(() => {
     setErrorMessage(""); // Clear errors on step change
+
+    // Auto-focus email input when on contact info step (step 1)
+    if (currentStep === 1) {
+      setActiveInput("email"); // Set email as active input for virtual keyboard
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        if (emailInputRef.current) {
+          emailInputRef.current.focus();
+        }
+      }, 100);
+    }
   }, [currentStep]);
 
   // Process RFID scan data
@@ -161,25 +175,50 @@ export default function RegisterTapID() {
     setIsCardTapped(true);
     setScannerStatus("reading");
     setIsScanning(true);
-    setScanProgress(30); // Start at 30% immediately
+    setScanProgress(20); // Start at 20%
     setErrorMessage(""); // Clear previous errors
 
     try {
-      // FAST Step 1: Card detection and reading (300ms)
+      // Step 1: Card detection and reading (300ms)
       await new Promise(resolve => setTimeout(resolve, 300));
-      setScanProgress(60);
+      setScanProgress(40);
 
       // USE EXACT RFID DATA - NO MODIFICATIONS, NO PREFIX, NO SLICING
       const generatedRFID = rfidData; // Use the exact data from scanner
       setRfidCode(generatedRFID);
 
-      // FAST Step 2: Writing user data to card (400ms)
+      // Step 2: Check if RFID already exists in database
       setScannerStatus("processing");
-      await new Promise(resolve => setTimeout(resolve, 400));
-      setScanProgress(85);
+      console.log('🔍 Checking for duplicate RFID:', generatedRFID);
 
-      // FAST Step 3: Verification and finalization (300ms)
-      await new Promise(resolve => setTimeout(resolve, 300));
+      try {
+        const checkResponse = await fetch(`http://localhost:5000/api/login/check-rfid/${encodeURIComponent(generatedRFID)}`);
+        const checkResult = await checkResponse.json();
+
+        if (checkResult.exists) {
+          // RFID already registered - show popup modal and reset
+          console.log('❌ RFID already registered:', generatedRFID);
+          setScannerStatus("error");
+          setDuplicateModalTitle("ID Card Already Registered");
+          setDuplicateRfidMessage("This ID card is already registered to another user. Please use a different ID card.");
+          setShowDuplicateModal(true);
+          setIsScanning(false);
+          setIsCardTapped(false);
+          setScanProgress(0);
+          return; // Stop the registration process
+        }
+
+        console.log('✅ RFID is unique, proceeding with registration');
+      } catch (checkError) {
+        console.error('Error checking RFID:', checkError);
+        // If check fails, proceed anyway but log warning
+        console.warn('⚠️ Could not verify RFID uniqueness, proceeding with registration');
+      }
+
+      setScanProgress(70);
+
+      // Step 3: Verification and finalization (400ms)
+      await new Promise(resolve => setTimeout(resolve, 400));
       setScanProgress(100);
       setScannerStatus("success");
 
@@ -273,8 +312,9 @@ export default function RegisterTapID() {
     }
   }, [currentStep, handleGlobalKeyDown]);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setErrorMessage("");
+
     if (currentStep === 0) {
       if (!validateIDNumber(formData.idNumber)) {
         setErrorMessage(`Please enter a valid ${getIdNumberLabel()} (numbers and hyphens only)`);
@@ -284,6 +324,22 @@ export default function RegisterTapID() {
         setErrorMessage("Password must be between 6 and 10 characters");
         return;
       }
+
+      // Check for duplicate student/employee number
+      try {
+        const checkResponse = await fetch(`http://localhost:5000/api/register/check-school-number/${encodeURIComponent(formData.idNumber)}`);
+        const checkResult = await checkResponse.json();
+
+        if (checkResult.exists) {
+          setDuplicateModalTitle(`${isEmployee ? 'Employee' : 'Student'} Number Already Registered`);
+          setDuplicateRfidMessage(`This ${isEmployee ? 'employee' : 'student'} number is already registered. Please use a different number or contact support if this is your number.`);
+          setShowDuplicateModal(true);
+          return;
+        }
+      } catch (error) {
+        console.warn('Could not verify school number uniqueness:', error);
+      }
+
       setCurrentStep(1);
     } else if (currentStep === 1) {
       if (!validateEmail(formData.email)) {
@@ -294,6 +350,38 @@ export default function RegisterTapID() {
         setErrorMessage("Please enter a valid Philippine mobile number (09XXXXXXXXX)");
         return;
       }
+
+      // Check for duplicate email
+      try {
+        const emailResponse = await fetch(`http://localhost:5000/api/register/check-email/${encodeURIComponent(formData.email)}`);
+        const emailResult = await emailResponse.json();
+
+        if (emailResult.exists) {
+          setDuplicateModalTitle("Email Already Registered");
+          setDuplicateRfidMessage("This email address is already registered. Please use a different email or login with your existing account.");
+          setShowDuplicateModal(true);
+          return;
+        }
+      } catch (error) {
+        console.warn('Could not verify email uniqueness:', error);
+      }
+
+      // Check for duplicate mobile number
+      try {
+        const cleanMobile = formData.mobile.replace(/\s/g, '');
+        const mobileResponse = await fetch(`http://localhost:5000/api/register/check-mobile/${encodeURIComponent(cleanMobile)}`);
+        const mobileResult = await mobileResponse.json();
+
+        if (mobileResult.exists) {
+          setDuplicateModalTitle("Mobile Number Already Registered");
+          setDuplicateRfidMessage("This mobile number is already registered. Please use a different number or login with your existing account.");
+          setShowDuplicateModal(true);
+          return;
+        }
+      } catch (error) {
+        console.warn('Could not verify mobile uniqueness:', error);
+      }
+
       setCurrentStep(2);
     }
   };
@@ -302,7 +390,14 @@ export default function RegisterTapID() {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     } else {
-      navigate(-1);
+      const currentState = stateRef.current;
+      navigate("/register/personal-info", {
+        state: {
+          step: 2,
+          personalInfo: currentState.personalInfo,
+          userType: currentState.userType
+        }
+      });
     }
   };
 
@@ -545,9 +640,9 @@ export default function RegisterTapID() {
           ))}
         </div>
 
-        {/* Close Button */}
-        <button className="close-button" onClick={handleExit}>
-          ×
+        {/* Back Arrow Button */}
+        <button className="close-button" onClick={handleBack}>
+          ←
         </button>
 
         <div className="register-main-area">
@@ -758,11 +853,15 @@ export default function RegisterTapID() {
               <div className="form-phase active">
                 <div className="tap-id-card-container">
                   {/* Large Icon - EMPHASIZED */}
-                  <div className="tap-id-image-wrapper">
+                  <div
+                    className="tap-id-image-wrapper"
+                    style={{ background: '#ffffff' }}
+                  >
                     <img
                       src={tapIdImage}
                       alt="Tap ID"
                       className="tap-id-main-image"
+                      style={{ background: '#ffffff' }}
                     />
                   </div>
 
@@ -1016,7 +1115,7 @@ export default function RegisterTapID() {
           </div>
 
           {/* Navigation Buttons */}
-          <div className={`form-navigation ${currentStep > 0 ? 'dual-buttons' : 'single-button'}`}>
+          <div className="form-navigation dual-buttons">
             {currentStep < 2 && (
               <button
                 className={`nav-button next-button ${!isStepValid() ? "disabled" : ""}`}
@@ -1025,12 +1124,6 @@ export default function RegisterTapID() {
               >
                 {getButtonText()}
                 <span className="button-arrow">→</span>
-              </button>
-            )}
-
-            {currentStep > 0 && !idRegistered && (
-              <button className="nav-button back-button" onClick={handleBack}>
-                ← Back
               </button>
             )}
           </div>
@@ -1089,6 +1182,35 @@ export default function RegisterTapID() {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Duplicate RFID Popup Modal - Modern Style */}
+      {showDuplicateModal && (
+        <div className="duplicate-rfid-overlay" onClick={() => setShowDuplicateModal(false)}>
+          <motion.div
+            className="duplicate-rfid-modal"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="duplicate-modal-icon">
+              <span>⚠️</span>
+            </div>
+            <h2 className="duplicate-modal-title">{duplicateModalTitle}</h2>
+            <p className="duplicate-modal-message">{duplicateRfidMessage}</p>
+            <button
+              className="duplicate-modal-button"
+              onClick={() => {
+                setShowDuplicateModal(false);
+                setScannerStatus("ready");
+              }}
+            >
+              {currentStep === 2 ? "Try Another Card" : "Try Different Info"}
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

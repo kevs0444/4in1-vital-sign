@@ -1,10 +1,114 @@
+@import "tailwindcss";
+
+/* Import Outfit Font */
+@font-face {
+  font-family: 'Outfit';
+  src: url('./assets/fonts/Outfit-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  src: url('./assets/fonts/Outfit-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  src: url('./assets/fonts/Outfit-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  src: url('./assets/fonts/Outfit-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
 :root {
   --font-primary: 'Outfit', sans-serif;
-  --font-secondary: 'Outfit', sans-serif; /* Same for consistency */
+  --font-secondary: 'Outfit', sans-serif;
+  /* Same for consistency */
   /* ... other variables */
 }
 
 body {
-  font-family: var(--font-primary);
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   /* ... */
+
+}
+
+/* ========================================= */
+/*       RED THEME BOOTSTRAP OVERRIDES       */
+/* ========================================= */
+
+.form-check-input:checked {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.form-check-input:focus {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 0.25rem rgba(220, 38, 38, 0.25) !important;
+  outline: 0 !important;
+}
+
+.form-check-input:checked[type="radio"] {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23fff'/%3e%3c/svg%3e");
+}
+
+.btn-primary {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.btn-primary:hover,
+.btn-primary:active,
+.btn-primary:focus {
+  background-color: #b91c1c !important;
+  border-color: #b91c1c !important;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3) !important;
+}
+
+.btn-outline-primary {
+  color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: #dc2626 !important;
+  color: white !important;
+}
+
+.text-primary {
+  color: #dc2626 !important;
+}
+
+a.text-primary:hover {
+  color: #b91c1c !important;
+}
+
+/* ========================================= */
+/*           GLOBAL PAGE TRANSITIONS         */
+/* ========================================= */
+
+.page-transition {
+  animation: fadeInUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

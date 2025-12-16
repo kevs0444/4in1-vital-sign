@@ -252,7 +252,9 @@ export default function Standby() {
         <Col xs={12} className="text-center">
           <div className="standby-main-content-container">
             <div className="standby-logo-section">
-              <img src={logo} alt="4 in Juan Logo" className="standby-juan-logo" />
+              <div className="standby-logo-main-circle">
+                <img src={logo} alt="4 in Juan Logo" className="standby-juan-logo" />
+              </div>
             </div>
             <div className="standby-title-section">
               <h1 className="standby-main-title">4 in <span className="standby-juan-red">Juan</span> Vital Kiosk</h1>

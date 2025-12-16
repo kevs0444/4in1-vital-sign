@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Modal, Button } from "react-bootstrap";
 import "./BloodPressure.css";
 import "../main-components-measurement.css";
 import bpIcon from "../../../assets/icons/bp-icon.png";
@@ -18,6 +19,7 @@ export default function BloodPressure() {
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(0);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // Interactive state variables
   const [bpMeasuring, setBpMeasuring] = useState(false);
@@ -275,12 +277,31 @@ export default function BloodPressure() {
   const displayValue = getCurrentDisplayValue();
   const progressInfo = getProgressInfo('bloodpressure', location.state?.checklist);
 
+  const handleBack = () => {
+    if (measurementStep > 1) {
+      stopAllTimers();
+      setBpMeasuring(false);
+      setMeasurementStep(1);
+      setStatusMessage("✅ Blood pressure monitor ready - Click 'Start Measurement' to begin");
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleExit = () => setShowExitModal(true);
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    navigate("/login");
+  };
+
   return (
-    <div className="measurement-container">
-      <div className={`measurement-content ${isVisible ? 'visible' : ''}`}>
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container">
+      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
+        <button className="close-button" onClick={handleExit}>←</button>
 
         {/* Progress bar for Step X of Y */}
-        <div className="measurement-progress-container">
+        <div className="w-100 mb-4">
           <div className="measurement-progress-bar">
             <div className="measurement-progress-fill" style={{ width: `${progressInfo.percentage}%` }}></div>
           </div>
@@ -289,105 +310,115 @@ export default function BloodPressure() {
           </span>
         </div>
 
-        <div className="measurement-header">
+        <div className="text-center mb-4">
           <h1 className="measurement-title">Blood <span className="measurement-title-accent">Pressure</span></h1>
           <p className="measurement-subtitle">
             {statusMessage}
           </p>
           {retryCount > 0 && (
-            <div className="retry-indicator">
+            <div className="retry-indicator text-warning fw-bold">
               Retry attempt: {retryCount}/{MAX_RETRIES}
             </div>
           )}
           {isMeasuring && progress > 0 && (
-            <div className="measurement-progress-container" style={{ width: '50%', margin: '0 auto' }}>
+            <div className="w-50 mx-auto mt-2">
               <div className="measurement-progress-bar">
                 <div
                   className="measurement-progress-fill"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <span className="measurement-progress-step" style={{ textAlign: 'center' }}>{Math.round(progress)}%</span>
+              <span className="measurement-progress-step text-center d-block">{Math.round(progress)}%</span>
             </div>
           )}
         </div>
 
-        <div className="measurement-display-section">
-          {/* Single Blood Pressure Display - Shows live reading and result */}
-          <div className={`measurement-card ${bpMeasuring ? 'active' : ''} ${bpComplete ? 'completed' : ''}`} style={{ minWidth: '320px', minHeight: '320px' }}>
-            <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
-              <img src={bpIcon} alt="Blood Pressure Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-            </div>
+        <div className="w-100">
+          <div className="row g-4 justify-content-center mb-4">
+            {/* Single Blood Pressure Display - Shows live reading and result */}
+            <div className="col-12 col-md-8 col-lg-6">
+              <div className={`measurement-card w-100 ${bpMeasuring ? 'active' : ''} ${bpComplete ? 'completed' : ''}`} style={{ minHeight: '320px' }}>
+                <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
+                  <img src={bpIcon} alt="Blood Pressure Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
 
-            <h3 className="instruction-title" style={{ fontSize: '1.5rem' }}>
-              {measurementComplete ? "Blood Pressure Result" : "Blood Pressure"}
-            </h3>
+                <h3 className="instruction-title fs-3">
+                  {measurementComplete ? "Blood Pressure Result" : "Blood Pressure"}
+                </h3>
 
-            <div className="measurement-value-container">
-              <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
-                {displayValue}
-              </span>
-              <span className="measurement-unit">mmHg</span>
-            </div>
+                <div className="measurement-value-container">
+                  <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
+                    {displayValue}
+                  </span>
+                  <span className="measurement-unit">mmHg</span>
+                </div>
 
-            <div className="measurement-status-badge-container" style={{ marginTop: '15px', textAlign: 'center' }}>
-              <span className={`measurement-status-badge ${statusInfo.class}`}>
-                {statusInfo.text}
-              </span>
-              <div className="instruction-text" style={{ marginTop: '10px' }}>
-                {statusInfo.description}
-              </div>
-            </div>
+                <div className="text-center mt-3">
+                  <span className={`measurement-status-badge ${statusInfo.class}`}>
+                    {statusInfo.text}
+                  </span>
+                  <div className="instruction-text mt-2">
+                    {statusInfo.description}
+                  </div>
+                </div>
 
-            {bpMeasuring && (
-              <div style={{ color: '#17a2b8', fontWeight: 'bold', marginTop: '15px' }}>
-                🔄 Measuring Blood Pressure...
-              </div>
-            )}
-          </div>
-
-          {/* INSTRUCTION DISPLAY - Simplified workflow */}
-          <div className="measurement-instruction-container">
-            <div className="instruction-cards">
-              {/* Step 1 Card - Ready for Measurement */}
-              <div className={`instruction-card ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
-                <div className="instruction-step-number">1</div>
-                <div className="instruction-icon">🩺</div>
-                <h4 className="instruction-title">Ready</h4>
-                <p className="instruction-text">
-                  Click Start to begin measurement
-                </p>
-              </div>
-
-              {/* Step 2 Card - Measurement in Progress */}
-              <div className={`instruction-card ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
-                <div className="instruction-step-number">2</div>
-                <div className="instruction-icon">📊</div>
-                <h4 className="instruction-title">Measuring</h4>
-                <p className="instruction-text">
-                  Blood pressure measurement in progress
-                </p>
-                {bpMeasuring && countdown > 0 && (
-                  <div style={{ color: '#dc2626', fontWeight: 'bold', marginTop: '5px' }}>
-                    {countdown}s remaining
+                {bpMeasuring && (
+                  <div className="text-info fw-bold mt-3">
+                    🔄 Measuring Blood Pressure...
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* INSTRUCTION DISPLAY - Simplified workflow */}
+          <div className="w-100 mt-4">
+            <div className="row g-3 justify-content-center">
+              {/* Step 1 Card - Ready for Measurement */}
+              <div className="col-12 col-md-4">
+                <div className={`instruction-card h-100 ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
+                  <div className="instruction-step-number">1</div>
+                  <div className="instruction-icon">🩺</div>
+                  <h4 className="instruction-title">Ready</h4>
+                  <p className="instruction-text">
+                    Click Start to begin measurement
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 2 Card - Measurement in Progress */}
+              <div className="col-12 col-md-4">
+                <div className={`instruction-card h-100 ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
+                  <div className="instruction-step-number">2</div>
+                  <div className="instruction-icon">📊</div>
+                  <h4 className="instruction-title">Measuring</h4>
+                  <p className="instruction-text">
+                    Blood pressure measurement in progress
+                  </p>
+                  {bpMeasuring && countdown > 0 && (
+                    <div className="text-danger fw-bold mt-2">
+                      {countdown}s remaining
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Step 3 Card - Results Complete */}
-              <div className={`instruction-card ${measurementStep >= 3 ? 'completed' : ''}`}>
-                <div className="instruction-step-number">3</div>
-                <div className="instruction-icon">🤖</div>
-                <h4 className="instruction-title">AI Results</h4>
-                <p className="instruction-text">
-                  View complete AI analysis and results
-                </p>
+              <div className="col-12 col-md-4">
+                <div className={`instruction-card h-100 ${measurementStep >= 3 ? 'completed' : ''}`}>
+                  <div className="instruction-step-number">3</div>
+                  <div className="instruction-icon">🤖</div>
+                  <h4 className="instruction-title">AI Results</h4>
+                  <p className="instruction-text">
+                    View complete AI analysis and results
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="measurement-action-container">
+        <div className="measurement-navigation mt-5">
           <button
             className="measurement-button"
             onClick={getButtonAction()}
@@ -400,6 +431,19 @@ export default function BloodPressure() {
           </button>
         </div>
       </div>
+
+      <Modal show={showExitModal} onHide={() => setShowExitModal(false)} centered className="exit-modal">
+        <Modal.Header closeButton>
+          <Modal.Title>Exit Measurement?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Do you want to go back or cancel the measurement?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowExitModal(false)}>Cancel</Button>
+          <Button variant="danger" onClick={confirmExit}>Exit Measurement</Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

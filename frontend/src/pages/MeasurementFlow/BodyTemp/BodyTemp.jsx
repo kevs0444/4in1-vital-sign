@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Modal, Button } from "react-bootstrap";
 import "./BodyTemp.css";
 import "../main-components-measurement.css";
 import tempIcon from "../../../assets/icons/temp-icon.png";
@@ -19,6 +20,7 @@ export default function BodyTemp() {
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(0);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // Interactive state variables
   const [tempMeasuring, setTempMeasuring] = useState(false);
@@ -366,15 +368,35 @@ export default function BodyTemp() {
     return isMeasuring;
   };
 
+  const handleBack = () => {
+    if (measurementStep > 1) {
+      stopMonitoring();
+      stopCountdown();
+      resetMeasurement();
+      setMeasurementStep(1);
+      setStatusMessage("✅ Temperature sensor ready. Point at forehead and click Start Measurement");
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleExit = () => setShowExitModal(true);
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    navigate("/login");
+  };
+
   const statusInfo = getCurrentStatusInfo();
   const displayValue = getCurrentDisplayValue();
 
   return (
-    <div className="measurement-container">
-      <div className={`measurement-content ${isVisible ? 'visible' : ''}`}>
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container">
+      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
+        <button className="close-button" onClick={handleExit}>←</button>
 
         {/* Progress bar for Step X of Y */}
-        <div className="measurement-progress-container">
+        <div className="w-100 mb-4">
           <div className="measurement-progress-bar">
             <div className="measurement-progress-fill" style={{ width: `${getProgressInfo('bodytemp', location.state?.checklist).percentage}%` }}></div>
           </div>
@@ -383,103 +405,113 @@ export default function BodyTemp() {
           </span>
         </div>
 
-        <div className="measurement-header">
+        <div className="text-center mb-4">
           <h1 className="measurement-title">Body <span className="measurement-title-accent">Temperature</span></h1>
           <p className="measurement-subtitle">{statusMessage}</p>
           {retryCount > 0 && (
-            <div className="retry-indicator">
+            <div className="retry-indicator text-warning fw-bold">
               Retry attempt: {retryCount}/{MAX_RETRIES}
             </div>
           )}
           {isMeasuring && progress > 0 && (
-            <div className="measurement-progress-container" style={{ width: '50%', margin: '0 auto' }}>
+            <div className="w-50 mx-auto mt-2">
               <div className="measurement-progress-bar">
                 <div
                   className="measurement-progress-fill"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <span className="measurement-progress-step" style={{ textAlign: 'center' }}>{Math.round(progress)}%</span>
+              <span className="measurement-progress-step text-center d-block">{Math.round(progress)}%</span>
             </div>
           )}
         </div>
 
-        <div className="measurement-display-section">
-          {/* Single Temperature Display - Shows live reading and result */}
-          <div className={`measurement-card ${tempMeasuring ? 'active' : ''} ${tempComplete ? 'completed' : ''}`} style={{ minWidth: '320px', minHeight: '320px' }}>
-            <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
-              <img src={tempIcon} alt="Temperature Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-            </div>
+        <div className="w-100">
+          <div className="row g-4 justify-content-center mb-4">
+            {/* Single Temperature Display - Shows live reading and result */}
+            <div className="col-12 col-md-8 col-lg-6">
+              <div className={`measurement-card w-100 ${tempMeasuring ? 'active' : ''} ${tempComplete ? 'completed' : ''}`} style={{ minHeight: '320px' }}>
+                <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
+                  <img src={tempIcon} alt="Temperature Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
 
-            <h3 className="instruction-title" style={{ fontSize: '1.5rem' }}>
-              {measurementComplete ? "Temperature Result" : "Body Temperature"}
-            </h3>
+                <h3 className="instruction-title fs-3">
+                  {measurementComplete ? "Temperature Result" : "Body Temperature"}
+                </h3>
 
-            <div className="measurement-value-container">
-              <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
-                {displayValue}
-              </span>
-              <span className="measurement-unit">°C</span>
-            </div>
+                <div className="measurement-value-container">
+                  <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
+                    {displayValue}
+                  </span>
+                  <span className="measurement-unit">°C</span>
+                </div>
 
-            <div className="measurement-status-badge-container" style={{ marginTop: '15px', textAlign: 'center' }}>
-              <span className={`measurement-status-badge ${statusInfo.class}`}>
-                {statusInfo.text}
-              </span>
-              <div className="instruction-text" style={{ marginTop: '10px' }}>
-                {statusInfo.description}
-              </div>
-            </div>
+                <div className="text-center mt-3">
+                  <span className={`measurement-status-badge ${statusInfo.class}`}>
+                    {statusInfo.text}
+                  </span>
+                  <div className="instruction-text mt-2">
+                    {statusInfo.description}
+                  </div>
+                </div>
 
-            {tempMeasuring && liveTempValue && (
-              <div style={{ color: '#17a2b8', fontWeight: 'bold', marginTop: '15px' }}>
-                🔄 Live Reading
-              </div>
-            )}
-          </div>
-
-          {/* INSTRUCTION DISPLAY */}
-          <div className="measurement-instruction-container">
-            <div className="instruction-cards">
-              {/* Step 1 Card */}
-              <div className={`instruction-card ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
-                <div className="instruction-step-number">1</div>
-                <div className="instruction-icon">📍</div>
-                <h4 className="instruction-title">Position Sensor</h4>
-                <p className="instruction-text">
-                  Point sensor at forehead
-                </p>
-              </div>
-
-              {/* Step 2 Card */}
-              <div className={`instruction-card ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
-                <div className="instruction-step-number">2</div>
-                <div className="instruction-icon">📱</div>
-                <h4 className="instruction-title">Start Measurement</h4>
-                <p className="instruction-text">
-                  Click Start button
-                </p>
-                {isMeasuring && countdown > 0 && (
-                  <div style={{ color: '#dc2626', fontWeight: 'bold', marginTop: '5px' }}>
-                    {countdown}s
+                {tempMeasuring && liveTempValue && (
+                  <div className="text-info fw-bold mt-3">
+                    🔄 Live Reading
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* INSTRUCTION DISPLAY */}
+          <div className="w-100 mt-4">
+            <div className="row g-3 justify-content-center">
+              {/* Step 1 Card */}
+              <div className="col-12 col-md-4">
+                <div className={`instruction-card h-100 ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
+                  <div className="instruction-step-number">1</div>
+                  <div className="instruction-icon">📍</div>
+                  <h4 className="instruction-title">Position Sensor</h4>
+                  <p className="instruction-text">
+                    Point sensor at forehead
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 2 Card */}
+              <div className="col-12 col-md-4">
+                <div className={`instruction-card h-100 ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
+                  <div className="instruction-step-number">2</div>
+                  <div className="instruction-icon">📱</div>
+                  <h4 className="instruction-title">Start Measurement</h4>
+                  <p className="instruction-text">
+                    Click Start button
+                  </p>
+                  {isMeasuring && countdown > 0 && (
+                    <div className="text-danger fw-bold mt-2">
+                      {countdown}s
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Step 3 Card */}
-              <div className={`instruction-card ${measurementStep >= 3 ? 'completed' : ''}`}>
-                <div className="instruction-step-number">3</div>
-                <div className="instruction-icon">✅</div>
-                <h4 className="instruction-title">Continue</h4>
-                <p className="instruction-text">
-                  Proceed to next step
-                </p>
+              <div className="col-12 col-md-4">
+                <div className={`instruction-card h-100 ${measurementStep >= 3 ? 'completed' : ''}`}>
+                  <div className="instruction-step-number">3</div>
+                  <div className="instruction-icon">✅</div>
+                  <h4 className="instruction-title">Continue</h4>
+                  <p className="instruction-text">
+                    Proceed to next step
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="measurement-action-container">
+        <div className="measurement-navigation mt-5">
           <button
             className="measurement-button"
             onClick={measurementComplete ? handleContinue : startMeasurement}
@@ -492,6 +524,19 @@ export default function BodyTemp() {
           </button>
         </div>
       </div>
+
+      <Modal show={showExitModal} onHide={() => setShowExitModal(false)} centered className="exit-modal">
+        <Modal.Header closeButton>
+          <Modal.Title>Exit Measurement?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Do you want to go back or cancel the measurement?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowExitModal(false)}>Cancel</Button>
+          <Button variant="danger" onClick={confirmExit}>Exit Measurement</Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

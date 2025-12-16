@@ -144,6 +144,16 @@
   margin-bottom: 0;
 }
 
+.register-main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
 .form-container {
   flex: 1;
   display: flex;
@@ -320,8 +330,8 @@
   border-bottom: 1px solid #f0f0f0;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  min-height: 60px;
-  /* Ensures minimum 5 options are visible with 350px height */
+  min-height: 70px;
+  /* Ensures exactly 5 options are visible with 350px height (5 * 70px = 350px) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -412,9 +422,10 @@
 }
 
 .sex-selection {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
   margin-top: 10px;
   min-height: 0;
   flex: 1;
@@ -438,9 +449,12 @@
   gap: 25px;
   position: relative;
   box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
-  min-height: 300px;
-  height: 100%;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
+  min-height: 280px;
+  height: auto;
   width: 100%;
+  max-width: 320px;
+  flex: 0 1 auto;
 }
 
 .sex-option:active {
@@ -521,7 +535,8 @@
 }
 
 .sex-option.selected span {
-  color: #dc2626;
+  /* Default red replaced by specific colors below */
+  font-weight: 800;
   transform: scale(1.05);
 }
 
@@ -558,15 +573,15 @@
 .nav-button {
   padding: 20px;
   border: none;
-  border-radius: 15px;
-  font-size: 1.5rem;
+  border-radius: 20px;
+  font-size: 1.6rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   font-family: inherit;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  min-height: 70px;
+  min-height: 75px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1091,8 +1106,35 @@
   box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3) !important;
 }
 
+.sex-option:first-child.selected span {
+  color: #3b82f6 !important;
+}
+
 .sex-option:last-child {
   border-color: #ec4899 !important;
+}
+
+.sex-option:last-child:hover {
+  border-color: #d61f69 !important;
+}
+
+.sex-option:last-child.selected {
+  border-color: #ec4899 !important;
+  box-shadow: 0 25px 60px rgba(236, 72, 153, 0.25) !important;
+}
+
+.sex-option:last-child.selected::after {
+  background: #ec4899 !important;
+  box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4) !important;
+}
+
+.sex-option:last-child.selected .role-card-icon {
+  border-color: #ec4899 !important;
+  box-shadow: 0 15px 40px rgba(236, 72, 153, 0.3) !important;
+}
+
+.sex-option:last-child.selected span {
+  color: #ec4899 !important;
 }
 
 .register-keyboard-key.symbols-key.active {
@@ -1513,11 +1555,12 @@
   box-shadow: 0 15px 40px rgba(236, 72, 153, 0.3) !important;
 }
 
-/* Close Button */
+/* Close Button (Back Arrow) */
 .close-button {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 25px;
+  left: 25px;
+  right: auto;
   background: none;
   border: none;
   font-size: 3rem;
@@ -1527,6 +1570,9 @@
   padding: 5px;
   line-height: 0.8;
   transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .close-button:hover {
@@ -1576,4 +1622,162 @@
   font-weight: 600;
   padding: 10px 20px;
   border-radius: 10px;
+}
+
+/* Modern Duplicate Popup Modal */
+.duplicate-rfid-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.duplicate-rfid-modal {
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 24px;
+  padding: 40px 35px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow:
+    0 25px 80px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.duplicate-rfid-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #dc2626, #f87171, #dc2626);
+  background-size: 200% 100%;
+  animation: shimmerWarning 2s linear infinite;
+}
+
+@keyframes shimmerWarning {
+  0% {
+    background-position: 0% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.duplicate-modal-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #fecaca;
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.2);
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.2);
+  }
+
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 12px 35px rgba(220, 38, 38, 0.3);
+  }
+}
+
+.duplicate-modal-icon span {
+  font-size: 2.5rem;
+}
+
+.duplicate-modal-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #dc2626;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.duplicate-modal-message {
+  font-size: 1.15rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin-bottom: 30px;
+  padding: 0 10px;
+}
+
+.duplicate-modal-button {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 16px 40px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+  width: 100%;
+  max-width: 280px;
+}
+
+.duplicate-modal-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(220, 38, 38, 0.5);
+}
+
+.duplicate-modal-button:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .duplicate-rfid-modal {
+    padding: 30px 25px;
+    margin: 15px;
+  }
+
+  .duplicate-modal-icon {
+    width: 70px;
+    height: 70px;
+  }
+
+  .duplicate-modal-icon span {
+    font-size: 2rem;
+  }
+
+  .duplicate-modal-title {
+    font-size: 1.5rem;
+  }
+
+  .duplicate-modal-message {
+    font-size: 1.05rem;
+  }
+
+  .duplicate-modal-button {
+    padding: 14px 30px;
+    font-size: 1.1rem;
+  }
 }

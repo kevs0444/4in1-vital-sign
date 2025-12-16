@@ -1179,3 +1179,161 @@ body {
   font-size: 1.1rem !important;
   flex-shrink: 0;
 }
+
+/* Modern Error Popup Modal */
+.login-error-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.login-error-modal-content {
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 24px;
+  padding: 40px 35px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow:
+    0 25px 80px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-error-modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #dc2626, #f87171, #dc2626);
+  background-size: 200% 100%;
+  animation: shimmerWarning 2s linear infinite;
+}
+
+@keyframes shimmerWarning {
+  0% {
+    background-position: 0% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.error-modal-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #fecaca;
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.2);
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.2);
+  }
+
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 12px 35px rgba(220, 38, 38, 0.3);
+  }
+}
+
+.error-modal-icon span {
+  font-size: 2.5rem;
+}
+
+.error-modal-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #dc2626;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.error-modal-message {
+  font-size: 1.15rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin-bottom: 30px;
+  padding: 0 10px;
+}
+
+.error-modal-button {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 16px 40px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+  width: 100%;
+  max-width: 280px;
+}
+
+.error-modal-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(220, 38, 38, 0.5);
+}
+
+.error-modal-button:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+/* Responsive adjustments for Error Modal */
+@media (max-width: 480px) {
+  .login-error-modal-content {
+    padding: 30px 25px;
+    margin: 15px;
+  }
+
+  .error-modal-icon {
+    width: 70px;
+    height: 70px;
+  }
+
+  .error-modal-icon span {
+    font-size: 2rem;
+  }
+
+  .error-modal-title {
+    font-size: 1.5rem;
+  }
+
+  .error-modal-message {
+    font-size: 1.05rem;
+  }
+
+  .error-modal-button {
+    padding: 14px 30px;
+    font-size: 1.1rem;
+  }
+}

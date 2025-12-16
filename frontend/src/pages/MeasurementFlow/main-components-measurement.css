@@ -1,9 +1,8 @@
-/* Global Measurement Page Styles */
+/* Global Measurement Page Styles - Optimized for Bootstrap Integration */
 :root {
     --primary-color: #dc2626;
     --primary-gradient: linear-gradient(135deg, #dc2626, #991b1b);
     --secondary-color: #dc2626;
-    /* Changed from blue to red to match theme */
     --success-color: #28a745;
     --warning-color: #ffc107;
     --danger-color: #dc3545;
@@ -17,68 +16,41 @@
     --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.1);
 }
 
-.measurement-container * {
-    box-sizing: border-box;
+/* Base Styles */
+.measurement-container {
+    background: var(--bg-color);
+    font-family: 'Outfit', sans-serif;
+    overflow-x: hidden;
 }
 
-.measurement-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    height: 100%;
-    width: 100vw;
-    background: var(--bg-color);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    overflow: hidden !important;
-    padding: 10px;
-    margin: 0;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .measurement-content {
     background: var(--card-bg);
     border-radius: 24px;
-    width: 100%;
     max-width: 1000px;
-    /* Increased max-width */
-    height: auto;
-    min-height: 90vh;
-    max-height: 95vh;
-    padding: 40px;
-    /* Increased padding */
-    box-shadow: var(--shadow-lg);
-    text-align: center;
-    transition: all 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
-    transform: translateY(20px);
-    opacity: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden !important;
-    border: 1px solid var(--border-color);
-    position: relative;
-}
-
-.measurement-content.visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* Progress Bar Section */
-.measurement-progress-container {
-    margin-bottom: 25px;
-    flex-shrink: 0;
+    /* Keep max-width limitation for readability */
     width: 100%;
+    animation: fadeInUp 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    position: relative;
+    /* Ensure relative positioning for close button */
 }
 
+/* Progress Bar */
 .measurement-progress-bar {
     width: 100%;
     height: 10px;
-    /* Slightly thicker */
     background: #f0f0f0;
     border-radius: 5px;
     overflow: hidden;
@@ -94,32 +66,19 @@
 
 .measurement-progress-step {
     font-size: 0.95rem;
-    /* Larger font */
     color: var(--text-secondary);
     display: block;
     text-align: right;
     font-weight: 500;
 }
 
-/* Header Section */
-.measurement-header {
-    text-align: center;
-    margin-bottom: 30px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-}
-
+/* Typography */
 .measurement-title {
     font-size: 2.5rem;
-    /* Larger title */
     color: var(--text-primary);
     font-weight: 800;
-    margin: 0;
-    line-height: 1.2;
     letter-spacing: -0.02em;
+    line-height: 1.2;
 }
 
 .measurement-title-accent {
@@ -128,37 +87,16 @@
 
 .measurement-subtitle {
     font-size: 1.1rem;
-    /* Larger subtitle */
     color: var(--text-secondary);
     line-height: 1.5;
-    padding: 0 10px;
-    margin: 0;
-    max-width: 700px;
 }
 
-/* Main Display Section */
-.measurement-display-section {
-    margin: 15px 0;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    overflow: visible !important;
-    gap: 30px;
-    /* Increased gap */
-}
-
-/* Common Card Styles */
+/* Measurement Card Generic Styling (Layout handled by Bootstrap) */
 .measurement-card {
     background: white;
     border-radius: 24px;
-    /* Larger radius */
     border: 2px solid var(--border-color);
     padding: 30px;
-    /* Increased padding */
-    box-shadow: var(--shadow-sm);
     transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     position: relative;
     overflow: hidden;
@@ -166,10 +104,6 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 220px;
-    /* Increased min-height */
-    min-width: 220px;
-    /* Increased min-width */
 }
 
 .measurement-card:hover {
@@ -194,7 +128,30 @@
     left: 100%;
 }
 
-/* Measurement Values & Units */
+.measurement-card.active {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md);
+}
+
+.measurement-card.completed {
+    border-color: var(--success-color);
+    background: linear-gradient(135deg, #f0fff4, #ffffff);
+}
+
+/* Icons */
+.measurement-icon {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 15px;
+}
+
+.measurement-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Values */
 .measurement-value-container {
     display: flex;
     align-items: baseline;
@@ -207,27 +164,22 @@
 
 .measurement-value {
     font-size: 3.5rem;
-    /* Larger value */
     font-weight: 800;
     color: var(--text-primary);
     line-height: 1;
-    transition: color 0.3s ease;
 }
 
 .measurement-unit {
     font-size: 1.8rem;
-    /* Larger unit */
     color: var(--text-secondary);
     font-weight: 600;
 }
 
-/* Status Badges */
+/* Badges */
 .measurement-status-badge {
     font-size: 1rem;
-    /* Larger font */
     font-weight: 700;
     padding: 10px 20px;
-    /* Larger padding */
     border-radius: 50px;
     display: inline-block;
     min-width: 140px;
@@ -243,7 +195,6 @@
 
 .measurement-status-badge.active {
     background: var(--secondary-color);
-    /* Red theme */
     color: white;
     box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
     animation: pulse-red 2s infinite;
@@ -265,42 +216,19 @@
     color: white;
 }
 
-/* Instruction Cards Section - FIXED CENTERING */
-.measurement-instruction-container {
-    width: 100%;
-    margin-top: auto;
-    padding-top: 25px;
-}
-
-.instruction-cards {
-    display: flex;
-    justify-content: center;
-    gap: 25px;
-    /* Increased gap */
-    width: 100%;
-    flex-wrap: wrap;
-}
-
+/* Instruction Cards */
 .instruction-card {
-    flex: 1;
-    min-width: 200px;
-    /* Increased min-width */
-    max-width: 280px;
-    /* Increased max-width */
     padding: 25px;
-    /* Increased padding */
     background: white;
     border-radius: 20px;
     border: 2px solid var(--border-color);
     transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
+    text-align: center;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* Ensure all content is centered */
-    text-align: center;
-    /* Center text alignment */
+    justify-content: center;
 }
 
 .instruction-card:hover {
@@ -312,7 +240,6 @@
 .instruction-card.active {
     border-color: var(--secondary-color);
     background: linear-gradient(135deg, #fff5f5, #ffffff);
-    /* Red tinted bg */
 }
 
 .instruction-card.completed {
@@ -322,7 +249,6 @@
 
 .instruction-step-number {
     width: 40px;
-    /* Larger circle */
     height: 40px;
     border-radius: 50%;
     background: var(--primary-color);
@@ -333,59 +259,58 @@
     font-size: 1.1rem;
     font-weight: 700;
     margin: 0 auto 15px auto;
-    /* Center horizontally */
-    transition: all 0.3s ease;
-    flex-shrink: 0;
 }
 
 .instruction-card.completed .instruction-step-number {
     background: var(--success-color);
 }
 
-.instruction-card.active .instruction-step-number {
-    background: var(--secondary-color);
-    animation: pulse-scale 2s infinite;
-}
-
 .instruction-icon {
     font-size: 2.2rem;
-    /* Larger icon */
-    margin: 0 auto 15px auto;
-    /* Center horizontally */
+    margin-bottom: 10px;
     display: block;
-    text-align: center;
-    width: 100%;
-    /* Ensure full width for centering */
-    line-height: 1;
-    /* Remove extra line height */
 }
 
 .instruction-title {
     font-size: 1.1rem;
-    /* Larger title */
     font-weight: 700;
     color: var(--text-primary);
-    margin: 0 0 10px 0;
-    text-align: center;
-    width: 100%;
-    /* Ensure full width for centering */
+    margin-bottom: 8px;
 }
 
 .instruction-text {
     font-size: 0.95rem;
-    /* Larger text */
     color: var(--text-secondary);
     line-height: 1.4;
     margin: 0;
-    text-align: center;
-    width: 100%;
-    /* Ensure full width for centering */
 }
 
-/* Unified Measurement Button Styles */
+/* Buttons */
+/* Standardize widths */
+.measurement-button,
+.measurement-back-button {
+    width: 100%;
+    /* Keep width 100% to fill container, max-width is handled by parent .measurement-navigation */
+    max-width: 450px;
+    /* Enforce global max-width 450px */
+}
+
+/* Ensure navigation container centers them */
+.measurement-navigation {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    width: 100%;
+    max-width: 500px;
+    /* Container can be larger, but items max at 450px */
+    margin: 0 auto;
+}
+
 .measurement-button {
     position: relative;
-    padding: 1.8rem 4rem !important;
+    padding: 1.8rem 2rem !important;
+    /* Reduced padding for standardization */
     border-radius: 20px !important;
     font-size: 1.8rem !important;
     font-weight: 700 !important;
@@ -394,7 +319,6 @@
     box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
     transition: all 0.3s ease !important;
     min-height: 100px;
-    min-width: 400px;
     touch-action: manipulation;
     overflow: hidden;
     color: white !important;
@@ -402,16 +326,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto;
-    z-index: 4;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
     gap: 12px;
+    z-index: 4;
 }
 
 .measurement-button:hover:not(:disabled) {
@@ -422,7 +339,6 @@
 
 .measurement-button:active:not(:disabled) {
     transform: translateY(0);
-    box-shadow: 0 2px 10px rgba(220, 38, 38, 0.3);
 }
 
 .measurement-button:disabled {
@@ -433,39 +349,86 @@
     color: #666 !important;
 }
 
-.measurement-button::after {
-    content: '';
+/* Back Button */
+.measurement-back-button {
+    position: relative;
+    padding: 1rem 2rem !important;
+    border-radius: 12px !important;
+    /* Squarish */
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    background: #6c757d !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3) !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    min-height: 70px;
+    /* Reduced specific height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white !important;
+    z-index: 4;
+}
+
+.measurement-back-button:hover {
+    transform: translateY(-2px);
+    background: #5a6268 !important;
+    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4) !important;
+}
+
+.measurement-back-button:active {
+    transform: translateY(0);
+}
+
+/* Back Arrow Button (formerly Close Button) */
+/* Back Arrow Button (formerly Close Button) */
+.close-button {
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s ease;
+    top: 25px;
+    left: 25px;
+    /* Moved to left */
+    right: auto;
+    background: none;
+    border: none;
+    font-size: 3rem;
+    color: #dc2626;
+    cursor: pointer;
+    z-index: 10;
+    padding: 0;
+    width: 50px;
+    height: 50px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
 }
 
-.measurement-button:hover:not(:disabled)::after {
-    left: 100%;
+.close-button:hover {
+    transform: scale(1.1);
 }
 
-/* Spinner alignment */
-.measurement-button .spinner {
-    width: 24px;
-    height: 24px;
+.spinner {
+    width: 28px;
+    height: 28px;
     border: 3px solid rgba(255, 255, 255, 0.3);
     border-top: 3px solid white;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    flex-shrink: 0;
 }
 
-/* Action Button Container */
-.measurement-action-container {
-    margin-top: 30px;
-    flex-shrink: 0;
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
-/* Animations */
 @keyframes pulse-red {
     0% {
         box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
@@ -480,84 +443,83 @@
     }
 }
 
-@keyframes pulse-scale {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.1);
-    }
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-.spinner {
-    width: 28px;
-    /* Larger spinner */
-    height: 28px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top: 3px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-/* Specific Layout Helpers */
-.measurement-grid-2-1 {
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
-    width: 100%;
-}
-
-.measurement-row {
-    display: flex;
-    justify-content: center;
-    gap: 25px;
-    width: 100%;
-    flex-wrap: wrap;
-}
-
-/* Responsive */
+/* Responsive Overrides */
 @media (max-width: 768px) {
-    .measurement-content {
-        padding: 20px;
-        min-height: 100vh;
-        border-radius: 0;
-    }
-
     .measurement-title {
         font-size: 1.8rem;
     }
 
     .measurement-value {
-        font-size: 2.8rem;
-    }
-
-    .instruction-cards {
-        gap: 15px;
-    }
-
-    .instruction-card {
-        min-width: 150px;
-        padding: 20px;
+        font-size: 2.5rem;
     }
 
     .measurement-button {
-        width: 100%;
-        font-size: 1.4rem;
-        padding: 1.2rem 2rem;
-        min-width: unset;
+        padding: 1.2rem 2rem !important;
+        font-size: 1.4rem !important;
         min-height: 80px;
     }
+}
+
+/* ========================================= */
+/*       RED THEME BOOTSTRAP OVERRIDES       */
+/* ========================================= */
+
+/* Checkbox & Radio Buttons */
+.form-check-input:checked {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.form-check-input:focus {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 0.25rem rgba(220, 38, 38, 0.25) !important;
+    outline: 0 !important;
+}
+
+.form-check-input:checked[type="radio"] {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23fff'/%3e%3c/svg%3e");
+}
+
+/* Primary Button Override */
+.btn-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:active,
+.btn-primary:focus {
+    background-color: #b91c1c !important;
+    /* Darker red */
+    border-color: #b91c1c !important;
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3) !important;
+}
+
+.btn-outline-primary {
+    color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+/* Links & Text */
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+a.text-primary:hover {
+    color: #b91c1c !important;
+}
+
+/* ========================================= */
+/*           GLOBAL PAGE TRANSITIONS         */
+/* ========================================= */
+
+.page-transition {
+    animation: fadeInUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    opacity: 0;
+    /* Start hidden for animation */
 }

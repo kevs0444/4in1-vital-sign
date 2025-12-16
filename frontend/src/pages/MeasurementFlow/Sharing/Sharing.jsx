@@ -274,31 +274,32 @@ export default function Sharing() {
   }
 
   return (
-    <div className="share-container">
-      <div className={`share-content ${isVisible ? 'visible' : ''}`}>
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 share-container">
+      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 share-content page-transition`} style={{ maxWidth: '600px', width: '100%' }}>
 
         {/* Header */}
-        <div className="share-header">
-          <div className="share-icon">
-            {isPrinting ? (
-              <div className="printing-animation">
-                <div className="printer-icon">🖨️</div>
-                <div className="paper"></div>
-              </div>
-            ) : printComplete ? (
-              <div className="success-icon">✅</div>
-            ) : (
-              <div className="ready-icon">🖨️</div>
-            )}
+        <div className="text-center mb-5 share-header">
+          <div className="mb-4 d-flex justify-content-center">
+            <div className="share-icon" style={{ fontSize: '4rem' }}>
+              {isPrinting ? (
+                <div className="printing-animation">
+                  <span className="printer-icon">🖨️</span>
+                </div>
+              ) : printComplete ? (
+                <span className="success-icon text-success">✅</span>
+              ) : (
+                <span className="ready-icon">🖨️</span>
+              )}
+            </div>
           </div>
 
-          <h1 className="share-title">
+          <h1 className="fw-bold mb-2 share-title">
             {isPrinting ? "Printing Receipt..." :
               printComplete ? "Print Complete!" :
                 "Printing Health Receipt"}
           </h1>
 
-          <p className="share-subtitle">
+          <p className="text-muted fs-5 share-subtitle">
             {isPrinting ? "Sending to thermal printer..." :
               printComplete ? "Your health receipt has been printed" :
                 "Auto-printing your health assessment"}
@@ -306,68 +307,66 @@ export default function Sharing() {
         </div>
 
         {/* Patient Info */}
-        <div className="patient-info">
-          <div className="patient-card">
-            <div className="patient-name">
+        <div className="mb-5 patient-info">
+          <div className="card border-0 bg-light p-4 patient-card">
+            <div className="h4 fw-bold mb-2 text-center text-primary patient-name">
               {userData.firstName} {userData.lastName}
             </div>
-            <div className="patient-details">
+            <div className="text-center text-muted patient-details">
               Age: {userData?.age || 'N/A'} • {userData?.sex ? userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1).toLowerCase() : 'N/A'} • Risk Level: {userData?.riskLevel || 'N/A'}%
             </div>
           </div>
         </div>
 
         {/* Status Info */}
-        <div className="status-info">
-          <div className="printer-status">
-            <strong>Thermal Printer Ready</strong>
+        <div className="text-center mb-4 status-info">
+          <div className="printer-status mb-3 text-muted small">
+            <strong className="d-block mb-1">Thermal Printer Ready</strong>
             <span>POS58 • Large Font Size • Auto-print</span>
           </div>
 
           {isPrinting && (
             <div className="print-progress">
-              <div className="progress-bar">
-                <div className="progress-fill"></div>
+              <div className="progress mb-2" style={{ height: '6px' }}>
+                <div className="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style={{ width: '100%' }}></div>
               </div>
-              <span>Printing health receipt for {userData.firstName}...</span>
+              <small className="text-muted">Printing health receipt for {userData.firstName}...</small>
             </div>
           )}
         </div>
 
         {/* Action Buttons */}
-        <div className="action-buttons">
+        <div className="d-grid gap-3 action-buttons">
           {printComplete ? (
             <>
               <button
-                className="print-again-btn"
+                className="btn btn-outline-primary btn-lg rounded-pill fw-bold"
                 onClick={handlePrintAgain}
               >
                 🖨️ Print Another Copy
               </button>
 
               <button
-                className="home-btn"
+                className="btn btn-danger btn-lg rounded-pill fw-bold text-white shadow"
                 onClick={handleReturnHome}
               >
                 🏠 Return to Home (New User)
               </button>
             </>
           ) : isPrinting ? (
-            <div className="printing-message">
-              <div className="spinner"></div>
-              <span>Please wait while we print your receipt...</span>
+            <div className="text-center py-3 text-muted">
+              <div className="spinner-border text-primary mb-2" role="status"></div>
+              <div>Please wait while we print your receipt...</div>
             </div>
           ) : (
             <button
-              className="print-again-btn"
+              className="btn btn-primary btn-lg rounded-pill fw-bold shadow"
               onClick={startAutoPrint}
             >
               🖨️ Print Now
             </button>
           )}
         </div>
-
-
 
       </div>
     </div>

@@ -35,7 +35,7 @@
 
 /* Enhanced scanner stage for card context */
 .scanner-stage {
-    background: radial-gradient(circle at center, rgba(220, 38, 38, 0.03) 0%, transparent 70%);
+    background: #ffffff;
     border-radius: 20px;
     padding: 30px;
     margin-bottom: 20px;
@@ -576,13 +576,15 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    background: transparent;
 }
 
 .tap-id-main-image {
-    width: 200px;
-    height: 200px;
+    width: 280px;
+    height: 280px;
     object-fit: contain;
-    filter: drop-shadow(0 10px 25px rgba(220, 38, 38, 0.3));
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.15));
+    background: transparent;
 }
 
 .tap-id-text-content {

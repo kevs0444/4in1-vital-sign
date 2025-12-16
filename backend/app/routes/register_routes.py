@@ -185,6 +185,171 @@ def check_id():
             'message': f'Error checking ID: {str(e)}'
         }), 500
 
+@register_bp.route('/check-email/<email>', methods=['GET'])
+def check_email(email):
+    """Check if email address already exists"""
+    try:
+        db = next(get_db())
+        
+        query = text("SELECT email FROM users WHERE email = :email")
+        result = db.execute(query, {'email': email})
+        user = result.fetchone()
+        
+        exists = user is not None
+        print(f"🔍 Check email {email}: {'Exists' if exists else 'Available'}")
+
+        return jsonify({
+            'exists': exists,
+            'message': 'Email already registered' if exists else 'Email available'
+        }), 200
+
+    except Exception as e:
+        print(f"Check email error: {e}")
+        return jsonify({
+            'exists': False,
+            'message': f'Error checking email: {str(e)}'
+        }), 500
+
+@register_bp.route('/check-mobile/<mobile>', methods=['GET'])
+def check_mobile(mobile):
+    """Check if mobile number already exists"""
+    try:
+        db = next(get_db())
+        
+        # Clean mobile number (remove spaces)
+        clean_mobile = mobile.replace(' ', '').replace('-', '')
+        
+        query = text("SELECT mobile_number FROM users WHERE REPLACE(REPLACE(mobile_number, ' ', ''), '-', '') = :mobile")
+        result = db.execute(query, {'mobile': clean_mobile})
+        user = result.fetchone()
+        
+        exists = user is not None
+        print(f"🔍 Check mobile {mobile}: {'Exists' if exists else 'Available'}")
+
+        return jsonify({
+            'exists': exists,
+            'message': 'Mobile number already registered' if exists else 'Mobile number available'
+        }), 200
+
+    except Exception as e:
+        print(f"Check mobile error: {e}")
+        return jsonify({
+            'exists': False,
+            'message': f'Error checking mobile: {str(e)}'
+        }), 500
+
+@register_bp.route('/check-school-number/<school_number>', methods=['GET'])
+def check_school_number(school_number):
+    """Check if school/employee number already exists"""
+    try:
+        db = next(get_db())
+        
+        query = text("SELECT school_number FROM users WHERE school_number = :school_number")
+        result = db.execute(query, {'school_number': school_number})
+        user = result.fetchone()
+        
+        exists = user is not None
+        print(f"🔍 Check school number {school_number}: {'Exists' if exists else 'Available'}")
+
+        return jsonify({
+            'exists': exists,
+            'message': 'School number already registered' if exists else 'School number available'
+        }), 200
+
+    except Exception as e:
+        print(f"Check school number error: {e}")
+        return jsonify({
+            'exists': False,
+            'message': f'Error checking school number: {str(e)}'
+        }), 500
+
+@register_bp.route('/check-personal-info', methods=['POST'])
+def check_personal_info():
+    """Check if user with same personal info exists (firstname, lastname, birthday/age, sex)"""
+    try:
+        data = request.get_json()
+        
+        firstname = data.get('firstname', '').strip()
+        lastname = data.get('lastname', '').strip()
+        age = data.get('age')
+        sex = data.get('sex', '').lower()
+        birth_month = data.get('birthMonth')
+        birth_day = data.get('birthDay')
+        birth_year = data.get('birthYear')
+        
+        if not firstname or not lastname:
+            return jsonify({
+                'exists': False,
+                'message': 'Missing required fields'
+            }), 400
+        
+        db = next(get_db())
+        
+        # Build birthday string if available
+        birthday = None
+        if birth_year and birth_month and birth_day:
+            birthday = f"{birth_year}-{str(birth_month).zfill(2)}-{str(birth_day).zfill(2)}"
+        
+        # Check for duplicate using multiple criteria
+        # Primary check: firstname, lastname, and birthday (most accurate)
+        if birthday:
+            query = text("""
+                SELECT user_id, firstname, lastname FROM users 
+                WHERE LOWER(firstname) = LOWER(:firstname) 
+                AND LOWER(lastname) = LOWER(:lastname) 
+                AND birthday = :birthday
+            """)
+            result = db.execute(query, {
+                'firstname': firstname,
+                'lastname': lastname,
+                'birthday': birthday
+            })
+            user = result.fetchone()
+            
+            if user:
+                print(f"🔍 Duplicate found: {firstname} {lastname} with birthday {birthday}")
+                return jsonify({
+                    'exists': True,
+                    'message': f'A user named {firstname} {lastname} with this birthday is already registered.'
+                }), 200
+        
+        # Secondary check: firstname, lastname, age, and sex (fallback)
+        if age and sex:
+            query = text("""
+                SELECT user_id, firstname, lastname FROM users 
+                WHERE LOWER(firstname) = LOWER(:firstname) 
+                AND LOWER(lastname) = LOWER(:lastname) 
+                AND age = :age
+                AND LOWER(sex) = LOWER(:sex)
+            """)
+            result = db.execute(query, {
+                'firstname': firstname,
+                'lastname': lastname,
+                'age': age,
+                'sex': sex
+            })
+            user = result.fetchone()
+            
+            if user:
+                print(f"🔍 Duplicate found: {firstname} {lastname}, Age {age}, Sex {sex}")
+                return jsonify({
+                    'exists': True,
+                    'message': f'A user named {firstname} {lastname} with the same age and sex is already registered.'
+                }), 200
+        
+        print(f"✅ No duplicate found for: {firstname} {lastname}")
+        return jsonify({
+            'exists': False,
+            'message': 'Personal info available'
+        }), 200
+
+    except Exception as e:
+        print(f"Check personal info error: {e}")
+        return jsonify({
+            'exists': False,
+            'message': f'Error checking personal info: {str(e)}'
+        }), 500
+
 @register_bp.route('/test-connection', methods=['GET'])
 def test_connection():
     """Test database connection for registration"""

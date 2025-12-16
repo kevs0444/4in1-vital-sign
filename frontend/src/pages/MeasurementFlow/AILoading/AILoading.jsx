@@ -118,18 +118,18 @@ export default function AILoading() {
   };
 
   return (
-    <div className="ai-loading-container-768">
-      <div className={`ai-loading-content-768 ${isVisible ? 'visible' : ''}`}>
+    <div className="ai-loading-container-768 container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0">
+      <div className={`ai-loading-content-768 card border-0 shadow-lg p-4 p-md-5 mx-3 ${isVisible ? 'visible' : ''}`} style={{ maxWidth: '680px', borderRadius: '1.7rem' }}>
 
         {/* Header with larger centered AI icon */}
-        <div className="ai-loading-header-768">
-          <div className="ai-loading-icon-768">
-            <img src={aiLoadingIcon} alt="Juan AI Logo" />
+        <div className="ai-loading-header-768 text-center mb-3">
+          <div className="ai-loading-icon-768 d-flex justify-content-center mb-4">
+            <img src={aiLoadingIcon} alt="Juan AI Logo" className="img-fluid rounded-circle p-3" style={{ width: '160px', height: '160px', objectFit: 'contain' }} />
           </div>
-          <h1 className="ai-loading-title-768">
+          <h1 className="ai-loading-title-768 display-5 fw-bold mb-2">
             {isAnalyzing ? "Juan AI is Thinking" : analysisComplete ? "Analysis Complete!" : "Juan AI Initializing"}
           </h1>
-          <p className="ai-loading-subtitle-768">
+          <p className="ai-loading-subtitle-768 lead text-secondary px-2">
             {isAnalyzing
               ? "Juan AI is carefully analyzing your health data patterns..."
               : analysisComplete
@@ -140,35 +140,35 @@ export default function AILoading() {
         </div>
 
         {/* Status Message Display */}
-        <div className="ai-status-message-768">
+        <div className="ai-status-message-768 alert alert-light border shadow-sm text-center py-3 my-2 rounded-4">
           <strong>Status:</strong> {statusMessage}
         </div>
 
         {/* AI Thinking Animation */}
         {isAnalyzing && (
-          <div className="ai-analysis-animation-768">
-            <div className="ai-progress-ring-768">
-              <div className="ai-ring-background-768"></div>
-              <div className="ai-ring-progress-768"></div>
-              <div className="ai-ring-center-768">
-                <div className="ai-brain-pulse-768">🧠</div>
+          <div className="ai-analysis-animation-768 d-flex flex-column flex-grow-1 justify-content-around gap-3 my-3">
+            <div className="ai-progress-ring-768 mx-auto position-relative" style={{ width: '140px', height: '140px' }}>
+              <div className="ai-ring-background-768 position-absolute w-100 h-100 rounded-circle border border-5"></div>
+              <div className="ai-ring-progress-768 position-absolute w-100 h-100 rounded-circle border border-5"></div>
+              <div className="ai-ring-center-768 position-absolute top-50 start-50 translate-middle bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style={{ width: '85px', height: '85px' }}>
+                <div className="ai-brain-pulse-768 fs-1">🧠</div>
               </div>
             </div>
 
             {/* Dynamic Analysis Steps */}
-            <div className="ai-analysis-steps-768">
+            <div className="ai-analysis-steps-768 d-flex flex-column align-items-center gap-2 my-2 w-100">
               {analysisSteps.map((step, index) => (
                 <div
                   key={index}
-                  className={`ai-analysis-step-768 ${index <= currentStep ? 'active' : ''} ${index === currentStep ? 'current' : ''
-                    }`}
+                  className={`ai-analysis-step-768 d-flex align-items-center gap-3 p-3 rounded-4 w-100 border ${index <= currentStep ? 'active border-success bg-white shadow-sm' : 'bg-light border-transparent'}`}
+                  style={{ maxWidth: '320px', transition: 'all 0.3s' }}
                 >
-                  <span className="ai-step-check-768">
+                  <span className={`ai-step-check-768 d-flex align-items-center justify-content-center rounded-circle text-white fw-bold ${index < currentStep ? 'bg-success' : 'bg-secondary'}`} style={{ width: '28px', height: '28px', minWidth: '28px' }}>
                     {index < currentStep ? '✓' : index === currentStep ? '⟳' : ''}
                   </span>
-                  <span className="ai-step-text-768">{step}</span>
+                  <span className="ai-step-text-768 flex-grow-1 text-start fw-semibold text-dark">{step}</span>
                   {index === currentStep && (
-                    <div className="thinking-dots-768">
+                    <div className="thinking-dots-768 d-flex gap-1 text-success fw-bold fs-5">
                       <span>.</span>
                       <span>.</span>
                       <span>.</span>
@@ -179,13 +179,14 @@ export default function AILoading() {
             </div>
 
             {/* AI Thinking Status */}
-            <div className="ai-thinking-status-768">
-              <div className="thinking-text-768">
+            <div className="ai-thinking-status-768 px-3">
+              <div className="thinking-text-768 text-secondary fw-medium mb-2 text-center">
                 Juan AI is analyzing {currentStep + 1}/{analysisSteps.length} steps...
               </div>
-              <div className="progress-bar-768">
+              <div className="progress rounded-pill" style={{ height: '8px' }}>
                 <div
-                  className="progress-fill-768"
+                  className="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                  role="progressbar"
                   style={{ width: `${((currentStep + 1) / analysisSteps.length) * 100}%` }}
                 ></div>
               </div>
@@ -195,28 +196,28 @@ export default function AILoading() {
 
         {/* Analysis Complete */}
         {analysisComplete && (
-          <div className="ai-analysis-complete-768">
-            <div className="ai-success-animation-768">
-              <div className="ai-checkmark-768">✓</div>
-              <div className="ai-ring-768 ai-ring-1-768"></div>
-              <div className="ai-ring-768 ai-ring-2-768"></div>
-              <div className="ai-ring-768 ai-ring-3-768"></div>
+          <div className="ai-analysis-complete-768 d-flex flex-column flex-grow-1 justify-content-around gap-4 my-3">
+            <div className="ai-success-animation-768 position-relative mx-auto" style={{ width: '150px', height: '150px' }}>
+              <div className="ai-checkmark-768 position-absolute top-50 start-50 translate-middle bg-success text-white rounded-circle d-flex align-items-center justify-content-center shadow" style={{ width: '80px', height: '80px', fontSize: '2.5rem' }}>✓</div>
+              <div className="ai-ring-768 ai-ring-1-768 position-absolute border border-success rounded-circle"></div>
+              <div className="ai-ring-768 ai-ring-2-768 position-absolute border border-success rounded-circle"></div>
+              <div className="ai-ring-768 ai-ring-3-768 position-absolute border border-success rounded-circle"></div>
             </div>
-            <div className="ai-complete-message-768">
-              <h3>Juan AI Analysis Complete!</h3>
-              <p>Your health data has been processed and insights are ready for review.</p>
-              <div className="completion-stats-768">
-                <div className="stat-item-768">
-                  <strong>{analysisSteps.length}</strong>
-                  <span>Analysis Steps</span>
+            <div className="ai-complete-message-768 text-center px-2">
+              <h3 className="fw-bold text-success mb-2">Juan AI Analysis Complete!</h3>
+              <p className="text-secondary mb-0 lead">Your health data has been processed and insights are ready for review.</p>
+              <div className="completion-stats-768 d-flex justify-content-center gap-4 mt-3">
+                <div className="stat-item-768 d-flex flex-column align-items-center">
+                  <strong className="text-success fs-4">{analysisSteps.length}</strong>
+                  <span className="text-secondary small">Analysis Steps</span>
                 </div>
-                <div className="stat-item-768">
-                  <strong>100%</strong>
-                  <span>Data Processed</span>
+                <div className="stat-item-768 d-flex flex-column align-items-center">
+                  <strong className="text-success fs-4">100%</strong>
+                  <span className="text-secondary small">Data Processed</span>
                 </div>
-                <div className="stat-item-768">
-                  <strong>Juan AI</strong>
-                  <span>Powered</span>
+                <div className="stat-item-768 d-flex flex-column align-items-center">
+                  <strong className="text-success fs-4">Juan AI</strong>
+                  <span className="text-secondary small">Powered</span>
                 </div>
               </div>
             </div>
@@ -224,25 +225,16 @@ export default function AILoading() {
         )}
 
         {/* Auto Navigation */}
-        <div className="ai-auto-navigate-768">
+        <div className="ai-auto-navigate-768 text-center mt-auto">
           {analysisComplete && (
-            <div style={{ textAlign: 'center' }}>
-              <span className="ai-navigate-text-768">
+            <div>
+              <span className="ai-navigate-text-768 text-secondary fw-medium">
                 Preparing your comprehensive health results...
               </span>
               <br />
               <button
                 onClick={handleManualNavigate}
-                style={{
-                  marginTop: '10px',
-                  padding: '10px 18px',
-                  background: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
-                }}
+                className="btn btn-success mt-3 rounded-3 px-4 py-2"
               >
                 Click here if not automatically redirected
               </button>
@@ -251,26 +243,26 @@ export default function AILoading() {
         </div>
 
         {/* AI Processing Notice */}
-        <div className="ai-processing-notice-768">
-          <div className="ai-processing-icon-768">🤖</div>
-          <div className="ai-processing-text-768">
-            <strong>Juan AI Neural Network</strong>
+        <div className="ai-processing-notice-768 d-flex align-items-center justify-content-center gap-2 mt-4 opacity-75">
+          <div className="ai-processing-icon-768 fs-5">🤖</div>
+          <div className="ai-processing-text-768 d-flex flex-column text-start small text-secondary">
+            <strong className="text-dark">Juan AI Neural Network</strong>
             <span>Advanced pattern recognition in progress</span>
           </div>
         </div>
 
         {/* Documentation Badge */}
-        <div className="documentation-badge-768">
+        <div className="documentation-badge-768 d-none">
           <span className="badge-icon-768">📚</span>
           <span className="badge-text-768">Juan AI Health Analysis System</span>
         </div>
 
         {/* Manual navigation button for debugging */}
         {!isAnalyzing && !analysisComplete && (
-          <div className="ai-manual-nav-768">
+          <div className="ai-manual-nav-768 text-center mt-3">
             <button
               onClick={handleManualNavigate}
-              className="ai-manual-nav-button-768"
+              className="btn btn-outline-secondary"
             >
               Manual Navigate to Results
             </button>

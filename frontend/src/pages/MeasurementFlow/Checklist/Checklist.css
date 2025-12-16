@@ -4,47 +4,20 @@
 }
 
 .checklist-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  height: 100%;
-  width: 100vw;
   background: #ffffff;
   font-family: var(--font-primary, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
-  overflow: hidden !important;
   padding: 10px;
-  margin: 0;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
 }
 
 .checklist-content {
   background: white;
   border-radius: 16px;
-  width: 100%;
-  max-width: 850px;
-  height: auto;
-  min-height: 90vh;
-  max-height: 95vh;
-  padding: 25px;
+  /* max-width is handled by bootstrap or inline style, but keeping it as guard is fine, though we replaced it in JSX */
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  text-align: center;
   transition: all 0.8s ease;
-  transform: translateY(0);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden !important;
+  border: 1px solid #e0e0e0;
   border: 1px solid #e0e0e0;
   position: relative;
-}
-
-.checklist-content.visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 /* Header */
@@ -128,16 +101,17 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  background: white;
-  color: #ef4444;
-  width: 24px;
-  height: 24px;
+  background: transparent;
+  color: white;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
+  border: 2px solid white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
+  font-size: 16px;
+  font-weight: 900;
   animation: checkPop 0.3s ease-out;
 }
 
@@ -192,9 +166,17 @@
   border-top: 1px solid #f0f0f0;
 }
 
+/* Standardize widths */
+.start-button,
+.checklist-back-button {
+  width: 100%;
+  max-width: 450px;
+  min-width: unset;
+}
+
 .start-button {
   position: relative;
-  padding: 2rem 5rem !important;
+  padding: 2rem 2rem !important;
   border-radius: 20px !important;
   font-size: 2.2rem !important;
   font-weight: 600 !important;
@@ -203,7 +185,6 @@
   box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
   transition: all 0.2s ease !important;
   min-height: 120px;
-  min-width: 450px;
   touch-action: manipulation;
   overflow: hidden;
   color: white !important;
@@ -233,6 +214,39 @@
   transform: none;
 }
 
+.checklist-back-button {
+  position: relative;
+  padding: 1rem 2rem !important;
+  border-radius: 12px !important;
+  font-size: 2.2rem !important;
+  font-weight: 600 !important;
+  background: #6c757d !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4) !important;
+  transition: all 0.2s ease !important;
+  min-height: 80px;
+  touch-action: manipulation;
+  overflow: hidden;
+  color: white !important;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  z-index: 4;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.checklist-back-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.5) !important;
+  background: #5a6268 !important;
+}
+
 @keyframes checkPop {
   0% {
     transform: scale(0);
@@ -245,4 +259,29 @@
   100% {
     transform: scale(1);
   }
+}
+
+/* Back Arrow Button (formerly Close Button) */
+.close-button {
+  position: absolute;
+  top: 25px;
+  left: 25px;
+  /* Moved to left */
+  right: auto;
+  background: none;
+  border: none;
+  font-size: 3rem;
+  color: #dc2626;
+  cursor: pointer;
+  z-index: 10;
+  padding: 5px;
+  line-height: 0.8;
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  transform: scale(1.1);
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Button, Modal } from "react-bootstrap";
+import { Button } from "react-bootstrap";
+import { motion } from "framer-motion";
 import "./MeasurementWelcome.css";
 import logo from "../../../assets/images/welcome.png";
 
@@ -9,6 +10,7 @@ export default function MeasurementWelcome() {
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [userData, setUserData] = useState({
     firstName: "",
@@ -113,11 +115,23 @@ export default function MeasurementWelcome() {
   const handleShowTerms = () => setShowTerms(true);
   const handleCloseTerms = () => setShowTerms(false);
 
+  const handleBack = () => {
+    navigate("/login");
+  };
+
+  const handleExit = () => setShowExitModal(true);
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    navigate("/login");
+  };
+
   return (
-    <div className="welcome-container">
-      <div className={`welcome-content ${isVisible ? 'visible' : ''}`}>
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 welcome-container">
+      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 welcome-content page-transition`}>
+        <button className="close-button" onClick={handleExit}>←</button>
         {/* Logo */}
-        <div className="welcome-logo mb-3">
+        <div className="d-flex justify-content-center mb-4 welcome-logo">
           <div className="logo-main-circle">
             <img
               src={logo}
@@ -128,14 +142,14 @@ export default function MeasurementWelcome() {
         </div>
 
         {/* Welcome Message */}
-        <div className="welcome-message mb-3">
-          <h1 className="main-title mb-2">
+        <div className="text-center mb-5 welcome-message">
+          <h1 className="main-title mb-3">
             Welcome, {userData.firstName || "User"}!
           </h1>
-          <p className="motto mb-3">
+          <p className="motto mb-4 fs-5">
             Ready to check your vital signs with{" "}
-            <span className="every-juan">
-              4 in <span className="juan-red">Juan</span>
+            <span className="every-juan fw-bold">
+              4 in <span className="juan-red text-danger">Juan</span>
             </span>
           </p>
 
@@ -146,22 +160,23 @@ export default function MeasurementWelcome() {
         </div>
 
         {/* Terms and Conditions & Button Container */}
-        <div className="action-section">
+        <div className="action-section text-center">
           {/* Terms and Conditions */}
-          <div className="terms-section mb-4">
-            <div className="terms-checkbox">
+          <div className="d-flex justify-content-center mb-4 terms-section">
+            <div className="form-check terms-checkbox d-flex align-items-center gap-2">
               <input
                 type="checkbox"
                 id="termsCheckbox"
-                className="terms-checkbox-input"
+                className="form-check-input mt-0"
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
+                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
               />
-              <label htmlFor="termsCheckbox" className="terms-checkbox-label">
+              <label htmlFor="termsCheckbox" className="form-check-label terms-checkbox-label ms-2 cursor-pointer">
                 I agree to the{" "}
                 <Button
                   variant="link"
-                  className="terms-link"
+                  className="terms-link p-0 text-decoration-underline fw-bold"
                   onClick={handleShowTerms}
                 >
                   Terms and Conditions
@@ -171,12 +186,13 @@ export default function MeasurementWelcome() {
           </div>
 
           {/* Action Button */}
-          <div className="button-section">
+          <div className="button-section d-flex flex-column gap-3 align-items-center">
             <Button
-              className="continue-button"
+              className="continue-button btn-danger rounded-pill px-5 py-3 fw-bold shadow"
               onClick={handleContinue}
               disabled={!acceptedTerms}
               size="lg"
+              style={{ minWidth: '300px' }}
             >
               OK, Let's Start
             </Button>
@@ -184,100 +200,109 @@ export default function MeasurementWelcome() {
         </div>
       </div>
 
-      {/* Terms and Conditions Modal */}
-      <Modal
-        show={showTerms}
-        onHide={handleCloseTerms}
-        size="lg"
-        centered
-        className="terms-modal"
-      >
-        <Modal.Header closeButton className="terms-modal-header">
-          <Modal.Title>Terms and Conditions</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="terms-content">
-          <div className="terms-scroll">
-            <h4>4 in Juan Vital Kiosk - Terms of Use</h4>
-            <p className="text-justify"><strong>Last Updated: {new Date().toLocaleDateString()}</strong></p>
-
-            <h5>1. Acceptance of Terms</h5>
-            <p className="text-justify">By using the 4 in Juan Vital Sign Kiosk, you agree to these Terms and Conditions. If you do not agree, please do not use this service.</p>
-
-            <h5>2. Health Information Collection</h5>
-            <p className="text-justify">This kiosk collects the following health information:</p>
-            <ul>
-              <li className="text-justify">Personal identification (name, age, sex)</li>
-              <li className="text-justify">4 Vital Signs:
-                <ul>
-                  <li className="text-justify">Body Temperature</li>
-                  <li className="text-justify">Heart Rate (BPM)</li>
-                  <li className="text-justify">Respiratory Rate</li>
-                  <li className="text-justify">Blood Pressure</li>
-                </ul>
-              </li>
-              <li className="text-justify">Additional measurements (weight, height)</li>
-              <li className="text-justify">BMI calculation and health risk assessment</li>
-            </ul>
-
-            <h5>3. Data Privacy and Security</h5>
-            <p className="text-justify">Your health information is stored securely and used only for:</p>
-            <ul>
-              <li className="text-justify">Providing immediate health assessments</li>
-              <li className="text-justify">Generating personalized health insights</li>
-              <li className="text-justify">Improving our services (anonymized data only)</li>
-            </ul>
-            <p className="text-justify">We do not share your personal health information with third parties without your explicit consent.</p>
-
-            <h5>4. Medical Disclaimer</h5>
-            <p className="text-justify">The 4 in Juan Vital Kiosk provides health screening and information only. It is not a substitute for professional medical advice, diagnosis, or treatment.</p>
-            <p className="text-justify"><strong>Important:</strong> Always seek the advice of qualified healthcare providers with any questions you may have regarding medical conditions.</p>
-
-            <h5>5. User Responsibilities</h5>
-            <p className="text-justify">You agree to:</p>
-            <ul>
-              <li className="text-justify">Provide accurate information</li>
-              <li className="text-justify">Use the kiosk as intended</li>
-              <li className="text-justify">Consult healthcare professionals for medical concerns</li>
-              <li className="text-justify">Keep your health information confidential</li>
-            </ul>
-
-            <h5>6. Limitation of Liability</h5>
-            <p className="text-justify">The 4 in Juan Vital Sign Kiosk and its operators are not liable for:</p>
-            <ul>
-              <li className="text-justify">Any health decisions made based on the information provided</li>
-              <li className="text-justify">Technical errors or interruptions in service</li>
-              <li className="text-justify">Inaccurate readings due to user error or equipment malfunction</li>
-            </ul>
-
-            <h5>7. Consent for Data Processing</h5>
-            <p className="text-justify">By accepting these terms, you consent to the processing of your health data for the purposes outlined above.</p>
-
-            <h5>8. Changes to Terms</h5>
-            <p className="text-justify">We may update these terms periodically. Continued use of the kiosk constitutes acceptance of updated terms.</p>
-
-            <h5>9. Contact Information</h5>
-            <p className="text-justify">For questions about these terms or your data, please contact our support team.</p>
-
-            <div className="text-center mt-4">
-              <p className="text-justify"><strong>By clicking "I Agree", you acknowledge that you have read, understood, and accept these Terms and Conditions.</strong></p>
-            </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer className="terms-modal-footer">
-          <Button variant="outline-secondary" onClick={handleCloseTerms}>
-            Close
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => {
-              setAcceptedTerms(true);
-              handleCloseTerms();
-            }}
+      {/* Modern Exit Confirmation Popup Modal */}
+      {showExitModal && (
+        <div className="exit-modal-overlay" onClick={() => setShowExitModal(false)}>
+          <motion.div
+            className="exit-modal-content"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
           >
-            I Agree
-          </Button>
-        </Modal.Footer>
-      </Modal>
+            <div className="exit-modal-icon">
+              <span>🚪</span>
+            </div>
+            <h2 className="exit-modal-title">Exit Measurement?</h2>
+            <p className="exit-modal-message">Do you want to go back to login and cancel the measurement?</p>
+            <div className="exit-modal-buttons">
+              <button
+                className="exit-modal-button secondary"
+                onClick={() => setShowExitModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="exit-modal-button primary"
+                onClick={confirmExit}
+              >
+                Yes, Exit
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modern Terms and Conditions Popup Modal */}
+      {showTerms && (
+        <div className="terms-modal-overlay" onClick={handleCloseTerms}>
+          <motion.div
+            className="terms-modal-content"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="terms-modal-icon">
+              <span>📋</span>
+            </div>
+            <h2 className="terms-modal-title">Terms and Conditions</h2>
+
+            <div className="terms-scroll-content">
+              <h4>4 in Juan Vital Kiosk - Terms of Use</h4>
+              <p className="text-justify"><strong>Last Updated: {new Date().toLocaleDateString()}</strong></p>
+
+              <h5>1. Acceptance of Terms</h5>
+              <p className="text-justify">By using the 4 in Juan Vital Sign Kiosk, you agree to these Terms and Conditions. If you do not agree, please do not use this service.</p>
+
+              <h5>2. Health Information Collection</h5>
+              <p className="text-justify">This kiosk collects the following health information:</p>
+              <ul>
+                <li className="text-justify">Personal identification (name, age, sex)</li>
+                <li className="text-justify">4 Vital Signs: Body Temperature, Heart Rate, Respiratory Rate, Blood Pressure</li>
+                <li className="text-justify">Additional measurements (weight, height)</li>
+                <li className="text-justify">BMI calculation and health risk assessment</li>
+              </ul>
+
+              <h5>3. Data Privacy and Security</h5>
+              <p className="text-justify">Your health information is stored securely and used only for providing health assessments, generating insights, and improving services. We do not share your information without consent.</p>
+
+              <h5>4. Medical Disclaimer</h5>
+              <p className="text-justify">The 4 in Juan Vital Kiosk provides health screening only. It is not a substitute for professional medical advice. Always consult healthcare providers for medical concerns.</p>
+
+              <h5>5. User Responsibilities</h5>
+              <p className="text-justify">You agree to provide accurate information, use the kiosk as intended, and keep your health information confidential.</p>
+
+              <h5>6. Consent</h5>
+              <p className="text-justify">By accepting these terms, you consent to the processing of your health data for the purposes outlined above.</p>
+
+              <div className="text-center mt-4">
+                <p className="text-justify"><strong>By clicking "I Agree", you acknowledge that you have read, understood, and accept these Terms and Conditions.</strong></p>
+              </div>
+            </div>
+
+            <div className="terms-modal-buttons">
+              <button
+                className="terms-modal-button secondary"
+                onClick={handleCloseTerms}
+              >
+                Close
+              </button>
+              <button
+                className="terms-modal-button primary"
+                onClick={() => {
+                  setAcceptedTerms(true);
+                  handleCloseTerms();
+                }}
+              >
+                I Agree
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

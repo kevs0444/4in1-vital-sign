@@ -484,42 +484,42 @@ export default function Result() {
   };
 
   return (
-    <div className="result-container" style={{ background: getRiskGradient(riskLevel) }}>
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 result-container" style={{ background: getRiskGradient(riskLevel) }}>
       <div
-        className={`result-content ${isVisible ? 'visible' : ''}`}
+        className={`card border-0 shadow-lg p-4 p-md-5 mx-3 result-content page-transition`}
         style={{ boxShadow: getRiskGlow(riskLevel) }}
       >
 
         {/* Header */}
-        <div className="result-header">
-          <div className="ai-powered-badge">
-            <span className="ai-icon">🤖</span>
-            AI-Powered Health Assessment
+        <div className="text-center mb-5 result-header">
+          <div className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill mb-3 d-inline-flex align-items-center gap-2">
+            <span className="fs-5">🤖</span>
+            <span className="fw-bold">AI-Powered Health Assessment</span>
           </div>
-          <h1 className="result-title">Health Assessment Complete</h1>
-          <p className="result-subtitle">
+          <h1 className="fw-bold mb-2">Health Assessment Complete</h1>
+          <p className="text-muted fs-5">
             Comprehensive analysis of your vital signs using advanced AI algorithms
           </p>
         </div>
 
         {/* AI Result Score */}
-        <div className="risk-score-section">
-          <div className="risk-score-card" style={{ background: getRiskGradient(riskLevel) }}>
-            <div className="risk-score-main">
-              <div className="risk-number">{riskLevel}%</div>
-              <div className="risk-category">{riskCategory}</div>
-            </div>
-            <div className="risk-meter">
-              <div className="risk-bar">
+        <div className="mb-5 risk-score-section">
+          <div className="card border-0 text-white mb-4 risk-score-card" style={{ background: getRiskGradient(riskLevel) }}>
+            <div className="card-body p-4 text-center">
+              <div className="display-1 fw-bold mb-1">{riskLevel}%</div>
+              <div className="h3 mb-4">{riskCategory}</div>
+
+              <div className="risk-meter mb-2 position-relative" style={{ height: '30px', background: 'rgba(0,0,0,0.2)', borderRadius: '15px' }}>
                 <div
-                  className="risk-progress"
+                  className="position-absolute top-0 start-0 h-100 bg-white"
                   style={{
                     width: `${riskLevel}%`,
-                    backgroundColor: 'rgba(255,255,255,0.9)'
+                    borderRadius: '15px',
+                    transition: 'width 1s ease-out'
                   }}
                 ></div>
               </div>
-              <div className="risk-labels">
+              <div className="d-flex justify-content-between text-white-50 small fw-bold px-1">
                 <span>0%</span>
                 <span>25%</span>
                 <span>50%</span>
@@ -530,296 +530,300 @@ export default function Result() {
           </div>
 
           {/* Risk Ranges Subtitle */}
-          <div className="risk-ranges-subtitle">
-            <h3>Risk Level Interpretation</h3>
-            <div className="risk-ranges-mini">
-              <div className="risk-range-mini-card low-risk">
-                <div className="mini-risk-header">
-                  <div className="mini-risk-color"></div>
-                  <span className="mini-risk-label">Low Risk</span>
+          <div className="text-center">
+            <h3 className="h5 fw-bold text-muted mb-3">Risk Level Interpretation</h3>
+            <div className="row g-2 justify-content-center">
+              <div className="col-6 col-md-3">
+                <div className="p-2 rounded bg-light border d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="d-inline-block rounded-circle" style={{ width: 12, height: 12, background: '#10b981' }}></span>
+                    <span className="small fw-bold">Low</span>
+                  </div>
+                  <span className="small text-muted">0-19%</span>
                 </div>
-                <span className="mini-risk-value">0-19%</span>
               </div>
-
-              <div className="risk-range-mini-card moderate-risk">
-                <div className="mini-risk-header">
-                  <div className="mini-risk-color"></div>
-                  <span className="mini-risk-label">Moderate Risk</span>
+              <div className="col-6 col-md-3">
+                <div className="p-2 rounded bg-light border d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="d-inline-block rounded-circle" style={{ width: 12, height: 12, background: '#f59e0b' }}></span>
+                    <span className="small fw-bold">Moderate</span>
+                  </div>
+                  <span className="small text-muted">20-49%</span>
                 </div>
-                <span className="mini-risk-value">20-49%</span>
               </div>
-
-              <div className="risk-range-mini-card high-risk">
-                <div className="mini-risk-header">
-                  <div className="mini-risk-color"></div>
-                  <span className="mini-risk-label">High Risk</span>
+              <div className="col-6 col-md-3">
+                <div className="p-2 rounded bg-light border d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="d-inline-block rounded-circle" style={{ width: 12, height: 12, background: '#ef4444' }}></span>
+                    <span className="small fw-bold">High</span>
+                  </div>
+                  <span className="small text-muted">50-74%</span>
                 </div>
-                <span className="mini-risk-value">50-74%</span>
               </div>
-
-              <div className="risk-range-mini-card critical-risk">
-                <div className="mini-risk-header">
-                  <div className="mini-risk-color"></div>
-                  <span className="mini-risk-label">Critical Risk</span>
+              <div className="col-6 col-md-3">
+                <div className="p-2 rounded bg-light border d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="d-inline-block rounded-circle" style={{ width: 12, height: 12, background: '#dc2626' }}></span>
+                    <span className="small fw-bold">Critical</span>
+                  </div>
+                  <span className="small text-muted">75-100%</span>
                 </div>
-                <span className="mini-risk-value">75-100%</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Personal Information with BMI */}
-        <div className="personal-info-section">
-          <h2 className="section-title">Personal Information</h2>
-          <div className="personal-info-card">
-            <div className="personal-info-left">
-              <div className="user-avatar">👤</div>
-              <div className="user-details">
-                <h3 className="user-name">
-                  {userData.firstName || 'Juan'} {userData.lastName || 'Dela Cruz'}
-                </h3>
-                <div className="user-meta">
-                  <span className="user-age">{userData.age || '21'} years old</span>
-                  <span className="user-sex">{userData.sex ? userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1).toLowerCase() : 'N/A'}</span>
+        <div className="mb-5 personal-info-section">
+          <h2 className="h4 fw-bold mb-3 border-bottom pb-2">Personal Information</h2>
+          <div className="card border-0 bg-light p-3">
+            <div className="row align-items-center">
+              <div className="col-12 col-md-6 d-flex align-items-center gap-3 mb-3 mb-md-0">
+                <div className="bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style={{ width: 60, height: 60, fontSize: '1.5rem' }}>
+                  👤
+                </div>
+                <div>
+                  <h3 className="h5 fw-bold mb-1">
+                    {userData.firstName || 'Juan'} {userData.lastName || 'Dela Cruz'}
+                  </h3>
+                  <div className="text-muted small">
+                    <span className="me-3">{userData.age || '21'} years old</span>
+                    <span>{userData.sex ? userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1).toLowerCase() : 'N/A'}</span>
+                  </div>
                 </div>
               </div>
+
+              {shouldShowMeasurement('bmi') && (
+                <div className="col-12 col-md-6 border-start-md ps-md-4">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="fs-5">⚖️</span>
+                      <h4 className="h6 fw-bold mb-0">Body Mass Index</h4>
+                    </div>
+                    <span className="badge bg-white border text-dark">{calculateBMI(userData) || '24.5'}</span>
+                  </div>
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span className="fw-bold" style={{ color: bmiData.color }}>{bmiData.status}</span>
+                    <span className="small text-muted">Range: 18.5 - 24.9</span>
+                  </div>
+                </div>
+              )}
             </div>
-            {shouldShowMeasurement('bmi') && (
-              <div className="personal-info-right">
-                <div className="bmi-display">
-                  <div className="bmi-header">
-                    <div className="bmi-icon">⚖️</div>
-                    <h4>Body Mass Index</h4>
-                  </div>
-                  <div className="bmi-value">{calculateBMI(userData) || '24.5'}</div>
-                  <div className="bmi-status" style={{ color: bmiData.color }}>
-                    {bmiData.status}
-                  </div>
-                  <div className="bmi-range">Healthy Range: 18.5 - 24.9</div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
         {/* Health Assessment - Updated Vital Signs */}
-        <div className="health-assessment-section">
-          <h2 className="section-title">Vital Signs Assessment</h2>
-          <div className="vital-signs-grid">
+        <div className="mb-5 health-assessment-section">
+          <h2 className="h4 fw-bold mb-3 border-bottom pb-2">Vital Signs Assessment</h2>
+          <div className="row g-3">
             {/* Body Temperature */}
             {shouldShowMeasurement('bodytemp') && (
-              <div className="vital-sign-card">
-                <div className="vital-sign-header">
-                  <div className="vital-sign-icon">🌡️</div>
-                  <h3>Body Temperature</h3>
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="card h-100 border-0 bg-light p-3">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <span className="fs-4">🌡️</span>
+                    <h3 className="h6 fw-bold mb-0">Temperature</h3>
+                  </div>
+                  <div className="display-6 fw-bold mb-1">{userData.temperature || '36.8'}°C</div>
+                  <div className="fw-bold mb-1" style={{ color: tempData.color }}>
+                    {tempData.status}
+                  </div>
+                  <div className="small text-muted">Normal: 36.0 - 37.5°C</div>
                 </div>
-                <div className="vital-sign-value">{userData.temperature || '36.8'}°C</div>
-                <div className="vital-sign-status" style={{ color: tempData.color }}>
-                  {tempData.status}
-                </div>
-                <div className="vital-sign-range">Normal: 36.0 - 37.5°C</div>
               </div>
             )}
 
             {/* Heart Rate */}
             {(shouldShowMeasurement('max30102') || shouldShowMeasurement('heartrate')) && (
-              <div className="vital-sign-card">
-                <div className="vital-sign-header">
-                  <div className="vital-sign-icon">💓</div>
-                  <h3>Heart Rate</h3>
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="card h-100 border-0 bg-light p-3">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <span className="fs-4">💓</span>
+                    <h3 className="h6 fw-bold mb-0">Heart Rate</h3>
+                  </div>
+                  <div className="display-6 fw-bold mb-1">{userData.heartRate || '72'} <span className="fs-6 text-muted">BPM</span></div>
+                  <div className="fw-bold mb-1" style={{ color: hrData.color }}>
+                    {hrData.status}
+                  </div>
+                  <div className="small text-muted">Normal: 60 - 100 BPM</div>
                 </div>
-                <div className="vital-sign-value">{userData.heartRate || '72'} BPM</div>
-                <div className="vital-sign-status" style={{ color: hrData.color }}>
-                  {hrData.status}
-                </div>
-                <div className="vital-sign-range">Normal: 60 - 100 BPM</div>
               </div>
             )}
 
             {/* Respiratory Rate with SPO2 */}
             {(shouldShowMeasurement('max30102') || shouldShowMeasurement('spo2')) && (
-              <div className="vital-sign-card">
-                <div className="vital-sign-header">
-                  <div className="vital-sign-icon">🌬️</div>
-                  <div>
-                    <h3>Respiratory Rate</h3>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
-                      SpO2: {userData.spo2 || '98'}%
-                      <span style={{ color: spo2Data.color, marginLeft: '4px' }}>
-                        ({spo2Data.status})
-                      </span>
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="card h-100 border-0 bg-light p-3">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <span className="fs-4">🌬️</span>
+                    <div className="w-100">
+                      <h3 className="h6 fw-bold mb-0 d-flex justify-content-between">
+                        Respiratory
+                      </h3>
                     </div>
                   </div>
+                  <div className="display-6 fw-bold mb-1">{userData.respiratoryRate || '16'} <span className="fs-6 text-muted">/min</span></div>
+
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="fw-bold" style={{ color: respData.color }}>{respData.status}</span>
+                    <span className="badge bg-white border text-dark">SpO2: {userData.spo2 || '98'}%</span>
+                  </div>
+                  <div className="small text-muted">Normal: 12 - 20 BPM</div>
                 </div>
-                <div className="vital-sign-value">{userData.respiratoryRate || '16'} BPM</div>
-                <div className="vital-sign-status" style={{ color: respData.color }}>
-                  {respData.status}
-                </div>
-                <div className="vital-sign-range">Normal: 12 - 20 BPM</div>
               </div>
             )}
 
             {/* Blood Pressure */}
             {shouldShowMeasurement('bloodpressure') && (
-              <div className="vital-sign-card">
-                <div className="vital-sign-header">
-                  <div className="vital-sign-icon">🩸</div>
-                  <h3>Blood Pressure</h3>
+              <div className="col-12 col-md-6 col-lg-3">
+                <div className="card h-100 border-0 bg-light p-3">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <span className="fs-4">🩸</span>
+                    <h3 className="h6 fw-bold mb-0">Blood Pressure</h3>
+                  </div>
+                  <div className="display-6 fw-bold mb-1">
+                    {userData.systolic && userData.diastolic ?
+                      `${userData.systolic}/${userData.diastolic}` : '120/80'}
+                  </div>
+                  <div className="fw-bold mb-1" style={{ color: bpData.color }}>
+                    {bpData.status}
+                  </div>
+                  <div className="small text-muted">Normal: &lt;120/&lt;80</div>
                 </div>
-                <div className="vital-sign-value">
-                  {userData.systolic && userData.diastolic ?
-                    `${userData.systolic}/${userData.diastolic}` : '120/80'}
-                </div>
-                <div className="vital-sign-status" style={{ color: bpData.color }}>
-                  {bpData.status}
-                </div>
-                <div className="vital-sign-range">Normal: &lt; 120/&lt;80 mmHg</div>
               </div>
             )}
           </div>
         </div>
 
         {/* Sub Features - Collapsible Sections */}
-        <div className="sub-features-section">
-          <h2 className="section-title">AI Recommendations & Guidance</h2>
+        <div className="mb-5 sub-features-section">
+          <h2 className="h4 fw-bold mb-3 border-bottom pb-2">AI Recommendations & Guidance</h2>
+          <div className="d-flex flex-column gap-3">
 
-          {/* Medical Action Recommendations */}
-          <div className={`sub-feature-card ${expandedSections.recommendations ? 'expanded' : ''}`}>
-            <div
-              className="sub-feature-header"
-              onClick={() => toggleSection('recommendations')}
-            >
-              <div className="sub-feature-title">
-                <span className="sub-feature-icon">🩺</span>
-                Medical Action Recommendations
-              </div>
-              <div className="sub-feature-toggle">
-                {expandedSections.recommendations ? '−' : '+'}
-              </div>
-            </div>
-            {expandedSections.recommendations && (
-              <div className="sub-feature-content">
-                <div className="recommendations-list">
-                  {suggestions.map((suggestion, index) => (
-                    <div key={index} className="recommendation-item">
-                      <div className="rec-number">{index + 1}</div>
-                      <div className="rec-text">{suggestion}</div>
-                    </div>
-                  ))}
+            {/* Medical Action Recommendations */}
+            <div className={`card border-0 shadow-sm ${expandedSections.recommendations ? 'bg-light' : ''}`}>
+              <div
+                className="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between cursor-pointer"
+                onClick={() => toggleSection('recommendations')}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <span className="fs-4">🩺</span>
+                  <span className="fw-bold">Medical Action Recommendations</span>
                 </div>
+                <span className="fs-4 text-muted">{expandedSections.recommendations ? '−' : '+'}</span>
               </div>
-            )}
-          </div>
-
-          {/* Preventive Strategy Plans */}
-          <div className={`sub-feature-card ${expandedSections.prevention ? 'expanded' : ''}`}>
-            <div
-              className="sub-feature-header"
-              onClick={() => toggleSection('prevention')}
-            >
-              <div className="sub-feature-title">
-                <span className="sub-feature-icon">🛡️</span>
-                Preventive Strategy Plans
-              </div>
-              <div className="sub-feature-toggle">
-                {expandedSections.prevention ? '−' : '+'}
-              </div>
-            </div>
-            {expandedSections.prevention && (
-              <div className="sub-feature-content">
-                <div className="prevention-list">
-                  {preventions.map((prevention, index) => (
-                    <div key={index} className="prevention-item">
-                      <div className="prev-icon">🛡️</div>
-                      <div className="prev-text">{prevention}</div>
-                    </div>
-                  ))}
+              {expandedSections.recommendations && (
+                <div className="card-body pt-0">
+                  <div className="ps-4 ms-2 border-start border-3 border-danger">
+                    {suggestions.map((suggestion, index) => (
+                      <div key={index} className="mb-2 d-flex gap-2">
+                        <span className="fw-bold text-danger">{index + 1}.</span>
+                        <span>{suggestion}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Wellness Improvement Tips */}
-          <div className={`sub-feature-card ${expandedSections.wellness ? 'expanded' : ''}`}>
-            <div
-              className="sub-feature-header"
-              onClick={() => toggleSection('wellness')}
-            >
-              <div className="sub-feature-title">
-                <span className="sub-feature-icon">💪</span>
-                Wellness Improvement Tips
-              </div>
-              <div className="sub-feature-toggle">
-                {expandedSections.wellness ? '−' : '+'}
-              </div>
+              )}
             </div>
-            {expandedSections.wellness && (
-              <div className="sub-feature-content">
-                <div className="wellness-list">
-                  {getImprovementTips().map((tip, index) => (
-                    <div key={index} className="wellness-item">
-                      <div className="wellness-number">{index + 1}</div>
-                      <div className="wellness-text">{tip}</div>
-                    </div>
-                  ))}
+
+            {/* Preventive Strategy Plans */}
+            <div className={`card border-0 shadow-sm ${expandedSections.prevention ? 'bg-light' : ''}`}>
+              <div
+                className="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between cursor-pointer"
+                onClick={() => toggleSection('prevention')}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <span className="fs-4">🛡️</span>
+                  <span className="fw-bold">Preventive Strategy Plans</span>
                 </div>
+                <span className="fs-4 text-muted">{expandedSections.prevention ? '−' : '+'}</span>
               </div>
-            )}
-          </div>
-
-          {/* Healthcare Provider Guidance */}
-          <div className={`sub-feature-card ${expandedSections.guidance ? 'expanded' : ''}`}>
-            <div
-              className="sub-feature-header"
-              onClick={() => toggleSection('guidance')}
-            >
-              <div className="sub-feature-title">
-                <span className="sub-feature-icon">👨‍⚕️</span>
-                Healthcare Provider Guidance
-              </div>
-              <div className="sub-feature-toggle">
-                {expandedSections.guidance ? '−' : '+'}
-              </div>
+              {expandedSections.prevention && (
+                <div className="card-body pt-0">
+                  <div className="ps-4 ms-2 border-start border-3 border-success">
+                    {preventions.map((prevention, index) => (
+                      <div key={index} className="mb-2 d-flex gap-2">
+                        <span className="text-success">🛡️</span>
+                        <span>{prevention}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            {expandedSections.guidance && (
-              <div className="sub-feature-content">
-                <div className="guidance-content">
-                  <div className="guidance-card">
-                    <div className="guidance-icon">🏥</div>
-                    <div className="guidance-text">
-                      {getDoctorRecommendation()}
-                    </div>
-                    <div className="guidance-urgency" style={{ color: getRiskColor(riskLevel) }}>
-                      {riskLevel >= 75 ? 'HIGH URGENCY' : riskLevel >= 50 ? 'MODERATE URGENCY' : 'ROUTINE CARE'}
+
+            {/* Wellness Improvement Tips */}
+            <div className={`card border-0 shadow-sm ${expandedSections.wellness ? 'bg-light' : ''}`}>
+              <div
+                className="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between cursor-pointer"
+                onClick={() => toggleSection('wellness')}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <span className="fs-4">💪</span>
+                  <span className="fw-bold">Wellness Improvement Tips</span>
+                </div>
+                <span className="fs-4 text-muted">{expandedSections.wellness ? '−' : '+'}</span>
+              </div>
+              {expandedSections.wellness && (
+                <div className="card-body pt-0">
+                  <div className="ps-4 ms-2 border-start border-3 border-warning">
+                    {getImprovementTips().map((tip, index) => (
+                      <div key={index} className="mb-2 d-flex gap-2">
+                        <span className="fw-bold text-warning">{index + 1}.</span>
+                        <span>{tip}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Healthcare Provider Guidance */}
+            <div className={`card border-0 shadow-sm ${expandedSections.guidance ? 'bg-light' : ''}`}>
+              <div
+                className="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between cursor-pointer"
+                onClick={() => toggleSection('guidance')}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <span className="fs-4">👨‍⚕️</span>
+                  <span className="fw-bold">Healthcare Provider Guidance</span>
+                </div>
+                <span className="fs-4 text-muted">{expandedSections.guidance ? '−' : '+'}</span>
+              </div>
+              {expandedSections.guidance && (
+                <div className="card-body pt-0">
+                  <div className="p-3 bg-white rounded border d-flex gap-3 align-items-start">
+                    <span className="fs-1">🏥</span>
+                    <div>
+                      <p className="mb-2">{getDoctorRecommendation()}</p>
+                      <span className="badge" style={{ backgroundColor: getRiskColor(riskLevel) }}>
+                        {riskLevel >= 75 ? 'HIGH URGENCY' : riskLevel >= 50 ? 'MODERATE URGENCY' : 'ROUTINE CARE'}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+
           </div>
         </div>
 
         {/* Save Button */}
-        <div className="result-actions">
+        <div className="text-center pb-4">
           <button
-            className="save-results-btn"
+            className="btn btn-danger btn-lg rounded-pill px-5 py-3 fw-bold shadow-sm"
             onClick={handleSaveResults}
+            style={{ minWidth: '300px' }}
           >
-            <span className="button-icon">💾</span>
-            Save Results & Continue
+            Save & Continue
           </button>
         </div>
-
-        {/* AI Disclaimer */}
-        <div className="disclaimer">
-          <div className="disclaimer-icon">⚠️</div>
-          <div className="disclaimer-text">
-            <strong>AI Analysis Disclaimer:</strong> This assessment is generated by our AI engine based on provided vital signs.
-            It is for informational purposes only and should not replace professional medical advice, diagnosis, or treatment.
-            Always consult qualified healthcare providers for medical concerns.
-          </div>
-        </div>
       </div>
-    </div >
+    </div>
+
   );
 }

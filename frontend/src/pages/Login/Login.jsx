@@ -1,7 +1,7 @@
 // src/pages/Login/Login.jsx - NUMERIC RFID ONLY
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Alert, Modal } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Login as LoginIcon,
@@ -31,6 +31,8 @@ export default function LoginPage() {
   const [rfidStatus, setRfidStatus] = useState('ready');
   const [connectionStatus, setConnectionStatus] = useState('checking');
   const [showPassword, setShowPassword] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorTitle, setErrorTitle] = useState('');
   const navigate = useNavigate();
 
   const schoolNumberInputRef = useRef(null);
@@ -207,14 +209,18 @@ export default function LoginPage() {
       } else {
         console.log('❌ RFID validation failed:', response.message);
         setRfidStatus('error');
+        setErrorTitle('Card Recognition Failed');
         setError(response.message); // No emoji prefix
+        setShowErrorModal(true);
         setRfidLoading(false);
       }
 
     } catch (err) {
       console.error('❌ RFID login error:', err);
       setRfidStatus('error');
+      setErrorTitle('System Error');
       setError('RFID login failed. Please try again.'); // No emoji prefix
+      setShowErrorModal(true);
       setRfidLoading(false);
     }
   };
@@ -230,7 +236,9 @@ export default function LoginPage() {
       const password = passwordInputRef.current?.value || '';
 
       if (!schoolNumber.trim() || !password.trim()) {
+        setErrorTitle('Missing Information');
         setError('Please enter both School Number and password');
+        setShowErrorModal(true);
         setIsLoading(false);
         return;
       }
@@ -255,7 +263,9 @@ export default function LoginPage() {
       } else {
         // Use the specific message from the backend if available
         const specificMessage = response.message || 'Invalid credentials';
+        setErrorTitle('Login Failed');
         setError(specificMessage);
+        setShowErrorModal(true);
         setIsLoading(false);
       }
 
@@ -275,7 +285,9 @@ export default function LoginPage() {
         }
       }
 
+      setErrorTitle('Login Error');
       setError(errorMessage);
+      setShowErrorModal(true);
       setIsLoading(false);
     }
   };
@@ -455,10 +467,7 @@ export default function LoginPage() {
                     Place your ID card near the scanner for instant access
                   </p>
 
-                  <div className="physical-scanner-notice">
-                    <RadioButtonChecked style={{ color: '#22c55e', fontSize: '1.2rem' }} />
-                    <span style={{ fontWeight: 'bold', color: '#22c55e' }}>SCANNER READY</span>
-                  </div>
+                  {/* Physical scanner notice removed */}
 
                   {/* FIXED: RFID Status Display */}
                   <div className={`rfid-status ${rfidStatus}`}>
@@ -467,11 +476,7 @@ export default function LoginPage() {
                   </div>
 
                   {/* RFID Processing Info */}
-                  <div className="rfid-processing-info">
-                    <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem', textAlign: 'center' }}>
-                      <strong>Note:</strong> Uses exact numeric RFID from your card
-                    </p>
-                  </div>
+                  {/* RFID Processing Info removed */}
                 </div>
               </div>
 
@@ -534,21 +539,7 @@ export default function LoginPage() {
                       </button>
                     </div>
 
-                    {/* Inline Error Message */}
-                    <AnimatePresence>
-                      {error && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                          animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
-                          exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="login-inline-error"
-                        >
-                          <Error style={{ fontSize: '0.9rem' }} />
-                          <span>{error}</span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {/* Inline Error Message removed - moved to Modal */}
                   </Form.Group>
 
                   <Button
@@ -618,6 +609,35 @@ export default function LoginPage() {
                 </div>
               </div>
             </div>
+
+            {/* Modern Error Popup Modal */}
+            {showErrorModal && (
+              <div className="login-error-overlay" onClick={() => setShowErrorModal(false)}>
+                <motion.div
+                  className="login-error-modal-content"
+                  initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="error-modal-icon">
+                    <span>⚠️</span>
+                  </div>
+                  <h2 className="error-modal-title">{errorTitle}</h2>
+                  <p className="error-modal-message">{error}</p>
+                  <button
+                    className="error-modal-button"
+                    onClick={() => {
+                      setShowErrorModal(false);
+                      setRfidStatus('ready');
+                    }}
+                  >
+                    Try Again
+                  </button>
+                </motion.div>
+              </div>
+            )}
           </motion.div>
         </Col>
       </Row>

@@ -1,33 +1,16 @@
 .result-container {
-  min-height: 100%;
-  padding: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  overflow-y: visible;
+  /* Layout handled by Bootstrap */
   transition: background 0.5s ease;
-  width: 100%;
 }
 
 .result-content {
   background: white;
   border-radius: 16px;
-  padding: 20px;
-  max-width: 850px;
-  width: 100%;
+  /* padding handled by bootstrap p-4 p-md-5 */
+  /* max-width handled by inline style or could correspond to col sizes */
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.6s ease;
-  margin: 10px 0;
-  min-height: auto;
   overflow: visible;
   position: relative;
-}
-
-.result-content.visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 /* Header */

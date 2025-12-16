@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Modal, Button } from "react-bootstrap";
+import { motion } from "framer-motion";
 import "./RegisterRole.css";
 import employeeIcon from "../../../assets/icons/employee-icon.png";
 import studentIcon from "../../../assets/icons/student-icon.png";
@@ -127,7 +127,7 @@ export default function RegisterRole() {
   return (
     <div className="role-container">
       <div className="role-content">
-        <button className="close-button" onClick={handleBack}>×</button>
+        <button className="close-button" onClick={handleBack}>←</button>
         <div className="role-header">
           <h1 className="role-title">Choose Your Category</h1>
           <p className="role-subtitle">Select the option that best describes your relationship with Rizal Technological University</p>
@@ -136,7 +136,7 @@ export default function RegisterRole() {
         <div className="role-cards-section">
           {/* Left Card - RTU Employees */}
           <div
-            className={`role-card ${selectedRole === 'rtu-employees' ? 'selected' : ''} ${touchFeedback === 'rtu-employees' ? 'touch-feedback' : ''}`}
+            className={`role-card rtu-employees ${selectedRole === 'rtu-employees' ? 'selected' : ''} ${touchFeedback === 'rtu-employees' ? 'touch-feedback' : ''}`}
             onClick={() => handleRoleSelect('rtu-employees')}
             onTouchStart={() => handleCardTouchStart('rtu-employees')}
             onTouchEnd={handleCardTouchEnd}
@@ -154,15 +154,13 @@ export default function RegisterRole() {
               <p className="role-card-description">{roles[0].description}</p>
             </div>
             <div className="role-selection-indicator">
-              <div className={`selection-circle ${selectedRole === 'rtu-employees' ? 'selected' : ''}`}>
-                {selectedRole === 'rtu-employees' && <div className="checkmark"></div>}
-              </div>
+              <div className="selection-circle"></div>
             </div>
           </div>
 
           {/* Right Card - RTU Students */}
           <div
-            className={`role-card ${selectedRole === 'rtu-students' ? 'selected' : ''} ${touchFeedback === 'rtu-students' ? 'touch-feedback' : ''}`}
+            className={`role-card rtu-students ${selectedRole === 'rtu-students' ? 'selected' : ''} ${touchFeedback === 'rtu-students' ? 'touch-feedback' : ''}`}
             onClick={() => handleRoleSelect('rtu-students')}
             onTouchStart={() => handleCardTouchStart('rtu-students')}
             onTouchEnd={handleCardTouchEnd}
@@ -180,9 +178,7 @@ export default function RegisterRole() {
               <p className="role-card-description">{roles[1].description}</p>
             </div>
             <div className="role-selection-indicator">
-              <div className={`selection-circle ${selectedRole === 'rtu-students' ? 'selected' : ''}`}>
-                {selectedRole === 'rtu-students' && <div className="checkmark"></div>}
-              </div>
+              <div className="selection-circle"></div>
             </div>
           </div>
         </div>
@@ -220,28 +216,39 @@ export default function RegisterRole() {
         </div>
       </div>
 
-      {/* Exit Confirmation Modal */}
-      <Modal
-        show={showExitModal}
-        onHide={() => setShowExitModal(false)}
-        centered
-        className="exit-modal"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Exit Registration?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Are you sure you want to go back to login? Your progress will not be saved.</p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowExitModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={confirmExit}>
-            Yes, Exit
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Modern Exit Confirmation Popup Modal */}
+      {showExitModal && (
+        <div className="exit-modal-overlay" onClick={() => setShowExitModal(false)}>
+          <motion.div
+            className="exit-modal-content"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="exit-modal-icon">
+              <span>🚪</span>
+            </div>
+            <h2 className="exit-modal-title">Exit Registration?</h2>
+            <p className="exit-modal-message">Are you sure you want to go back to login? Your progress will not be saved.</p>
+            <div className="exit-modal-buttons">
+              <button
+                className="exit-modal-button secondary"
+                onClick={() => setShowExitModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="exit-modal-button primary"
+                onClick={confirmExit}
+              >
+                Yes, Exit
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Modal, Button } from "react-bootstrap";
 import "./Checklist.css";
 
 // Import icons (using placeholders or existing icons if available)
@@ -11,6 +12,7 @@ export default function Checklist() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // Available processes
   const processes = [
@@ -20,10 +22,8 @@ export default function Checklist() {
     { id: 'bloodpressure', name: 'Blood Pressure', route: '/measure/bloodpressure', icon: '🩺', description: 'Systolic & Diastolic' }
   ];
 
-  // State for selected items (default all selected)
-  const [selectedItems, setSelectedItems] = useState(
-    processes.map(p => p.id)
-  );
+  // State for selected items (default none selected as per request)
+  const [selectedItems, setSelectedItems] = useState([]);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -64,30 +64,44 @@ export default function Checklist() {
     navigate(firstProcess.route, { state: checklistData });
   };
 
-  return (
-    <div className="checklist-container">
-      <div className={`checklist-content ${isVisible ? 'visible' : ''}`}>
+  const handleBack = () => {
+    navigate(-1);
+  };
 
-        <div className="checklist-header">
+  const handleExit = () => setShowExitModal(true);
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    navigate("/login");
+  };
+
+  return (
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 checklist-container">
+      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 checklist-content page-transition`}>
+        <button className="close-button" onClick={handleExit}>←</button>
+        <div className="text-center mb-5">
           <h1 className="checklist-title">Measurement Checklist</h1>
           <p className="checklist-subtitle">Select the vital signs you want to measure for this session.</p>
         </div>
 
-        <div className="checklist-grid">
+        <div className="row g-4 justify-content-center mb-5">
           {processes.map(process => (
-            <div
-              key={process.id}
-              className={`checklist-item ${selectedItems.includes(process.id) ? 'selected' : ''}`}
-              onClick={() => toggleItem(process.id)}
-            >
-              <div className="item-icon">{process.icon}</div>
-              <div className="item-name">{process.name}</div>
-              <div className="item-description">{process.description}</div>
+            <div key={process.id} className="col-12 col-md-6">
+              <div
+                className={`checklist-item h-100 ${selectedItems.includes(process.id) ? 'selected' : ''}`}
+                onClick={() => toggleItem(process.id)}
+              >
+                <div className="item-icon">{process.icon}</div>
+                <div className="item-info">
+                  <div className="item-name">{process.name}</div>
+                  <div className="item-description">{process.description}</div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="button-container">
+        <div className="d-flex flex-column gap-3 align-items-center">
           <button
             className="start-button"
             onClick={handleStart}
@@ -96,8 +110,21 @@ export default function Checklist() {
             Start Measurement ({selectedItems.length})
           </button>
         </div>
-
       </div>
-    </div>
+
+      <Modal show={showExitModal} onHide={() => setShowExitModal(false)} centered className="exit-modal">
+        <Modal.Header closeButton>
+          <Modal.Title>Exit Checklist?</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Do you want to go back or cancel the measurement?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowExitModal(false)}>Cancel</Button>
+          <Button variant="danger" onClick={confirmExit}>Exit Measurement</Button>
+        </Modal.Footer>
+      </Modal>
+
+    </div >
   );
 }
