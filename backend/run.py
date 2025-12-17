@@ -10,8 +10,9 @@ logging.basicConfig(
     force=True
 )
 
-# Suppress noisy libraries
-logging.getLogger('werkzeug').setLevel(logging.WARNING)
+# Configure logging levels for dependencies
+# Changed werkzeug to INFO so we can see HTTP requests
+logging.getLogger('werkzeug').setLevel(logging.INFO)
 logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
 
 from app import create_app

@@ -129,26 +129,26 @@ def handle_manual_login(school_number, password):
     try:
         db = next(get_db())
         
-        print(f"🔍 Searching for school_number: {school_number}")
+        print(f"🔍 Searching for user with identifier: {school_number}")
         
-        # Query user by school_number only, fetch password hash
+        # Query user by school_number OR email
         query = text("""
             SELECT user_id, rfid_tag, firstname, lastname, role, school_number, 
                    email, mobile_number, age, sex, created_at, password
             FROM users 
-            WHERE school_number = :school_number
+            WHERE school_number = :identifier OR email = :identifier
         """)
         
         result = db.execute(query, {
-            'school_number': school_number
+            'identifier': school_number
         })
         user = result.fetchone()
         
         if not user:
-            print(f"❌ User not found for school_number: {school_number}")
+            print(f"❌ User not found for identifier: {school_number}")
             return jsonify({
                 'success': False,
-                'message': '❌ Invalid School Number or password'
+                'message': '❌ Invalid School Number/Email or password'
             }), 401
             
         # Verify password
@@ -169,10 +169,10 @@ def handle_manual_login(school_number, password):
                 print("⚠️ Authenticated with legacy plain text password")
         
         if not is_valid:
-            print(f"❌ Invalid password for school_number: {school_number}")
+            print(f"❌ Invalid password for identifier: {school_number}")
             return jsonify({
                 'success': False,
-                'message': '❌ Invalid School Number or password'
+                'message': '❌ Invalid School Number/Email or password'
             }), 401
         
         # Convert row to dictionary (excluding password)

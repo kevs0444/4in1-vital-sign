@@ -489,7 +489,7 @@ export default function LoginPage() {
 
                 <Form onSubmit={handleLogin}>
                   <Form.Group className="mb-3" controlId="schoolNumber">
-                    <Form.Label>Student / Employee Number</Form.Label>
+                    <Form.Label>School Number / Email</Form.Label>
                     <input
                       ref={schoolNumberInputRef}
                       type="text"
@@ -499,7 +499,7 @@ export default function LoginPage() {
                         if (schoolNumberInputRef.current) schoolNumberInputRef.current.blur();
                         handleInputFocus('schoolNumber');
                       }}
-                      placeholder="Enter your school number"
+                      placeholder="Enter school number or email"
                       className={`form-input ${activeInput === 'schoolNumber' ? 'active' : ''}`}
                       disabled={isLoading || rfidLoading}
                       defaultValue=""
@@ -528,6 +528,7 @@ export default function LoginPage() {
                         inputMode="none"
                         autoComplete="off"
                         readOnly
+                        maxLength={10}
                       />
                       <button
                         type="button"
@@ -538,8 +539,6 @@ export default function LoginPage() {
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </button>
                     </div>
-
-                    {/* Inline Error Message removed - moved to Modal */}
                   </Form.Group>
 
                   <Button
@@ -560,6 +559,16 @@ export default function LoginPage() {
                       </>
                     )}
                   </Button>
+
+                  {/* Forgot Password Button - Touchscreen Friendly */}
+                  <button
+                    type="button"
+                    className="forgot-password-button"
+                    onClick={() => navigate('/forgot-password')}
+                    disabled={isLoading || rfidLoading}
+                  >
+                    Forgot Password?
+                  </button>
 
                   <div className="register-section">
                     <p className="register-text">

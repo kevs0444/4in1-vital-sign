@@ -29,8 +29,8 @@ def create_app():
     app.logger.handlers = []
     app.logger.propagate = True
     
-    # Suppress werkzeug (Flask) request logs to keep terminal clean
-    # logging.getLogger('werkzeug').setLevel(logging.WARNING)
+    # Enable werkzeug to show HTTP requests
+    logging.getLogger('werkzeug').setLevel(logging.INFO)
     
     logging.info("✅ Logging configured successfully - Backend starting...")
     
@@ -47,6 +47,9 @@ def create_app():
     app.register_blueprint(sensor_bp, url_prefix='/api/sensor')
     app.register_blueprint(register_bp, url_prefix='/api/register')
     app.register_blueprint(login_bp, url_prefix='/api/login')
+    
+    from app.routes.forgot_password_routes import forgot_password_bp
+    app.register_blueprint(forgot_password_bp, url_prefix='/api/auth')
     
     from app.routes.camera_routes import camera_bp
     app.register_blueprint(camera_bp, url_prefix='/api/camera')

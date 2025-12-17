@@ -39,11 +39,11 @@
   touch-action: manipulation;
 }
 
-/* TOP SECTION - ID CARD FORMAT (25%) */
+/* TOP SECTION - ID CARD FORMAT (15%) */
 .login-card-section {
-  flex: 0 0 25%;
+  flex: 0 0 15%;
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  padding: 1rem 1.5rem;
+  padding: 0.7rem 1.2rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -68,13 +68,13 @@
 
 .card-icon {
   background: rgba(255, 255, 255, 0.2);
-  width: 60px;
-  height: 60px;
-  border-radius: 15px;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 0.8rem auto;
+  margin: 0 auto 0.5rem auto;
   box-shadow: 0 4px 15px rgba(255, 68, 68, 0.4);
   border: 2px solid rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(10px);
@@ -83,15 +83,15 @@
 }
 
 .card-icon .MuiSvgIcon-root {
-  font-size: 1.8rem !important;
+  font-size: 1.5rem !important;
   color: white;
 }
 
 .card-title {
   color: white;
-  font-size: 1.6rem;
+  font-size: 1.3rem;
   font-weight: 800;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.4rem;
   line-height: 1.1;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
@@ -103,9 +103,9 @@
 
 .card-subtitle {
   color: rgba(255, 255, 255, 0.95);
-  font-size: 0.95rem;
-  margin-bottom: 0.8rem;
-  line-height: 1.3;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
   font-weight: 500;
   flex-shrink: 0;
   max-width: 90%;
@@ -171,11 +171,11 @@
 }
 
 .rfid-status {
-  margin-top: 0.8rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 7px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   text-align: center;
   transition: all 0.3s ease;
   flex-shrink: 0;
@@ -218,10 +218,10 @@
   }
 }
 
-/* MIDDLE SECTION - MANUAL LOGIN (45%) */
+/* MIDDLE SECTION - MANUAL LOGIN (55%) */
 .login-manual-section {
-  flex: 0 0 45%;
-  padding: 1.2rem 1.5rem;
+  flex: 0 0 55%;
+  padding: 1.4rem 1.5rem;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -279,8 +279,8 @@
 .form-label {
   color: #333;
   font-weight: 700;
-  font-size: 0.95rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  margin-bottom: 0.6rem;
   display: block;
   text-align: left;
   -webkit-user-select: none;
@@ -293,12 +293,12 @@
   width: 100%;
   border: 2px solid #e5e5e5;
   border-radius: 10px;
-  padding: 0.9rem 1rem;
-  font-size: 1rem;
+  padding: 1.3rem 1rem;
+  font-size: 1.2rem;
   font-weight: 500;
   transition: all 0.3s ease;
   background: #fafafa;
-  min-height: 50px;
+  min-height: 75px;
   caret-color: transparent;
   cursor: pointer;
   touch-action: manipulation;
@@ -365,16 +365,85 @@
   outline: none;
 }
 
+/* Forgot Password Button - Touchscreen Friendly */
+.forgot-password-button {
+  width: 100%;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  border: none;
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 0.8rem;
+  margin-bottom: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  min-height: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 12px rgba(71, 85, 105, 0.3);
+}
+
+.forgot-password-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(71, 85, 105, 0.4);
+}
+
+.forgot-password-button:active:not(:disabled) {
+  transform: scale(0.97);
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+}
+
+.forgot-password-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Touch Ripple Effect for all buttons */
+.forgot-password-button,
+.login-button,
+.register-link {
+  position: relative;
+  overflow: hidden;
+}
+
+.forgot-password-button::after,
+.login-button::after,
+.register-link::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+
+
+
 .login-button {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
   border: none !important;
   border-radius: 10px !important;
-  padding: 1.1rem !important;
-  font-size: 1.1rem !important;
+  padding: 1.3rem !important;
+  font-size: 1.2rem !important;
   font-weight: 700 !important;
   box-shadow: 0 3px 12px rgba(220, 38, 38, 0.3) !important;
   transition: all 0.3s ease !important;
-  min-height: 60px;
+  min-height: 70px;
   width: 100%;
   margin-top: 0.8rem;
   margin-bottom: 1rem;
@@ -396,7 +465,12 @@
 }
 
 .login-button:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.97);
+}
+
+.login-button:active:not(:disabled)::after {
+  width: 300px;
+  height: 300px;
 }
 
 .login-button:disabled {
@@ -410,6 +484,19 @@
   border-top: 2px solid #e5e5e5;
   flex-shrink: 0;
   margin-top: auto;
+  animation: fadeInUp 0.6s ease-out 0.3s both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .register-text {
@@ -423,7 +510,7 @@
 }
 
 .register-link {
-  color: #dc2626 !important;
+  color: #16a34a !important;
   text-decoration: none !important;
   font-weight: 700;
   transition: all 0.3s ease;
@@ -431,11 +518,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 1.1rem !important;
+  padding: 1rem !important;
   border-radius: 10px;
   background: white;
-  border: 2px solid #dc2626;
-  font-size: 1.1rem;
+  border: 2px solid #16a34a;
+  font-size: 1rem;
   touch-action: manipulation;
   flex-shrink: 0;
   -webkit-user-select: none;
@@ -444,14 +531,64 @@
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   width: 100%;
-  box-shadow: 0 3px 12px rgba(220, 38, 38, 0.1);
+  box-shadow: 0 3px 12px rgba(22, 163, 74, 0.2);
   box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  animation: subtlePulse 3s ease-in-out infinite;
+  min-height: 55px;
+}
+
+@keyframes subtlePulse {
+
+  0%,
+  100% {
+    box-shadow: 0 3px 12px rgba(22, 163, 74, 0.15);
+  }
+
+  50% {
+    box-shadow: 0 3px 20px rgba(22, 163, 74, 0.3);
+  }
+}
+
+.register-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(22, 163, 74, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.register-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(22, 163, 74, 0.3);
+  background: #f0fdf4;
+  border-color: #15803d;
+}
+
+.register-link:hover::before {
+  left: 100%;
 }
 
 .register-link:active {
-  transform: scale(0.98);
-  background: #fff5f5;
+  transform: scale(0.97);
+  background: #dcfce7;
+  border-color: #166534;
 }
+
+.register-link:active::after {
+  width: 300px;
+  height: 300px;
+}
+
+.forgot-password-button:active:not(:disabled)::after {
+  width: 300px;
+  height: 300px;
+}
+
 
 /* ALERT STYLES */
 .login-alert {
@@ -881,13 +1018,13 @@
   }
 
   .login-card-section {
-    flex: 0 0 25%;
-    padding: 0.8rem 1.2rem;
+    flex: 0 0 15%;
+    padding: 0.6rem 1rem;
   }
 
   .login-manual-section {
-    flex: 0 0 45%;
-    padding: 1rem 1.2rem;
+    flex: 0 0 55%;
+    padding: 1.2rem 1.2rem;
   }
 
   .login-keyboard-section {
@@ -899,13 +1036,13 @@
 /* Extra optimization for very small heights */
 @media (max-height: 800px) {
   .login-card-section {
-    flex: 0 0 22%;
-    padding: 0.6rem 1rem;
+    flex: 0 0 15%;
+    padding: 0.5rem 0.8rem;
   }
 
   .login-manual-section {
-    flex: 0 0 48%;
-    padding: 0.8rem 1rem;
+    flex: 0 0 55%;
+    padding: 1rem 1rem;
   }
 
   .login-keyboard-section {
@@ -1076,13 +1213,13 @@ body {
   }
 
   .login-card-section {
-    flex: 0 0 25%;
-    padding: 0.8rem 1.2rem;
+    flex: 0 0 15%;
+    padding: 0.6rem 1rem;
   }
 
   .login-manual-section {
-    flex: 0 0 45%;
-    padding: 1rem 1.2rem;
+    flex: 0 0 55%;
+    padding: 1.2rem 1.2rem;
   }
 
   .login-keyboard-section {
@@ -1094,13 +1231,13 @@ body {
 /* Extra optimization for very small heights */
 @media (max-height: 800px) {
   .login-card-section {
-    flex: 0 0 22%;
-    padding: 0.6rem 1rem;
+    flex: 0 0 15%;
+    padding: 0.5rem 0.8rem;
   }
 
   .login-manual-section {
-    flex: 0 0 48%;
-    padding: 0.8rem 1rem;
+    flex: 0 0 55%;
+    padding: 1rem 1rem;
   }
 
   .login-keyboard-section {

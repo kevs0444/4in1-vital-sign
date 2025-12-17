@@ -32,7 +32,8 @@ import FlowTesting from "./pages/Dashboards/Admin/FlowTesting/FlowTesting";
 import Maintenance from "./pages/Dashboards/Admin/Maintenance/Maintenance";
 
 // 🔐 Login
-import LoginPage from "./pages/Login/Login"; // Changed import name
+import LoginPage from "./pages/Login/Login";
+import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
 
 // 💤 Standby & 404
 import Standby from "./pages/Standby/Standby";
@@ -45,7 +46,8 @@ function AppRoutes() {
       <Route path="/" element={<Standby />} />
 
       {/* 🔐 Login */}
-      <Route path="/login" element={<LoginPage />} /> {/* Use LoginPage component */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* 🩺 Measurement Flow */}
       <Route path="/measure/welcome" element={<MeasurementWelcome />} />

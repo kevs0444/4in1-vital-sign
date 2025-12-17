@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Enum, Date, DateTime
+from sqlalchemy.orm import relationship
 from app.utils.db import Base
 import enum
 
@@ -29,6 +30,9 @@ class User(Base):
     email = Column(String(100), nullable=False)
     password = Column(String(255), nullable=False)
     created_at = Column(DateTime)  # Changed to DateTime
+
+    # Relationship to VerificationCode
+    verification_codes = relationship("VerificationCode", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(user_id={self.user_id}, name='{self.firstname} {self.lastname}', role={self.role})>"
