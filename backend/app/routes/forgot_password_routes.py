@@ -463,3 +463,55 @@ def cleanup_expired_otps_endpoint():
         }), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@forgot_password_bp.route('/cancel-reset', methods=['POST'])
+def cancel_reset():
+    """Delete OTP records when user cancels the password reset flow"""
+    print("=" * 60)
+    print("🚫 CANCEL PASSWORD RESET REQUEST RECEIVED")
+    print("=" * 60)
+    
+    data = request.get_json()
+    identifier = data.get('identifier')
+    
+    print(f"📝 Identifier: {identifier}")
+    
+    if not identifier:
+        print("❌ No identifier provided")
+        return jsonify({'success': False, 'message': 'Identifier is required'}), 400
+    
+    try:
+        db = next(get_db())
+        
+        # Resolve User ID from Identifier
+        query = text("""
+            SELECT user_id FROM users 
+            WHERE email = :identifier OR school_number = :identifier
+        """)
+        result = db.execute(query, {'identifier': identifier})
+        user = result.fetchone()
+        
+        if not user:
+            print(f"⚠️ User not found for identifier: {identifier}")
+            # Still return success to avoid revealing user existence
+            return jsonify({'success': True, 'message': 'Reset cancelled'}), 200
+        
+        user_id = user[0]
+        print(f"✅ User ID resolved: {user_id}")
+        
+        # Delete all OTPs for this user
+        cleanup_user_otps(db, user_id)
+        db.commit()
+        
+        print(f"✅ OTPs cleared for user_id: {user_id}")
+        print("=" * 60)
+        return jsonify({'success': True, 'message': 'Reset cancelled and OTPs cleared'}), 200
+        
+    except Exception as e:
+        print(f"❌ Error in cancel_reset: {e}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 60)
+        db.rollback()
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500

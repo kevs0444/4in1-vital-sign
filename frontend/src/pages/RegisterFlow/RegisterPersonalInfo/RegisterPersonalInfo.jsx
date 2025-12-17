@@ -22,7 +22,7 @@ export default function RegisterPersonalInfo() {
     birthDay: location.state?.personalInfo?.birthDay || null,
     birthYear: location.state?.personalInfo?.birthYear || null
   });
-  const [isVisible, setIsVisible] = useState(false);
+
   const [isShift, setIsShift] = useState(false);
   const [showSymbols, setShowSymbols] = useState(false);
   const [activeInput, setActiveInput] = useState("first");
@@ -52,7 +52,7 @@ export default function RegisterPersonalInfo() {
 
   // Constants for dimensions (matched with CSS)
   const ITEM_HEIGHT = 92; // 77px + ~20% -> 92px
-  const VISIBLE_COUNT = 5;
+
   const MONTHS_COUNT = 12;
   // DAYS_COUNT is now dynamic: daysInMonth
 
@@ -291,6 +291,11 @@ export default function RegisterPersonalInfo() {
   };
 
   const handleBack = () => {
+    setShowExitModal(true);
+  };
+
+  const handleBackOneStep = () => {
+    setShowExitModal(false);
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
       setErrorMessage("");
@@ -300,9 +305,7 @@ export default function RegisterPersonalInfo() {
     }
   };
 
-  const handleExit = () => {
-    setShowExitModal(true);
-  };
+
 
   const confirmExit = () => {
     setShowExitModal(false);
@@ -753,28 +756,33 @@ export default function RegisterPersonalInfo() {
         )}
       </div>
 
-      {/* Exit Confirmation Modal */}
-      <Modal
-        show={showExitModal}
-        onHide={() => setShowExitModal(false)}
-        centered
-        className="exit-modal"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Exit Registration?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Are you sure you want to cancel registering? Your progress will not be saved.</p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowExitModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={confirmExit}>
-            Yes, Exit
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Exit Confirmation Modal - Glassmorphism Style */}
+      {showExitModal && (
+        <div className="exit-modal-overlay">
+          <motion.div
+            className="exit-modal-content"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="exit-modal-icon">
+              <span>⚠️</span>
+            </div>
+            <h2 className="exit-modal-title">Navigate Back?</h2>
+            <p className="exit-modal-message">
+              If you exit, your progress will not be saved. Do you want to go back to the previous step or exit completely?
+            </p>
+            <div className="exit-modal-buttons">
+              <button className="exit-modal-button secondary" onClick={handleBackOneStep}>
+                Go Back One Step
+              </button>
+              <button className="exit-modal-button primary" onClick={confirmExit}>
+                Exit Registration
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Age Warning Modal */}
       <Modal

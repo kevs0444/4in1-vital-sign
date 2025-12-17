@@ -18,7 +18,7 @@ class User(Base):
     __tablename__ = "users"
 
     user_id = Column(String(20), primary_key=True)
-    rfid_tag = Column(String(100), nullable=False)
+    rfid_tag = Column(String(100), nullable=True)
     firstname = Column(String(100), nullable=False)
     lastname = Column(String(100), nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)

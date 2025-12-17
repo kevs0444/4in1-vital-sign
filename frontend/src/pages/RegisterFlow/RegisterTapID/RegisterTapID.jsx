@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Modal, Button } from "react-bootstrap";
+
 import { motion } from "framer-motion";
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import "./RegisterTapID.css";
@@ -26,12 +26,13 @@ export default function RegisterTapID() {
   const [errorMessage, setErrorMessage] = useState("");
   const [idRegistered, setIdRegistered] = useState(false);
   const [scannerStatus, setScannerStatus] = useState("ready");
-  const [rfidCode, setRfidCode] = useState("");
-  const [isCardTapped, setIsCardTapped] = useState(false);
+  // const [rfidCode, setRfidCode] = useState("");
+  // const [isCardTapped, setIsCardTapped] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateRfidMessage, setDuplicateRfidMessage] = useState("");
   const [duplicateModalTitle, setDuplicateModalTitle] = useState("Already Registered");
+  const [showNoIdModal, setShowNoIdModal] = useState(false);
 
   const idNumberInputRef = useRef(null);
   const passwordInputRef = useRef(null);
@@ -64,7 +65,7 @@ export default function RegisterTapID() {
   }, [isScanning, idRegistered, currentStep, formData, location.state]);
 
   const userType = location.state?.userType || "rtu-students";
-  const personalInfo = location.state?.personalInfo || {};
+  // const personalInfo = location.state?.personalInfo || {};
   const isEmployee = userType === "rtu-employees";
 
   const steps = [
@@ -172,7 +173,7 @@ export default function RegisterTapID() {
   const processRfidScan = async (rfidData) => {
     console.log('🎫 RFID Card Detected (RAW):', rfidData);
 
-    setIsCardTapped(true);
+    // setIsCardTapped(true);
     setScannerStatus("reading");
     setIsScanning(true);
     setScanProgress(20); // Start at 20%
@@ -185,7 +186,7 @@ export default function RegisterTapID() {
 
       // USE EXACT RFID DATA - NO MODIFICATIONS, NO PREFIX, NO SLICING
       const generatedRFID = rfidData; // Use the exact data from scanner
-      setRfidCode(generatedRFID);
+
 
       // Step 2: Check if RFID already exists in database
       setScannerStatus("processing");
@@ -203,7 +204,7 @@ export default function RegisterTapID() {
           setDuplicateRfidMessage("This ID card is already registered to another user. Please use a different ID card.");
           setShowDuplicateModal(true);
           setIsScanning(false);
-          setIsCardTapped(false);
+          // setIsCardTapped(false);
           setScanProgress(0);
           return; // Stop the registration process
         }
@@ -229,15 +230,15 @@ export default function RegisterTapID() {
       setScannerStatus("error");
       setErrorMessage("RFID registration failed. Please try again.");
       setIsScanning(false);
-      setIsCardTapped(false);
+      // setIsCardTapped(false);
     }
   };
 
   // Complete the registration process
+  // Complete the registration process
   const completeIDRegistration = (rfidCode) => {
     console.log("✅ ID Registration completed!");
     setIsScanning(false);
-    setIdRegistered(true);
 
     const currentState = stateRef.current;
 
@@ -255,12 +256,22 @@ export default function RegisterTapID() {
 
     console.log('📦 Passing complete data to RegisterDataSaved:', completeRegistrationData);
 
-    // Navigate to data saved screen with ALL registration data
-    setTimeout(() => {
+    if (rfidCode) {
+      // ✅ RFID CASE: Trigger Success Animation (Green UI)
+      setIdRegistered(true);
+
+      // Wait for animation to play before navigating
+      setTimeout(() => {
+        navigate("/register/saved", {
+          state: completeRegistrationData
+        });
+      }, 1500);
+    } else {
+      // ⏩ NO RFID CASE: Skip Animation, Navigate Immediately
       navigate("/register/saved", {
         state: completeRegistrationData
       });
-    }, 1500); // Faster redirect
+    }
   };
 
   // Handle ALL keyboard input for RFID scanning - STABLE CALLBACK
@@ -295,6 +306,7 @@ export default function RegisterTapID() {
         }, 50); // Faster detection
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array because we use stateRef
 
   // Manage RFID Scanner Listener
@@ -387,6 +399,11 @@ export default function RegisterTapID() {
   };
 
   const handleBack = () => {
+    setShowExitModal(true);
+  };
+
+  const handleBackOneStep = () => {
+    setShowExitModal(false);
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     } else {
@@ -401,13 +418,22 @@ export default function RegisterTapID() {
     }
   };
 
-  const handleExit = () => {
-    setShowExitModal(true);
-  };
+
 
   const confirmExit = () => {
     setShowExitModal(false);
     navigate("/login");
+  };
+
+  const handleSkipRfid = () => {
+    // Show confirmation modal instead of proceeding immediately
+    setShowNoIdModal(true);
+  };
+
+  const confirmSkipRfid = () => {
+    console.log('⏩ User confirmed skipping RFID registration');
+    setShowNoIdModal(false);
+    completeIDRegistration(null);
   };
 
   const validateIDNumber = (idNumber) => {
@@ -564,24 +590,7 @@ export default function RegisterTapID() {
     return "Continue";
   };
 
-  const getScannerStatusText = () => {
-    switch (scannerStatus) {
-      case "ready":
-        return "Scanner Ready - Tap Your ID Card";
-      case "active":
-        return "Scanner Ready - Tap Your ID Card";
-      case "reading":
-        return "Reading ID Card...";
-      case "processing":
-        return "Writing Data to Card...";
-      case "success":
-        return "Registration Complete!";
-      case "error":
-        return "Scan Failed - Try Again";
-      default:
-        return "Scanner Ready";
-    }
-  };
+
 
   const alphabetKeys = [
     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
@@ -851,21 +860,14 @@ export default function RegisterTapID() {
               </div>
             )}
 
-            {/* Step 3: RFID Registration - RED THEME */}
             {currentStep === 2 && (
               <div className="form-phase active">
+
                 <div className="tap-id-card-container">
+
                   {/* Large Icon - EMPHASIZED */}
-                  <div
-                    className="tap-id-image-wrapper"
-                    style={{ background: '#ffffff' }}
-                  >
-                    <img
-                      src={tapIdImage}
-                      alt="Tap ID"
-                      className="tap-id-main-image"
-                      style={{ background: '#ffffff' }}
-                    />
+                  <div className="tap-id-image-wrapper" style={{ background: '#ffffff' }}>
+                    <img src={tapIdImage} alt="Tap ID" className="tap-id-main-image" style={{ background: '#ffffff' }} />
                   </div>
 
                   {/* Title & Subtitle */}
@@ -877,6 +879,7 @@ export default function RegisterTapID() {
                   {/* Enhanced Animation Wrapper */}
                   <div className="modern-rfid-wrapper">
                     <div className="scanner-stage">
+
                       {/* Floating Particles */}
                       <div className="particles-container">
                         {[...Array(8)].map((_, i) => (
@@ -946,15 +949,9 @@ export default function RegisterTapID() {
                         whileHover={!isScanning && !idRegistered ? { y: -35, scale: 0.9 } : {}}
                       >
                         <div className="card-content">
-                          {/* Animated Header Bar */}
                           <div className="card-header-bar"></div>
-
-                          {/* Chip */}
                           <div className="card-chip"></div>
-
-                          {/* Card Body */}
                           <div className="card-body-elements">
-                            {/* Photo Area */}
                             <div className="card-photo-box">
                               <div className="photo-placeholder">
                                 <div className="id-scan-line"></div>
@@ -965,8 +962,6 @@ export default function RegisterTapID() {
                                 </div>
                               </div>
                             </div>
-
-                            {/* Text Lines */}
                             <div className="card-lines-group">
                               <div className="card-line w-100"></div>
                               <div className="card-line w-75"></div>
@@ -975,8 +970,6 @@ export default function RegisterTapID() {
                               <div className="card-line w-50"></div>
                             </div>
                           </div>
-
-                          {/* University Logo/Text */}
                           <div style={{
                             position: 'absolute',
                             bottom: '20px',
@@ -989,8 +982,6 @@ export default function RegisterTapID() {
                           }}>
                             RTU ID
                           </div>
-
-                          {/* Scanning Laser Effect */}
                           {isScanning && (
                             <motion.div
                               className="scan-laser-beam"
@@ -998,8 +989,6 @@ export default function RegisterTapID() {
                               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                             />
                           )}
-
-                          {/* Success Badge */}
                           {idRegistered && (
                             <motion.div
                               className="card-success-badge"
@@ -1011,8 +1000,6 @@ export default function RegisterTapID() {
                             </motion.div>
                           )}
                         </div>
-
-                        {/* Card Shine Effect */}
                         <motion.div
                           style={{
                             position: 'absolute',
@@ -1072,6 +1059,7 @@ export default function RegisterTapID() {
                               }}
                             />
                           </div>
+                          {/* Messages removed to shorten */}
                           <div style={{
                             fontSize: '1rem',
                             color: '#6b7280',
@@ -1088,27 +1076,36 @@ export default function RegisterTapID() {
 
                       {/* Tap Instructions */}
                       {!isScanning && !idRegistered && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.8 }}
-                          style={{
-                            marginTop: '25px',
-                            padding: '18px',
-                            background: 'linear-gradient(135deg, #fef2f2, #fecaca)',
-                            borderRadius: '14px',
-                            border: '2px dashed #f87171'
-                          }}
-                        >
-                          <p style={{
-                            margin: 0,
-                            color: '#dc2626',
-                            fontSize: '1.1rem',
-                            fontWeight: '600'
-                          }}>
-                            💡 <strong>Pro Tip:</strong> Tap your ID card firmly on the scanner for fastest registration
-                          </p>
-                        </motion.div>
+                        <>
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.8 }}
+                            style={{
+                              marginTop: '25px',
+                              padding: '18px',
+                              background: 'linear-gradient(135deg, #fef2f2, #fecaca)',
+                              borderRadius: '14px',
+                              border: '2px dashed #f87171'
+                            }}
+                          >
+                            <p style={{
+                              margin: 0,
+                              color: '#dc2626',
+                              fontSize: '1.1rem',
+                              fontWeight: '600'
+                            }}>
+                              💡 <strong>Pro Tip:</strong> Tap your ID card firmly on the scanner for fastest registration
+                            </p>
+                          </motion.div>
+
+                          {/* No RFID Option - Added here */}
+                          <div className="no-rfid-option-container">
+                            <button className="no-rfid-link-button" onClick={handleSkipRfid}>
+                              I don't have an ID card
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
@@ -1163,28 +1160,69 @@ export default function RegisterTapID() {
         )}
       </div>
 
-      {/* Exit Confirmation Modal */}
-      <Modal
-        show={showExitModal}
-        onHide={() => setShowExitModal(false)}
-        centered
-        className="exit-modal"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Exit Registration?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Are you sure you want to cancel registering? Your progress will not be saved.</p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowExitModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={confirmExit}>
-            Yes, Exit
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Exit Confirmation Modal - Glassmorphism Style */}
+      {showExitModal && (
+        <div className="exit-modal-overlay">
+          <motion.div
+            className="exit-modal-content"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="exit-modal-icon">
+              <span>⚠️</span>
+            </div>
+            <h2 className="exit-modal-title">Navigate Back?</h2>
+            <p className="exit-modal-message">
+              If you exit, your progress will not be saved. Do you want to go back to the previous step or exit completely?
+            </p>
+            <div className="exit-modal-buttons">
+              <button className="exit-modal-button secondary" onClick={handleBackOneStep}>
+                Go Back One Step
+              </button>
+              <button className="exit-modal-button primary" onClick={confirmExit}>
+                Exit Registration
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* No RFID Confirmation Modal */}
+      {showNoIdModal && (
+        <div className="exit-modal-overlay">
+          <motion.div
+            className="exit-modal-content"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="exit-modal-icon">
+              <span>❓</span>
+            </div>
+            <h2 className="exit-modal-title">No School ID?</h2>
+            <p className="exit-modal-message">
+              Are you sure you want to proceed without registering an RFID card?
+              <br /><br />
+              Registration without an ID means you won't be able to use the quick-tap feature to log in.
+            </p>
+            <div className="exit-modal-buttons">
+              <button
+                className="exit-modal-button secondary"
+                onClick={() => setShowNoIdModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="exit-modal-button primary"
+                onClick={confirmSkipRfid}
+              >
+                Yes, Proceed
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Duplicate RFID Popup Modal - Modern Style */}
       {showDuplicateModal && (

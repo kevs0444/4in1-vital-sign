@@ -21,7 +21,8 @@ def register_user():
             }), 400
 
         # Extract and validate required fields
-        required_fields = ['userId', 'rfidTag', 'firstname', 'lastname', 'role', 'age', 'sex', 'mobileNumber', 'email', 'password']
+        # Note: rfidTag is OPTIONAL, so it is NOT in this list
+        required_fields = ['userId', 'firstname', 'lastname', 'role', 'age', 'sex', 'mobileNumber', 'email', 'password']
         
         for field in required_fields:
             if field not in data or not data[field]:
@@ -49,15 +50,16 @@ def register_user():
                 'message': 'User ID already exists'
             }), 400
 
-        # Check if RFID tag already exists
-        check_rfid_query = text("SELECT rfid_tag FROM users WHERE rfid_tag = :rfid_tag")
-        existing_rfid = db.execute(check_rfid_query, {'rfid_tag': data['rfidTag']}).fetchone()
-        
-        if existing_rfid:
-            return jsonify({
-                'success': False,
-                'message': 'RFID tag already registered'
-            }), 400
+        # Check if RFID tag already exists (only if provided)
+        if data.get('rfidTag'):
+            check_rfid_query = text("SELECT rfid_tag FROM users WHERE rfid_tag = :rfid_tag")
+            existing_rfid = db.execute(check_rfid_query, {'rfid_tag': data['rfidTag']}).fetchone()
+            
+            if existing_rfid:
+                return jsonify({
+                    'success': False,
+                    'message': 'RFID tag already registered'
+                }), 400
 
         # Check if email already exists
         check_email_query = text("SELECT email FROM users WHERE email = :email")
@@ -114,7 +116,7 @@ def register_user():
         
         db.execute(insert_query, {
             'user_id': data['userId'],
-            'rfid_tag': data['rfidTag'],
+            'rfid_tag': data.get('rfidTag') if data.get('rfidTag') else None,
             'firstname': data['firstname'],
             'lastname': data['lastname'],
             'role': data['role'],
@@ -137,7 +139,7 @@ def register_user():
             'message': 'User registered successfully',
             'data': {
                 'user_id': data['userId'],
-                'rfid_tag': data['rfidTag'],
+                'rfid_tag': data.get('rfidTag'),
                 'firstname': data['firstname'],
                 'lastname': data['lastname'],
                 'role': data['role'],

@@ -89,20 +89,18 @@ export default function RegisterDataSaved() {
     return `${prefix}-${timestamp}-${randomPart}`;
   };
 
-  // Process RFID - Use EXACT numbers from scanner (NO CUTTING)
+  // Process RFID - Return null if skipped
   const processRfidForRegistration = (rawRfid) => {
     console.log('🔢 Processing RFID for registration:', rawRfid);
 
     if (!rawRfid) {
-      const randomRfid = Math.floor(10000000 + Math.random() * 90000000).toString();
-      return randomRfid;
+      return null;
     }
 
     const numbersOnly = rawRfid.replace(/\D/g, '');
 
     if (numbersOnly.length < 5) {
-      const randomRfid = Math.floor(10000000 + Math.random() * 90000000).toString();
-      return randomRfid;
+      return null;
     }
 
     return numbersOnly;
@@ -210,7 +208,7 @@ export default function RegisterDataSaved() {
       }
       hasSavedRef.current = false;
     }
-  }, [registrationData, handleContinue]);
+  }, [registrationData]);
 
   // Main effect for registration and countdown
   useEffect(() => {
@@ -315,7 +313,7 @@ export default function RegisterDataSaved() {
               <div className="id-card-footer">
                 <div className="id-chip">
                   <span className="chip-icon">📡</span>
-                  <span>RFID Active</span>
+                  <span>{backendResponse?.data?.rfid_tag ? 'RFID Active' : 'No RFID'}</span>
                 </div>
                 <div className="id-status">Active</div>
               </div>
@@ -331,7 +329,7 @@ export default function RegisterDataSaved() {
               <div className="info-card">
                 <span className="info-icon">🎫</span>
                 <span className="info-label">RFID Tag</span>
-                <span className="info-value-mono">{backendResponse?.data?.rfid_tag || '...'}</span>
+                <span className="info-value-mono">{backendResponse?.data?.rfid_tag || 'Not Registered'}</span>
               </div>
               <div className="info-card">
                 <span className="info-icon">📅</span>

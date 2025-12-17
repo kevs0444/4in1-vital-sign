@@ -456,6 +456,10 @@
   -ms-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem;
 }
 
 .login-button:hover:not(:disabled) {
@@ -477,6 +481,13 @@
   opacity: 0.6;
   transform: none !important;
 }
+
+/* Button icons styling */
+.button-icon {
+  font-size: 1.4rem !important;
+  flex-shrink: 0;
+}
+
 
 .register-section {
   text-align: center;

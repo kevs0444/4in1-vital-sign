@@ -1,14 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Form, Button } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Email,
-    LockReset,
-    VpnKey,
-    ArrowBack,
     CheckCircle,
-    MarkEmailRead,
     Password,
     Visibility,
     VisibilityOff,
@@ -38,14 +32,36 @@ export default function ForgotPassword() {
     const [errorTitle, setErrorTitle] = useState('Error');
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successTitle, setSuccessTitle] = useState('Success');
+    const [showExitModal, setShowExitModal] = useState(false);
 
     // Keyboard State
     const [activeInput, setActiveInput] = useState('identifier');
     const [isShift, setIsShift] = useState(false);
     const [showSymbols, setShowSymbols] = useState(false);
 
+    // OTP Rate Limiting
+    const [otpCooldown, setOtpCooldown] = useState(0);
+    const [lastRequestedIdentifier, setLastRequestedIdentifier] = useState('');
+
+    // Cooldown countdown timer
+    useEffect(() => {
+        if (otpCooldown > 0) {
+            const timer = setTimeout(() => setOtpCooldown(otpCooldown - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [otpCooldown]);
+
     const handleSendOTP = async (e) => {
         if (e) e.preventDefault();
+
+        // Check if same identifier is being spammed
+        if (lastRequestedIdentifier === identifier && otpCooldown > 0) {
+            setErrorTitle('Please Wait');
+            setError(`Please wait ${otpCooldown} seconds before requesting another code.`);
+            setShowErrorModal(true);
+            return;
+        }
+
         setIsLoading(true);
         setError('');
         setSuccessMessage('');
@@ -64,6 +80,9 @@ export default function ForgotPassword() {
                 setStep(2);
                 setActiveInput('otp'); // Auto focus OTP
                 setOtp('');
+                // Set cooldown for 60 seconds
+                setOtpCooldown(60);
+                setLastRequestedIdentifier(identifier);
             } else {
                 setErrorTitle('Unable to Send Code');
                 setError(data.message || 'Failed to send OTP. Please try again.');
@@ -107,6 +126,51 @@ export default function ForgotPassword() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Helper function for smooth navigation to login
+    const handleNavigateToLogin = () => {
+        const container = document.querySelector('.forgot-password-container');
+        if (container) {
+            container.style.transition = 'opacity 0.5s ease-out';
+            container.style.opacity = '0';
+        }
+        setTimeout(() => {
+            navigate('/login');
+        }, 500);
+    };
+
+    // Handle back button with confirmation and OTP deletion
+    const handleBackButton = () => {
+        setShowExitModal(true);
+    };
+
+    const handleConfirmExit = async () => {
+        // Delete OTP from database if it exists
+        if (identifier && step >= 2) {
+            try {
+                await fetch(`${API_BASE_URL}/auth/cancel-reset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier })
+                });
+            } catch (err) {
+                console.log('Failed to clear OTP, but continuing with exit');
+            }
+        }
+
+        // Clear all state
+        setIdentifier('');
+        setOtp('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setStep(1);
+        setOtpCooldown(0);
+        setLastRequestedIdentifier('');
+        setShowExitModal(false);
+
+        // Navigate to login
+        handleNavigateToLogin();
     };
 
     const handleResetPassword = async (e) => {
@@ -154,12 +218,11 @@ export default function ForgotPassword() {
                 setSuccessMessage('Your password has been successfully updated. Redirecting to login...');
                 setShowSuccessModal(true);
 
-                // Navigate to step 4 and then to login
+                // Navigate to step 4 and auto-redirect after 2 seconds
                 setStep(4);
                 setTimeout(() => {
-                    console.log('🔄 Redirecting to login page...');
-                    navigate('/login');
-                }, 3000);
+                    handleNavigateToLogin();
+                }, 2000);
             } else {
                 console.log('❌ Password reset failed:', data.message);
                 setErrorTitle('Reset Failed');
@@ -261,7 +324,7 @@ export default function ForgotPassword() {
                 </div>
 
                 {/* Back Arrow Button */}
-                <button className="close-button" onClick={() => navigate('/login')}>
+                <button className="close-button" onClick={handleBackButton}>
                     ←
                 </button>
 
@@ -419,19 +482,21 @@ export default function ForgotPassword() {
                     {/* Navigation Buttons */}
                     <div className="form-navigation">
                         {step === 1 && (
-                            <button className="action-button" onClick={handleSendOTP} disabled={isLoading}>
-                                {isLoading ? <span className="spinner"></span> : "Find Account →"}
+                            <button
+                                className="action-button"
+                                onClick={handleSendOTP}
+                                disabled={isLoading || (lastRequestedIdentifier === identifier && otpCooldown > 0)}
+                            >
+                                {isLoading ? <span className="spinner"></span> :
+                                    lastRequestedIdentifier === identifier && otpCooldown > 0 ?
+                                        `Wait ${otpCooldown}s to resend` :
+                                        "Find Account →"}
                             </button>
                         )}
                         {step === 2 && (
-                            <>
-                                <button className="action-button" onClick={handleVerifyOTP} disabled={isLoading}>
-                                    {isLoading ? <span className="spinner"></span> : "Verify & Proceed →"}
-                                </button>
-                                <button className="secondary-button" onClick={() => setStep(1)} disabled={isLoading}>
-                                    Try different ID
-                                </button>
-                            </>
+                            <button className="action-button" onClick={handleVerifyOTP} disabled={isLoading}>
+                                {isLoading ? <span className="spinner"></span> : "Verify & Proceed →"}
+                            </button>
                         )}
                         {step === 3 && (
                             <button className="action-button" onClick={handleResetPassword} disabled={isLoading}>
@@ -500,13 +565,13 @@ export default function ForgotPassword() {
                             exit={{ scale: 0.8, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="error-modal-icon">
+                            <div className="forgot-password-error-icon">
                                 <span>⚠️</span>
                             </div>
-                            <h2 className="error-modal-title">{errorTitle}</h2>
-                            <p className="error-modal-message">{error}</p>
+                            <h2 className="forgot-password-error-title">{errorTitle}</h2>
+                            <p className="forgot-password-error-message">{error}</p>
                             <button
-                                className="error-modal-button"
+                                className="forgot-password-error-button"
                                 onClick={() => setShowErrorModal(false)}
                             >
                                 Got It
@@ -533,17 +598,63 @@ export default function ForgotPassword() {
                             exit={{ scale: 0.8, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="success-modal-icon">
+                            <div className="forgot-password-success-icon">
                                 <span>✅</span>
                             </div>
-                            <h2 className="success-modal-title">{successTitle}</h2>
-                            <p className="success-modal-message">{successMessage}</p>
+                            <h2 className="forgot-password-success-title">{successTitle}</h2>
+                            <p className="forgot-password-success-message">{successMessage}</p>
                             <button
-                                className="success-modal-button"
-                                onClick={() => setShowSuccessModal(false)}
+                                className="forgot-password-success-button"
+                                onClick={() => {
+                                    setShowSuccessModal(false);
+                                    handleNavigateToLogin();
+                                }}
                             >
                                 Continue
                             </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Glassmorphism Exit Confirmation Modal */}
+            <AnimatePresence>
+                {showExitModal && (
+                    <motion.div
+                        className="forgot-password-exit-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setShowExitModal(false)}
+                    >
+                        <motion.div
+                            className="forgot-password-exit-modal"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="forgot-password-exit-icon">
+                                <span>🚪</span>
+                            </div>
+                            <h2 className="forgot-password-exit-title">Exit Password Recovery?</h2>
+                            <p className="forgot-password-exit-message">
+                                Your progress will be lost and any verification codes will be invalidated.
+                            </p>
+                            <div className="forgot-password-exit-buttons">
+                                <button
+                                    className="forgot-password-exit-cancel"
+                                    onClick={() => setShowExitModal(false)}
+                                >
+                                    Continue Recovery
+                                </button>
+                                <button
+                                    className="forgot-password-exit-confirm"
+                                    onClick={handleConfirmExit}
+                                >
+                                    Exit & Clear
+                                </button>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
