@@ -41,6 +41,58 @@ export default function RegisterPersonalInfo() {
   const dayScrollRef = useRef(null);
   const yearScrollRef = useRef(null);
 
+  const getDaysInMonth = (month, year) => {
+    if (!month) return 31;
+    // Default to leap year (2000) if no year selected to be permissive with Feb 29
+    const y = year || 2000;
+    return new Date(y, month, 0).getDate();
+  };
+
+  const daysInMonth = getDaysInMonth(formData.birthMonth, formData.birthYear);
+
+  // Constants for dimensions (matched with CSS)
+  const ITEM_HEIGHT = 92; // 77px + ~20% -> 92px
+  const VISIBLE_COUNT = 5;
+  const MONTHS_COUNT = 12;
+  // DAYS_COUNT is now dynamic: daysInMonth
+
+  // Infinite Scroll Logic - Downward Loop Only
+  const handleInfiniteScroll = (ref, count) => {
+    if (!ref.current) return;
+    const scrollTop = ref.current.scrollTop;
+    const totalHeight = count * ITEM_HEIGHT;
+
+    // The scroll view contains 3 sets: [PRE][MAIN][POST]
+    // Set 0: 0 to H
+    // Set 1: H to 2H
+    // Set 2: 2H to 3H
+
+    // Only loop downwards: If we reach the start of Set 2 (2H), jump back to Set 1 (H)
+    // This allows Set 0 (Top) to be naturally visible and prevents scrolling up past the start.
+    if (scrollTop >= totalHeight * 2) {
+      ref.current.scrollTop = scrollTop - totalHeight;
+    }
+  };
+
+  // Initial Scroll Positioning
+  useEffect(() => {
+    if (currentStep === 1) {
+      // Reset Month Scroll to Top
+      if (monthScrollRef.current) {
+        monthScrollRef.current.scrollTop = 0;
+      }
+      // Reset Day Scroll to Top
+      if (dayScrollRef.current) {
+        dayScrollRef.current.scrollTop = 0;
+      }
+      // Year Scroll
+      if (yearScrollRef.current) {
+        // Defaults to top (current year), which is fine
+        yearScrollRef.current.scrollTop = 0;
+      }
+    }
+  }, [currentStep]);
+
   const steps = [
     { title: "What's your name?", subtitle: "Great to have you here! Let's start with your name", image: nameImage },
     { title: "How old are you?", subtitle: "Select your birthday to calculate your age", image: ageImage },
@@ -117,6 +169,16 @@ export default function RegisterPersonalInfo() {
     }
   }, [currentStep, formData.birthMonth, formData.birthDay, formData.birthYear, formData.age]);
 
+  // Smart Date Logic: Clamp day if it exceeds max days for the month
+  useEffect(() => {
+    if (formData.birthMonth && formData.birthDay) {
+      const maxDays = getDaysInMonth(formData.birthMonth, formData.birthYear);
+      if (formData.birthDay > maxDays) {
+        setFormData(prev => ({ ...prev, birthDay: maxDays }));
+      }
+    }
+  }, [formData.birthMonth, formData.birthYear, formData.birthDay]);
+
   const handleContinue = async () => {
     setErrorMessage("");
     if (currentStep === 0) {
@@ -131,6 +193,15 @@ export default function RegisterPersonalInfo() {
         setErrorMessage("Please enter both first name and last name");
         return;
       }
+      if (!firstNameValid || !lastNameValid) {
+        setFieldErrors({
+          firstName: !firstNameValid,
+          lastName: !lastNameValid
+        });
+        setErrorMessage("Please enter both first name and last name");
+        return;
+      }
+
       setCurrentStep(1);
     } else if (currentStep === 1) {
       if (!formData.age.trim()) {
@@ -499,30 +570,48 @@ export default function RegisterPersonalInfo() {
                       <div className="birthday-inputs">
                         <div className="birthday-column">
                           <label className="birthday-label">Month</label>
-                          <div className="birthday-scroll month-scroll" ref={monthScrollRef}>
-                            {Array.from({ length: 12 }, (_, i) => (
-                              <div
-                                key={i}
-                                className={`birthday-option ${formData.birthMonth === i + 1 ? 'selected' : ''}`}
-                                onClick={() => handleBirthdaySelect('month', i + 1)}
-                              >
-                                {new Date(2000, i).toLocaleString('default', { month: 'long' })}
-                              </div>
+                          <div
+                            className="birthday-scroll month-scroll"
+                            ref={monthScrollRef}
+                            onScroll={() => handleInfiniteScroll(monthScrollRef, MONTHS_COUNT)}
+                          >
+                            {/* Render 3 sets of months for infinite effect */}
+                            {[0, 1, 2].map((setIndex) => (
+                              <React.Fragment key={`month-set-${setIndex}`}>
+                                {Array.from({ length: 12 }, (_, i) => (
+                                  <div
+                                    key={`month-${setIndex}-${i}`}
+                                    className={`birthday-option ${formData.birthMonth === i + 1 ? 'selected' : ''}`}
+                                    onClick={() => handleBirthdaySelect('month', i + 1)}
+                                  >
+                                    {new Date(2000, i).toLocaleString('default', { month: 'long' })}
+                                  </div>
+                                ))}
+                              </React.Fragment>
                             ))}
                           </div>
                         </div>
 
                         <div className="birthday-column">
                           <label className="birthday-label">Day</label>
-                          <div className="birthday-scroll day-scroll" ref={dayScrollRef}>
-                            {Array.from({ length: 31 }, (_, i) => (
-                              <div
-                                key={i}
-                                className={`birthday-option ${formData.birthDay === i + 1 ? 'selected' : ''}`}
-                                onClick={() => handleBirthdaySelect('day', i + 1)}
-                              >
-                                {i + 1}
-                              </div>
+                          <div
+                            className="birthday-scroll day-scroll"
+                            ref={dayScrollRef}
+                            onScroll={() => handleInfiniteScroll(dayScrollRef, daysInMonth)}
+                          >
+                            {/* Render 3 sets of days for infinite effect */}
+                            {[0, 1, 2].map((setIndex) => (
+                              <React.Fragment key={`day-set-${setIndex}`}>
+                                {Array.from({ length: daysInMonth }, (_, i) => (
+                                  <div
+                                    key={`day-${setIndex}-${i}`}
+                                    className={`birthday-option ${formData.birthDay === i + 1 ? 'selected' : ''}`}
+                                    onClick={() => handleBirthdaySelect('day', i + 1)}
+                                  >
+                                    {i + 1}
+                                  </div>
+                                ))}
+                              </React.Fragment>
                             ))}
                           </div>
                         </div>
@@ -531,7 +620,8 @@ export default function RegisterPersonalInfo() {
                           <label className="birthday-label">Year</label>
                           <div className="birthday-scroll year-scroll" ref={yearScrollRef}>
                             {Array.from({ length: 100 }, (_, i) => {
-                              const year = new Date().getFullYear() - i;
+                              // Minimum age 5 years: Start year is Current - 5
+                              const year = (new Date().getFullYear() - 5) - i;
                               return (
                                 <div
                                   key={year}

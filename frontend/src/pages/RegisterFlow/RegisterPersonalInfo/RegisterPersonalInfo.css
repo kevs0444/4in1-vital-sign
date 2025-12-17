@@ -264,8 +264,8 @@
   display: flex;
   gap: 15px;
   justify-content: space-between;
-  height: 350px;
-  /* Increased height to show minimum 5 options */
+  height: 460px;
+  /* Increased height by 20% from 385px */
   min-height: 0;
   overflow: hidden;
   flex: 1;
@@ -298,7 +298,6 @@
   background: white;
   overflow-y: auto;
   overflow-x: hidden;
-  scroll-behavior: smooth;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
   min-height: 0;
@@ -330,8 +329,8 @@
   border-bottom: 1px solid #f0f0f0;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  min-height: 70px;
-  /* Ensures exactly 5 options are visible with 350px height (5 * 70px = 350px) */
+  min-height: 92px;
+  /* Increased min-height to 92px (460px / 5) */
   display: flex;
   align-items: center;
   justify-content: center;

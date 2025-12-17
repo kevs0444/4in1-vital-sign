@@ -639,33 +639,42 @@
 }
 
 /* Password Input Styles */
-.password-input-container {
+.password-input-wrapper {
   position: relative;
   width: 100%;
+  display: flex;
+  align-items: center;
 }
 
-.password-toggle {
+.password-input-wrapper .form-input {
+  padding-right: 3rem;
+  /* Space for the eye icon */
+}
+
+.password-toggle-btn {
   position: absolute;
-  right: 15px;
+  right: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
+  background: transparent;
   border: none;
-  font-size: 1.3rem;
-  cursor: pointer;
   color: #666;
-  padding: 5px;
-  border-radius: 5px;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: color 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.password-toggle:hover {
-  background: #f8f9fa;
-  color: #333;
+.password-toggle-btn:hover {
+  color: #dc2626;
 }
 
-.password-toggle:active {
-  transform: translateY(-50%) scale(0.95);
+.password-toggle-btn:focus {
+  outline: none;
 }
 
 /* Password Guidelines */

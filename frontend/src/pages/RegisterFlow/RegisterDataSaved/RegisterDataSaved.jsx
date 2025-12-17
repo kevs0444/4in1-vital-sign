@@ -1,6 +1,7 @@
 // src/pages/RegisterFlow/RegisterDataSaved.jsx - FIXED RFID PROCESSING & MODERN UI
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Check } from '@mui/icons-material';
 import "./RegisterDataSaved.css";
 
 // Enhanced registerUser function with proper error handling
@@ -272,7 +273,9 @@ export default function RegisterDataSaved() {
         <div className="saved-header">
           <div className={`status-icon-wrapper ${registrationStatus}`}>
             {registrationStatus === 'saving' && <div className="loading-spinner"></div>}
-            {registrationStatus === 'success' && <div className="checkmark">✓</div>}
+            {registrationStatus === 'success' && (
+              <Check className="checkmark-icon" />
+            )}
             {registrationStatus === 'error' && <div className="error-mark">!</div>}
           </div>
 

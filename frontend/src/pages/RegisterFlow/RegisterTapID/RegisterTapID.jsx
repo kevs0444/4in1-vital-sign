@@ -705,13 +705,13 @@ export default function RegisterTapID() {
                     <label htmlFor="password" className="form-label">
                       Create Password
                     </label>
-                    <div className="password-input-container">
+                    <div className="password-input-wrapper">
                       <input
                         ref={passwordInputRef}
                         id="password"
                         type={showPassword ? "text" : "password"}
                         className={`form-input ${activeInput === 'password' ? 'active' : ''} ${formData.password.length >= 10 ? 'max-length' : ''}`}
-                        placeholder="Enter 6-10 characters"
+                        placeholder="Minimum 6 characters"
                         value={formData.password}
                         onChange={(e) => {
                           if (e.target.value.length <= 10) {
@@ -729,10 +729,11 @@ export default function RegisterTapID() {
                       />
                       <button
                         type="button"
-                        className="password-toggle"
+                        className="password-toggle-btn"
                         onClick={togglePasswordVisibility}
+                        tabIndex="-1"
                       >
-                        {showPassword ? <VisibilityOff style={{ fontSize: '1.3rem', color: '#666' }} /> : <Visibility style={{ fontSize: '1.3rem', color: '#666' }} />}
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
                       </button>
                     </div>
 
@@ -758,7 +759,9 @@ export default function RegisterTapID() {
 
                     <div className="password-guidelines">
                       <span className="guideline-text">
-                        {formData.password.length > 0 ? `${formData.password.length}/10 characters` : '6-10 characters'}
+                        {formData.password.length > 0
+                          ? `${formData.password.length}/10 characters${formData.password.length < 6 ? ' (Minimum 6)' : ''}`
+                          : 'Minimum of 6 characters'}
                       </span>
                     </div>
                   </div>
