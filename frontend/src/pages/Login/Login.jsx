@@ -1,8 +1,8 @@
 // src/pages/Login/Login.jsx - NUMERIC RFID ONLY
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Container, Row, Col, Form, Button, Alert, Modal } from 'react-bootstrap';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Container, Row, Col, Form, Button } from 'react-bootstrap';
+import { motion } from 'framer-motion';
 import {
   Login as LoginIcon,
   PersonAdd,
@@ -41,7 +41,7 @@ export default function LoginPage() {
   const rfidTimeoutRef = useRef(null);
   const rfidDataRef = useRef('');
 
-  // Check backend connection on component mount
+  // Check backend connection and trigger entry animation on component mount
   useEffect(() => {
     const checkConnection = async () => {
       try {
@@ -61,52 +61,95 @@ export default function LoginPage() {
     };
 
     checkConnection();
+    setIsVisible(true);
   }, []);
 
-  // Add viewport meta tag to prevent zooming
-  useEffect(() => {
-    // Create or update viewport meta tag
-    let viewport = document.querySelector('meta[name="viewport"]');
-    if (!viewport) {
-      viewport = document.createElement('meta');
-      viewport.name = 'viewport';
-      document.head.appendChild(viewport);
+  // Process RFID data - Extract numbers only (NO RTU PREFIX)
+  // Moved this outside component if possible, but for simplicity keeping it inside wrapped in useCallback or just outside to avoid dep issues
+  // Actually, let's keep it simple. Wrapped in useCallback.
+  const processRfidData = React.useCallback((rawRfidData) => {
+    if (!rawRfidData) {
+      console.log('❌ No RFID data provided');
+      return null;
     }
-    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
 
-    // Prevent zooming via touch gestures
-    const preventZoom = (e) => e.touches.length > 1 && e.preventDefault();
-    const preventGesture = (e) => e.preventDefault();
+    console.log('🔢 Raw RFID data received:', rawRfidData);
 
-    document.addEventListener('touchstart', preventZoom, { passive: false });
-    document.addEventListener('touchmove', preventZoom, { passive: false });
-    document.addEventListener('gesturestart', preventGesture, { passive: false });
-    document.addEventListener('gesturechange', preventGesture, { passive: false });
+    // Extract only numbers from the RFID data - NO RTU PREFIX
+    const numbersOnly = rawRfidData.replace(/\D/g, '');
+    console.log('🔢 Numbers extracted:', numbersOnly);
 
-    // Setup RFID scanner listener immediately
-    setupRfidScanner();
+    if (numbersOnly.length < 5) {
+      console.log('❌ Insufficient numbers in RFID data');
+      return null;
+    }
 
-    return () => {
-      document.removeEventListener('touchstart', preventZoom);
-      document.removeEventListener('touchmove', preventZoom);
-      document.removeEventListener('gesturestart', preventGesture);
-      document.removeEventListener('gesturechange', preventGesture);
-      document.removeEventListener('keydown', handleGlobalKeyDown);
-
-      if (rfidTimeoutRef.current) {
-        clearTimeout(rfidTimeoutRef.current);
-      }
-    };
+    // Use exact numeric RFID from scanner - NO MODIFICATIONS
+    console.log('🎫 Using exact numeric RFID:', numbersOnly);
+    return numbersOnly;
   }, []);
 
-  const setupRfidScanner = () => {
-    console.log('🔔 RFID Scanner Active - Ready to accept any card');
-    console.log('🎫 RFID Format: Numeric only (exact number from scanner)');
-    document.addEventListener('keydown', handleGlobalKeyDown);
-  };
+  const processRfidScan = React.useCallback(async (processedRfid) => {
+    console.log('🎫 Numeric RFID for validation:', processedRfid);
+
+    setRfidLoading(true);
+    setRfidStatus('scanning');
+    setError(''); // Clear any previous errors
+
+    try {
+      // Call backend API for RFID login with numeric RFID
+      const response = await loginWithRFID(processedRfid);
+
+      if (response.success) {
+        console.log('✅ RFID validation successful:', response);
+        setRfidStatus('success');
+        // DON'T set error message for success - let the RFID status handle it
+
+        // Store user data in localStorage
+        storeUserData(response.user);
+
+        // Navigate based on role with delay for feedback
+        setTimeout(() => {
+          if (response.user.role && response.user.role.toLowerCase() === 'admin') {
+            navigate('/admin/dashboard', {
+              state: { user: response.user }
+            });
+          } else {
+            navigate('/measure/welcome', {
+              state: {
+                firstName: response.user.firstName,
+                lastName: response.user.lastName,
+                age: response.user.age,
+                sex: response.user.sex,
+                schoolNumber: response.user.schoolNumber,
+                role: response.user.role
+              }
+            });
+          }
+        }, 1500);
+
+      } else {
+        console.log('❌ RFID validation failed:', response.message);
+        setRfidStatus('error');
+        setErrorTitle('Card Recognition Failed');
+        setError(response.message); // No emoji prefix
+        setShowErrorModal(true);
+        setRfidLoading(false);
+      }
+
+    } catch (err) {
+      console.error('❌ RFID login error:', err);
+      setRfidStatus('error');
+      setErrorTitle('System Error');
+      setError('RFID login failed. Please try again.'); // No emoji prefix
+      setShowErrorModal(true);
+      setRfidLoading(false);
+    }
+  }, [navigate]);
 
   // FIXED: Handle ALL keyboard input for RFID scanning with null check
-  const handleGlobalKeyDown = (e) => {
+  // Wrapped in useCallback to be a stable dependency
+  const handleGlobalKeyDown = React.useCallback((e) => {
     // Ignore if we're already processing RFID
     if (rfidLoading || isLoading) {
       return;
@@ -148,84 +191,49 @@ export default function LoginPage() {
         }, 100);
       }
     }
-  };
+  }, [rfidLoading, isLoading, processRfidData, processRfidScan]);
 
-  // Process RFID data - Extract numbers only (NO RTU PREFIX)
-  const processRfidData = (rawRfidData) => {
-    if (!rawRfidData) {
-      console.log('❌ No RFID data provided');
-      return null;
+  // Add viewport meta tag to prevent zooming - Run Once
+  useEffect(() => {
+    // Create or update viewport meta tag
+    let viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      document.head.appendChild(viewport);
     }
+    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
 
-    console.log('🔢 Raw RFID data received:', rawRfidData);
+    // Prevent zooming via touch gestures
+    const preventZoom = (e) => e.touches.length > 1 && e.preventDefault();
+    const preventGesture = (e) => e.preventDefault();
 
-    // Extract only numbers from the RFID data - NO RTU PREFIX
-    const numbersOnly = rawRfidData.replace(/\D/g, '');
-    console.log('🔢 Numbers extracted:', numbersOnly);
+    document.addEventListener('touchstart', preventZoom, { passive: false });
+    document.addEventListener('touchmove', preventZoom, { passive: false });
+    document.addEventListener('gesturestart', preventGesture, { passive: false });
+    document.addEventListener('gesturechange', preventGesture, { passive: false });
 
-    if (numbersOnly.length < 5) {
-      console.log('❌ Insufficient numbers in RFID data');
-      return null;
-    }
+    return () => {
+      document.removeEventListener('touchstart', preventZoom);
+      document.removeEventListener('touchmove', preventZoom);
+      document.removeEventListener('gesturestart', preventGesture);
+      document.removeEventListener('gesturechange', preventGesture);
+    };
+  }, []);
 
-    // Use exact numeric RFID from scanner - NO MODIFICATIONS
-    console.log('🎫 Using exact numeric RFID:', numbersOnly);
-    return numbersOnly;
-  };
+  // Setup RFID Scanner Listener - Run when handler changes (due to dependency update)
+  useEffect(() => {
+    console.log('🔔 RFID Scanner Active - Ready to accept any card');
+    document.addEventListener('keydown', handleGlobalKeyDown);
 
-  const processRfidScan = async (processedRfid) => {
-    console.log('🎫 Numeric RFID for validation:', processedRfid);
-
-    setRfidLoading(true);
-    setRfidStatus('scanning');
-    setError(''); // Clear any previous errors
-
-    try {
-      // Call backend API for RFID login with numeric RFID
-      const response = await loginWithRFID(processedRfid);
-
-      if (response.success) {
-        console.log('✅ RFID validation successful:', response);
-        setRfidStatus('success');
-        // DON'T set error message for success - let the RFID status handle it
-
-        // Store user data in localStorage
-        storeUserData(response.user);
-
-        // FIXED: Navigate to measurement welcome with user data
-        setTimeout(() => {
-          navigate('/measure/welcome', {
-            state: {
-              firstName: response.user.firstName,
-              lastName: response.user.lastName,
-              age: response.user.age,
-              sex: response.user.sex,
-              schoolNumber: response.user.schoolNumber,
-              role: response.user.role
-            }
-          });
-        }, 1500);
-
-      } else {
-        console.log('❌ RFID validation failed:', response.message);
-        setRfidStatus('error');
-        setErrorTitle('Card Recognition Failed');
-        setError(response.message); // No emoji prefix
-        setShowErrorModal(true);
-        setRfidLoading(false);
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+      if (rfidTimeoutRef.current) {
+        clearTimeout(rfidTimeoutRef.current);
       }
+    };
+  }, [handleGlobalKeyDown]);
 
-    } catch (err) {
-      console.error('❌ RFID login error:', err);
-      setRfidStatus('error');
-      setErrorTitle('System Error');
-      setError('RFID login failed. Please try again.'); // No emoji prefix
-      setShowErrorModal(true);
-      setRfidLoading(false);
-    }
-  };
-
-  // FIXED: Manual login also navigates to measurement welcome with user data
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -249,17 +257,23 @@ export default function LoginPage() {
       if (response.success) {
         console.log('✅ Manual login successful:', response);
         storeUserData(response.user);
-        // FIXED: Navigate to measurement welcome with user data
-        navigate('/measure/welcome', {
-          state: {
-            firstName: response.user.firstName,
-            lastName: response.user.lastName,
-            age: response.user.age,
-            sex: response.user.sex,
-            schoolNumber: response.user.schoolNumber,
-            role: response.user.role
-          }
-        });
+        // Navigate based on role
+        if (response.user.role && response.user.role.toLowerCase() === 'admin') {
+          navigate('/admin/dashboard', {
+            state: { user: response.user }
+          });
+        } else {
+          navigate('/measure/welcome', {
+            state: {
+              firstName: response.user.firstName,
+              lastName: response.user.lastName,
+              age: response.user.age,
+              sex: response.user.sex,
+              schoolNumber: response.user.schoolNumber,
+              role: response.user.role
+            }
+          });
+        }
       } else {
         // Use the specific message from the backend if available
         const specificMessage = response.message || 'Invalid credentials';
@@ -414,6 +428,8 @@ export default function LoginPage() {
         return '✅ System Ready';
       case 'error':
         return '❌ System Offline';
+      default:
+        return 'Check Connection';
     }
   };
 

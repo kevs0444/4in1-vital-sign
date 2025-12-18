@@ -115,7 +115,7 @@ class ComplianceDetector:
 
         # --- Step 2: Detect Wearables ---
         if self.wearables_model:
-            results_w = self.wearables_model(frame, verbose=False, conf=0.5)
+            results_w = self.wearables_model(frame, verbose=False, conf=0.25)
             
             for box in results_w[0].boxes:
                 cls_id = int(box.cls[0])

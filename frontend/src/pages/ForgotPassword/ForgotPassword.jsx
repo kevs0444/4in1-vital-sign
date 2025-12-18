@@ -271,6 +271,7 @@ export default function ForgotPassword() {
         } else {
             // Limits
             if (activeInput === 'otp' && currentValue.length >= 6) return;
+            if ((activeInput === 'newPassword' || activeInput === 'confirmPassword') && currentValue.length >= 10) return;
 
             let char = key;
             if (isShift && char.length === 1) char = char.toUpperCase();
@@ -304,6 +305,23 @@ export default function ForgotPassword() {
     ];
 
     const currentKeyboard = showSymbols ? symbolKeys : alphabetKeys;
+
+    const calculatePasswordStrength = (password) => {
+        if (!password) return { score: 0, label: "Enter password", color: "#e2e8f0" };
+
+        let score = 0;
+        if (password.length > 6) score += 1;
+        if (password.length >= 8) score += 1;
+        if (/[A-Z]/.test(password)) score += 1;
+        if (/[0-9]/.test(password)) score += 1;
+        if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+        if (score <= 2) return { score: 1, label: "Weak", color: "#ef4444" };
+        if (score <= 4) return { score: 2, label: "Medium", color: "#f59e0b" };
+        return { score: 3, label: "Strong", color: "#22c55e" };
+    };
+
+    const passwordStrength = calculatePasswordStrength(newPassword);
 
     return (
         <div className="forgot-password-container">
@@ -435,6 +453,34 @@ export default function ForgotPassword() {
                                     >
                                         {showPassword ? <VisibilityOff /> : <Visibility />}
                                     </button>
+                                </div>
+
+                                {/* Password Strength Meter */}
+                                {newPassword.length > 0 && (
+                                    <div className="password-strength-container">
+                                        <div className="strength-bars">
+                                            {[1, 2, 3].map((level) => (
+                                                <div
+                                                    key={level}
+                                                    className="strength-bar"
+                                                    style={{
+                                                        backgroundColor: level <= passwordStrength.score ? passwordStrength.color : '#e2e8f0'
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <span className="strength-label" style={{ color: passwordStrength.color }}>
+                                            {passwordStrength.label}
+                                        </span>
+                                    </div>
+                                )}
+
+                                <div className="password-guidelines">
+                                    <span className="guideline-text">
+                                        {newPassword.length > 0
+                                            ? `${newPassword.length}/10 characters${newPassword.length < 6 ? ' (Minimum 6)' : ''}`
+                                            : 'Minimum of 6 characters'}
+                                    </span>
                                 </div>
                             </div>
                             <div className="input-group-modern">

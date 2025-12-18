@@ -56,6 +56,9 @@ def create_app():
 
     from app.routes.print_routes import print_bp
     app.register_blueprint(print_bp, url_prefix='/api/print')
+
+    from app.routes.admin_routes import admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/admin')
     
     print("\n" + "="*60)
     print("🚀 BACKEND SERVER is READY and RUNNING")

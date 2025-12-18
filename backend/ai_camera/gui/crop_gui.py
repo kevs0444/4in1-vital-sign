@@ -34,7 +34,7 @@ class DatasetCollectorGUI:
         # Modes
         self.modes = {
             "Weight (Feet)": ["platform", "barefeet", "socks", "footwear"],
-            "Body (Wearables)": ["null", "id_lace", "bag", "cap", "watch"]
+            "Body (Wearables)": ["null", "id_lace", "bag", "cap", "watch", "glasses", "necklace"]
         }
         self.current_mode = "Weight (Feet)"
         
