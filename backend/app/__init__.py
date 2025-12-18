@@ -52,7 +52,7 @@ def create_app():
     app.register_blueprint(forgot_password_bp, url_prefix='/api/auth')
     
     from app.routes.camera_routes import camera_bp
-    app.register_blueprint(camera_bp, url_prefix='/api/camera')
+    app.register_blueprint(camera_bp, url_prefix='/camera')
 
     from app.routes.print_routes import print_bp
     app.register_blueprint(print_bp, url_prefix='/api/print')

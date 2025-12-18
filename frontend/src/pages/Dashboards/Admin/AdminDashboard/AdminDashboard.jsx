@@ -218,10 +218,15 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                <button className="logout-button" onClick={handleLogout}>
-                    <Logout />
-                    <span>Logout</span>
-                </button>
+                <div className="header-actions">
+                    <button className="maintenance-button" onClick={() => navigate('/admin/maintenance')}>
+                        <span>Maintenance Testing</span>
+                    </button>
+                    <button className="logout-button" onClick={handleLogout}>
+                        <Logout />
+                        <span>Logout</span>
+                    </button>
+                </div>
             </header>
 
             {/* Main Content */}

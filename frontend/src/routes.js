@@ -28,8 +28,8 @@ import DoctorDashboard from "./pages/Dashboards/Doctor/DoctorDashboard/DoctorDas
 import EmployeeDashboard from "./pages/Dashboards/Employee/EmployeeDashboard/EmployeeDashboard";
 import NurseDashboard from "./pages/Dashboards/Nurse/NurseDashboard/NurseDashboard";
 import StudentDashboard from "./pages/Dashboards/Student/StudentDashboard/StudentDashboard";
-import FlowTesting from "./pages/Dashboards/Admin/FlowTesting/FlowTesting";
 import Maintenance from "./pages/Dashboards/Admin/Maintenance/Maintenance";
+
 
 // 🔐 Login
 import LoginPage from "./pages/Login/Login";
@@ -75,7 +75,6 @@ function AppRoutes() {
       <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
       <Route path="/nurse/dashboard" element={<NurseDashboard />} />
       <Route path="/student/dashboard" element={<StudentDashboard />} />
-      <Route path="/admin/flowtesting" element={<FlowTesting />} />
       <Route path="/admin/maintenance" element={<Maintenance />} />
 
       {/* 🚫 404 */}
