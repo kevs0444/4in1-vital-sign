@@ -53,9 +53,9 @@
 
 /* Icon Container - Larger Square and White */
 .inactivity-icon-container {
-    width: 240px;
-    height: 240px;
-    margin: 0 auto 30px;
+    width: 250px;
+    height: 250px;
+    margin: 0 auto 20px;
     background: #ffffff;
     border-radius: 35px;
     /* Smooth rounded square */
@@ -66,13 +66,20 @@
     /* Strong red border */
     box-shadow: 0 15px 40px rgba(220, 38, 38, 0.2);
     animation: iconPulse 2s ease-in-out infinite;
+    overflow: hidden;
+    /* Ensure image stays within rounded corners */
+    padding: 10px;
+    /* Small padding so the image doesn't touch the border if preferred, or remove for full bleed */
 }
 
 /* Actual Icon Image */
 .inactivity-icon-image {
-    width: 75%;
-    height: 75%;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
+    /* transform to cover if you want it to fill completely without whitespace */
+    transform: scale(1.1);
+    /* Slight zoom to make it look fuller */
 }
 
 /* Title - Matched to .exit-modal-title */

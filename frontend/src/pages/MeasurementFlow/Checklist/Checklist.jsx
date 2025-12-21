@@ -76,7 +76,9 @@ export default function Checklist() {
   };
 
   return (
-    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 checklist-container">
+    <div
+      className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 checklist-container"
+    >
       <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 checklist-content page-transition`}>
         <button className="close-button" onClick={handleExit}>←</button>
         <div className="text-center mb-5">
@@ -146,6 +148,6 @@ export default function Checklist() {
         </div>
       )}
 
-    </div >
+    </div>
   );
 }

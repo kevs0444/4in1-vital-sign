@@ -183,7 +183,8 @@
   background: linear-gradient(to bottom, #ef4444, #dc2626);
   border: none !important;
   box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-  transition: all 0.2s ease !important;
+  /* transition: all causes glitches with gradients */
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
   min-height: 120px;
   touch-action: manipulation;
   overflow: hidden;
@@ -204,14 +205,18 @@
 .start-button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
-  background: linear-gradient(to bottom, #dc2626, #b91c1c);
+  /* Use filter for smooth darkening instead of replacing gradient */
+  filter: brightness(0.95);
 }
 
-.start-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
+.start-button:disabled,
+.start-button:disabled:hover {
+  background: #ccc !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
+  color: #888 !important;
 }
 
 .checklist-back-button {

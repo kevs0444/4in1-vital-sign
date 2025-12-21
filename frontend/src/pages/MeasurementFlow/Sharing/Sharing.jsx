@@ -159,7 +159,9 @@ export default function Sharing() {
   if (!userData) return null;
 
   return (
-    <div className="sharing-container">
+    <div
+      className="sharing-container"
+    >
       {/* ================= PRINT RECEIPT SECTION (Visible only in Print) ================= */}
       <div className="print-receipt">
         <div className="receipt-header">

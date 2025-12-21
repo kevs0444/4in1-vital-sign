@@ -237,7 +237,9 @@ export default function Standby() {
   const isStartButtonEnabled = true;
 
   return (
-    <Container fluid className="standby-container">
+    <div
+      className="standby-container container-fluid"
+    >
       <motion.div className="standby-backend-status">
         <div className={`standby-status-indicator ${systemStatus === 'ready' ? 'connected' :
           systemStatus === 'offline_mode' ? 'warning' :
@@ -278,6 +280,6 @@ export default function Standby() {
           </div>
         </Col>
       </Row>
-    </Container>
+    </div>
   );
 }

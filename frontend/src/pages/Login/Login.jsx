@@ -449,10 +449,7 @@ export default function LoginPage() {
     <Container fluid className="login-container">
       <Row className="justify-content-center align-items-center w-100 m-0 h-100">
         <Col xs={12} className="p-0 h-100">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
+          <div
             className="w-100 h-100"
           >
             <div className={`login-content ${isVisible ? 'visible' : ''}`}>
@@ -675,7 +672,7 @@ export default function LoginPage() {
                 </motion.div>
               </div>
             )}
-          </motion.div>
+          </div>
         </Col>
       </Row>
     </Container>

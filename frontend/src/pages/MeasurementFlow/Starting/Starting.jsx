@@ -155,8 +155,9 @@ export default function Starting() {
   };
 
   return (
-
-    <div className="starting-container container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 bg-white">
+    <div
+      className="starting-container container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 bg-white"
+    >
       <div className={`starting-content card border-0 shadow-lg p-4 p-md-5 mx-3 ${isVisible ? 'visible' : ''}`}>
         <button className="close-button" onClick={handleExit}>←</button>
 

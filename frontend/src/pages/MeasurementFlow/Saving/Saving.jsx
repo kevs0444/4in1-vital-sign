@@ -38,7 +38,9 @@ export default function Saving() {
   }, [navigate, location.state]);
 
   return (
-    <div className="saving-container">
+    <div
+      className="saving-container"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import "./Result.css";
 
 export default function Result() {
@@ -484,7 +485,10 @@ export default function Result() {
   };
 
   return (
-    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 result-container" style={{ background: getRiskGradient(riskLevel) }}>
+    <div
+      className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 result-container"
+      style={{ background: getRiskGradient(riskLevel) }}
+    >
       <div
         className={`card border-0 shadow-lg p-4 p-md-5 mx-3 result-content page-transition`}
         style={{ boxShadow: getRiskGlow(riskLevel) }}

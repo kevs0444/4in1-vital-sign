@@ -88,6 +88,7 @@ def get_modern_email_template(name, otp):
                 line-height: 1.6;
                 margin-bottom: 30px;
                 color: #4b5563;
+                text-align: justify;
             }}
             .otp-box {{
                 background-color: #f3f4f6;

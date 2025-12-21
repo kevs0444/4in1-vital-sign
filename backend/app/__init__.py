@@ -62,6 +62,9 @@ def create_app():
 
     from app.routes.share_routes import share_bp
     app.register_blueprint(share_bp, url_prefix='/api/share')
+
+    from app.routes.juan_ai_routes import juan_ai_bp
+    app.register_blueprint(juan_ai_bp, url_prefix='/api/juan-ai')
     
     print("\n" + "="*60)
     print("🚀 BACKEND SERVER is READY and RUNNING")

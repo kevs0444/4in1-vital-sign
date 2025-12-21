@@ -178,7 +178,7 @@
   background: var(--primary-red);
   border: none !important;
   box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3) !important;
-  transition: all 0.3s ease !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease !important;
   min-height: 80px;
   color: white !important;
   letter-spacing: 0.02em;

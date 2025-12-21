@@ -391,18 +391,21 @@ export default function BodyTemp() {
   const displayValue = getCurrentDisplayValue();
 
   return (
-    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container">
+    <div
+      className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container"
+    >
       <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
-        <button className="close-button" onClick={handleExit}>←</button>
-
         {/* Progress bar for Step X of Y */}
         <div className="w-100 mb-4">
           <div className="measurement-progress-bar">
             <div className="measurement-progress-fill" style={{ width: `${getProgressInfo('bodytemp', location.state?.checklist).percentage}%` }}></div>
           </div>
-          <span className="measurement-progress-step">
-            Step {getProgressInfo('bodytemp', location.state?.checklist).currentStep} of {getProgressInfo('bodytemp', location.state?.checklist).totalSteps} - Body Temperature
-          </span>
+          <div className="d-flex justify-content-between align-items-center mt-2 px-1">
+            <button className="measurement-back-arrow" onClick={handleExit}>←</button>
+            <span className="measurement-progress-step mb-0">
+              Step {getProgressInfo('bodytemp', location.state?.checklist).currentStep} of {getProgressInfo('bodytemp', location.state?.checklist).totalSteps} - Body Temperature
+            </span>
+          </div>
         </div>
 
         <div className="text-center mb-4">

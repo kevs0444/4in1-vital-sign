@@ -119,9 +119,7 @@ export default function MeasurementWelcome() {
   const handleShowTerms = () => setShowTerms(true);
   const handleCloseTerms = () => setShowTerms(false);
 
-  const handleBack = () => {
-    navigate("/login");
-  };
+
 
   const handleExit = () => setShowExitModal(true);
 
@@ -131,7 +129,9 @@ export default function MeasurementWelcome() {
   };
 
   return (
-    <div className="register-container">
+    <div
+      className="register-container"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}

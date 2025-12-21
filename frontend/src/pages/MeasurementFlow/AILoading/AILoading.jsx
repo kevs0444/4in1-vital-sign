@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import "./AILoading.css";
 import aiLoadingIcon from "../../../assets/icons/ai-icon.png";
 
@@ -118,7 +119,9 @@ export default function AILoading() {
   };
 
   return (
-    <div className="ai-loading-container-768 container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0">
+    <div
+      className="ai-loading-container-768 container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0"
+    >
       <div className={`ai-loading-content-768 card border-0 shadow-lg p-4 p-md-5 mx-3 ${isVisible ? 'visible' : ''}`} style={{ maxWidth: '680px', borderRadius: '1.7rem' }}>
 
         {/* Header with larger centered AI icon */}

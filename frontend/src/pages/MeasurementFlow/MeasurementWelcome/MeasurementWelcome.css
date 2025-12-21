@@ -388,13 +388,14 @@
   position: relative;
   padding: 2rem 2rem !important;
   /* Reduced side padding since we set max-width */
-  border-radius: var(--border-radius-lg) !important;
+  border-radius: 20px !important;
   font-size: 2.2rem !important;
   font-weight: 600 !important;
-  background: var(--red-500) !important;
+  background: linear-gradient(to bottom, #ef4444, #dc2626) !important;
   border: none !important;
-  box-shadow: var(--shadow-gray) !important;
-  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4) !important;
+  /* transition: all causes glitches with gradients */
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
   min-height: 120px;
   touch-action: manipulation;
   overflow: hidden;
@@ -412,13 +413,16 @@
 
 .continue-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important;
-  background: var(--red-600) !important;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5) !important;
+  /* Use filter for smooth darkening instead of replacing gradient */
+  filter: brightness(0.95);
 }
 
 .continue-button:disabled {
-  opacity: 0.4;
+  opacity: 0.6;
   cursor: not-allowed;
+  background: #ccc !important;
+  box-shadow: none !important;
   transform: none !important;
 }
 

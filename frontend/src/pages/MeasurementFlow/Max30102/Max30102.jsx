@@ -34,7 +34,7 @@ export default function Max30102() {
   const [measurementStep, setMeasurementStep] = useState(0);
   const [countdown, setCountdown] = useState(30);
   const [irValue, setIrValue] = useState(0);
-  const [measurementStarted, setMeasurementStarted] = useState(false);
+
   const [showFingerRemovedAlert, setShowFingerRemovedAlert] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
 
@@ -208,7 +208,7 @@ export default function Max30102() {
     setStatusMessage("✅ Finger detected! Automatic measurement starting...");
     setMeasurementStep(3);
     setIsMeasuring(true);
-    setMeasurementStarted(true);
+
     setProgressSeconds(0); // Start from 0
     setProgressPercent(0);
     setCountdown(30);
@@ -516,7 +516,9 @@ export default function Max30102() {
   };
 
   return (
-    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container max30102-page">
+    <div
+      className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container max30102-page"
+    >
       <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
         <button className="close-button" onClick={handleExit}>←</button>
 
@@ -541,9 +543,12 @@ export default function Max30102() {
           <div className="measurement-progress-bar">
             <div className="measurement-progress-fill" style={{ width: `${getProgressInfo('max30102', location.state?.checklist).percentage}%` }}></div>
           </div>
-          <span className="measurement-progress-step">
-            Step {getProgressInfo('max30102', location.state?.checklist).currentStep} of {getProgressInfo('max30102', location.state?.checklist).totalSteps} - Vital Signs
-          </span>
+          <div className="d-flex justify-content-between align-items-center mt-2 px-1">
+            <button className="measurement-back-arrow" onClick={handleExit}>←</button>
+            <span className="measurement-progress-step mb-0">
+              Step {getProgressInfo('max30102', location.state?.checklist).currentStep} of {getProgressInfo('max30102', location.state?.checklist).totalSteps} - Vital Signs
+            </span>
+          </div>
         </div>
 
         {/* Header Section */}
@@ -752,6 +757,6 @@ export default function Max30102() {
           </motion.div>
         </div>
       )}
-    </div >
+    </div>
   );
 }
