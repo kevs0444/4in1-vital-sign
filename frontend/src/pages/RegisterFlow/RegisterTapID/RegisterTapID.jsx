@@ -193,7 +193,7 @@ export default function RegisterTapID() {
       console.log('🔍 Checking for duplicate RFID:', generatedRFID);
 
       try {
-        const checkResponse = await fetch(`http://localhost:5000/api/login/check-rfid/${encodeURIComponent(generatedRFID)}`);
+        const checkResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/login/check-rfid/${encodeURIComponent(generatedRFID)}`);
         const checkResult = await checkResponse.json();
 
         if (checkResult.exists) {
@@ -339,7 +339,7 @@ export default function RegisterTapID() {
 
       // Check for duplicate student/employee number
       try {
-        const checkResponse = await fetch(`http://localhost:5000/api/register/check-school-number/${encodeURIComponent(formData.idNumber)}`);
+        const checkResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/register/check-school-number/${encodeURIComponent(formData.idNumber)}`);
         const checkResult = await checkResponse.json();
 
         if (checkResult.exists) {
@@ -365,7 +365,7 @@ export default function RegisterTapID() {
 
       // Check for duplicate email
       try {
-        const emailResponse = await fetch(`http://localhost:5000/api/register/check-email/${encodeURIComponent(formData.email)}`);
+        const emailResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/register/check-email/${encodeURIComponent(formData.email)}`);
         const emailResult = await emailResponse.json();
 
         if (emailResult.exists) {
@@ -381,7 +381,7 @@ export default function RegisterTapID() {
       // Check for duplicate mobile number
       try {
         const cleanMobile = formData.mobile.replace(/\s/g, '');
-        const mobileResponse = await fetch(`http://localhost:5000/api/register/check-mobile/${encodeURIComponent(cleanMobile)}`);
+        const mobileResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/register/check-mobile/${encodeURIComponent(cleanMobile)}`);
         const mobileResult = await mobileResponse.json();
 
         if (mobileResult.exists) {

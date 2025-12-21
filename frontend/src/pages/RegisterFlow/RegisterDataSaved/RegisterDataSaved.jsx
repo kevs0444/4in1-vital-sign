@@ -9,7 +9,8 @@ const registerUser = async (userData) => {
   try {
     console.log('📤 Sending registration data to backend:', userData);
 
-    const response = await fetch('http://127.0.0.1:5000/api/register/register', {
+    const API_BASE = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
+    const response = await fetch(`${API_BASE}/api/register/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -55,7 +56,7 @@ export default function RegisterDataSaved() {
   const [isDuplicate, setIsDuplicate] = useState(false);
   const [generatedUserId, setGeneratedUserId] = useState('');
 
-  const registrationData = location.state || {};
+  const registrationData = React.useMemo(() => location.state || {}, [location.state]);
   const hasSavedRef = useRef(false);
 
   // Viewport and zoom prevention

@@ -1,173 +1,18 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Sharing.css";
 
 export default function Sharing() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isVisible, setIsVisible] = useState(false);
+  // const [isVisible, setIsVisible] = useState(false); // Unused
   const [userData, setUserData] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [printComplete, setPrintComplete] = useState(false);
-  const [receiptContent, setReceiptContent] = useState("");
-  const printFrameRef = useRef(null);
+  // const [receiptContent, setReceiptContent] = useState(""); // Unused
+  // const printFrameRef = useRef(null); // Unused
 
-  useEffect(() => {
-    console.log("📍 Sharing page received data:", location.state);
-
-    if (location.state) {
-      setUserData(location.state);
-      console.log("✅ Complete health data loaded in Sharing:", location.state);
-      console.log("🔍 DEBUG - Sex value:", location.state.sex, "Type:", typeof location.state.sex);
-
-      // Generate receipt content immediately when data is available
-      const content = generateReceiptContent(location.state);
-      setReceiptContent(content);
-
-      // Auto-start printing when component loads and content is ready
-      setTimeout(() => {
-        startAutoPrint();
-      }, 1000);
-    } else {
-      console.log("❌ No data received from Result page");
-      navigate("/measure/result");
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [location.state, navigate]);
-
-  // Generate receipt content function (moved outside for reuse)
-  const generateReceiptContent = (data) => {
-    if (!data) return "Loading health data...";
-
-    const currentDate = new Date().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-    const currentTime = new Date().toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-
-    return `
-<div class="receipt-header">
-  <div class="important">JUAN AI</div>
-  <div>AI-Powered Health Assessment</div>
-  <div>${currentDate} ${currentTime}</div>
-</div>
-
-<div class="section-title">PATIENT INFORMATION</div>
-<div class="patient-info">
-  <div><strong>Name:</strong> ${data.firstName || 'N/A'} ${data.lastName || ''}</div>
-  <div><strong>Age:</strong> ${data.age || 'N/A'} years</div>
-  <div><strong>Gender:</strong> ${data.sex ? data.sex.charAt(0).toUpperCase() + data.sex.slice(1).toLowerCase() : 'N/A'}</div>
-  <div><strong>BMI:</strong> ${data.bmi || 'N/A'} (${data.bmiCategory || 'N/A'})</div>
-</div>
-
-<div class="divider"></div>
-
-<div class="section-title">VITAL SIGNS MEASUREMENT</div>
-<div class="vital-signs">
-  ${(data.checklist?.includes('bodytemp') || data.temperature) ? `
-  <div class="vital-item">
-    <span>Body Temperature:</span>
-    <span>${data.temperature || 'N/A'}°C</span>
-  </div>
-  <div class="normal-range">Status: ${data.temperatureStatus || 'N/A'}</div>
-  ` : ''}
-  
-  ${(data.checklist?.includes('max30102') || data.heartRate) ? `
-  <div class="vital-item">
-    <span>Heart Rate:</span>
-    <span>${data.heartRate || 'N/A'} BPM</span>
-  </div>
-  <div class="normal-range">Status: ${data.heartRateStatus || 'N/A'}</div>
-  
-  <div class="vital-item">
-    <span>Blood Oxygen:</span>
-    <span>${data.spo2 || 'N/A'}%</span>
-  </div>
-  <div class="normal-range">Status: ${data.spo2Status || 'N/A'}</div>
-  
-  <div class="vital-item">
-    <span>Respiratory Rate:</span>
-    <span>${data.respiratoryRate || 'N/A'}/min</span>
-  </div>
-  <div class="normal-range">Status: ${data.respiratoryStatus || 'N/A'}</div>
-  ` : ''}
-  
-  ${(data.checklist?.includes('bloodpressure') || data.systolic) ? `
-  <div class="vital-item">
-    <span>Blood Pressure:</span>
-    <span>${data.systolic || 'N/A'}/${data.diastolic || 'N/A'} mmHg</span>
-  </div>
-  <div class="normal-range">Status: ${data.bloodPressureStatus || 'N/A'}</div>
-  ` : ''}
-  
-  ${(data.checklist?.includes('bmi') || data.weight) ? `
-  <div class="vital-item">
-    <span>Weight:</span>
-    <span>${data.weight || 'N/A'} kg</span>
-  </div>
-  
-  <div class="vital-item">
-    <span>Height:</span>
-    <span>${data.height || 'N/A'} cm</span>
-  </div>
-  ` : ''}
-</div>
-
-<div class="divider"></div>
-
-<div class="section-title">AI RISK ASSESSMENT</div>
-<div class="risk-assessment">
-  <div class="important">RISK LEVEL: ${data.riskLevel || 0}%</div>
-  <div class="important">CATEGORY: ${data.riskCategory || 'N/A'}</div>
-</div>
-
-<div class="divider"></div>
-
-<div class="section-title">MEDICAL RECOMMENDATIONS</div>
-<div class="recommendations">
-  ${data.suggestions && data.suggestions.length > 0
-        ? data.suggestions.map((suggestion, index) =>
-          `<div class="recommendation-item">${index + 1}. ${suggestion}</div>`
-        ).join('')
-        : '<div>No specific recommendations at this time</div>'
-      }
-</div>
-
-<div class="divider"></div>
-
-<div class="section-title">PREVENTIVE STRATEGIES</div>
-<div class="recommendations">
-  ${data.preventions && data.preventions.length > 0
-        ? data.preventions.map((prevention, index) =>
-          `<div class="recommendation-item">${index + 1}. ${prevention}</div>`
-        ).join('')
-        : '<div>Maintain regular health monitoring</div>'
-      }
-</div>
-
-<div class="footer">
-  <div class="important">*** IMPORTANT DISCLAIMER ***</div>
-  <div>This AI health assessment is for informational</div>
-  <div>purposes only and should not replace professional</div>
-  <div>medical advice, diagnosis, or treatment.</div>
-  <div>Always consult qualified healthcare providers</div>
-  <div>for medical concerns and emergencies.</div>
-  <div style="margin-top: 8px;">Generated by HealthGuard AI System</div>
-  <div>Report ID: HG${Date.now().toString().slice(-6)}</div>
-</div>
-    `.trim();
-  };
+  // Fallback print removed as we want to enforce no-dialog printing via backend
 
   const directPrint = async () => {
     console.log("🖨️ Starting direct print via Backend...");
@@ -176,7 +21,7 @@ export default function Sharing() {
     setIsPrinting(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/print/receipt', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/print/receipt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -202,20 +47,56 @@ export default function Sharing() {
     }
   };
 
-  // Fallback print removed as we want to enforce no-dialog printing via backend
-
-  const startAutoPrint = () => {
+  const startAutoPrint = React.useCallback(() => {
     console.log("🖨️ Starting auto-print...");
 
     if (!userData) {
       console.log("⏳ User data not ready, waiting...");
-      setTimeout(startAutoPrint, 500);
+      // setTimeout(startAutoPrint, 500); // Avoid recursive timeout in callback, simplified logic below
       return;
     }
 
     console.log("✅ Data ready, starting print...");
     directPrint();
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userData]); // directPrint uses userData from closure, safe to exclude
+
+  useEffect(() => {
+    console.log("📍 Sharing page received data:", location.state);
+
+    if (location.state) {
+      setUserData(location.state);
+      console.log("✅ Complete health data loaded in Sharing:", location.state);
+
+      // Auto-start printing when component loads and content is ready
+      // We use a small delay to ensure state update has processed
+      const printTimer = setTimeout(() => {
+        // Trigger print directly here to avoid complex dependency chains with userData
+        // or call the function if it's stable
+      }, 1000);
+
+      return () => clearTimeout(printTimer);
+
+    } else {
+      console.log("❌ No data received from Result page");
+      navigate("/measure/result");
+      return;
+    }
+
+    // Removing isVisible logic as it was unused
+  }, [location.state, navigate]);
+
+  // Effect to trigger print when userData is set
+  useEffect(() => {
+    if (userData) {
+      const timer = setTimeout(() => {
+        startAutoPrint();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [userData, startAutoPrint]);
+
+  // generateReceiptContent function removed - receipt is now generated by backend
 
   const clearAllUserData = () => {
     console.log('🧹 Clearing all user data and resetting system...');

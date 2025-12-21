@@ -237,7 +237,7 @@ export default function RegisterPersonalInfo() {
       });
 
       try {
-        const checkResponse = await fetch('http://localhost:5000/api/register/check-personal-info', {
+        const checkResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/register/check-personal-info`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

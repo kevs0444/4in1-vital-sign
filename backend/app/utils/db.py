@@ -2,14 +2,21 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 
+import os
+
 # ---------- DATABASE CONNECTION ----------
-# Use the exact password without quotes that works in mysql command line
-DB_URL = "mysql+pymysql://root:_5Cr%5D92%40@localhost:3306/vital_signs_db"
+DB_USER = os.getenv('DB_USER', 'root')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '_5Cr%5D92%40') # Default to encoded fallback if missing
+DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_PORT = os.getenv('DB_PORT', '3306')
+DB_NAME = os.getenv('DB_NAME', 'vital_signs_db')
+
+DB_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 print("🔧 Database configuration:")
-print("   Database: vital_signs_db")
-print("   User: root")
-print("   Password: _5Cr]92@ (URL encoded)")
+print(f"   Database: {DB_NAME}")
+print(f"   User: {DB_USER}")
+print("   Password: [HIDDEN]")
 
 try:
     engine = create_engine(

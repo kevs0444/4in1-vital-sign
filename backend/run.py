@@ -1,5 +1,14 @@
 import logging
 import sys
+import os
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("✅ Loaded environment variables from .env")
+except ImportError:
+    print("⚠️ python-dotenv not installed, assuming environment variables are set manually")
 
 # Configure logging IMMEDIATELY, before anything else
 # This ensures we capture everything and output to stdout

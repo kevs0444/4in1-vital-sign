@@ -13,11 +13,13 @@ import datetime
 
 forgot_password_bp = Blueprint('forgot_password', __name__)
 
+import os
+
 # Email Configuration
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SENDER_EMAIL = "fin.vitalsigns@gmail.com"
-SENDER_PASSWORD = "ryvf avyg sxib vbzs"
+SMTP_SERVER = os.getenv('SMTP_SERVER', "smtp.gmail.com")
+SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
+SENDER_EMAIL = os.getenv('SENDER_EMAIL', "fin.vitalsigns@gmail.com")
+SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', "ryvf avyg sxib vbzs")
 
 def send_email(to_email, subject, body):
     try:

@@ -1,5 +1,5 @@
 // frontend/src/utils/api.js - COMPLETE UPDATED VERSION WITH MISSING SENSOR FUNCTIONS
-const API_URL = "http://127.0.0.1:5000/api";
+const API_URL = (process.env.REACT_APP_API_URL || "http://127.0.0.1:5000") + "/api";
 
 // Timeout configuration
 const TIMEOUTS = {

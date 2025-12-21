@@ -1,0 +1,8 @@
+flask
+python-dotenv
+sqlalchemy
+pymysql
+werkzeug
+pyserial
+ultralytics
+opencv-python
