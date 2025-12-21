@@ -25,6 +25,7 @@ const Maintenance = () => {
     const [backendStatus, setBackendStatus] = useState('Disconnected');
     const [complianceStatus, setComplianceStatus] = useState('Waiting...');
     const [isCompliant, setIsCompliant] = useState(false);
+    const [fps, setFps] = useState(0);
     const [captureCount, setCaptureCount] = useState(0);
     const [lastCapturePath, setLastCapturePath] = useState('');
     const [showCaptureFlash, setShowCaptureFlash] = useState(false);
@@ -43,7 +44,7 @@ const Maintenance = () => {
 
     const modes = {
         feet: ["platform", "barefeet", "socks", "footwear"],
-        body: ["null", "id_lace", "bag", "cap", "watch", "glasses", "necklace"]
+        body: ["null", "bag", "cap", "id", "watch"]
     };
 
     useEffect(() => {
@@ -82,6 +83,7 @@ const Maintenance = () => {
             const data = await res.json();
             setComplianceStatus(data.message);
             setIsCompliant(data.is_compliant);
+            if (data.fps !== undefined) setFps(data.fps);
             setBackendStatus('Connected');
         } catch (err) { setBackendStatus('Disconnected'); }
     };
@@ -215,6 +217,7 @@ const Maintenance = () => {
                         </button>
                         <div className="viewport-overlay top">
                             <div className="ai-badge">AI LIVE: {complianceStatus}</div>
+                            <div className="fps-badge">FPS: {fps}</div>
                         </div>
                         <div className="viewport-overlay bottom">
                             <div className="capture-info">Session: {captureCount} images captured</div>

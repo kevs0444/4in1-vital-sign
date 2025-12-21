@@ -32,8 +32,13 @@ class ComplianceDetector:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self.models_dir = os.path.join(base_dir, '..', 'models')
         
-        # Model File Names
-        self.person_model_name = 'yolov8n.pt'
+        # Model File Names (Strictly YOLO11)
+        self.person_model_name = 'yolo11n.pt'
+        
+        # Check for better models (Small version upgrade)
+        if os.path.exists(os.path.join(self.models_dir, 'yolo11s.pt')):
+            self.person_model_name = 'yolo11s.pt'
+            
         self.wearables_model_name = 'wearables.pt'
         self.feet_model_name = 'weight.pt' 
         
@@ -47,15 +52,15 @@ class ComplianceDetector:
 
         if AI_AVAILABLE:
             try:
-                print("Loading AI Models...")
+                print("Loading AI Models (YOLO11 Upgrade)...")
 
-                # --- 1. Load Standard Person Detector (YOLOv8n) ---
+                # --- 1. Load Person Detector (YOLO11) ---
                 if os.path.exists(self.person_path):
                     print(f"Loading Person Model: {self.person_path}")
                     self.person_model = YOLO(self.person_path)
                 else:
-                    print("Downloading yolov8n.pt...")
-                    self.person_model = YOLO('yolov8n.pt')
+                    print(f"[AUTO-UPGRADE] Downloading {self.person_model_name}...")
+                    self.person_model = YOLO(self.person_model_name)
 
                 # --- 2. Load Wearables Model (Custom) ---
                 # Force PyTorch because OpenVINO is causing StopIteration errors in thread
@@ -99,31 +104,34 @@ class ComplianceDetector:
         wearables_detected = []
         
         # --- Step 1: Detect Person ---
+        # --- Step 1: Detect Person (Optimized with lower resolution) ---
         if self.person_model:
-            results_p = self.person_model(frame, verbose=False, classes=[0], conf=0.5)
-            # Draw person box manually to customize color (Blue/Yellow) if needed, or use plot
-            # Using plot for simplicity, but we want to layer wearables on top
-            # annotated_frame = results_p[0].plot() 
+            # key change: imgsz=320 speeds up inference by ~3x for the person check
+            results_p = self.person_model(frame, verbose=False, classes=[0], conf=0.5, imgsz=320)
             
             if len(results_p[0].boxes) > 0:
                 person_detected = True
                 # Draw Person Box
                 for box in results_p[0].boxes:
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 255, 0), 2) # Cyan/Yellowish for Person
+                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 255, 0), 2)
                     cv2.putText(annotated_frame, "User Detected", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
 
-        # --- Step 2: Detect Wearables ---
-        if self.wearables_model:
-            results_w = self.wearables_model(frame, verbose=False, conf=0.25)
+        # --- Step 2: Detect Wearables (Conditional) ---
+        # Optimization: Only scan for small wearables if a person is actually present.
+        # This prevents double-inference on empty frames, doubling the idle framerate.
+        # --- Step 2: Detect Wearables (Conditional) ---
+        # Optimization: Only scan for small wearables if a person is actually present.
+        if self.wearables_model and person_detected:
+            # Tuned: conf=0.35 (reduce noise), iou=0.5 + agnostic_nms (prevent overlapping labels on same item)
+            results_w = self.wearables_model(frame, verbose=False, conf=0.35, iou=0.5, agnostic_nms=True)
             
             for box in results_w[0].boxes:
                 cls_id = int(box.cls[0])
                 class_name = self.wearables_classes.get(cls_id, "unknown").lower()
                 
-                # Filter strictly for our bad classes
-                # Ensure 'id-lace' or 'id_lace' or similar are caught
-                if any(x in class_name for x in ['watch', 'cap', 'bag', 'lace', 'smart', 'glasses', 'necklace']):
+                # Filter strictly for our specific classes
+                if any(x in class_name for x in ['bag', 'cap', 'id', 'watch']):
                     conf_score = float(box.conf[0])
                     label = f"{class_name} {conf_score:.0%}"
                     detect_text = f"INVALID: {label}"
@@ -162,7 +170,11 @@ class ComplianceDetector:
             return frame, "AI Not Loaded", False
 
         # Run Inference
-        results = self.feet_model(frame, verbose=False, conf=0.4)
+        # FIX: Aggressive NMS settings to prevent "Double Boxes"
+        # 1. conf=0.5: Ignore weak "ghost" predictions (shadows)
+        # 2. iou=0.5: Merge boxes that overlap significantly (default is 0.7)
+        # 3. agnostic_nms=True: Force "Shoe" vs "Foot" to compete. One must win.
+        results = self.feet_model(frame, verbose=False, conf=0.5, iou=0.5, agnostic_nms=True)
         annotated_frame = results[0].plot() # Use default plot for feet is fine
         
         detections = results[0].boxes

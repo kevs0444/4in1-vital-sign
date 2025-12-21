@@ -176,11 +176,17 @@ class CameraManager:
         return True, "Camera stopped"
         
     def _process_feed(self):
+        prev_time = 0
         while self.is_running and self.cap is not None and self.cap.isOpened():
             ret, frame = self.cap.read()
             if not ret:
                 time.sleep(0.1)
                 continue
+            
+            # FPS Calculation
+            curr_time = time.time()
+            fps = 1 / (curr_time - prev_time) if prev_time > 0 else 0
+            prev_time = curr_time
             
             # Apply Image Adjustments (Zoom, Brightness, Rotation, Square)
             frame = self.apply_filters(frame)
@@ -203,10 +209,12 @@ class CameraManager:
                 self.compliance_status = {
                     "is_compliant": is_compliant,
                     "message": status_msg,
-                    "mode": getattr(self, 'current_mode', 'feet')
+                    "mode": getattr(self, 'current_mode', 'feet'),
+                    "fps": int(fps)
                 }
             
-            time.sleep(0.03) # ~30 FPS
+            # Adaptive sleep to maintain ~30 FPS cap if system is too fast
+            # time.sleep(0.03) # Removed specific sleep to allow max FPS testing
 
     def get_frame(self):
         with self.lock:
