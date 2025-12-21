@@ -14,6 +14,7 @@ export default function AILoading() {
   const [statusMessage, setStatusMessage] = useState("Initializing AI Analysis...");
 
   const analysisSteps = [
+    "🧠 Loading Juan AI Models...",
     "Analyzing Vital Signs",
     "Processing Health Patterns",
     "Assessing Risk Factors",
@@ -76,11 +77,11 @@ export default function AILoading() {
     };
   }, [location.state]);
 
-  const simulateAIThinkingProcess = () => {
+  const simulateAIThinkingProcess = async () => {
     setIsAnalyzing(true);
     setStatusMessage("Juan AI is analyzing your health data...");
 
-    // Simulate AI thinking steps
+    // Start Animation Loop (Visual Feedback)
     const stepInterval = setInterval(() => {
       setCurrentStep(prev => {
         if (prev >= analysisSteps.length - 1) {
@@ -89,25 +90,60 @@ export default function AILoading() {
         }
         return prev + 1;
       });
-    }, 800); // Slightly slower for better animation
+    }, 800);
 
-    // Complete the analysis after 5 seconds
-    setTimeout(() => {
+    try {
+      // --- REAL API CALL TO JUAN AI ---
+      console.log("📤 Sending data to Juan AI Brain:", location.state);
+
+      // Minimum wait time of 3 seconds for UX (so the animation isn't too fast)
+      const minWaitTime = new Promise(resolve => setTimeout(resolve, 3000));
+
+      const apiCall = fetch('http://localhost:5000/api/juan-ai/predict-risk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(location.state)
+      });
+
+      // Wait for BOTH the API and the Animation
+      const [response] = await Promise.all([apiCall, minWaitTime]);
+      const aiResult = await response.json();
+
+      console.log("📥 Juan AI Brain Response:", aiResult);
+
+      if (aiResult.success) {
+        clearInterval(stepInterval);
+        setIsAnalyzing(false);
+        setAnalysisComplete(true);
+        setCurrentStep(analysisSteps.length - 1);
+        setStatusMessage("Analysis complete! Redirecting to results...");
+
+        // Success! Navigate with the AI Analysis Results
+        setTimeout(() => {
+          navigate("/measure/result", {
+            state: {
+              ...location.state, // Original Vitals
+              aiAnalysis: aiResult // New AI Data (score, recommendations)
+            }
+          });
+        }, 2000);
+
+      } else {
+        throw new Error(aiResult.message || "AI Analysis Failed");
+      }
+
+    } catch (error) {
+      console.error("❌ Juan AI Error:", error);
       clearInterval(stepInterval);
-      setIsAnalyzing(false);
-      setAnalysisComplete(true);
-      setCurrentStep(analysisSteps.length - 1);
-      setStatusMessage("Analysis complete! Redirecting to results...");
+      setStatusMessage("AI server unresponsive. Using standard analysis.");
 
-      // Auto navigate to result page after 3 seconds
+      // Fallback: Proceed without AI data (Result page will handle simple logic)
       setTimeout(() => {
-        console.log("🧠 AI Thinking Complete - Navigating to Result with data:", location.state);
-        // ✅ FIXED: Navigate to result with the received data
-        navigate("/measure/result", {
-          state: location.state // Pass the original data directly
-        });
+        navigate("/measure/result", { state: location.state });
       }, 3000);
-    }, 5000);
+    }
   };
 
   // Manual navigation function in case auto-navigation fails

@@ -11,6 +11,8 @@ export default function Result() {
   const [riskCategory, setRiskCategory] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [preventions, setPreventions] = useState([]);
+  const [wellnessTips, setWellnessTips] = useState([]);
+  const [providerGuidance, setProviderGuidance] = useState([]);
   const [isVisible, setIsVisible] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     recommendations: false,
@@ -93,9 +95,34 @@ export default function Result() {
 
   const analyzeHealthData = (data) => {
     console.log("🔍 Analyzing health data:", data);
+
+    // --- 1. CHECK FOR JUAN AI BRAIN DATA ---
+    if (data.aiAnalysis && data.aiAnalysis.success) {
+      console.log("🧠 Using Juan AI Brain Results!");
+      const ai = data.aiAnalysis;
+
+      setRiskLevel(Math.round(ai.risk_score));
+      setRiskCategory(ai.risk_level);
+
+      // Parse the AI recommendations (which come as strings) into arrays for the UI
+      // We wrap them in arrays because our UI expects lists
+      setSuggestions([ai.recommendations.medical_action]);
+      setPreventions([ai.recommendations.preventive_strategy]);
+      setWellnessTips([ai.recommendations.wellness_tips]);
+      setProviderGuidance([ai.recommendations.provider_guidance]);
+
+      return;
+    }
+
+    // --- 2. FALLBACK: LOCAL LOGIC (If AI Server Failed) ---
+    console.log("⚠️ No AI Data found. Using Local Fallback Logic.");
+
     let riskScore = 0;
     const calculatedSuggestions = [];
     const calculatedPreventions = [];
+    // We will calculate wellness tips using the old helper function for fallback
+    const calculatedWellness = getImprovementTips(data);
+    const calculatedGuidance = [];
 
     // BMI Analysis
     const bmi = calculateBMI(data);
@@ -186,7 +213,7 @@ export default function Result() {
         } else if (systolicNum >= 130 || diastolicNum >= 80) {
           riskScore += 30;
           calculatedSuggestions.push("Stage 1 hypertension - lifestyle modifications recommended");
-          calculatedPreventions.push("Reduce sodium intake and increase physical activity");
+          calculatedPreventions.push("Reduce sodium intake to less than 2,300mg daily");
         } else if (systolicNum >= 120) {
           riskScore += 15;
           calculatedSuggestions.push("Elevated blood pressure - monitor regularly");
@@ -212,27 +239,14 @@ export default function Result() {
       }
     }
 
-    // Age and Demographic Factors
+    // Age and Demographic Factors (Fallback)
     if (data.age && data.age > 50) {
       riskScore += 10;
       calculatedSuggestions.push("Regular health screenings recommended for age group");
       calculatedPreventions.push("Maintain active lifestyle and balanced nutrition");
     }
-    if (data.age && data.age > 65) {
-      riskScore += 15;
-      calculatedSuggestions.push("Comprehensive geriatric assessment may be beneficial");
-      calculatedPreventions.push("Focus on fall prevention and mobility maintenance");
-    }
 
-    // Simulate AI Pattern Recognition
-    const hasMultipleRiskFactors = calculatedSuggestions.length > 2;
-    if (hasMultipleRiskFactors) {
-      riskScore += 15;
-      calculatedSuggestions.push("Multiple risk factors detected - comprehensive health evaluation advised");
-      calculatedPreventions.push("Coordinate care with primary healthcare provider");
-    }
-
-    // Cap risk score and add some random variation
+    // Cap risk score
     riskScore = Math.min(riskScore, 100);
     const aiConfidenceVariation = Math.random() * 10 - 5;
     riskScore = Math.max(0, Math.min(100, riskScore + aiConfidenceVariation));
@@ -253,26 +267,67 @@ export default function Result() {
       category = "Critical Risk";
     }
 
-    console.log("🎯 Final Risk Score:", Math.round(riskScore));
-    console.log("📋 Suggestions:", calculatedSuggestions);
+    console.log("🎯 Final Risk Score (Fallback):", Math.round(riskScore));
 
     setRiskLevel(Math.round(riskScore));
     setRiskCategory(category);
     setSuggestions(calculatedSuggestions);
     setPreventions(calculatedPreventions);
+    setWellnessTips(calculatedWellness);
+
+    // Fallback Guidance Logic
+    if (riskScore < 20) calculatedGuidance.push("Routine health maintenance recommended. Schedule annual check-up within 6 months.");
+    else if (riskScore < 50) calculatedGuidance.push("Consult primary care physician for comprehensive evaluation within 2-4 weeks.");
+    else if (riskScore < 75) calculatedGuidance.push("Urgent medical consultation advised. Schedule appointment within 1-2 weeks.");
+    else calculatedGuidance.push("Immediate medical attention recommended. Consider emergency evaluation if symptoms present.");
+
+    setProviderGuidance(calculatedGuidance);
   };
 
-  const calculateBMI = (data) => {
-    // If BMI is already calculated and passed, use it
-    if (data.bmi && data.bmi !== 'N/A') {
-      return parseFloat(data.bmi);
+  // Modified helper to accept data argument
+  const getImprovementTips = (currentData) => {
+    // If no data passed, use state data
+    const dataToUse = currentData || userData;
+    const tips = [];
+
+    // Check if dataToUse is valid before accessing properties
+    if (!dataToUse) return tips;
+
+    const bmi = calculateBMI(dataToUse);
+    if (bmi >= 25) {
+      tips.push("Aim for 150 minutes of moderate-intensity exercise weekly");
+      tips.push("Incorporate fiber-rich foods and lean proteins in daily meals");
+      tips.push("Monitor portion sizes and maintain food diary for awareness");
     }
 
-    // Otherwise calculate from weight and height
-    if (!data.weight || !data.height || data.weight === 'N/A' || data.height === 'N/A') return null;
-    const heightInMeters = data.height / 100;
-    const bmi = (data.weight / (heightInMeters * heightInMeters)).toFixed(1);
-    return parseFloat(bmi);
+    if (dataToUse.heartRate && (dataToUse.heartRate < 60 || dataToUse.heartRate > 100)) {
+      tips.push("Practice mindfulness meditation for 10 minutes daily");
+      tips.push("Gradually increase physical activity to improve cardiovascular fitness");
+      tips.push("Limit caffeine intake to 200mg daily and avoid before bedtime");
+    }
+
+    if (dataToUse.spo2 && dataToUse.spo2 < 95) {
+      tips.push("Perform diaphragmatic breathing exercises morning and evening");
+      tips.push("Ensure proper ventilation in living and sleeping areas");
+      tips.push("Consider indoor air quality assessment if symptoms persist");
+    }
+
+    if (dataToUse.systolic && dataToUse.diastolic) {
+      const bpStatus = getBloodPressureStatus(dataToUse.systolic, dataToUse.diastolic);
+      if (bpStatus.status !== 'Normal') {
+        tips.push("Reduce sodium intake to less than 2,300mg daily");
+        tips.push("Incorporate potassium-rich foods like bananas and leafy greens");
+        tips.push("Practice stress management techniques like deep breathing");
+      }
+    }
+
+    // General wellness tips
+    tips.push("Maintain consistent sleep schedule of 7-9 hours nightly");
+    tips.push("Stay hydrated with 2-3 liters of water daily based on activity level");
+    tips.push("Incorporate stress-reduction activities like walking or yoga");
+    tips.push("Schedule regular health screenings based on age and risk factors");
+
+    return tips.slice(0, 6);
   };
 
   const getRiskGradient = (level) => {
@@ -370,44 +425,17 @@ export default function Result() {
     }
   };
 
-  const getImprovementTips = () => {
-    const tips = [];
-
-    const bmi = calculateBMI(userData);
-    if (bmi >= 25) {
-      tips.push("Aim for 150 minutes of moderate-intensity exercise weekly");
-      tips.push("Incorporate fiber-rich foods and lean proteins in daily meals");
-      tips.push("Monitor portion sizes and maintain food diary for awareness");
+  const calculateBMI = (data) => {
+    // If BMI is already calculated and passed, use it
+    if (data.bmi && data.bmi !== 'N/A') {
+      return parseFloat(data.bmi);
     }
 
-    if (userData.heartRate && (userData.heartRate < 60 || userData.heartRate > 100)) {
-      tips.push("Practice mindfulness meditation for 10 minutes daily");
-      tips.push("Gradually increase physical activity to improve cardiovascular fitness");
-      tips.push("Limit caffeine intake to 200mg daily and avoid before bedtime");
-    }
-
-    if (userData.spo2 && userData.spo2 < 95) {
-      tips.push("Perform diaphragmatic breathing exercises morning and evening");
-      tips.push("Ensure proper ventilation in living and sleeping areas");
-      tips.push("Consider indoor air quality assessment if symptoms persist");
-    }
-
-    if (userData.systolic && userData.diastolic) {
-      const bpStatus = getBloodPressureStatus(userData.systolic, userData.diastolic);
-      if (bpStatus.status !== 'Normal') {
-        tips.push("Reduce sodium intake to less than 2,300mg daily");
-        tips.push("Incorporate potassium-rich foods like bananas and leafy greens");
-        tips.push("Practice stress management techniques like deep breathing");
-      }
-    }
-
-    // General wellness tips
-    tips.push("Maintain consistent sleep schedule of 7-9 hours nightly");
-    tips.push("Stay hydrated with 2-3 liters of water daily based on activity level");
-    tips.push("Incorporate stress-reduction activities like walking or yoga");
-    tips.push("Schedule regular health screenings based on age and risk factors");
-
-    return tips.slice(0, 6);
+    // Otherwise calculate from weight and height
+    if (!data.weight || !data.height || data.weight === 'N/A' || data.height === 'N/A') return null;
+    const heightInMeters = data.height / 100;
+    const bmi = (data.weight / (heightInMeters * heightInMeters)).toFixed(1);
+    return parseFloat(bmi);
   };
 
   const handleSaveResults = () => {
@@ -422,7 +450,11 @@ export default function Result() {
       riskLevel,
       riskCategory,
       suggestions,
+      riskCategory,
+      suggestions,
       preventions,
+      wellnessTips,
+      providerGuidance,
 
       // Ensure all measurement fields are included
       bmi: calculateBMI(userData),
@@ -774,7 +806,7 @@ export default function Result() {
               {expandedSections.wellness && (
                 <div className="card-body pt-0">
                   <div className="ps-4 ms-2 border-start border-3 border-warning">
-                    {getImprovementTips().map((tip, index) => (
+                    {wellnessTips.map((tip, index) => (
                       <div key={index} className="mb-2 d-flex gap-2">
                         <span className="fw-bold text-warning">{index + 1}.</span>
                         <span>{tip}</span>
@@ -803,31 +835,29 @@ export default function Result() {
                   <div className="p-3 bg-white rounded border d-flex gap-3 align-items-start">
                     <span className="fs-1">🏥</span>
                     <div>
-                      <p className="mb-2">{getDoctorRecommendation()}</p>
-                      <span className="badge" style={{ backgroundColor: getRiskColor(riskLevel) }}>
-                        {riskLevel >= 75 ? 'HIGH URGENCY' : riskLevel >= 50 ? 'MODERATE URGENCY' : 'ROUTINE CARE'}
-                      </span>
+                      <h4 className="h6 fw-bold mb-1">Standard Medical Protocol</h4>
+                      <p className="mb-0 small text-muted">
+                        {providerGuidance.length > 0 ? providerGuidance[0] : "Please consult a healthcare professional for a detailed assessment."}
+                      </p>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-
           </div>
         </div>
 
-        {/* Save Button */}
-        <div className="text-center pb-4">
-          <button
-            className="btn btn-danger btn-lg rounded-pill px-5 py-3 fw-bold shadow-sm"
-            onClick={handleSaveResults}
-            style={{ minWidth: '300px' }}
-          >
-            Save & Continue
+        {/* Action Buttons */}
+        <div className="d-flex gap-3 justify-content-center">
+          <button className="btn btn-outline-secondary px-4 py-2 rounded-pill" onClick={() => navigate('/measure/checklist')}>
+            New Measurement
+          </button>
+          <button className="btn btn-primary px-5 py-2 rounded-pill shadow-sm fw-bold" onClick={handleSaveResults}>
+            Save & Share Results
           </button>
         </div>
+
       </div>
     </div>
-
   );
 }

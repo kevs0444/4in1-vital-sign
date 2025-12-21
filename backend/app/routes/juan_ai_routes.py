@@ -3,8 +3,8 @@ import joblib
 import pandas as pd
 import numpy as np
 import os
-import google.generativeai as genai 
-from app.utils.helpers import format_response
+# import google.generativeai as genai 
+# from app.utils.helpers import format_response
 
 # Create the Blueprint
 juan_ai_bp = Blueprint('juan_ai', __name__)
@@ -12,8 +12,8 @@ juan_ai_bp = Blueprint('juan_ai', __name__)
 # --- CONFIGURATION (You will need an API Key for the text part) ---
 # For now, we will structure it so it works even without the key (using fallbacks)
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY') 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# if GEMINI_API_KEY:
+#     genai.configure(api_key=GEMINI_API_KEY)
 
 # --- LOAD THE "MATH BRAIN" (XGBoost) ---
 # We load these once when the server starts to make it fast
@@ -46,15 +46,32 @@ def predict_risk():
         # We need to match the EXACT order used in training
         # Features: ['age', 'age_group', 'gender', 'bmi', 'temp', 'spo2', 'hr', 'systolic', 'diastolic', 'rr']
         
-        age = data.get('age')
-        gender_str = data.get('sex', 'Male') # "Male" or "Female"
+        # --- SAFE DEFAULTS (IMPUTATION) ---
+        # If a user is "only using BP", we default other values to "Normal/Healthy".
+        # This isolates the risk prediction to ONLY the abnormal metrics the user actually measured.
+        
+        age = data.get('age') or 30 # Default to 30 if missing
+        gender_str = data.get('sex', 'Male') 
+        
         bmi = data.get('bmi')
+        if not bmi or bmi == 0: bmi = 22.0 # Normal BMI
+        
         temp = data.get('temperature')
+        if not temp or temp == 0: temp = 36.5 # Normal Temp
+        
         spo2 = data.get('spo2')
+        if not spo2 or spo2 == 0: spo2 = 98 # Normal SpO2
+        
         hr = data.get('heartRate')
+        if not hr or hr == 0: hr = 75 # Normal Heart Rate
+        
         systolic = data.get('systolic')
         diastolic = data.get('diastolic')
+        if not systolic or systolic == 0: systolic = 115 # Normal BP
+        if not diastolic or diastolic == 0: diastolic = 75 # Normal BP
+
         rr = data.get('respiratoryRate')
+        if not rr or rr == 0: rr = 16 # Normal Respiratory Rate
 
         # Feature Engineering: Age Group
         if 18 <= age <= 24: age_group = 0
@@ -93,11 +110,15 @@ def predict_risk():
             # Calculate a blended "Score" from 0-100 based on probabilities
             # (Low*0 + Mod*50 + High*100)
             risk_score = (probs[0] * 0) + (probs[1] * 50) + (probs[2] * 100)
-            risk_score = round(risk_score, 1)
+            risk_score = float(round(risk_score, 1))  # Convert to native Python float
 
             if risk_score < 20: risk_level = "Low Risk"
             elif risk_score < 50: risk_level = "Moderate Risk"
             else: risk_level = "High Risk"
+            
+            print(f"✅ Juan AI Prediction Complete!")
+            print(f"   📊 Risk Score: {risk_score}%")
+            print(f"   🏷️ Risk Level: {risk_level}")
         else:
             # Fallback Logic if model isn't trained yet
             print("⚠️ Model not loaded, using fallback logic")
@@ -130,7 +151,7 @@ def generate_dynamic_advice(age, gender, risk_level, score, vitals):
     # 1. AI GENERATION (If Key Exists)
     if GEMINI_API_KEY:
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # model = genai.GenerativeModel('gemini-1.5-flash')
             
             prompt = f"""
             Act as an advanced medical AI assistant named "Juan AI".
