@@ -14,7 +14,9 @@ export default function Starting() {
     lastName: "",
     age: "",
     sex: "",
-    role: ""
+    role: "",
+    user_id: "",
+    email: ""
   });
 
   // Add viewport meta tag to prevent zooming
@@ -63,7 +65,9 @@ export default function Starting() {
             lastName: user.lastName || "",
             age: user.age || "",
             sex: user.sex || "",
-            role: user.role || ""
+            role: user.role || "",
+            user_id: user.user_id || user.id || "",
+            email: user.email || ""
           });
         }
       } catch (error) {

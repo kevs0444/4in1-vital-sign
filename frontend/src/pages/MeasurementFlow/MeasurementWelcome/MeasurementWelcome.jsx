@@ -18,7 +18,9 @@ export default function MeasurementWelcome() {
     age: "",
     sex: "",
     schoolNumber: "",
-    role: ""
+    role: "",
+    user_id: "",
+    email: ""
   });
 
   // Add viewport meta tag to prevent zooming
@@ -68,7 +70,9 @@ export default function MeasurementWelcome() {
             age: user.age || "",
             sex: user.sex || "",
             schoolNumber: user.schoolNumber || "",
-            role: user.role || ""
+            role: user.role || "",
+            user_id: user.user_id || user.id || "",
+            email: user.email || ""
           });
         }
       } catch (error) {
@@ -263,29 +267,31 @@ export default function MeasurementWelcome() {
               <h4>4 in Juan Vital Kiosk - Terms of Use</h4>
               <p className="text-justify"><strong>Last Updated: {new Date().toLocaleDateString()}</strong></p>
 
-              <h5>1. Acceptance of Terms</h5>
-              <p className="text-justify">By using the 4 in Juan Vital Sign Kiosk, you agree to these Terms and Conditions. If you do not agree, please do not use this service.</p>
+              <h5>1. Welcome to Better Health</h5>
+              <p className="text-justify">We are delighted to assist you in monitoring your vital signs. By proceeding, you agree to the use of this kiosk for personal health screening purposes.</p>
 
-              <h5>2. Health Information Collection</h5>
-              <p className="text-justify">This kiosk collects the following health information:</p>
+              <h5>2. What We Measure</h5>
+              <p className="text-justify">To provide you with a comprehensive health snapshot, we collect:</p>
               <ul>
-                <li className="text-justify">Personal identification (name, age, sex)</li>
-                <li className="text-justify">4 Vital Signs: Body Temperature, Heart Rate, Respiratory Rate, Blood Pressure</li>
-                <li className="text-justify">Additional measurements (weight, height)</li>
-                <li className="text-justify">BMI calculation and health risk assessment</li>
+                <li className="text-justify">Basic identification (Name, Age, Sex) for personalized results.</li>
+                <li className="text-justify">Vital Signs: Body Temperature, Heart Rate, Respiratory Rate, and Blood Pressure.</li>
+                <li className="text-justify">Body Metrics: Weight and Height for BMI calculation.</li>
               </ul>
 
-              <h5>3. Data Privacy and Security</h5>
-              <p className="text-justify">Your health information is stored securely and used only for providing health assessments, generating insights, and improving services. We do not share your information without consent.</p>
+              <h5>3. Privacy & Safety</h5>
+              <p className="text-justify">Your privacy is our priority. All data collected is securely processed and is used solely to generate your immediate health report. We do not share your personal information with third parties without your explicit consent.</p>
 
-              <h5>4. Medical Disclaimer</h5>
-              <p className="text-justify">The 4 in Juan Vital Kiosk provides health screening only. It is not a substitute for professional medical advice. Always consult healthcare providers for medical concerns.</p>
+              <h5>4. Important Medical Notice</h5>
+              <p className="text-justify">Please note that this kiosk provides a preliminary screening and is <strong>not</strong> a diagnostic tool. The results are for informational purposes only. If you have any health concerns, please consult a qualified healthcare professional.</p>
 
-              <h5>5. User Responsibilities</h5>
-              <p className="text-justify">You agree to provide accurate information, use the kiosk as intended, and keep your health information confidential.</p>
+              <h5>5. User Agreement</h5>
+              <p className="text-justify">By using this service, you confirm that:
+                <br />• You will provide accurate information.
+                <br />• You will follow the on-screen instructions for accurate readings.
+              </p>
 
-              <h5>6. Consent</h5>
-              <p className="text-justify">By accepting these terms, you consent to the processing of your health data for the purposes outlined above.</p>
+              <h5>6. Your Consent</h5>
+              <p className="text-justify">By clicking "I Agree", you consent to the collection and processing of your vital sign measurements as described above.</p>
 
               <div className="text-center mt-4">
                 <p className="text-justify"><strong>By clicking "I Agree", you acknowledge that you have read, understood, and accept these Terms and Conditions.</strong></p>

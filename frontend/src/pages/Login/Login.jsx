@@ -65,8 +65,6 @@ export default function LoginPage() {
   }, []);
 
   // Process RFID data - Extract numbers only (NO RTU PREFIX)
-  // Moved this outside component if possible, but for simplicity keeping it inside wrapped in useCallback or just outside to avoid dep issues
-  // Actually, let's keep it simple. Wrapped in useCallback.
   const processRfidData = React.useCallback((rawRfidData) => {
     if (!rawRfidData) {
       console.log('❌ No RFID data provided');
@@ -102,28 +100,34 @@ export default function LoginPage() {
 
       if (response.success) {
         console.log('✅ RFID validation successful:', response);
+        const user = response.user;
         setRfidStatus('success');
-        // DON'T set error message for success - let the RFID status handle it
 
         // Store user data in localStorage
-        storeUserData(response.user);
+        storeUserData(user);
+
+        // Robust User Data Mapping
+        const userDataForState = {
+          firstName: user.firstName || user.firstname || "",
+          lastName: user.lastName || user.lastname || "",
+          age: user.age || "",
+          sex: user.sex || "",
+          schoolNumber: user.schoolNumber || user.school_number || "",
+          role: user.role || "",
+          user_id: user.user_id || user.userId || user.id || "",
+          email: user.email || ""
+        };
+        console.log("📤 Passing User Data to Welcome:", userDataForState);
 
         // Navigate based on role with delay for feedback
         setTimeout(() => {
-          if (response.user.role && response.user.role.toLowerCase() === 'admin') {
+          if (user.role && user.role.toLowerCase() === 'admin') {
             navigate('/admin/dashboard', {
-              state: { user: response.user }
+              state: { user: user }
             });
           } else {
             navigate('/measure/welcome', {
-              state: {
-                firstName: response.user.firstName,
-                lastName: response.user.lastName,
-                age: response.user.age,
-                sex: response.user.sex,
-                schoolNumber: response.user.schoolNumber,
-                role: response.user.role
-              }
+              state: userDataForState
             });
           }
         }, 1500);
@@ -174,7 +178,7 @@ export default function LoginPage() {
     } else if (e.key.length === 1) {
       // Accumulate ALL characters (RFID data can have numbers, letters, symbols)
       rfidDataRef.current = currentRfidData + e.key;
-      console.log('📝 RFID data accumulated:', rfidDataRef.current);
+      // console.log('📝 RFID data accumulated:', rfidDataRef.current);
 
       // Auto-detect RFID after certain length (some scanners don't send Enter)
       if (rfidDataRef.current.length >= 8 && !rfidLoading) {
@@ -256,22 +260,30 @@ export default function LoginPage() {
 
       if (response.success) {
         console.log('✅ Manual login successful:', response);
-        storeUserData(response.user);
+        const user = response.user;
+        storeUserData(user);
+
+        // Robust User Data Mapping
+        const userDataForState = {
+          firstName: user.firstName || user.firstname || "",
+          lastName: user.lastName || user.lastname || "",
+          age: user.age || "",
+          sex: user.sex || "",
+          schoolNumber: user.schoolNumber || user.school_number || "",
+          role: user.role || "",
+          user_id: user.user_id || user.userId || user.id || "",
+          email: user.email || ""
+        };
+        console.log("📤 Passing User Data to Welcome (Manual):", userDataForState);
+
         // Navigate based on role
-        if (response.user.role && response.user.role.toLowerCase() === 'admin') {
+        if (user.role && user.role.toLowerCase() === 'admin') {
           navigate('/admin/dashboard', {
-            state: { user: response.user }
+            state: { user: user }
           });
         } else {
           navigate('/measure/welcome', {
-            state: {
-              firstName: response.user.firstName,
-              lastName: response.user.lastName,
-              age: response.user.age,
-              sex: response.user.sex,
-              schoolNumber: response.user.schoolNumber,
-              role: response.user.role
-            }
+            state: userDataForState
           });
         }
       } else {

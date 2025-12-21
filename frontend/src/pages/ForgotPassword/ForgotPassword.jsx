@@ -239,9 +239,20 @@ export default function ForgotPassword() {
         }
     };
 
+    // Auto-capslock for OTP
+    useEffect(() => {
+        if (activeInput === 'otp') {
+            setIsShift(true);
+        } else {
+            setIsShift(false);
+        }
+    }, [activeInput]);
+
     // Keyboard Handling
     const handleKeyboardPress = (key) => {
         if (key === "↑") {
+            // Allow toggling shift manually if desired, or we could strict lock it. 
+            // For now, allow toggle but input will still be forced upper for OTP.
             setIsShift(!isShift);
             return;
         }
@@ -274,8 +285,14 @@ export default function ForgotPassword() {
             if ((activeInput === 'newPassword' || activeInput === 'confirmPassword') && currentValue.length >= 10) return;
 
             let char = key;
-            if (isShift && char.length === 1) char = char.toUpperCase();
-            else if (!isShift && char.length === 1) char = char.toLowerCase();
+
+            if (activeInput === 'otp') {
+                // Force uppercase for OTP regardless of shift state
+                if (char.length === 1) char = char.toUpperCase();
+            } else {
+                if (isShift && char.length === 1) char = char.toUpperCase();
+                else if (!isShift && char.length === 1) char = char.toLowerCase();
+            }
 
             setValue(currentValue + char);
         }

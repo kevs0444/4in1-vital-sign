@@ -1,0 +1,144 @@
+/* InactivityWrapper.css */
+
+/* Overlay for the global inactivity popout - Matched to .exit-modal-overlay */
+.inactivity-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 20px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Modal Card - Matched to .exit-modal-content */
+.inactivity-modal {
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 24px;
+    padding: 40px 35px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    position: relative;
+    overflow: hidden;
+    animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Top Shimmer Bar - Matched to .exit-modal-content::before style logic */
+.inactivity-modal-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #dc2626, #f87171, #dc2626);
+    background-size: 200% 100%;
+    animation: shimmerWarning 2s linear infinite;
+}
+
+/* Icon Container - Larger Square and White */
+.inactivity-icon-container {
+    width: 240px;
+    height: 240px;
+    margin: 0 auto 30px;
+    background: #ffffff;
+    border-radius: 35px;
+    /* Smooth rounded square */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 5px solid #dc2626;
+    /* Strong red border */
+    box-shadow: 0 15px 40px rgba(220, 38, 38, 0.2);
+    animation: iconPulse 2s ease-in-out infinite;
+}
+
+/* Actual Icon Image */
+.inactivity-icon-image {
+    width: 75%;
+    height: 75%;
+    object-fit: contain;
+}
+
+/* Title - Matched to .exit-modal-title */
+.inactivity-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #dc2626;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+}
+
+/* Subtitle - Matched to .exit-modal-message */
+.inactivity-subtitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    color: #4b5563;
+    line-height: 1.6;
+    margin-bottom: 0;
+    /* Removed bottom margin since no buttons */
+    padding: 0 10px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleUp {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes shimmerWarning {
+    0% {
+        background-position: 0% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes iconPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow: 0 8px 25px rgba(220, 38, 38, 0.2);
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 12px 35px rgba(220, 38, 38, 0.3);
+    }
+}

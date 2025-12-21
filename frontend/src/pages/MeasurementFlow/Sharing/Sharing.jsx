@@ -1,255 +1,368 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import "./Sharing.css";
 
 export default function Sharing() {
   const navigate = useNavigate();
   const location = useLocation();
-  // const [isVisible, setIsVisible] = useState(false); // Unused
   const [userData, setUserData] = useState(null);
+
+  // States
+  const [isSending, setIsSending] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [printComplete, setPrintComplete] = useState(false);
-  // const [receiptContent, setReceiptContent] = useState(""); // Unused
-  // const printFrameRef = useRef(null); // Unused
+  const [emailSent, setEmailSent] = useState(false);
+  const [printSent, setPrintSent] = useState(false);
+  const [autoRedirectTimer, setAutoRedirectTimer] = useState(30);
 
-  // Fallback print removed as we want to enforce no-dialog printing via backend
+  // Modal Configuration
+  const [modalConfig, setModalConfig] = useState({
+    show: false,
+    type: 'success', // or 'error'
+    title: '',
+    message: ''
+  });
 
-  const directPrint = async () => {
-    console.log("🖨️ Starting direct print via Backend...");
-    console.log("📊 Printing health data:", userData);
+  useEffect(() => {
+    if (location.state) {
+      setUserData(location.state);
+    } else {
+      // Fallback if no state
+      navigate("/measure/result");
+    }
+  }, [location.state, navigate]);
 
+  const handleReturnHome = React.useCallback(() => {
+    // Clear user data
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userData');
+    sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('userData');
+
+    // Navigate to Standby (root)
+    navigate("/", { replace: true, state: { reset: true } });
+  }, [navigate]);
+
+  // Auto-redirect countdown
+  useEffect(() => {
+    if (autoRedirectTimer > 0) {
+      const timer = setTimeout(() => setAutoRedirectTimer(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      handleReturnHome();
+    }
+  }, [autoRedirectTimer, handleReturnHome]);
+
+  const closeModal = () => {
+    setModalConfig({ ...modalConfig, show: false });
+  };
+
+  const handleSendEmail = async () => {
+    // Rely solely on user_id or ID if available
+    const userId = userData?.user_id || userData?.userId || userData?.id;
+
+    if (!userId) {
+      setModalConfig({
+        show: true,
+        type: 'error',
+        title: 'Feature Unavailable',
+        message: 'This feature is only available for registered users with an ID.'
+      });
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/share/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: "", // No manual email, rely on ID
+          userData: userData
+        }),
+      });
+
+      if (response.ok) {
+        setEmailSent(true);
+        setAutoRedirectTimer(15);
+        setModalConfig({
+          show: true,
+          type: 'success',
+          title: 'Email Sent!',
+          message: 'Your health report has been successfully sent to your registered email address.'
+        });
+      } else {
+        const errorData = await response.json();
+        setModalConfig({
+          show: true,
+          type: 'error',
+          title: 'Sending Failed',
+          message: errorData.message || 'Unable to send email. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error("Email network error:", error);
+      setModalConfig({
+        show: true,
+        type: 'error',
+        title: 'Connection Error',
+        message: 'Network error. Could not connect to the server.'
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // NEW: Backend "Silent" Print
+  const handlePrint = async () => {
     setIsPrinting(true);
-
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/print/receipt`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        console.log("✅ Print command sent successfully");
-        setPrintComplete(true);
+        setPrintSent(true);
+        // Do not block print button forever, let them print again if needed? 
+        // User asked to "make the box of print receipt being checked". Usually implies a done state.
+        // We will keep it checked.
+        setModalConfig({
+          show: true,
+          type: 'success',
+          title: 'Printing...',
+          message: 'Receipt sent to printer successfully.'
+        });
       } else {
-        throw new Error(result.error || 'Print failed');
+        throw new Error(result.error || 'Printing failed');
       }
+
     } catch (error) {
-      console.error('Print failed:', error);
-      // Fallback to browser print if backend fails, but user specifically requested no dialog.
-      // We will just notify the user.
-      alert("Printing failed: " + error.message + ". Please check if the printer is connected and the backend is running. If this persists, please contact support.");
+      console.error("Print error:", error);
+      setModalConfig({
+        show: true,
+        type: 'error',
+        title: 'Print Error',
+        message: 'Could not connect to printer. Please check backend.'
+      });
     } finally {
       setIsPrinting(false);
     }
   };
 
-  const startAutoPrint = React.useCallback(() => {
-    console.log("🖨️ Starting auto-print...");
+  // Helper to format values
+  const formatValue = (val, unit = "") => val ? `${val} ${unit}` : "--";
 
-    if (!userData) {
-      console.log("⏳ User data not ready, waiting...");
-      // setTimeout(startAutoPrint, 500); // Avoid recursive timeout in callback, simplified logic below
-      return;
-    }
-
-    console.log("✅ Data ready, starting print...");
-    directPrint();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userData]); // directPrint uses userData from closure, safe to exclude
-
-  useEffect(() => {
-    console.log("📍 Sharing page received data:", location.state);
-
-    if (location.state) {
-      setUserData(location.state);
-      console.log("✅ Complete health data loaded in Sharing:", location.state);
-
-      // Auto-start printing when component loads and content is ready
-      // We use a small delay to ensure state update has processed
-      const printTimer = setTimeout(() => {
-        // Trigger print directly here to avoid complex dependency chains with userData
-        // or call the function if it's stable
-      }, 1000);
-
-      return () => clearTimeout(printTimer);
-
-    } else {
-      console.log("❌ No data received from Result page");
-      navigate("/measure/result");
-      return;
-    }
-
-    // Removing isVisible logic as it was unused
-  }, [location.state, navigate]);
-
-  // Effect to trigger print when userData is set
-  useEffect(() => {
-    if (userData) {
-      const timer = setTimeout(() => {
-        startAutoPrint();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [userData, startAutoPrint]);
-
-  // generateReceiptContent function removed - receipt is now generated by backend
-
-  const clearAllUserData = () => {
-    console.log('🧹 Clearing all user data and resetting system...');
-
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('userData');
-    sessionStorage.removeItem('currentUser');
-    sessionStorage.removeItem('userData');
-
-    if (window.reduxStore) {
-      window.reduxStore.dispatch({ type: 'RESET_USER_DATA' });
-    }
-
-    if (window.currentUserData) {
-      window.currentUserData = null;
-    }
-
-    console.log('✅ All user data cleared - system ready for next user');
-  };
-
-  const handleReturnHome = () => {
-    console.log('🏠 Returning to home - clearing all user data and resetting system');
-
-    clearAllUserData();
-
-    setTimeout(() => {
-      navigate("/", {
-        replace: true,
-        state: {
-          fromSharing: true,
-          reset: true
-        }
-      });
-    }, 100);
-  };
-
-  const handlePrintAgain = () => {
-    setPrintComplete(false);
-    startAutoPrint();
-  };
-
-  if (!userData) {
-    return (
-      <div className="share-container">
-        <div className="share-content visible">
-          <div className="share-header">
-            <div className="share-icon">
-              <div className="ready-icon">⚠️</div>
-            </div>
-            <h1 className="share-title">Loading Data...</h1>
-            <p className="share-subtitle">Please wait while we load your health information</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!userData) return null;
 
   return (
-    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 share-container">
-      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 share-content page-transition`} style={{ maxWidth: '600px', width: '100%' }}>
+    <div className="sharing-container">
+      {/* ================= PRINT RECEIPT SECTION (Visible only in Print) ================= */}
+      <div className="print-receipt">
+        <div className="receipt-header">
+          <div className="receipt-title">Vital Sign Kiosk</div>
+          <div className="receipt-subtitle">Health Measurement Report</div>
+          <div className="receipt-date">{new Date().toLocaleString()}</div>
+        </div>
 
-        {/* Header */}
-        <div className="text-center mb-5 share-header">
-          <div className="mb-4 d-flex justify-content-center">
-            <div className="share-icon" style={{ fontSize: '4rem' }}>
-              {isPrinting ? (
-                <div className="printing-animation">
-                  <span className="printer-icon">🖨️</span>
-                </div>
-              ) : printComplete ? (
-                <span className="success-icon text-success">✅</span>
-              ) : (
-                <span className="ready-icon">🖨️</span>
-              )}
-            </div>
+        <div className="receipt-user-info">
+          <div className="receipt-row">
+            <span>Name:</span>
+            <strong>{userData.firstName} {userData.lastName}</strong>
           </div>
+          <div className="receipt-row">
+            <span>ID:</span>
+            <strong>{userData.schoolNumber || userData.user_id || "N/A"}</strong>
+          </div>
+          <div className="receipt-row">
+            <span>Age/Sex:</span>
+            <strong>{userData.age} / {userData.sex}</strong>
+          </div>
+        </div>
 
-          <h1 className="fw-bold mb-2 share-title">
-            {isPrinting ? "Printing Receipt..." :
-              printComplete ? "Print Complete!" :
-                "Printing Health Receipt"}
-          </h1>
+        <div className="receipt-vitals">
+          <div className="receipt-section-title">Measurements</div>
 
-          <p className="text-muted fs-5 share-subtitle">
-            {isPrinting ? "Sending to thermal printer..." :
-              printComplete ? "Your health receipt has been printed" :
-                "Auto-printing your health assessment"}
+          {/* BMI */}
+          {(userData.weight || userData.height) && (
+            <>
+              <div className="vital-row">
+                <span className="vital-label">Weight:</span>
+                <span className="vital-value">{formatValue(userData.weight, "kg")}</span>
+              </div>
+              <div className="vital-row">
+                <span className="vital-label">Height:</span>
+                <span className="vital-value">{formatValue(userData.height, "cm")}</span>
+              </div>
+              <div className="vital-row">
+                <span className="vital-label">BMI:</span>
+                <span className="vital-value">{formatValue(userData.bmi)}</span>
+              </div>
+            </>
+          )}
+
+          {/* Blood Pressure */}
+          {userData.systolic && (
+            <div className="vital-row">
+              <span className="vital-label">Blood Pressure:</span>
+              <span className="vital-value">{userData.systolic}/{userData.diastolic} mmHg</span>
+            </div>
+          )}
+
+          {/* Heart Rate & SpO2 */}
+          {(userData.heartRate || userData.spo2) && (
+            <>
+              <div className="vital-row">
+                <span className="vital-label">Heart Rate:</span>
+                <span className="vital-value">{formatValue(userData.heartRate, "bpm")}</span>
+              </div>
+              <div className="vital-row">
+                <span className="vital-label">SpO2:</span>
+                <span className="vital-value">{formatValue(userData.spo2, "%")}</span>
+              </div>
+              {userData.respiratoryRate && (
+                <div className="vital-row">
+                  <span className="vital-label">Respiratory Rate:</span>
+                  <span className="vital-value">{formatValue(userData.respiratoryRate, "/min")}</span>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Temperature */}
+          {userData.temperature && (
+            <div className="vital-row">
+              <span className="vital-label">Body Temp:</span>
+              <span className="vital-value">{formatValue(userData.temperature, "°C")}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="receipt-footer">
+          <div className="receipt-disclaimer">
+            * This is not a medical diagnosis. Consult a doctor for professional advice.
+          </div>
+          <div style={{ marginTop: '10px' }}>Powered by 4-in-1 Vital Sign Kiosk</div>
+        </div>
+      </div>
+      {/* ================= END PRINT RECEIPT ================= */}
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="sharing-content"
+      >
+        {/* Header */}
+        <div className="sharing-header">
+          <h1 className="sharing-title">Measurement Complete</h1>
+          <p className="sharing-subtitle">
+            Your results have been recorded. <br />
+            Returning to home in <span className="timer-badge">{autoRedirectTimer}s</span>
           </p>
         </div>
 
-        {/* Patient Info */}
-        <div className="mb-5 patient-info">
-          <div className="card border-0 bg-light p-4 patient-card">
-            <div className="h4 fw-bold mb-2 text-center text-primary patient-name">
-              {userData.firstName} {userData.lastName}
-            </div>
-            <div className="text-center text-muted patient-details">
-              Age: {userData?.age || 'N/A'} • {userData?.sex ? userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1).toLowerCase() : 'N/A'} • Risk Level: {userData?.riskLevel || 'N/A'}%
-            </div>
-          </div>
-        </div>
+        {/* Card Section */}
+        <div className="sharing-card-section">
+          <div className="sharing-welcome-card">
 
-        {/* Status Info */}
-        <div className="text-center mb-4 status-info">
-          <div className="printer-status mb-3 text-muted small">
-            <strong className="d-block mb-1">Thermal Printer Ready</strong>
-            <span>POS58 • Large Font Size • Auto-print</span>
-          </div>
-
-          {isPrinting && (
-            <div className="print-progress">
-              <div className="progress mb-2" style={{ height: '6px' }}>
-                <div className="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style={{ width: '100%' }}></div>
+            {/* Dynamic Modern Icon - Matched to Saving.jsx */}
+            {/* Dynamic Modern Icon - Matched to Saving.jsx */}
+            <div className="sharing-card-icon">
+              <div className="success-icon-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="success-svg">
+                  <path d="M20 6L9 17L4 12" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
-              <small className="text-muted">Printing health receipt for {userData.firstName}...</small>
             </div>
-          )}
+
+            <div className="sharing-card-content">
+              <h3 className="sharing-card-title">
+                {emailSent ? "Report Sent Successfully" : printSent ? "Receipt Printed" : "All Measurements Done"}
+              </h3>
+              <p className="sharing-card-description">
+                {emailSent || printSent
+                  ? "Thank you for using our service. Your health data is secured."
+                  : "Choose how you would like to receive your results below."}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="d-grid gap-3 action-buttons">
-          {printComplete ? (
-            <>
-              <button
-                className="btn btn-outline-primary btn-lg rounded-pill fw-bold"
-                onClick={handlePrintAgain}
-              >
-                🖨️ Print Another Copy
-              </button>
-
-              <button
-                className="btn btn-danger btn-lg rounded-pill fw-bold text-white shadow"
-                onClick={handleReturnHome}
-              >
-                🏠 Return to Home (New User)
-              </button>
-            </>
-          ) : isPrinting ? (
-            <div className="text-center py-3 text-muted">
-              <div className="spinner-border text-primary mb-2" role="status"></div>
-              <div>Please wait while we print your receipt...</div>
+        {/* Options Grid */}
+        <div className="sharing-options-grid">
+          {/* Email Option */}
+          <button
+            className={`action-card ${emailSent ? 'success' : ''}`}
+            onClick={handleSendEmail}
+            disabled={emailSent || isSending}
+          >
+            <div className="action-icon">
+              {emailSent ? '✓' : '📧'}
             </div>
-          ) : (
-            <button
-              className="btn btn-primary btn-lg rounded-pill fw-bold shadow"
-              onClick={startAutoPrint}
+            <div className="action-details">
+              <span className="action-title">{emailSent ? 'Email Sent' : 'Email Results'}</span>
+              <span className="action-desc">Send to registered email</span>
+            </div>
+            {isSending && !isPrinting && <div className="card-spinner"></div>}
+          </button>
+
+          {/* Print Option */}
+          <button
+            className={`action-card ${printSent ? 'success' : isPrinting ? 'processing' : ''}`}
+            onClick={handlePrint}
+            disabled={isPrinting}
+          >
+            <div className="action-icon">
+              {printSent ? '✓' : isPrinting ? '⏳' : '🖨️'}
+            </div>
+            <div className="action-details">
+              <span className="action-title">{printSent ? 'Printed' : isPrinting ? 'Printing...' : 'Print Receipt'}</span>
+              <span className="action-desc">{printSent ? 'Receipt sent to printer' : 'Get a physical copy'}</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Finish Button */}
+        <div className="sharing-footer-action">
+          <button
+            className="finish-button"
+            onClick={handleReturnHome}
+          >
+            Finish Session
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Modern Status Pop-out Modal */}
+      <AnimatePresence>
+        {modalConfig.show && (
+          <div className="status-modal-overlay" onClick={closeModal}>
+            <motion.div
+              className={`status-modal-content ${modalConfig.type}`}
+              initial={{ opacity: 0, scale: 0.8, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 50 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              🖨️ Print Now
-            </button>
-          )}
-        </div>
-
-      </div>
+              <div className="status-modal-icon">
+                <span>{modalConfig.type === 'success' ? '📨' : '⚠️'}</span>
+              </div>
+              <h2 className="status-modal-title">{modalConfig.title}</h2>
+              <p className="status-modal-message">{modalConfig.message}</p>
+              <button
+                className="status-modal-button"
+                onClick={closeModal}
+              >
+                {modalConfig.type === 'success' ? 'Great!' : 'Close'}
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -16,10 +16,10 @@ forgot_password_bp = Blueprint('forgot_password', __name__)
 import os
 
 # Email Configuration
-SMTP_SERVER = os.getenv('SMTP_SERVER', "smtp.gmail.com")
+SMTP_SERVER = os.getenv('SMTP_SERVER')
 SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
-SENDER_EMAIL = os.getenv('SENDER_EMAIL', "fin.vitalsigns@gmail.com")
-SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', "ryvf avyg sxib vbzs")
+SENDER_EMAIL = os.getenv('SENDER_EMAIL')
+SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
 
 def send_email(to_email, subject, body):
     try:
@@ -42,7 +42,8 @@ def send_email(to_email, subject, body):
         return False
 
 def generate_otp(length=6):
-    return ''.join(random.choices(string.digits, k=length))
+    characters = string.digits + string.ascii_uppercase
+    return ''.join(random.choices(characters, k=length))
 
 def get_modern_email_template(name, otp):
     return f"""
