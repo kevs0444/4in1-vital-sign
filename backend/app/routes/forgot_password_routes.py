@@ -22,6 +22,10 @@ SENDER_EMAIL = os.getenv('SENDER_EMAIL')
 SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
 
 def send_email(to_email, subject, body):
+    if not SMTP_SERVER or not SENDER_EMAIL or not SENDER_PASSWORD:
+        print("❌ Email Config Missing! Please check .env for SMTP_SERVER, SENDER_EMAIL, and SENDER_PASSWORD.")
+        return False
+
     try:
         msg = MIMEMultipart()
         msg['From'] = f"Vital Sign System <{SENDER_EMAIL}>"
@@ -31,7 +35,9 @@ def send_email(to_email, subject, body):
         msg.attach(MIMEText(body, 'html'))
 
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.ehlo()
         server.starttls()
+        server.ehlo()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         text = msg.as_string()
         server.sendmail(SENDER_EMAIL, to_email, text)
@@ -264,12 +270,13 @@ def forgot_password():
             return jsonify({
                 'success': True, 
                 'message': f'Verification code sent to {masked_email}',
-                'email': user_email # Returning this so frontend can use it if needed (be careful with privacy)
+                'email': user_email, # Returning this so frontend can use it if needed (be careful with privacy)
+                'expires_in': 600 # 10 minutes in seconds
             }), 200
         else:
             print(f"⚠️ Email send failed. OTP for {user_email} is: {otp}")
             print("=" * 60)
-            return jsonify({'success': True, 'message': 'OTP generated (Check server logs)'}), 200
+            return jsonify({'success': True, 'message': 'OTP generated (Check server logs)', 'expires_in': 600}), 200
 
     except Exception as e:
         print(f"❌ Error in forgot_password: {e}")

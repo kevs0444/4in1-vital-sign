@@ -42,6 +42,7 @@ export default function ForgotPassword() {
     // OTP Rate Limiting
     const [otpCooldown, setOtpCooldown] = useState(0);
     const [lastRequestedIdentifier, setLastRequestedIdentifier] = useState('');
+    const [timeLeft, setTimeLeft] = useState(0); // Expiration timer in seconds
 
     // Cooldown countdown timer
     useEffect(() => {
@@ -50,6 +51,23 @@ export default function ForgotPassword() {
             return () => clearTimeout(timer);
         }
     }, [otpCooldown]);
+
+    // OTP Expiration Timer
+    useEffect(() => {
+        if (step === 2 && timeLeft > 0) {
+            const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+            return () => clearTimeout(timer);
+        } else if (step === 2 && timeLeft === 0) {
+            // Timer expired
+            // Optionally auto-fail or just rely on UI state
+        }
+    }, [timeLeft, step]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
 
     const handleSendOTP = async (e) => {
         if (e) e.preventDefault();
@@ -82,6 +100,8 @@ export default function ForgotPassword() {
                 setOtp('');
                 // Set cooldown for 60 seconds
                 setOtpCooldown(60);
+                // Set expiration timer (default 10 mins if not provided)
+                setTimeLeft(data.expires_in || 600);
                 setLastRequestedIdentifier(identifier);
             } else {
                 setErrorTitle('Unable to Send Code');
@@ -385,6 +405,16 @@ export default function ForgotPassword() {
                         <p className="forgot-password-subtitle">
                             {step === 1 && "Enter your School Number or Email Address"}
                             {step === 2 && (successMessage || "Enter the 6-digit code sent to your email")}
+                            {step === 2 && timeLeft > 0 && (
+                                <span className="otp-timer-display" style={{ display: 'block', marginTop: '5px', color: timeLeft < 60 ? '#dc2626' : '#4b5563', fontWeight: 'bold' }}>
+                                    Code expires in: {formatTime(timeLeft)}
+                                </span>
+                            )}
+                            {step === 2 && timeLeft === 0 && (
+                                <span className="otp-timer-display" style={{ display: 'block', marginTop: '5px', color: '#dc2626', fontWeight: 'bold' }}>
+                                    ⚠️ Code Expired
+                                </span>
+                            )}
                             {step === 3 && "Create a new strong password"}
                             {step === 4 && "Password updated successfully!"}
                         </p>
@@ -557,8 +587,19 @@ export default function ForgotPassword() {
                             </button>
                         )}
                         {step === 2 && (
-                            <button className="action-button" onClick={handleVerifyOTP} disabled={isLoading}>
-                                {isLoading ? <span className="spinner"></span> : "Verify & Proceed →"}
+                            <button className="action-button" onClick={handleVerifyOTP} disabled={isLoading || timeLeft === 0}>
+                                {isLoading ? <span className="spinner"></span> :
+                                    timeLeft === 0 ? "Code Expired - Go Back" :
+                                        "Verify & Proceed →"}
+                            </button>
+                        )}
+                        {step === 2 && timeLeft === 0 && (
+                            <button className="action-button secondary-button" onClick={() => {
+                                setStep(1);
+                                setOtp('');
+                                setIdentifier('');
+                            }} style={{ background: '#6b7280', marginTop: '10px' }}>
+                                Start Over
                             </button>
                         )}
                         {step === 3 && (

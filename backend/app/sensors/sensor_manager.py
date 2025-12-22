@@ -14,6 +14,7 @@ class SensorManager:
         self.is_connected = False
         self.port = None
         self.baudrate = 9600
+        self.ir_log_counter = 0  # Counter for throttling logs
         
         # Sensor status flags
         self.weight_sensor_ready = False
@@ -143,8 +144,15 @@ class SensorManager:
 
     def _listen_serial(self):
         """Listen for incoming serial data"""
+        last_heartbeat = time.time()
+        
         while not self._stop_listener and self.is_connected:
             try:
+                # Heartbeat logging every 5 seconds to show system is alive
+                if time.time() - last_heartbeat > 5:
+                    logger.info("💓 System Heartbeat: Arduino connection active")
+                    last_heartbeat = time.time()
+
                 if self.serial_conn and self.serial_conn.in_waiting:
                     line = self.serial_conn.readline().decode('utf-8', errors='ignore').strip()
                     if line:
@@ -156,8 +164,16 @@ class SensorManager:
 
     def _parse_serial_data(self, data):
         """Parse incoming serial data"""
-        logger.info(f"ARDUINO: {data}")
-        print(f"🔵 ARDUINO → {data}")
+        # Throttled logging for high-frequency IR values (every 50th reading ~ 1 sec)
+        if data.startswith("MAX30102_IR_VALUE"):
+            self.ir_log_counter += 1
+            if self.ir_log_counter % 50 == 0:
+                logger.info(f"ARDUINO: {data}")
+                print(f"🔵 ARDUINO → {data}")
+        else:
+            # Log everything else normally
+            logger.info(f"ARDUINO: {data}")
+            print(f"🔵 ARDUINO → {data}")
 
         # ==================== SYSTEM STATUS ====================
         if data.startswith("STATUS:"):
@@ -249,9 +265,34 @@ class SensorManager:
         # ==================== MAX30102 SPECIFIC ====================
         elif data.startswith("MAX30102_IR_VALUE:"):
             try:
-                ir_value = int(data.split(":")[1])
+                parts = data.split(":")
+                ir_value = int(parts[1])
                 self.live_data['max30102']['ir_value'] = ir_value
-                # Don't print every IR value to avoid spam
+                
+                # Check for appended data (e.g. "MAX30102_IR_VALUE:9452: 63 BPM" or "63 bpm" or "HR: 63")
+                if len(parts) > 2:
+                    extra_data = parts[2].strip()
+                    
+                    # Try to scrape Heart Rate (look for digits followed by BPM, case insensitive)
+                    bpm_match = re.search(r'(\d+)\s*bpm', extra_data, re.IGNORECASE)
+                    if bpm_match:
+                        hr = int(bpm_match.group(1))
+                        self.live_data['max30102']['heart_rate'] = hr
+                        logger.info(f"💓 Scraped Heart Rate from IR line: {hr} BPM")
+                    elif "bpm" in extra_data.lower():
+                        # Fallback: if 'bpm' is in string but regex failed, just grab the first number
+                        nums = re.findall(r'\d+', extra_data)
+                        if nums:
+                            hr = int(nums[0])
+                            self.live_data['max30102']['heart_rate'] = hr
+                            logger.info(f"💓 Fallback Scraped Heart Rate: {hr} BPM")
+
+                    # Try to scrape SpO2
+                    spo2_match = re.search(r'(\d+)\s*%', extra_data) or re.search(r'SPO2:?\s*(\d+)', extra_data, re.IGNORECASE)
+                    if spo2_match:
+                        spo2 = int(spo2_match.group(1))
+                        self.live_data['max30102']['spo2'] = spo2
+                        logger.info(f"🩸 Scraped SpO2 from IR line: {spo2}%")
             except ValueError:
                 pass
 

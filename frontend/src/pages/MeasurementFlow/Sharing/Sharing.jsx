@@ -243,6 +243,56 @@ export default function Sharing() {
           )}
         </div>
 
+        {/* AI Assessment Section for Visual Receipt */}
+        {(userData.riskLevel !== undefined || (userData.suggestions && userData.suggestions.length > 0)) && (
+          <div className="receipt-vitals" style={{ marginTop: '10px', borderTop: '1px dashed #000', paddingTop: '10px' }}>
+            <div className="receipt-section-title">AI Assessment</div>
+
+            {userData.riskLevel !== undefined && (
+              <div className="receipt-row">
+                <span>Risk Level:</span>
+                <strong>{userData.riskCategory} ({userData.riskLevel}%)</strong>
+              </div>
+            )}
+
+            {userData.suggestions && userData.suggestions[0] && (
+              <div style={{ marginTop: '5px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>SUGGESTED ACTIONS:</div>
+                {userData.suggestions.map((s, i) => (
+                  <div key={i} style={{ fontSize: '10px', paddingLeft: '5px' }}>- {s}</div>
+                ))}
+              </div>
+            )}
+
+            {userData.preventions && userData.preventions[0] && (
+              <div style={{ marginTop: '5px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>PREVENTIVE STRATEGY:</div>
+                {userData.preventions.map((s, i) => (
+                  <div key={i} style={{ fontSize: '10px', paddingLeft: '5px' }}>- {s}</div>
+                ))}
+              </div>
+            )}
+
+            {userData.wellnessTips && userData.wellnessTips[0] && (
+              <div style={{ marginTop: '5px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>WELLNESS TIPS:</div>
+                {userData.wellnessTips.map((s, i) => (
+                  <div key={i} style={{ fontSize: '10px', paddingLeft: '5px' }}>- {s}</div>
+                ))}
+              </div>
+            )}
+
+            {userData.providerGuidance && userData.providerGuidance[0] && (
+              <div style={{ marginTop: '5px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>GUIDANCE:</div>
+                {userData.providerGuidance.map((s, i) => (
+                  <div key={i} style={{ fontSize: '10px', paddingLeft: '5px' }}>{s}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="receipt-footer">
           <div className="receipt-disclaimer">
             * This is not a medical diagnosis. Consult a doctor for professional advice.
@@ -315,7 +365,7 @@ export default function Sharing() {
           <button
             className={`action-card ${printSent ? 'success' : isPrinting ? 'processing' : ''}`}
             onClick={handlePrint}
-            disabled={isPrinting}
+            disabled={printSent || isPrinting}
           >
             <div className="action-icon">
               {printSent ? '✓' : isPrinting ? '⏳' : '🖨️'}

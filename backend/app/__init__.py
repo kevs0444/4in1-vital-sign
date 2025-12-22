@@ -12,9 +12,9 @@ def create_app():
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     
-    # Remove existing handlers to avoid duplicates
-    for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
+    # Remove existing handlers to avoid duplicates -- DISABLED to preserve run.py config
+    # for handler in root_logger.handlers[:]:
+    #     root_logger.removeHandler(handler)
         
     # Create console handler with formatting
     console_handler = logging.StreamHandler(sys.stdout)
@@ -22,8 +22,8 @@ def create_app():
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
     
-    # Add handler to root logger
-    root_logger.addHandler(console_handler)
+    # Add handler to root logger - DISABLED (run.py already adds one)
+    # root_logger.addHandler(console_handler)
     
     # Also ensure app.logger uses this
     app.logger.handlers = []
@@ -52,7 +52,7 @@ def create_app():
     app.register_blueprint(forgot_password_bp, url_prefix='/api/auth')
     
     from app.routes.camera_routes import camera_bp
-    app.register_blueprint(camera_bp, url_prefix='/camera')
+    app.register_blueprint(camera_bp, url_prefix='/api/camera')
 
     from app.routes.print_routes import print_bp
     app.register_blueprint(print_bp, url_prefix='/api/print')
@@ -65,6 +65,9 @@ def create_app():
 
     from app.routes.juan_ai_routes import juan_ai_bp
     app.register_blueprint(juan_ai_bp, url_prefix='/api/juan-ai')
+    
+    from app.routes.bp_ai_camera import bp_ai_camera_bp
+    app.register_blueprint(bp_ai_camera_bp, url_prefix='/api/bp-camera')
     
     print("\n" + "="*60)
     print("🚀 BACKEND SERVER is READY and RUNNING")

@@ -11,6 +11,10 @@ const FINAL_TIMEOUT = 60000;   // 60 seconds (1 minute total)
 const EXCLUDED_PATHS = [
     '/',           // Standby page
     '/standby',    // Alternative standby path
+    '/measure/max30102',
+    '/measure/bmi',
+    '/measure/bodytemp',
+    '/measure/bloodpressure',
 ];
 
 const InactivityWrapper = ({ children }) => {

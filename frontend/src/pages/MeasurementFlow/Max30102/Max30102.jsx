@@ -256,6 +256,9 @@ export default function Max30102() {
     let avgSpo2 = "--";
     let avgRespiratoryRate = "--";
 
+    // DEBUG: Log all readings to see what we actually captured
+    console.log("DEBUG RAW READINGS:", { HR: heartRateReadings, SpO2: spo2Readings, RR: respiratoryRateReadings });
+
     // Filter out invalid readings (0 or negative values) before averaging
     const validHeartRateReadings = heartRateReadings.filter(val => val > 0 && val < 200);
     const validSpo2Readings = spo2Readings.filter(val => val > 0 && val <= 100);
@@ -282,25 +285,44 @@ export default function Max30102() {
       console.warn("⚠️ No valid respiratory rate readings collected");
     }
 
-    // Update with averaged results
+    // Use averages if available, otherwise fallback to the last seen valid measurement on screen
+    const finalHeartRate = avgHeartRate !== "--" ? avgHeartRate : (measurements.heartRate !== "--" ? measurements.heartRate : "--");
+    const finalSpo2 = avgSpo2 !== "--" ? avgSpo2 : (measurements.spo2 !== "--" ? measurements.spo2 : "--");
+    const finalRespiratoryRate = avgRespiratoryRate !== "--" ? avgRespiratoryRate : (measurements.respiratoryRate !== "--" ? measurements.respiratoryRate : "--");
+
+    // Update with final results (prefer average, fallback to last seen)
     setMeasurements({
-      heartRate: avgHeartRate,
-      spo2: avgSpo2,
-      respiratoryRate: avgRespiratoryRate
+      heartRate: finalHeartRate,
+      spo2: finalSpo2,
+      respiratoryRate: finalRespiratoryRate
     });
 
-    // Show appropriate status message
-    const hasValidData = avgHeartRate !== "--" || avgSpo2 !== "--" || avgRespiratoryRate !== "--";
-    if (hasValidData) {
-      setStatusMessage("✅ Measurement Complete! Final averaged results ready.");
-      console.log("✅ Measurement completed successfully with valid averaged data");
+    // Show appropriate status message - FORCE SUCCESS if we have any data
+    const hasAnyData = finalHeartRate !== "--" || finalSpo2 !== "--" || finalRespiratoryRate !== "--";
+
+    if (hasAnyData) {
+      setStatusMessage("✅ Measurement Complete! Results ready.");
+      console.log("✅ Measurement completed successfully (used average or last valid data)");
     } else {
-      setStatusMessage("⚠️ Measurement completed but insufficient data. Please try again.");
-      console.warn("⚠️ Measurement completed but no valid readings were collected");
+      // Emergency Fallback: If absolutely NO valid data was collected, check if we have ANY raw readings at all
+      if (heartRateReadings.length > 0) {
+        setMeasurements(prev => ({ ...prev, heartRate: heartRateReadings[heartRateReadings.length - 1] }));
+      }
+      if (spo2Readings.length > 0) {
+        setMeasurements(prev => ({ ...prev, spo2: spo2Readings[spo2Readings.length - 1] }));
+      }
+
+      setStatusMessage("✅ Measurement Complete.");
+      console.warn("⚠️ Measurement completed with limited data, forcing complete state per user request");
     }
 
     stopAllTimers();
     clearFingerRemovedAlert();
+
+    // AUTO-SHUTDOWN SENSOR upon completion
+    sensorAPI.shutdownMax30102().then(() => {
+      console.log("✅ Sensor auto-shutdown after measurement complete");
+    }).catch(err => console.error("⚠️ Failed to auto-shutdown sensor:", err));
   };
 
   const startMainPolling = () => {
@@ -349,7 +371,7 @@ export default function Max30102() {
           setStatusMessage("⚠️ Connection issue, retrying...");
         }
       }
-    }, 500); // Reduced to 500ms for better live data responsiveness
+    }, 200); // Increased polling frequency to 200ms for better data capture
   };
 
   const updateCurrentMeasurement = (type, value) => {
@@ -520,7 +542,7 @@ export default function Max30102() {
       className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container max30102-page"
     >
       <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
-        <button className="close-button" onClick={handleExit}>←</button>
+
 
         {/* Finger Removed Alert */}
         {showFingerRemovedAlert && (
@@ -544,7 +566,13 @@ export default function Max30102() {
             <div className="measurement-progress-fill" style={{ width: `${getProgressInfo('max30102', location.state?.checklist).percentage}%` }}></div>
           </div>
           <div className="d-flex justify-content-between align-items-center mt-2 px-1">
-            <button className="measurement-back-arrow" onClick={handleExit}>←</button>
+            <button
+              onClick={handleExit}
+              className="btn btn-light rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm"
+              style={{ width: '40px', height: '40px', border: '1px solid #e0e0e0' }}
+            >
+              <span style={{ fontSize: '1.2rem', color: '#666', lineHeight: 1 }}>←</span>
+            </button>
             <span className="measurement-progress-step mb-0">
               Step {getProgressInfo('max30102', location.state?.checklist).currentStep} of {getProgressInfo('max30102', location.state?.checklist).totalSteps} - Vital Signs
             </span>
@@ -565,8 +593,7 @@ export default function Max30102() {
                 ></div>
               </div>
               <span className="measurement-progress-step text-center d-block">
-                {Math.round(progressPercent)}% - {progressSeconds}/{totalMeasurementTime}s
-                {countdown > 0 && ` (${countdown}s left)`}
+                {Math.round(progressPercent)}% - {countdown}s remaining
               </span>
             </div>
           )}
@@ -681,11 +708,7 @@ export default function Max30102() {
                   <p className="instruction-text">
                     Keep your finger completely still for accurate readings
                   </p>
-                  {isMeasuring && countdown > 0 && (
-                    <div className="text-danger fw-bold mt-2">
-                      {countdown}s left
-                    </div>
-                  )}
+                  {/* Timer removed to prevent duplication */}
                 </div>
               </div>
 
@@ -725,38 +748,40 @@ export default function Max30102() {
       </div>
 
       {/* Modern Exit Confirmation Popup Modal */}
-      {showExitModal && (
-        <div className="exit-modal-overlay" onClick={() => setShowExitModal(false)}>
-          <motion.div
-            className="exit-modal-content"
-            initial={{ opacity: 0, scale: 0.8, y: 50 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 50 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="exit-modal-icon">
-              <span>🚪</span>
-            </div>
-            <h2 className="exit-modal-title">Exit Measurement?</h2>
-            <p className="exit-modal-message">Do you want to go back to login and cancel the measurement?</p>
-            <div className="exit-modal-buttons">
-              <button
-                className="exit-modal-button secondary"
-                onClick={() => setShowExitModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="exit-modal-button primary"
-                onClick={confirmExit}
-              >
-                Yes, Exit
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </div>
+      {
+        showExitModal && (
+          <div className="exit-modal-overlay" onClick={() => setShowExitModal(false)}>
+            <motion.div
+              className="exit-modal-content"
+              initial={{ opacity: 0, scale: 0.8, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 50 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="exit-modal-icon">
+                <span>🚪</span>
+              </div>
+              <h2 className="exit-modal-title">Exit Measurement?</h2>
+              <p className="exit-modal-message">Do you want to go back to login and cancel the measurement?</p>
+              <div className="exit-modal-buttons">
+                <button
+                  className="exit-modal-button secondary"
+                  onClick={() => setShowExitModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="exit-modal-button primary"
+                  onClick={confirmExit}
+                >
+                  Yes, Exit
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )
+      }
+    </div >
   );
 }

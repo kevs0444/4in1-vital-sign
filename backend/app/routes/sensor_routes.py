@@ -9,7 +9,16 @@ sensor_bp = Blueprint('sensor', __name__)
 @sensor_bp.route('/connect', methods=['POST'])
 def connect_sensors():
     """Establishes connection to Arduino with auto-tare."""
+    print("\n" + "="*50)
+    print("🔌 ARDUINO CONNECTION REQUEST")
+    print("="*50)
     connected = sensor_manager.connect()
+    if connected:
+        print(f"✅ Arduino connected on {sensor_manager.port}")
+        print(f"   Auto-tare: {'Completed' if sensor_manager.auto_tare_completed else 'Pending'}")
+    else:
+        print("❌ Arduino connection failed")
+    print("="*50 + "\n")
     return jsonify({
         "connected": connected,
         "port": sensor_manager.port if connected else None,
@@ -21,7 +30,9 @@ def connect_sensors():
 @sensor_bp.route('/disconnect', methods=['POST'])
 def disconnect_sensors():
     """Disconnects from the Arduino and powers down all sensors."""
+    print("🔌 Disconnecting from Arduino...")
     sensor_manager.disconnect()
+    print("✅ Arduino disconnected")
     return jsonify({"status": "disconnected"})
 
 @sensor_bp.route('/status', methods=['GET'])
@@ -97,6 +108,7 @@ def get_all_measurements():
 # Individual sensor routes - WEIGHT, HEIGHT & TEMPERATURE
 @sensor_bp.route('/weight/start', methods=['POST'])
 def start_weight():
+    print("⚖️ Starting WEIGHT measurement...")
     result = sensor_manager.start_weight_measurement()
     return jsonify(result)
 
@@ -116,6 +128,7 @@ def get_weight_status():
 
 @sensor_bp.route('/height/start', methods=['POST'])
 def start_height():
+    print("📏 Starting HEIGHT measurement...")
     result = sensor_manager.start_height_measurement()
     return jsonify(result)
 
@@ -136,6 +149,7 @@ def get_height_status():
 # Temperature sensor routes
 @sensor_bp.route('/temperature/start', methods=['POST'])
 def start_temperature():
+    print("🌡️ Starting TEMPERATURE measurement...")
     result = sensor_manager.start_temperature_measurement()
     return jsonify(result)
 
@@ -157,6 +171,7 @@ def get_temperature_status():
 @sensor_bp.route('/max30102/start', methods=['POST'])
 def start_max30102():
     """Start MAX30102 measurement (heart rate, SpO2, respiratory rate)"""
+    print("❤️ Starting MAX30102 measurement (HR, SpO2, RR)...")
     result = sensor_manager.start_max30102_measurement()
     return jsonify(result)
 

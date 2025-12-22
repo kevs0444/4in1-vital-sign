@@ -146,10 +146,15 @@ class CameraManager:
         try:
             if ComplianceDetector:
                 if self.detector is None:
-                    self.detector = ComplianceDetector()
+                    try:
+                        self.detector = ComplianceDetector()
+                    except Exception as e:
+                        logger.error(f"Failed to init detector: {e}")
             else:
-                logger.error("ComplianceDetector not available")
-                return False, "AI Module not available"
+                logger.warning("ComplianceDetector class not imported")
+
+            # Proceed even if detector is None, as reading mode doesn't need it
+
 
             # Try to open camera
             logger.info(f"Opening camera index: {self.camera_index}")
@@ -192,8 +197,67 @@ class CameraManager:
             frame = self.apply_filters(frame)
                 
             # Run detection based on mode
-            if self.detector:
-                if getattr(self, 'current_mode', 'feet') == 'body':
+            current_mode = getattr(self, 'current_mode', 'feet')
+            
+            if current_mode == 'reading':
+                 # --- NEW SMART BP DETECTION ---
+                 annotated_frame = frame.copy()
+                 h, w = frame.shape[:2]
+                 
+                 # Guide Box (White, thin): Shows where to aim
+                 center_x, center_y = w // 2, h // 2
+                 box_w, box_h = int(w * 0.6), int(h * 0.6)
+                 cv2.rectangle(annotated_frame, 
+                               (center_x - box_w//2, center_y - box_h//2), 
+                               (center_x + box_w//2, center_y + box_h//2), 
+                               (255, 255, 255), 1)
+                 
+                 # Lazy Load YOLO (only if needed)
+                 if not hasattr(self, 'bp_yolo'):
+                     try:
+                         from ultralytics import YOLO
+                         yolo_path = os.path.join(os.path.dirname(__file__), '../../ai_camera/models/yolo11n.pt')
+                         self.bp_yolo = YOLO(yolo_path)
+                     except Exception as e:
+                         logger.error(f"Failed to load YOLO for BP: {e}")
+                         self.bp_yolo = None
+
+                 # Run Detection every ~3 frames to save CPU
+                 # We simply use a frame counter or time check, but for now lets try every frame for smoothness
+                 # YOLO Nano is fast!
+                 if self.bp_yolo:
+                     results = self.bp_yolo(frame, classes=[62, 63, 67, 72, 73], conf=0.15, verbose=False)
+                     
+                     monitor_detected = False
+                     if results and len(results[0].boxes) > 0:
+                         # Find largest box
+                         best_box = None
+                         max_area = 0
+                         for box in results[0].boxes:
+                             x1, y1, x2, y2 = map(int, box.xyxy[0])
+                             area = (x2 - x1) * (y2 - y1)
+                             if area > max_area:
+                                 max_area = area
+                                 best_box = (x1, y1, x2, y2)
+                         
+                         if best_box:
+                             monitor_detected = True
+                             bx1, by1, bx2, by2 = best_box
+                             
+                             # Draw GREEN Box (Success!)
+                             cv2.rectangle(annotated_frame, (bx1, by1), (bx2, by2), (0, 255, 0), 3)
+                             cv2.putText(annotated_frame, "BP MONITOR DETECTED", (bx1, by1 - 10), 
+                                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                 
+                 if not monitor_detected:
+                      cv2.putText(annotated_frame, "Align Monitor Here", (center_x - 80, center_y), 
+                                  cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1)
+
+                 status_msg = "Reading Mode"
+                 is_compliant = True # In reading mode, we are always "compliant" to allow capture
+            
+            elif self.detector:
+                if current_mode == 'body':
                      # Body/Wearables Mode
                      annotated_frame, status_msg, is_compliant = self.detector.detect_body(frame)
                 else:
@@ -201,7 +265,7 @@ class CameraManager:
                      annotated_frame, status_msg, is_compliant = self.detector.detect_feet_compliance(frame)
             else:
                 annotated_frame = frame
-                status_msg = "AI Error"
+                status_msg = "No AI Module"
                 is_compliant = False
             
             with self.lock:

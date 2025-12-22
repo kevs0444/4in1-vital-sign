@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import "./BloodPressure.css";
 import "../main-components-measurement.css";
 import bpIcon from "../../../assets/icons/bp-icon.png";
-import { sensorAPI } from "../../../utils/api";
+import { sensorAPI, cameraAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
 
 export default function BloodPressure() {
@@ -20,6 +20,10 @@ export default function BloodPressure() {
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(0);
   const [showExitModal, setShowExitModal] = useState(false);
+
+  // Camera State
+  const [isCameraMode, setIsCameraMode] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Interactive state variables
   const [bpMeasuring, setBpMeasuring] = useState(false);
@@ -95,6 +99,50 @@ export default function BloodPressure() {
       systolic: baseSystolic,
       diastolic: baseDiastolic
     };
+  };
+
+  const startCameraMode = async () => {
+    setIsCameraMode(true);
+    setStatusMessage("Starting camera...");
+    await cameraAPI.start();
+    await cameraAPI.setMode('reading');
+    setStatusMessage("Position the BP display in the frame");
+  };
+
+  const stopCameraMode = async () => {
+    await cameraAPI.stop();
+    // CRITICAL: Reset mode to 'feet' so we don't break compliance checks in other steps
+    await cameraAPI.setMode('feet');
+    setIsCameraMode(false);
+    setStatusMessage("✅ Blood pressure monitor ready");
+  };
+
+  const captureAndAnalyze = async () => {
+    try {
+      setIsAnalyzing(true);
+      setStatusMessage("🧠 Analyzing image with Juan AI...");
+
+      const response = await cameraAPI.analyzeBP();
+      console.log("BP Analysis Result:", response);
+
+      if (response && response.success && response.systolic && response.diastolic) {
+        setSystolic(response.systolic.toString());
+        setDiastolic(response.diastolic.toString());
+        setMeasurementComplete(true);
+        setBpComplete(true);
+        setMeasurementStep(3);
+        setStatusMessage("✅ AI Read Complete!");
+        // Stop camera after short delay to let user see "Success"
+        setTimeout(stopCameraMode, 1000);
+      } else {
+        setStatusMessage(`❌ Could not read display: ${response?.message || 'Unknown error'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      setStatusMessage("❌ Analysis failed");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const startMeasurement = async () => {
@@ -341,34 +389,110 @@ export default function BloodPressure() {
             {/* Single Blood Pressure Display - Shows live reading and result */}
             <div className="col-12 col-md-8 col-lg-6">
               <div className={`measurement-card w-100 ${bpMeasuring ? 'active' : ''} ${bpComplete ? 'completed' : ''}`} style={{ minHeight: '320px' }}>
-                <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
-                  <img src={bpIcon} alt="Blood Pressure Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                </div>
 
-                <h3 className="instruction-title fs-3">
-                  {measurementComplete ? "Blood Pressure Result" : "Blood Pressure"}
-                </h3>
+                {isCameraMode ? (
+                  <div className="camera-interface w-100 d-flex flex-column align-items-center">
+                    <div className="camera-frame-container shadow-sm" style={{
+                      width: '100%', maxWidth: '400px', height: '300px',
+                      background: '#000', position: 'relative',
+                      borderRadius: '16px', overflow: 'hidden', border: '2px solid #333'
+                    }}>
+                      <div className="camera-feed-wrapper" style={{ width: '100%', height: '100%', position: 'relative' }}>
+                        <img
+                          src="http://localhost:5000/api/camera/video_feed"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          alt="Camera Stream"
+                        />
 
-                <div className="measurement-value-container">
-                  <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
-                    {displayValue}
-                  </span>
-                  <span className="measurement-unit">mmHg</span>
-                </div>
+                        {/* --- THE ALIGNMENT GRID --- */}
+                        {/* This SVG acts as the template for the user to align the monitor */}
+                        <div style={{
+                          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                          pointerEvents: 'none' // Allow clicks to pass through
+                        }}>
+                          <svg width="100%" height="100%">
+                            <defs>
+                              <mask id="grid-mask">
+                                {/* Visible parts */}
+                                <rect width="100%" height="100%" fill="white" opacity="0.5" />
+                                {/* Cut holes for the numbers */}
+                                <rect x="20%" y="20%" width="60%" height="20%" rx="5" fill="black" /> {/* SYS */}
+                                <rect x="25%" y="45%" width="50%" height="20%" rx="5" fill="black" /> {/* DIA */}
+                                <rect x="35%" y="70%" width="30%" height="15%" rx="5" fill="black" /> {/* PULSE */}
+                              </mask>
+                            </defs>
 
-                <div className="text-center mt-3">
-                  <span className={`measurement-status-badge ${statusInfo.class}`}>
-                    {statusInfo.text}
-                  </span>
-                  <div className="instruction-text mt-2">
-                    {statusInfo.description}
+                            {/* Darken area outside boxes */}
+                            <rect width="100%" height="100%" fill="rgba(0,0,0,0.6)" mask="url(#grid-mask)" />
+
+                            {/* Guide Lines & Labels - GREEN */}
+                            <g stroke="#00ff00" strokeWidth="2" fill="none">
+                              <rect x="20%" y="20%" width="60%" height="20%" rx="5" />
+                              <rect x="25%" y="45%" width="50%" height="20%" rx="5" />
+                            </g>
+
+                            {/* Labels */}
+                            <text x="50%" y="18%" textAnchor="middle" fill="#00ff00" fontSize="14" fontWeight="bold">SYS (Top)</text>
+                            <text x="50%" y="43%" textAnchor="middle" fill="#00ff00" fontSize="14" fontWeight="bold">DIA (Middle)</text>
+                          </svg>
+                        </div>
+                      </div>
+
+                      {isAnalyzing && (
+                        <div style={{
+                          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                          background: 'rgba(0,0,0,0.8)', color: 'white',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
+                          zIndex: 10
+                        }}>
+                          <div className="spinner mb-3"></div>
+                          <span className="fw-bold">AI Reading Template...</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 w-100 d-flex justify-content-center gap-3">
+                      <button className="btn btn-light border px-4 py-2 rounded-pill" onClick={stopCameraMode} disabled={isAnalyzing}>
+                        Cancel
+                      </button>
+                      <button className="btn btn-primary px-4 py-2 rounded-pill d-flex align-items-center gap-2"
+                        onClick={captureAndAnalyze} disabled={isAnalyzing}
+                        style={{ backgroundColor: '#28a745', border: 'none' }}>
+                        <span style={{ fontSize: '1.2rem' }}>📸</span> Capture Grid
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
+                      <img src={bpIcon} alt="Blood Pressure Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    </div>
 
-                {bpMeasuring && (
-                  <div className="text-info fw-bold mt-3">
-                    🔄 Measuring Blood Pressure...
-                  </div>
+                    <h3 className="instruction-title fs-3">
+                      {measurementComplete ? "Blood Pressure Result" : "Blood Pressure"}
+                    </h3>
+
+                    <div className="measurement-value-container">
+                      <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
+                        {displayValue}
+                      </span>
+                      <span className="measurement-unit">mmHg</span>
+                    </div>
+
+                    <div className="text-center mt-3">
+                      <span className={`measurement-status-badge ${statusInfo.class}`}>
+                        {statusInfo.text}
+                      </span>
+                      <div className="instruction-text mt-2">
+                        {statusInfo.description}
+                      </div>
+                    </div>
+
+                    {bpMeasuring && (
+                      <div className="text-info fw-bold mt-3">
+                        🔄 Measuring Blood Pressure...
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -421,17 +545,29 @@ export default function BloodPressure() {
           </div>
         </div>
 
-        <div className="measurement-navigation mt-5">
-          <button
-            className="measurement-button"
-            onClick={getButtonAction()}
-            disabled={getButtonDisabled()}
-          >
-            {measurementStep === 2 && (
-              <div className="spinner"></div>
-            )}
-            {getButtonText()}
-          </button>
+        <div className="measurement-navigation mt-5 d-flex flex-column align-items-center gap-3">
+          {!isCameraMode && (
+            <button
+              className="measurement-button"
+              onClick={getButtonAction()}
+              disabled={getButtonDisabled()}
+            >
+              {measurementStep === 2 && (
+                <div className="spinner"></div>
+              )}
+              {getButtonText()}
+            </button>
+          )}
+
+          {measurementStep === 1 && !isCameraMode && (
+            <button
+              className="btn btn-link text-muted text-decoration-none"
+              onClick={startCameraMode}
+              style={{ fontSize: '1rem' }}
+            >
+              📷 Use Camera to Read Monitor
+            </button>
+          )}
         </div>
       </div>
 

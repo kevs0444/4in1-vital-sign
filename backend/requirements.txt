@@ -1,8 +1,27 @@
+# ============================================
+# 4-in-1 Vital Sign - Backend Requirements
+# ============================================
+# Installation: pip install -r requirements.txt
+# ============================================
+
+# ----- Core Flask & Database -----
 flask
 python-dotenv
 sqlalchemy
 pymysql
 werkzeug
+
+# ----- Serial Communication -----
 pyserial
+
+# ----- AI Camera (YOLOv11 Detection) -----
 ultralytics
 opencv-python
+Pillow
+numpy
+
+# ----- Juan AI (XGBoost Risk Prediction) -----
+pandas
+scikit-learn
+xgboost
+joblib

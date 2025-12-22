@@ -16,6 +16,10 @@ SENDER_EMAIL = os.getenv('SENDER_EMAIL')
 SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
 
 def send_email_func(to_email, subject, body):
+    if not SMTP_SERVER or not SENDER_EMAIL or not SENDER_PASSWORD:
+        print("❌ Email Config Missing! Please check .env for SMTP_SERVER, SENDER_EMAIL, and SENDER_PASSWORD.")
+        return False
+
     try:
         msg = MIMEMultipart()
         msg['From'] = f"Vital Sign Kiosk <{SENDER_EMAIL}>"
@@ -25,7 +29,9 @@ def send_email_func(to_email, subject, body):
         msg.attach(MIMEText(body, 'html'))
 
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.ehlo()
         server.starttls()
+        server.ehlo()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         text = msg.as_string()
         server.sendmail(SENDER_EMAIL, to_email, text)
@@ -111,6 +117,74 @@ def get_health_report_template(user_data):
     # Fallback if empty
     if not results_html:
         results_html = """<div style="text-align:center; width:100%; color:#666; padding: 20px;">No specific measurements recorded in this session.</div>"""
+
+    # --- AI RECOMMENDATIONS SECTION ---
+    ai_section_html = ""
+    
+    # Helper to clean/format list or string
+    def format_advice_list(items):
+        if not items: return None
+        if isinstance(items, list):
+            # If it's a list with one long string (likely), just return it
+            clean_items = [str(i).strip() for i in items if i]
+            if not clean_items: return None
+            return "<br>".join(clean_items)
+        return str(items)
+
+    medical_action = format_advice_list(user_data.get('suggestions')) # mapped to suggestions in frontend
+    preventive = format_advice_list(user_data.get('preventions'))
+    wellness = format_advice_list(user_data.get('wellnessTips'))
+    guidance = format_advice_list(user_data.get('providerGuidance'))
+    risk_level = user_data.get('riskLevel', '0')
+    risk_cat = user_data.get('riskCategory', 'Low Risk')
+
+    if medical_action or preventive or wellness or guidance:
+        ai_section_html = f"""
+        <div style="margin-top: 30px; border-top: 2px solid #fee2e2; padding-top: 20px;">
+            <div style="background-color: #fef2f2; border-radius: 12px; padding: 20px; border: 1px solid #fecaca;">
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <h2 style="color: #b91c1c; font-size: 18px; margin: 0; text-transform: uppercase; letter-spacing: 1px;">🤖 Juan AI Analysis</h2>
+                    <div style="font-size: 24px; font-weight: bold; color: #dc2626; margin-top: 5px;">{risk_cat} ({risk_level}%)</div>
+                </div>
+                
+                {f'''
+                <div style="margin-bottom: 15px;">
+                    <div style="font-weight: bold; color: #991b1b; font-size: 14px; margin-bottom: 5px;">🩺 Medical Action Recommendations</div>
+                    <div style="background: white; padding: 10px; border-radius: 6px; border-left: 3px solid #dc2626; font-size: 14px; color: #374151;">
+                        {medical_action}
+                    </div>
+                </div>
+                ''' if medical_action else ''}
+
+                {f'''
+                <div style="margin-bottom: 15px;">
+                    <div style="font-weight: bold; color: #166534; font-size: 14px; margin-bottom: 5px;">🛡️ Preventive Strategy</div>
+                    <div style="background: white; padding: 10px; border-radius: 6px; border-left: 3px solid #166534; font-size: 14px; color: #374151;">
+                        {preventive}
+                    </div>
+                </div>
+                ''' if preventive else ''}
+
+                {f'''
+                <div style="margin-bottom: 15px;">
+                    <div style="font-weight: bold; color: #ea580c; font-size: 14px; margin-bottom: 5px;">💪 Wellness Tips</div>
+                    <div style="background: white; padding: 10px; border-radius: 6px; border-left: 3px solid #ea580c; font-size: 14px; color: #374151;">
+                        {wellness}
+                    </div>
+                </div>
+                ''' if wellness else ''}
+                
+                {f'''
+                <div>
+                    <div style="font-weight: bold; color: #1e40af; font-size: 14px; margin-bottom: 5px;">👨‍⚕️ Provider Guidance</div>
+                    <div style="background: white; padding: 10px; border-radius: 6px; border-left: 3px solid #1e40af; font-size: 14px; color: #374151; font-style: italic;">
+                        "{guidance}"
+                    </div>
+                </div>
+                ''' if guidance else ''}
+            </div>
+        </div>
+        """
 
     return f"""
     <!DOCTYPE html>
@@ -210,6 +284,8 @@ def get_health_report_template(user_data):
                 <div class="results-grid">
                     {results_html}
                 </div>
+                
+                {ai_section_html}
                 
                 <p style="font-size: 14px; color: #6b7280; text-align: center;">
                     <em>Note: These measurements are for reference only and are not a substitute for professional medical advice.</em>

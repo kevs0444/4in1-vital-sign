@@ -78,6 +78,45 @@ export const checkBackendStatus = async () => {
   }
 };
 
+// Check database connection status
+export const checkDatabaseStatus = async () => {
+  try {
+    const response = await fetchWithTimeout(`${API_URL}/db-check`, {}, TIMEOUTS.SHORT);
+    return response;
+  } catch (error) {
+    console.error('Database status check failed:', error);
+    return {
+      connected: false,
+      status: 'error',
+      message: error.message || 'Database connection check failed'
+    };
+  }
+};
+
+// Comprehensive system check (Database, Arduino, Auto-Tare)
+export const checkSystemStatus = async () => {
+  try {
+    console.log('🔍 Performing comprehensive system check...');
+    const response = await fetchWithTimeout(`${API_URL}/system-check`, {}, TIMEOUTS.MEDIUM);
+    console.log('📊 System check result:', response);
+    return response;
+  } catch (error) {
+    console.error('System check failed:', error);
+    return {
+      timestamp: new Date().toISOString(),
+      components: {
+        database: { status: 'error', connected: false, message: 'Backend not responding' },
+        arduino: { status: 'unknown', connected: false, message: 'Could not check' },
+        auto_tare: { status: 'unknown', completed: false, message: 'Could not check' }
+      },
+      overall_status: 'backend_down',
+      system_ready: false,
+      can_proceed: false,
+      message: 'Backend server is not responding'
+    };
+  }
+};
+
 // ==================== LOGIN API FUNCTIONS ====================
 
 // RFID Login - UPDATED to return proper user data structure
@@ -977,4 +1016,50 @@ export const sensorAPI = {
       };
     }
   },
+};
+
+export const cameraAPI = {
+  start: async () => {
+    try {
+      console.log('📷 Starting camera...');
+      return await fetchWithTimeout(`${API_URL}/camera/start`, { method: 'POST' }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error starting camera:', error);
+      return { success: false, message: error.message };
+    }
+  },
+
+  stop: async () => {
+    try {
+      console.log('📷 Stopping camera...');
+      return await fetchWithTimeout(`${API_URL}/camera/stop`, { method: 'POST' }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error stopping camera:', error);
+      return { success: false, message: error.message };
+    }
+  },
+
+  setMode: async (mode) => {
+    try {
+      console.log(`📷 Setting camera mode: ${mode}`);
+      return await fetchWithTimeout(`${API_URL}/camera/set_mode`, {
+        method: 'POST',
+        body: JSON.stringify({ mode })
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error setting camera mode:', error);
+      return { success: false, message: error.message };
+    }
+  },
+
+  analyzeBP: async () => {
+    try {
+      console.log('🧠 Analying BP Image with Hybrid AI...');
+      // Updated endpoint to use dedicated BP Camera route
+      return await fetchWithTimeout(`${API_URL}/bp-camera/analyze-bp-camera`, { method: 'POST' }, TIMEOUTS.MEDIUM);
+    } catch (error) {
+      console.error('Error analyzing BP:', error);
+      return { success: false, message: error.message };
+    }
+  }
 };

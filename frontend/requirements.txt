@@ -1,0 +1,49 @@
+# ============================================
+# 4-in-1 Vital Sign - Frontend Requirements
+# ============================================
+# Installation: npm install
+# ============================================
+
+# ----- Core React -----
+react@^19.1.1
+react-dom@^19.1.1
+react-router-dom@^7.9.3
+react-scripts@5.0.1
+
+# ----- UI Framework -----
+bootstrap@^5.3.8
+react-bootstrap@^2.10.10
+framer-motion@^12.23.22
+
+# ----- Emotion (CSS-in-JS) -----
+@emotion/react@^11.14.0
+@emotion/styled@^11.14.1
+
+# ----- Material UI Icons -----
+@mui/icons-material@^7.3.4
+
+# ----- Charts -----
+chart.js@^4.5.1
+react-chartjs-2@^5.3.0
+
+# ----- Printing & QR Code -----
+esc-pos-encoder@^3.0.0
+node-thermal-printer@^4.5.0
+thermal-printer@^1.0.5
+qrcode.react@^4.2.0
+
+# ----- Testing -----
+@testing-library/dom@^10.4.1
+@testing-library/jest-dom@^6.8.0
+@testing-library/react@^16.3.0
+@testing-library/user-event@^13.5.0
+
+# ----- Utilities -----
+web-vitals@^2.1.4
+
+# ----- Dev Dependencies -----
+@tailwindcss/postcss@^4.1.13
+autoprefixer@^10.4.21
+http-proxy-middleware@^3.0.5
+postcss@^8.5.6
+tailwindcss@^4.1.13

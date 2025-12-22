@@ -1,36 +1,51 @@
-// Standby.jsx (updated with reset detection)
-import React, { useState, useEffect, useRef } from 'react';
+// Standby.jsx - Simple Status Badge with Priority System Checks
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import { motion } from 'framer-motion';
-import { Circle, CheckCircle, Error, Warning } from '@mui/icons-material';
+import {
+  Circle,
+  CheckCircle,
+  Error,
+  Warning
+} from '@mui/icons-material';
 import logo from '../../assets/images/juan.png';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Standby.css';
-import { sensorAPI } from '../../utils/api';
+import { checkSystemStatus, sensorAPI } from '../../utils/api';
 
 export default function Standby() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPressed, setIsPressed] = useState(false);
-  const [systemStatus, setSystemStatus] = useState('checking_backend');
-  const [backendAvailable, setBackendAvailable] = useState(false);
-  const [isAlreadyConnected, setIsAlreadyConnected] = useState(false);
+
+  // System status state
+  const [systemCheck, setSystemCheck] = useState({
+    overall_status: 'checking',
+    system_ready: false,
+    can_proceed: false,
+    message: 'Initializing system...',
+    components: {
+      database: { connected: false },
+      arduino: { connected: false, port: null },
+      auto_tare: { completed: false }
+    }
+  });
+
+  const [isConnecting, setIsConnecting] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
-
   const pollerRef = useRef(null);
-  const connectionAttempted = useRef(false);
+  const initialCheckDone = useRef(false);
 
   // Effect for preventing zoom and controlling viewport
   useEffect(() => {
-    // Prevent zooming via viewport meta tag simulation
     const preventZoom = (e) => {
       if (e.touches && e.touches.length > 1) {
         e.preventDefault();
       }
     };
 
-    // Prevent context menu (right click)
     const preventContextMenu = (e) => {
       e.preventDefault();
     };
@@ -56,138 +71,79 @@ export default function Standby() {
   useEffect(() => {
     if (location.state?.fromSharing && location.state?.reset) {
       console.log('🔄 System reset detected - ready for new user');
-      // Perform any additional reset actions here if needed
+      initialCheckDone.current = false;
     }
   }, [location.state]);
 
-  // FIXED: Improved connection polling that checks if already connected first
-  useEffect(() => {
-    console.log('🔄 Standby component mounted - Checking connection status');
+  // Perform comprehensive system check
+  const performSystemCheck = useCallback(async () => {
+    console.log('🔍 Performing comprehensive system check...');
 
-    // Prevent multiple connection attempts
-    if (connectionAttempted.current) {
-      console.log('⚡ Connection already attempted, skipping reconnection');
+    try {
+      const status = await checkSystemStatus();
+      console.log('📊 System check result:', status);
+
+      setSystemCheck(status);
+
+      // If Arduino is not connected and we haven't tried connecting, attempt connection
+      if (!status.components.arduino.connected && !isConnecting) {
+        console.log('🔌 Arduino not connected - attempting connection...');
+        setIsConnecting(true);
+
+        try {
+          const connectResult = await sensorAPI.connect();
+          console.log('📡 Connection result:', connectResult);
+
+          // Re-check system status after connection attempt
+          const newStatus = await checkSystemStatus();
+          setSystemCheck(newStatus);
+        } catch (connectError) {
+          console.log('⚠️ Connection attempt failed:', connectError.message);
+        } finally {
+          setIsConnecting(false);
+        }
+      }
+
+      return status;
+    } catch (error) {
+      console.error('❌ System check failed:', error);
+      setSystemCheck(prev => ({
+        ...prev,
+        overall_status: 'backend_down',
+        can_proceed: false,
+        message: 'Backend server not responding'
+      }));
+      return null;
+    }
+  }, [isConnecting]);
+
+  // Initial system check and polling
+  useEffect(() => {
+    if (!initialCheckDone.current) {
+      initialCheckDone.current = true;
+      performSystemCheck();
+    }
+
+    // Start polling for system status updates
+    pollerRef.current = setInterval(async () => {
+      await performSystemCheck();
+    }, 3000);
+
+    return () => {
+      if (pollerRef.current) {
+        clearInterval(pollerRef.current);
+        pollerRef.current = null;
+      }
+    };
+  }, [performSystemCheck]);
+
+  const handleStartPress = () => {
+    // Check if user can proceed
+    if (!systemCheck.can_proceed) {
+      console.log('❌ Cannot proceed - system not ready');
       return;
     }
 
-    const startStatusPolling = async () => {
-      connectionAttempted.current = true;
-
-      // Clear any existing poller first
-      if (pollerRef.current) {
-        clearInterval(pollerRef.current);
-        pollerRef.current = null;
-      }
-
-      try {
-        setSystemStatus('checking_backend');
-
-        // First, check if we're already connected without trying to reconnect
-        console.log('🔍 Checking current system status...');
-        const currentStatus = await sensorAPI.getSystemStatus();
-        console.log('📊 Current system status:', currentStatus);
-
-        if (currentStatus.connected) {
-          console.log('✅ Already connected to Arduino - skipping reconnection');
-          setIsAlreadyConnected(true);
-
-          if (currentStatus.auto_tare_completed) {
-            setSystemStatus('ready');
-            setBackendAvailable(true);
-          } else {
-            setSystemStatus('waiting_for_auto_tare');
-            setBackendAvailable(true);
-          }
-        } else {
-          // Only attempt connection if not already connected
-          console.log('🔌 Not connected - attempting Arduino connection...');
-          console.log('⏳ Step 1: Connecting to Arduino...');
-
-          const connectResult = await sensorAPI.connect();
-          console.log('📡 Arduino connection result:', connectResult);
-
-          if (connectResult.connected) {
-            console.log('✅ Step 1 Complete: Arduino connected to', connectResult.port);
-            console.log('⏳ Step 2: Waiting for auto-tare to complete...');
-
-            if (connectResult.auto_tare_completed) {
-              console.log('✅ Step 2 Complete: Auto-tare already done');
-              setSystemStatus('ready');
-            } else {
-              console.log('⏳ Auto-tare in progress...');
-              setSystemStatus('waiting_for_auto_tare');
-            }
-
-            setBackendAvailable(true);
-            console.log('✅ Arduino and sensors initialized successfully');
-          } else {
-            console.log('❌ Failed to connect to Arduino');
-            setSystemStatus('offline_mode');
-          }
-        }
-      } catch (error) {
-        console.log('❌ Connection check failed:', error.message);
-
-        // Check if it's a permission error (already connected)
-        if (error.message.includes('Access is denied') || error.message.includes('COM3')) {
-          console.log('⚡ Port COM3 already in use - assuming connected');
-          setIsAlreadyConnected(true);
-          setBackendAvailable(true);
-          setSystemStatus('waiting_for_auto_tare');
-        } else {
-          console.log('🔌 Entering offline mode');
-          setBackendAvailable(false);
-          setSystemStatus('offline_mode');
-        }
-        return;
-      }
-
-      // Start polling for system status updates
-      pollerRef.current = setInterval(async () => {
-        try {
-          const status = await sensorAPI.getSystemStatus();
-          console.log('📊 System status update:', status);
-
-          if (status.connected) {
-            if (status.auto_tare_completed) {
-              setSystemStatus('ready');
-            } else {
-              setSystemStatus('waiting_for_auto_tare');
-            }
-          } else {
-            setSystemStatus('connecting_arduino');
-          }
-        } catch (error) {
-          console.log('⚠️ Status polling failed:', error.message);
-
-          // If we were previously connected, maintain connection state
-          if (!isAlreadyConnected) {
-            setBackendAvailable(false);
-            setSystemStatus('offline_mode');
-          }
-
-          if (pollerRef.current) {
-            clearInterval(pollerRef.current);
-            pollerRef.current = null;
-          }
-        }
-      }, 3000); // Increased to 3 seconds to reduce load
-    };
-
-    startStatusPolling();
-
-    // Cleanup function - clear interval when component unmounts
-    return () => {
-      console.log('🧹 Standby component unmounting - Cleaning up poller');
-      if (pollerRef.current) {
-        clearInterval(pollerRef.current);
-        pollerRef.current = null;
-      }
-      // Don't reset connectionAttempted here - we want to remember we tried
-    };
-  }, [isAlreadyConnected]); // Only re-run if connection state changes
-
-  const handleStartPress = () => {
     setIsPressed(true);
     setTimeout(() => {
       setIsPressed(false);
@@ -205,48 +161,94 @@ export default function Standby() {
   const formatDate = (date) =>
     date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  const getStatusIcon = (currentSystemStatus) => {
-    if (currentSystemStatus === 'ready') return <CheckCircle className="standby-status-icon connected" />;
-    if (currentSystemStatus === 'waiting_for_auto_tare') return <Circle className="standby-status-icon checking" />;
-    if (currentSystemStatus === 'offline_mode') return <Warning className="standby-status-icon warning" />;
-    if (currentSystemStatus === 'backend_down' || currentSystemStatus === 'connecting_arduino') return <Error className="standby-status-icon error" />;
-    return <Circle className="standby-status-icon checking" />;
-  };
-
-  const getStatusText = (currentSystemStatus) => {
-    switch (currentSystemStatus) {
-      case 'backend_down':
-        return 'Backend Not Connected';
+  // Get status indicator class
+  const getStatusClass = () => {
+    const status = systemCheck.overall_status;
+    switch (status) {
       case 'ready':
-        return 'System Ready - Auto-Tare Completed';
-      case 'waiting_for_auto_tare':
-        return isAlreadyConnected ? 'System Connected - Auto-Tare in Progress...' : 'Arduino Connected - Waiting for Auto-Tare...';
-      case 'connecting_arduino':
-        return 'Connecting to System...';
+        return 'connected';
+      case 'waiting_auto_tare':
+      case 'checking':
+        return 'checking';
       case 'offline_mode':
-        return 'Offline Mode - Manual Input Available';
+        return 'warning';
+      case 'database_error':
+      case 'backend_down':
+      case 'critical_error':
+        return 'error';
       default:
-        return 'Checking System...';
+        return 'checking';
     }
   };
 
-  const getButtonText = () => {
-    return 'Touch to Start';
+  // Get overall status icon
+  const getStatusIcon = () => {
+    const status = systemCheck.overall_status;
+
+    if (status === 'ready') {
+      return <CheckCircle className="standby-status-icon connected" />;
+    } else if (status === 'waiting_auto_tare' || status === 'checking') {
+      return <Circle className="standby-status-icon checking" />;
+    } else if (status === 'offline_mode') {
+      return <Warning className="standby-status-icon warning" />;
+    } else {
+      return <Error className="standby-status-icon error" />;
+    }
   };
 
-  const isStartButtonEnabled = true;
+  // Get overall status text
+  const getStatusText = () => {
+    const status = systemCheck.overall_status;
+
+    switch (status) {
+      case 'ready':
+        return 'System Ready';
+      case 'waiting_auto_tare':
+        return 'Calibrating...';
+      case 'checking':
+        return 'Checking System...';
+      case 'offline_mode':
+        return 'Offline Mode';
+      case 'database_error':
+        return 'Database Error';
+      case 'backend_down':
+        return 'Backend Offline';
+      case 'critical_error':
+        return 'System Error';
+      default:
+        return 'Checking...';
+    }
+  };
+
+  // Get button text based on system status
+  const getButtonText = () => {
+    if (systemCheck.overall_status === 'backend_down') {
+      return 'System Unavailable';
+    } else if (systemCheck.overall_status === 'database_error') {
+      return 'Database Error';
+    } else if (!systemCheck.can_proceed) {
+      return 'Initializing...';
+    } else if (systemCheck.overall_status === 'offline_mode') {
+      return 'Start (Offline)';
+    } else {
+      return 'Touch to Start';
+    }
+  };
+
+  const isStartButtonEnabled = systemCheck.can_proceed;
 
   return (
-    <div
-      className="standby-container container-fluid"
-    >
-      <motion.div className="standby-backend-status">
-        <div className={`standby-status-indicator ${systemStatus === 'ready' ? 'connected' :
-          systemStatus === 'offline_mode' ? 'warning' :
-            (systemStatus === 'backend_down' || systemStatus === 'connecting_arduino') ? 'error' : 'checking'
-          }`}>
-          {getStatusIcon(systemStatus)}
-          <span className="standby-status-text">{getStatusText(systemStatus)}</span>
+    <div className="standby-container container-fluid">
+      {/* Simple Status Badge - Top Right */}
+      <motion.div
+        className="standby-backend-status"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className={`standby-status-indicator ${getStatusClass()}`}>
+          {getStatusIcon()}
+          <span className="standby-status-text">{getStatusText()}</span>
         </div>
       </motion.div>
 
@@ -270,7 +272,7 @@ export default function Standby() {
               onClick={handleStartPress}
               onTouchStart={() => setIsPressed(true)}
               onTouchEnd={() => setIsPressed(false)}
-              className={`standby-start-button ${isPressed ? 'pressed' : ''}`}
+              className={`standby-start-button ${isPressed ? 'pressed' : ''} ${!isStartButtonEnabled ? 'disabled' : ''}`}
               disabled={!isStartButtonEnabled}
             >
               <span className="standby-button-content">
