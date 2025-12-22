@@ -44,6 +44,15 @@ export default function Max30102() {
   const progressTimerRef = useRef(null);
   const fingerRemovedAlertRef = useRef(null);
   const previousFingerStateRef = useRef(false);
+  // Ref to store final measurements for reliable access when navigating
+  const finalMeasurementsRef = useRef({
+    heartRate: null,
+    spo2: null,
+    respiratoryRate: null
+  });
+  // Refs to track measurement state for use inside intervals (avoid stale closures)
+  const isMeasuringRef = useRef(false);
+  const measurementCompleteRef = useRef(false);
   const totalMeasurementTime = 30;
 
   useEffect(() => {
@@ -70,9 +79,11 @@ export default function Max30102() {
     setCountdown(remaining);
 
     // Auto-complete when time is up
-    if (progressSeconds >= totalMeasurementTime && isMeasuring && !measurementComplete) {
-      completeMeasurement();
-    }
+    // MODIFIED: Do NOT auto-complete based on local timer. Wait for backend signal.
+    // This allows the Arduino to finish its cycle and send data even if it takes > 30s.
+    // if (progressSeconds >= totalMeasurementTime && isMeasuring && !measurementComplete) {
+    //   completeMeasurement();
+    // }
   }, [progressSeconds, isMeasuring, measurementComplete]);
 
   const startProgressTimer = () => {
@@ -81,9 +92,10 @@ export default function Max30102() {
     progressTimerRef.current = setInterval(() => {
       setProgressSeconds(prev => {
         const newSeconds = prev + 1;
+        // Cap visual progress at 29s (99%) until backend signals completion
+        // This prevents the UI from showing "100%" before we actually have the data
         if (newSeconds >= totalMeasurementTime) {
-          completeMeasurement();
-          return totalMeasurementTime;
+          return totalMeasurementTime - 1;
         }
         return newSeconds;
       });
@@ -208,6 +220,7 @@ export default function Max30102() {
     setStatusMessage("✅ Finger detected! Automatic measurement starting...");
     setMeasurementStep(3);
     setIsMeasuring(true);
+    isMeasuringRef.current = true; // Update ref for polling interval
 
     setProgressSeconds(0); // Start from 0
     setProgressPercent(0);
@@ -224,6 +237,7 @@ export default function Max30102() {
     console.log("Pausing measurement due to finger removal");
     stopProgressTimer(); // STOP COUNTING but keep current progress
     setIsMeasuring(false);
+    isMeasuringRef.current = false; // Update ref
     // Don't reset progressSeconds here - keep it where it was
   };
 
@@ -235,6 +249,7 @@ export default function Max30102() {
     setCountdown(30); // RESET COUNTDOWN TO 30
     setStatusMessage("✅ Finger detected! Measurement restarting from beginning...");
     setIsMeasuring(true);
+    isMeasuringRef.current = true; // Update ref
     startProgressTimer(); // START COUNTING FROM 0
     clearFingerRemovedAlert();
   };
@@ -245,7 +260,9 @@ export default function Max30102() {
 
     stopProgressTimer();
     setIsMeasuring(false);
+    isMeasuringRef.current = false; // Update ref
     setMeasurementComplete(true);
+    measurementCompleteRef.current = true; // Update ref
     setMeasurementStep(4);
     setProgressPercent(100);
     setProgressSeconds(totalMeasurementTime);
@@ -286,9 +303,51 @@ export default function Max30102() {
     }
 
     // Use averages if available, otherwise fallback to the last seen valid measurement on screen
-    const finalHeartRate = avgHeartRate !== "--" ? avgHeartRate : (measurements.heartRate !== "--" ? measurements.heartRate : "--");
-    const finalSpo2 = avgSpo2 !== "--" ? avgSpo2 : (measurements.spo2 !== "--" ? measurements.spo2 : "--");
-    const finalRespiratoryRate = avgRespiratoryRate !== "--" ? avgRespiratoryRate : (measurements.respiratoryRate !== "--" ? measurements.respiratoryRate : "--");
+    // Use averages if available, otherwise fallback to the last seen valid measurement on screen
+    // CRITICAL: Prioritize the backend's final results if available (stored in poll loop)
+    const backendResults = finalMeasurementsRef.current;
+
+    let finalHeartRate = avgHeartRate;
+    let finalSpo2 = avgSpo2;
+    let finalRespiratoryRate = avgRespiratoryRate;
+
+    // 1. Try Backend Final Results (Most authoritative - calculated by Arduino)
+    if (backendResults.heartRate) {
+      finalHeartRate = backendResults.heartRate.toString();
+      console.log(`✅ Using Backend Final Heart Rate: ${finalHeartRate}`);
+    }
+    // 2. Fallback to Frontend Average
+    else if (avgHeartRate !== "--") {
+      finalHeartRate = avgHeartRate;
+    }
+    // 3. Fallback to Last Seen Live Value
+    else if (measurements.heartRate !== "--") {
+      finalHeartRate = measurements.heartRate;
+    } else {
+      finalHeartRate = "--";
+    }
+
+    if (backendResults.spo2) {
+      finalSpo2 = backendResults.spo2.toString();
+      console.log(`✅ Using Backend Final SpO2: ${finalSpo2}`);
+    } else if (avgSpo2 !== "--") {
+      finalSpo2 = avgSpo2;
+    } else if (measurements.spo2 !== "--") {
+      finalSpo2 = measurements.spo2;
+    } else {
+      finalSpo2 = "--";
+    }
+
+    if (backendResults.respiratoryRate) {
+      finalRespiratoryRate = backendResults.respiratoryRate.toString();
+      console.log(`✅ Using Backend Final Respiratory Rate: ${finalRespiratoryRate}`);
+    } else if (avgRespiratoryRate !== "--") {
+      finalRespiratoryRate = avgRespiratoryRate;
+    } else if (measurements.respiratoryRate !== "--") {
+      finalRespiratoryRate = measurements.respiratoryRate;
+    } else {
+      finalRespiratoryRate = "--";
+    }
 
     // Update with final results (prefer average, fallback to last seen)
     setMeasurements({
@@ -296,6 +355,15 @@ export default function Max30102() {
       spo2: finalSpo2,
       respiratoryRate: finalRespiratoryRate
     });
+
+    // CRITICAL: Store in ref for reliable access in handleContinue
+    // React state is async, so we need a ref to ensure values are available immediately
+    finalMeasurementsRef.current = {
+      heartRate: finalHeartRate !== "--" ? parseInt(finalHeartRate) : null,
+      spo2: finalSpo2 !== "--" ? parseInt(finalSpo2) : null,
+      respiratoryRate: finalRespiratoryRate !== "--" ? parseInt(finalRespiratoryRate) : null
+    };
+    console.log("📌 Stored final measurements in ref:", finalMeasurementsRef.current);
 
     // Show appropriate status message - FORCE SUCCESS if we have any data
     const hasAnyData = finalHeartRate !== "--" || finalSpo2 !== "--" || finalRespiratoryRate !== "--";
@@ -336,38 +404,69 @@ export default function Max30102() {
 
         // Update measurements from API data if available and store for averaging
         // Only update if we have valid, non-zero readings from Arduino
-        if (data.heart_rate && data.heart_rate > 0 && !isNaN(data.heart_rate)) {
-          updateCurrentMeasurement('heartRate', data.heart_rate);
+        // Check both live_data values AND final_results from backend
+        const liveHR = data.heart_rate;
+        const liveSpo2 = data.spo2;
+        const liveRR = data.respiratory_rate;
+        const finalHR = data.final_results?.heart_rate;
+        const finalSpo2 = data.final_results?.spo2;
+        const finalRR = data.final_results?.respiratory_rate;
+
+        // Use final results if available, otherwise use live data
+        const heartRate = finalHR || liveHR;
+        const spo2Val = finalSpo2 || liveSpo2;
+        const rrVal = finalRR || liveRR;
+
+        if (heartRate && heartRate > 0 && !isNaN(heartRate)) {
+          updateCurrentMeasurement('heartRate', heartRate);
           // Store reading for averaging only during active measurement
-          if (isMeasuring) {
-            setHeartRateReadings(prev => [...prev, data.heart_rate]);
+          // Use ref to avoid stale closure - state would capture old value
+          if (isMeasuringRef.current) {
+            console.log(`💓 Collected HR reading: ${heartRate}`);
+            setHeartRateReadings(prev => [...prev, heartRate]);
           }
         }
 
-        if (data.spo2 && data.spo2 > 0 && !isNaN(data.spo2)) {
-          updateCurrentMeasurement('spo2', data.spo2);
+        if (spo2Val && spo2Val > 0 && !isNaN(spo2Val)) {
+          updateCurrentMeasurement('spo2', spo2Val);
           // Store reading for averaging only during active measurement
-          if (isMeasuring) {
-            setSpo2Readings(prev => [...prev, data.spo2]);
+          if (isMeasuringRef.current) {
+            console.log(`🫁 Collected SpO2 reading: ${spo2Val}`);
+            setSpo2Readings(prev => [...prev, spo2Val]);
           }
         }
 
-        if (data.respiratory_rate && data.respiratory_rate > 0 && !isNaN(data.respiratory_rate)) {
-          updateCurrentMeasurement('respiratoryRate', data.respiratory_rate);
+        if (rrVal && rrVal > 0 && !isNaN(rrVal)) {
+          updateCurrentMeasurement('respiratoryRate', rrVal);
           // Store reading for averaging only during active measurement
-          if (isMeasuring) {
-            setRespiratoryRateReadings(prev => [...prev, data.respiratory_rate]);
+          if (isMeasuringRef.current) {
+            console.log(`🌬️ Collected RR reading: ${rrVal}`);
+            setRespiratoryRateReadings(prev => [...prev, rrVal]);
           }
         }
 
-        // Check for API-based completion
-        if (data.final_result_shown && !measurementComplete) {
+        // Check for API-based completion - when Arduino sends final results
+        if (data.final_result_shown && !measurementCompleteRef.current) {
+          console.log("🏁 Backend signals completion - using final results:", data.final_results);
+          // Store final results in ref before calling completeMeasurement
+          if (data.final_results) {
+            if (data.final_results.heart_rate) {
+              finalMeasurementsRef.current.heartRate = data.final_results.heart_rate;
+            }
+            if (data.final_results.spo2) {
+              finalMeasurementsRef.current.spo2 = data.final_results.spo2;
+            }
+            if (data.final_results.respiratory_rate) {
+              finalMeasurementsRef.current.respiratoryRate = data.final_results.respiratory_rate;
+            }
+            console.log("📌 Updated finalMeasurementsRef from backend:", finalMeasurementsRef.current);
+          }
           completeMeasurement();
         }
 
       } catch (error) {
         console.error("Error polling MAX30102 status:", error);
-        if (isMeasuring) {
+        if (isMeasuringRef.current) {
           setStatusMessage("⚠️ Connection issue, retrying...");
         }
       }
@@ -429,15 +528,20 @@ export default function Max30102() {
       measurementTimestamp: new Date().toISOString()
     };
 
-    // Only add measurements if they have real values (not "--")
-    if (measurements.heartRate !== "--") {
-      vitalSignsData.heartRate = parseInt(measurements.heartRate);
+    // FIXED: Read from ref instead of state to avoid stale closure issue
+    // React state updates are async, so measurements state may still have old values
+    const finalVals = finalMeasurementsRef.current;
+    console.log("📖 Reading final measurements from ref:", finalVals);
+
+    // Only add measurements if they have real values
+    if (finalVals.heartRate !== null && !isNaN(finalVals.heartRate)) {
+      vitalSignsData.heartRate = finalVals.heartRate;
     }
-    if (measurements.spo2 !== "--") {
-      vitalSignsData.spo2 = parseInt(measurements.spo2);
+    if (finalVals.spo2 !== null && !isNaN(finalVals.spo2)) {
+      vitalSignsData.spo2 = finalVals.spo2;
     }
-    if (measurements.respiratoryRate !== "--") {
-      vitalSignsData.respiratoryRate = parseInt(measurements.respiratoryRate);
+    if (finalVals.respiratoryRate !== null && !isNaN(finalVals.respiratoryRate)) {
+      vitalSignsData.respiratoryRate = finalVals.respiratoryRate;
     }
 
     console.log("🚀 Max30102 complete - navigating to next step with data:", vitalSignsData);

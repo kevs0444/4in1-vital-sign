@@ -25,3 +25,7 @@ pandas
 scikit-learn
 xgboost
 joblib
+
+# ----- Gemini Cloud AI (BP Camera Reading) -----
+google-generativeai
+

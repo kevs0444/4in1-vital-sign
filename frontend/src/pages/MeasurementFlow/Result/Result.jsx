@@ -50,26 +50,9 @@ export default function Result() {
         setUserData(parsedData);
         analyzeHealthData(parsedData);
       } else {
-        console.log("🧪 Using sample data for testing");
-        // Use sample data for testing/design purposes
-        const sampleData = {
-          firstName: "Juan",
-          lastName: "Dela Cruz",
-          age: "21",
-          sex: "male",
-          weight: 75,
-          height: 175,
-          bmi: 24.5,
-          temperature: 36.8,
-          heartRate: 72,
-          spo2: 98,
-          respiratoryRate: 16,
-          systolic: 120,
-          diastolic: 80,
-          bloodPressure: "120/80"
-        };
-        setUserData(sampleData);
-        analyzeHealthData(sampleData);
+        console.warn("⚠️ No measurement data available - user will see empty values");
+        // Don't use fake sample data - show real state (empty)
+        setUserData({});
       }
     }
 
@@ -363,36 +346,43 @@ export default function Result() {
     if (!temp || temp === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
     const tempNum = parseFloat(temp);
     if (isNaN(tempNum)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
-    if (tempNum < 36.0) return { status: 'Low', color: '#3b82f6', range: '< 36.0°C' };
-    if (tempNum > 37.5) return { status: 'Elevated', color: '#ef4444', range: '> 37.5°C' };
-    return { status: 'Normal', color: '#10b981', range: '36.0 - 37.5°C' };
+    // Categories: 35.0-37.2 Normal, 37.3-38.0 Slight fever, Above 38.0 Critical
+    if (tempNum < 35.0) return { status: 'Low', color: '#3b82f6', range: '< 35.0°C' };
+    if (tempNum <= 37.2) return { status: 'Normal', color: '#10b981', range: '35.0 - 37.2°C' };
+    if (tempNum <= 38.0) return { status: 'Slight Fever', color: '#f59e0b', range: '37.3 - 38.0°C' };
+    return { status: 'Critical', color: '#dc2626', range: '> 38.0°C' };
   };
 
   const getHeartRateStatus = (hr) => {
     if (!hr || hr === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
     const hrNum = parseFloat(hr);
     if (isNaN(hrNum)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
+    // Categories: Below 60 Low, 60-100 Normal, 101-120 Elevated, Above 120 Critical
     if (hrNum < 60) return { status: 'Low', color: '#3b82f6', range: '< 60 BPM' };
-    if (hrNum > 100) return { status: 'High', color: '#ef4444', range: '> 100 BPM' };
-    return { status: 'Normal', color: '#10b981', range: '60 - 100 BPM' };
+    if (hrNum <= 100) return { status: 'Normal', color: '#10b981', range: '60 - 100 BPM' };
+    if (hrNum <= 120) return { status: 'Elevated', color: '#f59e0b', range: '101 - 120 BPM' };
+    return { status: 'Critical', color: '#dc2626', range: '> 120 BPM' };
   };
 
   const getSPO2Status = (spo2) => {
     if (!spo2 || spo2 === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
     const spo2Num = parseFloat(spo2);
     if (isNaN(spo2Num)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
-    if (spo2Num < 92) return { status: 'Critical', color: '#dc2626', range: '< 92%' };
-    if (spo2Num < 95) return { status: 'Low', color: '#f59e0b', range: '92 - 94%' };
-    return { status: 'Normal', color: '#10b981', range: '≥ 95%' };
+    // Categories: 89 below Critical, 90-94 Low (Needs monitoring), 95-100 Normal
+    if (spo2Num < 90) return { status: 'Critical', color: '#dc2626', range: '< 90%' };
+    if (spo2Num < 95) return { status: 'Low', color: '#f59e0b', range: '90 - 94%' };
+    return { status: 'Normal', color: '#10b981', range: '95 - 100%' };
   };
 
   const getRespiratoryStatus = (rr) => {
     if (!rr || rr === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
     const rrNum = parseFloat(rr);
     if (isNaN(rrNum)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
-    if (rrNum < 12) return { status: 'Low', color: '#3b82f6', range: '< 12 BPM' };
-    if (rrNum > 20) return { status: 'High', color: '#ef4444', range: '> 20 BPM' };
-    return { status: 'Normal', color: '#10b981', range: '12 - 20 BPM' };
+    // Categories: Below 12 Low, 12-20 Normal, 21-24 Elevated, Above 24 Critical
+    if (rrNum < 12) return { status: 'Low', color: '#3b82f6', range: '< 12/min' };
+    if (rrNum <= 20) return { status: 'Normal', color: '#10b981', range: '12 - 20/min' };
+    if (rrNum <= 24) return { status: 'Elevated', color: '#f59e0b', range: '21 - 24/min' };
+    return { status: 'Critical', color: '#dc2626', range: '> 24/min' };
   };
 
   const getBloodPressureStatus = (sys, dia) => {
@@ -620,10 +610,10 @@ export default function Result() {
                 </div>
                 <div>
                   <h3 className="h5 fw-bold mb-1">
-                    {userData.firstName || 'Juan'} {userData.lastName || 'Dela Cruz'}
+                    {userData.firstName ?? '--'} {userData.lastName ?? ''}
                   </h3>
                   <div className="text-muted small">
-                    <span className="me-3">{userData.age || '21'} years old</span>
+                    <span className="me-3">{userData.age ?? '--'} years old</span>
                     <span>{userData.sex ? userData.sex.charAt(0).toUpperCase() + userData.sex.slice(1).toLowerCase() : 'N/A'}</span>
                   </div>
                 </div>
@@ -636,7 +626,7 @@ export default function Result() {
                       <span className="fs-5">⚖️</span>
                       <h4 className="h6 fw-bold mb-0">Body Mass Index</h4>
                     </div>
-                    <span className="badge bg-white border text-dark">{calculateBMI(userData) || '24.5'}</span>
+                    <span className="badge bg-white border text-dark">{calculateBMI(userData) ?? 'N/A'}</span>
                   </div>
                   <div className="d-flex align-items-center justify-content-between">
                     <span className="fw-bold" style={{ color: bmiData.color }}>{bmiData.status}</span>
@@ -660,7 +650,7 @@ export default function Result() {
                     <span className="fs-4">🌡️</span>
                     <h3 className="h6 fw-bold mb-0">Temperature</h3>
                   </div>
-                  <div className="display-6 fw-bold mb-1">{userData.temperature || '36.8'}°C</div>
+                  <div className="display-6 fw-bold mb-1">{userData.temperature ?? '--'}°C</div>
                   <div className="fw-bold mb-1" style={{ color: tempData.color }}>
                     {tempData.status}
                   </div>
@@ -677,7 +667,7 @@ export default function Result() {
                     <span className="fs-4">💓</span>
                     <h3 className="h6 fw-bold mb-0">Heart Rate</h3>
                   </div>
-                  <div className="display-6 fw-bold mb-1">{userData.heartRate || '72'} <span className="fs-6 text-muted">BPM</span></div>
+                  <div className="display-6 fw-bold mb-1">{userData.heartRate ?? '--'} <span className="fs-6 text-muted">BPM</span></div>
                   <div className="fw-bold mb-1" style={{ color: hrData.color }}>
                     {hrData.status}
                   </div>
@@ -698,11 +688,11 @@ export default function Result() {
                       </h3>
                     </div>
                   </div>
-                  <div className="display-6 fw-bold mb-1">{userData.respiratoryRate || '16'} <span className="fs-6 text-muted">/min</span></div>
+                  <div className="display-6 fw-bold mb-1">{userData.respiratoryRate ?? '--'} <span className="fs-6 text-muted">/min</span></div>
 
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <span className="fw-bold" style={{ color: respData.color }}>{respData.status}</span>
-                    <span className="badge bg-white border text-dark">SpO2: {userData.spo2 || '98'}%</span>
+                    <span className="badge bg-white border text-dark">SpO2: {userData.spo2 ?? '--'}%</span>
                   </div>
                   <div className="small text-muted">Normal: 12 - 20 BPM</div>
                 </div>
@@ -719,7 +709,7 @@ export default function Result() {
                   </div>
                   <div className="display-6 fw-bold mb-1">
                     {userData.systolic && userData.diastolic ?
-                      `${userData.systolic}/${userData.diastolic}` : '120/80'}
+                      `${userData.systolic}/${userData.diastolic}` : '--/--'}
                   </div>
                   <div className="fw-bold mb-1" style={{ color: bpData.color }}>
                     {bpData.status}

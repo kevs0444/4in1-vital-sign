@@ -1056,7 +1056,8 @@ export const cameraAPI = {
     try {
       console.log('🧠 Analying BP Image with Hybrid AI...');
       // Updated endpoint to use dedicated BP Camera route
-      return await fetchWithTimeout(`${API_URL}/bp-camera/analyze-bp-camera`, { method: 'POST' }, TIMEOUTS.MEDIUM);
+      // Long timeout (2 min) to allow offline PaddleOCR models to load on first run
+      return await fetchWithTimeout(`${API_URL}/bp-camera/analyze-bp-camera`, { method: 'POST' }, 120000);
     } catch (error) {
       console.error('Error analyzing BP:', error);
       return { success: false, message: error.message };

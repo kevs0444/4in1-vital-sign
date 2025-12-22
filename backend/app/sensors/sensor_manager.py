@@ -340,6 +340,11 @@ class SensorManager:
             self.live_data['max30102']['status'] = 'complete'
             self.live_data['max30102']['final_result_shown'] = True
 
+        elif data == "MAX30102_MEASUREMENT_COMPLETING":
+            # NOTE: Don't set final_result_shown here - the RESULT: values haven't been parsed yet!
+            # Wait for MAX30102_RESULTS_VALID which comes after all RESULT: values are sent
+            logger.info("🏁 MAX30102 measurement completing - waiting for final results...")
+
         elif data == "MAX30102_RESULTS_INVALID":
             logger.info("❌ MAX30102 results are invalid")
             self._max30102_measurement_active = False

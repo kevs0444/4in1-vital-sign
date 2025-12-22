@@ -48,16 +48,15 @@ export default function BloodPressure() {
 
   const initializeBloodPressureSensor = async () => {
     try {
-      setStatusMessage("🔄 Initializing blood pressure monitor...");
+      setStatusMessage("🔄 Initializing...");
 
-      // Always use simulation mode for now
-      setStatusMessage("✅ Blood pressure monitor ready - Click 'Start Measurement' to begin");
-      setMeasurementStep(1); // Ready for measurement
+      // We no longer rely on hardware sensor simulation
+      setStatusMessage("✅ Ready to scan - Click 'Scan Monitor' to begin");
+      setMeasurementStep(1);
 
     } catch (error) {
       console.error("Blood pressure initialization error:", error);
-      setStatusMessage("✅ Using simulation mode - Click 'Start Measurement' to begin");
-      setMeasurementStep(1); // Ready for measurement
+      setStatusMessage("❌ Initialization error");
     }
   };
 
@@ -101,129 +100,12 @@ export default function BloodPressure() {
     };
   };
 
-  const startCameraMode = async () => {
-    setIsCameraMode(true);
-    setStatusMessage("Starting camera...");
-    await cameraAPI.start();
-    await cameraAPI.setMode('reading');
-    setStatusMessage("Position the BP display in the frame");
-  };
-
-  const stopCameraMode = async () => {
-    await cameraAPI.stop();
-    // CRITICAL: Reset mode to 'feet' so we don't break compliance checks in other steps
-    await cameraAPI.setMode('feet');
-    setIsCameraMode(false);
-    setStatusMessage("✅ Blood pressure monitor ready");
-  };
-
-  const captureAndAnalyze = async () => {
-    try {
-      setIsAnalyzing(true);
-      setStatusMessage("🧠 Analyzing image with Juan AI...");
-
-      const response = await cameraAPI.analyzeBP();
-      console.log("BP Analysis Result:", response);
-
-      if (response && response.success && response.systolic && response.diastolic) {
-        setSystolic(response.systolic.toString());
-        setDiastolic(response.diastolic.toString());
-        setMeasurementComplete(true);
-        setBpComplete(true);
-        setMeasurementStep(3);
-        setStatusMessage("✅ AI Read Complete!");
-        // Stop camera after short delay to let user see "Success"
-        setTimeout(stopCameraMode, 1000);
-      } else {
-        setStatusMessage(`❌ Could not read display: ${response?.message || 'Unknown error'}`);
-      }
-    } catch (e) {
-      console.error(e);
-      setStatusMessage("❌ Analysis failed");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
   const startMeasurement = async () => {
-    try {
-      setStatusMessage("Starting blood pressure measurement...");
-      setBpMeasuring(true);
-      setMeasurementStep(2); // Move to step 2: Measuring
-      setProgress(0);
-
-      // Clear any previous measurement
-      setSystolic("");
-      setDiastolic("");
-
-      // Simulate measurement with progress
-      startCountdown(8); // 8 seconds countdown for simulation
-
-      let progressValue = 0;
-      progressIntervalRef.current = setInterval(() => {
-        progressValue += 12.5; // 8 steps to 100%
-        setProgress(progressValue);
-
-        if (progressValue >= 100) {
-          clearInterval(progressIntervalRef.current);
-          // Generate final random blood pressure
-          const bp = generateRandomBloodPressure();
-          setSystolic(bp.systolic.toString());
-          setDiastolic(bp.diastolic.toString());
-          setMeasurementComplete(true);
-          setBpComplete(true);
-          setBpMeasuring(false);
-          setMeasurementStep(3); // Move to step 3: Results complete
-          setStatusMessage("✅ Blood Pressure Measurement Complete!");
-          stopCountdown();
-        }
-      }, 1000);
-
-    } catch (error) {
-      console.error("Start blood pressure error:", error);
-      setStatusMessage("❌ Failed to start measurement");
-      setBpMeasuring(false);
-      setMeasurementStep(1); // Return to ready state
-      handleRetry();
-    }
+    // REFACTORED: No more simulation. Clicking start opens the camera.
+    startCameraMode();
   };
 
-  const handleRetry = () => {
-    if (retryCount < MAX_RETRIES) {
-      setRetryCount(prev => prev + 1);
-      setStatusMessage(`🔄 Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-
-      setTimeout(() => {
-        initializeBloodPressureSensor();
-      }, 2000);
-    } else {
-      setStatusMessage("❌ Maximum retries reached. Please try again.");
-      stopAllTimers();
-    }
-  };
-
-  const handleContinue = () => {
-    if (!measurementComplete || !systolic || !diastolic) return;
-
-    stopAllTimers();
-
-    // Prepare complete data to pass to AI Results
-    const completeVitalSignsData = {
-      ...location.state, // This includes all previous data
-      systolic: systolic ? parseFloat(systolic) : null,
-      diastolic: diastolic ? parseFloat(diastolic) : null,
-      bloodPressure: `${systolic}/${diastolic}`,
-      measurementTimestamp: new Date().toISOString()
-    };
-
-    console.log("🚀 BloodPressure complete - navigating to next step with data:", completeVitalSignsData);
-
-    // Navigate to next step or results
-    const nextPath = getNextStepPath('bloodpressure', location.state?.checklist);
-    navigate(nextPath, {
-      state: completeVitalSignsData
-    });
-  };
+  // --- HELPER FUNCTIONS (Defined before use) ---
 
   const getBloodPressureStatus = (sys, dia) => {
     if (!sys || !dia || sys === "--" || dia === "--") {
@@ -289,41 +171,94 @@ export default function BloodPressure() {
     };
   };
 
-  const getButtonText = () => {
-    const isLast = isLastStep('bloodpressure', location.state?.checklist);
-
-    switch (measurementStep) {
-      case 1:
-        return "Start BP Measurement";
-      case 2:
-        return `Measuring... ${countdown}s`;
-      case 3:
-        return isLast ? "Continue to Result" : "Continue to Next Step";
-      default:
-        return "Start BP Measurement";
-    }
-  };
-
-  const getButtonAction = () => {
-    switch (measurementStep) {
-      case 1:
-        return startMeasurement;
-      case 2:
-        return () => { }; // No action during measurement
-      case 3:
-        return handleContinue;
-      default:
-        return startMeasurement;
-    }
-  };
-
-  const getButtonDisabled = () => {
-    return measurementStep === 2; // Disable only during measurement
-  };
-
+  // --- DERIVED STATE ---
   const statusInfo = getCurrentStatusInfo();
   const displayValue = getCurrentDisplayValue();
   const progressInfo = getProgressInfo('bloodpressure', location.state?.checklist);
+
+  const startCameraMode = async () => {
+    setIsCameraMode(true);
+    setStatusMessage("Starting camera...");
+    try {
+      await cameraAPI.start();
+      await cameraAPI.setMode('reading');
+      setStatusMessage("Position the digital BP monitor in the frame");
+    } catch (err) {
+      console.error("Camera start error:", err);
+      setStatusMessage("❌ Camera failed to start");
+    }
+  };
+
+  const stopCameraMode = async () => {
+    try {
+      await cameraAPI.stop();
+      // CRITICAL: Reset mode to 'feet' so we don't break compliance checks in other steps
+      await cameraAPI.setMode('feet');
+    } catch (e) { console.error(e) }
+
+    setIsCameraMode(false);
+    setStatusMessage("✅ Ready to scan");
+  };
+
+  const captureAndAnalyze = async () => {
+    try {
+      setIsAnalyzing(true);
+      setStatusMessage("🧠 Cloud AI Reading Display...");
+
+      const response = await cameraAPI.analyzeBP();
+      console.log("BP Analysis Result:", response);
+
+      if (response && response.success && response.systolic && response.diastolic) {
+        setSystolic(response.systolic.toString());
+        setDiastolic(response.diastolic.toString());
+        setMeasurementComplete(true);
+        setBpComplete(true);
+        setMeasurementStep(3);
+        setStatusMessage("✅ Measurement Complete!");
+
+        // Stop camera after success
+        setTimeout(stopCameraMode, 1000);
+      } else {
+        setStatusMessage(`❌ Reading failed: ${response?.message || 'Try aligning again'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      setStatusMessage("❌ Analysis error. Check connection.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleContinue = () => {
+    if (!measurementComplete || !systolic || !diastolic) return;
+    stopAllTimers();
+
+    const completeVitalSignsData = {
+      ...location.state,
+      systolic: systolic ? parseFloat(systolic) : null,
+      diastolic: diastolic ? parseFloat(diastolic) : null,
+      bloodPressure: `${systolic}/${diastolic}`,
+      measurementTimestamp: new Date().toISOString()
+    };
+
+    const nextPath = getNextStepPath('bloodpressure', location.state?.checklist);
+    navigate(nextPath, { state: completeVitalSignsData });
+  };
+
+  const getButtonText = () => {
+    const isLast = isLastStep('bloodpressure', location.state?.checklist);
+    if (measurementStep === 3) return isLast ? "Continue to Result" : "Continue to Next Step";
+    return "Scan Monitor with Camera";
+  };
+
+  const getButtonAction = () => {
+    if (measurementStep === 3) return handleContinue;
+    return startCameraMode;
+  };
+
+  const getButtonDisabled = () => {
+    return false;
+  };
 
   const handleBack = () => {
     if (measurementStep > 1) {
