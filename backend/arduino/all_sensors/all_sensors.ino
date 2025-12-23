@@ -20,7 +20,7 @@ MAX30105 particleSensor;       // MAX30102 sensor
 // =================================================================
 // --- MAX30102 CONSTANTS ---
 // =================================================================
-#define BUFFER_SIZE 100
+#define BUFFER_SIZE 25  // OPTIMIZED: Reduced from 100 to 25 for ~1s updates instead of ~5s
 uint32_t irBuffer[BUFFER_SIZE];  
 uint32_t redBuffer[BUFFER_SIZE];  
 int32_t spo2;          
@@ -121,7 +121,7 @@ bool max30102SensorInitialized = false;
 // --- SETUP FUNCTION ---
 // =================================================================
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);  // OPTIMIZED: Faster baud rate for reduced latency
   
   // Arduino Mega I2C pins: SDA = 20, SCL = 21
   Wire.begin();
@@ -315,10 +315,13 @@ void powerUpMax30102Sensor() {
 }
 
 void powerDownMax30102Sensor() {
-  if (max30102SensorPowered) {
-    max30102SensorPowered = false;
-    Serial.println("STATUS:MAX30102_SENSOR_POWERED_DOWN");
-  }
+  // Always set flag to false
+  max30102SensorPowered = false;
+  
+  // Force hardware shutdown
+  particleSensor.shutDown(); 
+  
+  Serial.println("STATUS:MAX30102_SENSOR_POWERED_DOWN");
 }
 
 // Start continuous finger detection
@@ -331,7 +334,7 @@ void startFingerDetection() {
 void monitorFingerPresence() {
   static unsigned long lastFingerCheck = 0;
   
-  if (millis() - lastFingerCheck > 500) { // Check every 500ms
+  if (millis() - lastFingerCheck > 200) { // OPTIMIZED: Check every 200ms for faster response
     long irValue = particleSensor.getIR();
     
     // Always send IR value for monitoring
@@ -407,7 +410,7 @@ void startMax30102Measurement() {
   
   Serial.println("STATUS:MAX30102_MEASUREMENT_STARTED");
   Serial.println("MAX30102_STATE:MEASURING");
-  Serial.println("✅ Finger detected! Starting 30-second measurement...");
+  Serial.println("✅ Finger detected! Streaming data continuously...");
   Serial.println("==================================================");
 }
 
@@ -420,7 +423,7 @@ void runMax30102Phase() {
   // If no finger detected during measurement, stop it
   if (max30102MeasurementStarted && !fingerDetected) {
     Serial.println("MAX30102_STATE:FINGER_REMOVED_DURING_MEASUREMENT");
-    Serial.println("ERROR:MAX30102_MEASUREMENT_INTERRUPTED");
+    Serial.println("FINGER_REMOVED");
     max30102MeasurementStarted = false;
     measurementActive = false;
     currentPhase = IDLE;
@@ -432,7 +435,10 @@ void runMax30102Phase() {
     return;
   }
 
-  // Collect samples for processing
+  // SIMPLIFIED: Just collect a small batch of samples and send data every ~1 second
+  // Frontend controls the 30-second timer and averaging
+  
+  // Collect samples for processing (reduced buffer for ~1s cycle)
   for (byte i = 0; i < BUFFER_SIZE; i++) {
     while (!particleSensor.available())
       particleSensor.check();
@@ -449,139 +455,39 @@ void runMax30102Phase() {
     &heartRate, &validHeartRate
   );
 
-  // Apply BPM deduction like testing code
+  // Apply BPM deduction
   if (validHeartRate && heartRate > 0) {
-    heartRate -= BPM_DEDUCTION; // Apply deduction like testing code
+    heartRate -= BPM_DEDUCTION;
     if (heartRate < 30) heartRate = 30;
     if (heartRate > 200) heartRate = 200;
     respiratoryRate = estimateRespiratoryRate(heartRate);
-    
-    // Add to totals for averaging
-    totalHeartRate += heartRate;
-    totalSpO2 += spo2;
-    totalRR += respiratoryRate;
-    sampleCount++;
   }
 
-  // Show real-time reading every 100ms like testing code
-  if (currentTime - lastMax30102DisplayTime >= MAX30102_READ_INTERVAL) {
-    unsigned long elapsedTime = (currentTime - max30102StartTime) / 1000;
-    unsigned long remainingTime = 30 - elapsedTime;
-    
-    // Always send IR value during measurement
-    long irValue = particleSensor.getIR();
-    Serial.print("MAX30102_IR_VALUE:");
-    Serial.println(irValue);
-    
-    if (validSPO2 && validHeartRate && spo2 > 0 && heartRate > 0) {
-      Serial.print("[Time: ");
-      Serial.print(elapsedTime);
-      Serial.print("s] Heart Rate: ");
-      Serial.print(heartRate);
-      Serial.print(" BPM  SpO2: ");
-      Serial.print(spo2);
-      Serial.print("%  RR: ");
-      Serial.print(respiratoryRate);
-      Serial.print(" breaths/min  (");
-      Serial.print(remainingTime);
-      Serial.println("s remaining)");
-      
-      // Send live data for frontend
-      Serial.print("MAX30102_LIVE_DATA:");
-      Serial.print("HR=");
-      Serial.print(heartRate);
-      Serial.print(",SPO2=");
-      Serial.print(spo2);
-      Serial.print(",RR=");
-      Serial.print(respiratoryRate);
-      Serial.print(",VALID_HR=");
-      Serial.print(validHeartRate);
-      Serial.print(",VALID_SPO2=");
-      Serial.println(validSPO2);
-      
-      // Store the latest reading
-      finalHeartRate = heartRate;
-      finalSpO2 = spo2;
-      finalRespiratoryRate = respiratoryRate;
-    } else {
-      Serial.print("[Time: ");
-      Serial.print(elapsedTime);
-      Serial.print("s] Waiting for valid signal... (");
-      Serial.print(remainingTime);
-      Serial.println("s remaining)");
-    }
-    
-    // Send progress updates
-    int progressPercent = (elapsedTime * 100) / 30;
-    Serial.print("STATUS:MAX30102_PROGRESS:");
-    Serial.print(elapsedTime);
-    Serial.print("/30:");
-    Serial.println(progressPercent);
-    
-    lastMax30102DisplayTime = currentTime;
+  // Always send IR value
+  long irValue = particleSensor.getIR();
+  Serial.print("MAX30102_IR_VALUE:");
+  Serial.println(irValue);
+  
+  // Send live data if valid (Frontend will collect and average)
+  if (validSPO2 && validHeartRate && spo2 > 0 && heartRate > 0) {
+    Serial.print("MAX30102_LIVE_DATA:");
+    Serial.print("HR=");
+    Serial.print(heartRate);
+    Serial.print(",SPO2=");
+    Serial.print(spo2);
+    Serial.print(",RR=");
+    Serial.print(respiratoryRate);
+    Serial.print(",VALID_HR=");
+    Serial.print(validHeartRate);
+    Serial.print(",VALID_SPO2=");
+    Serial.println(validSPO2);
+  } else {
+    // Send waiting signal so frontend knows we're still trying
+    Serial.println("MAX30102_WAITING_FOR_VALID_SIGNAL");
   }
-
-  // Show final result after 30 seconds
-  if (currentTime - max30102StartTime >= MAX30102_MEASUREMENT_TIME && !max30102MeasurementComplete) {
-    Serial.println("MAX30102_MEASUREMENT_COMPLETING");
-    
-    // Calculate final results as averages
-    int32_t avgHeartRate = 0;
-    int32_t avgSpO2 = 0;
-    float avgRespiratoryRate = 0;
-    
-    if (sampleCount > 0) {
-      avgHeartRate = round(totalHeartRate / sampleCount);
-      avgSpO2 = round(totalSpO2 / sampleCount);
-      avgRespiratoryRate = round(totalRR / sampleCount);
-    } else {
-      // Use current readings if no samples
-      avgHeartRate = finalHeartRate;
-      avgSpO2 = finalSpO2;
-      avgRespiratoryRate = finalRespiratoryRate;
-    }
-    
-    // Set defaults if still no valid data
-    if (avgHeartRate <= 0) avgHeartRate = 75;
-    if (avgSpO2 <= 0) avgSpO2 = 98;
-    if (avgRespiratoryRate <= 0) avgRespiratoryRate = 16;
-    
-    if (avgHeartRate > 0 && avgSpO2 > 0) {
-      Serial.println("==================================");
-      Serial.println("===== 30-SECOND FINAL RESULT =====");
-      Serial.println("==================================");
-      Serial.print("RESULT:HEART_RATE:");
-      Serial.println(avgHeartRate);
-      Serial.print("RESULT:SPO2:");
-      Serial.println(avgSpO2);
-      Serial.print("RESULT:RESPIRATORY_RATE:");
-      Serial.println(avgRespiratoryRate, 1);
-      
-      Serial.print("FINAL_RESULT: Heart Rate: ");
-      Serial.print(avgHeartRate);
-      Serial.print(" BPM, SpO2: ");
-      Serial.print(avgSpO2);
-      Serial.print("%, RR: ");
-      Serial.print(avgRespiratoryRate, 1);
-      Serial.println(" breaths/min");
-      
-      Serial.println("MAX30102_RESULTS_VALID");
-    } else {
-      Serial.println("ERROR:MAX30102_READING_FAILED");
-      Serial.println("MAX30102_RESULTS_INVALID");
-    }
-    
-    Serial.println("STATUS:MAX30102_MEASUREMENT_COMPLETE");
-    max30102MeasurementComplete = true;
-    finalizeMax30102Measurement();
-  }
-
-  // Reset for new 30-second cycle if final result was shown and finger is still detected
-  if (max30102MeasurementComplete && currentTime - max30102StartTime >= MAX30102_MEASUREMENT_TIME + 2000 && fingerDetected) {
-    Serial.println("\n🔄 Starting new 30-second measurement...");
-    Serial.println("==================================================");
-    startMax30102Measurement();
-  }
+  
+  // NOTE: NO 30-second completion logic here! Frontend controls timing.
+  // Frontend will call STOP_MAX30102 when done or finger removal detected.
 }
 
 void finalizeMax30102Measurement() {
@@ -591,9 +497,19 @@ void finalizeMax30102Measurement() {
   max30102MeasurementStarted = false;
   max30102MeasurementComplete = true;
   
-  // Don't reset fingerDetected - keep monitoring
-  Serial.println("MAX30102_STATE:FINGER_DETECTION_ACTIVE");
-  Serial.println("MAX30102_READY:Measurement complete. Keep finger on sensor for new measurement or remove to stop.");
+  Serial.println("MAX30102_STATE:MEASUREMENT_STOPPED");
+  Serial.println("MAX30102_READY:Measurement stopped. Place finger to start new measurement.");
+}
+
+// NEW: Called by frontend when 30 seconds is complete
+void stopMax30102Measurement() {
+  Serial.println("STATUS:MAX30102_STOP_REQUESTED");
+  max30102MeasurementStarted = false;
+  measurementActive = false;
+  currentPhase = IDLE;
+  fingerDetected = false;
+  Serial.println("MAX30102_STATE:MEASUREMENT_COMPLETED_BY_FRONTEND");
+  Serial.println("STATUS:MAX30102_MEASUREMENT_COMPLETE");
 }
 
 // =================================================================
@@ -673,6 +589,8 @@ void handleCommand(String command) {
     powerDownTemperatureSensor();
   } else if (command == "POWER_DOWN_MAX30102") {
     powerDownMax30102Sensor();
+  } else if (command == "STOP_MAX30102") {
+    stopMax30102Measurement();
   } else if (command == "SHUTDOWN_ALL") {
     shutdownAllSensors();
   } else if (command == "GET_STATUS") {

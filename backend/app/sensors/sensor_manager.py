@@ -13,7 +13,7 @@ class SensorManager:
         self.serial_conn = None
         self.is_connected = False
         self.port = None
-        self.baudrate = 9600
+        self.baudrate = 115200  # OPTIMIZED: Faster baud rate to match Arduino
         self.ir_log_counter = 0  # Counter for throttling logs
         
         # Sensor status flags
@@ -157,7 +157,12 @@ class SensorManager:
                     line = self.serial_conn.readline().decode('utf-8', errors='ignore').strip()
                     if line:
                         self._parse_serial_data(line)
-                time.sleep(0.01)
+                
+                # OPTIMIZED: Faster polling during MAX30102 measurement for reduced latency
+                if self._max30102_measurement_active:
+                    time.sleep(0.001)  # 1ms during MAX30102 for near-instant response
+                else:
+                    time.sleep(0.01)  # 10ms for other sensors (unchanged)
             except Exception as e:
                 logger.error(f"Serial listener error: {e}")
                 time.sleep(0.1)
@@ -651,12 +656,45 @@ class SensorManager:
         if not self.is_connected:
             return {"status": "error", "message": "Not connected to Arduino"}
         
+        # RESET DATA
+        self.measurements['heart_rate'] = None
+        self.measurements['spo2'] = None
+        self.measurements['respiratory_rate'] = None
+        
+        self.live_data['max30102'].update({
+            'heart_rate': None,
+            'spo2': None,
+            'respiratory_rate': None,
+            'finger_detected': False,
+            'progress': 0,
+            'status': 'idle',
+            'elapsed': 0,
+            'ir_value': 0,
+            'measurement_started': False,
+            'final_result_shown': False
+        })
+
         try:
             self.serial_conn.write("POWER_UP_MAX30102\n".encode())
             time.sleep(2)  # Wait for sensor to initialize
             return {"status": "success", "message": "MAX30102 sensor prepared"}
         except Exception as e:
             return {"status": "error", "message": f"Failed to prepare MAX30102 sensor: {str(e)}"}
+
+    def stop_max30102_measurement(self):
+        """Stop MAX30102 measurement - called by frontend when 30s timer completes"""
+        if not self.is_connected:
+            return {"status": "error", "message": "Not connected to Arduino"}
+        
+        try:
+            self.serial_conn.write("STOP_MAX30102\n".encode())
+            self._max30102_measurement_active = False
+            self.live_data['max30102']['measurement_started'] = False
+            self.live_data['max30102']['status'] = 'complete'
+            logger.info("✅ MAX30102 measurement stopped by frontend")
+            return {"status": "success", "message": "MAX30102 measurement stopped"}
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to stop MAX30102 measurement: {str(e)}"}
 
     def get_max30102_status(self):
         """Get MAX30102 sensor status"""
@@ -708,6 +746,15 @@ class SensorManager:
         if not self.is_connected:
             return {"status": "error", "message": "Not connected to Arduino"}
         
+        # RESET DATA
+        self.measurements['weight'] = None
+        self.live_data['weight'].update({
+            'current': None,
+            'progress': 0,
+            'status': 'idle',
+            'elapsed': 0
+        })
+        
         try:
             self.serial_conn.write("POWER_UP_WEIGHT\n".encode())
             time.sleep(1)
@@ -751,6 +798,15 @@ class SensorManager:
         if not self.is_connected:
             return {"status": "error", "message": "Not connected to Arduino"}
         
+        # RESET DATA
+        self.measurements['height'] = None
+        self.live_data['height'].update({
+            'current': None,
+            'progress': 0,
+            'status': 'idle',
+            'elapsed': 0
+        })
+        
         try:
             self.serial_conn.write("POWER_UP_HEIGHT\n".encode())
             time.sleep(1)
@@ -791,6 +847,15 @@ class SensorManager:
         """Prepare temperature sensor"""
         if not self.is_connected:
             return {"status": "error", "message": "Not connected to Arduino"}
+        
+        # RESET DATA
+        self.measurements['temperature'] = None
+        self.live_data['temperature'].update({
+            'current': None,
+            'progress': 0,
+            'status': 'idle',
+            'elapsed': 0
+        })
         
         try:
             self.serial_conn.write("POWER_UP_TEMPERATURE\n".encode())

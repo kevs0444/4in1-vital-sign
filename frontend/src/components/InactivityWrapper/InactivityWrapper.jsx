@@ -1,32 +1,37 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './InactivityWrapper.css';
 import juanSadIcon from '../../assets/icons/juan-sad-icon.png';
+
+// Create Context
+const InactivityContext = createContext({
+    isInactivityEnabled: true,
+    setIsInactivityEnabled: () => { },
+    signalActivity: () => { },  // NEW: Allow components to signal activity
+});
+
+// Custom Hook
+export const useInactivity = () => useContext(InactivityContext);
 
 // Timeouts in milliseconds
 const WARNING_TIMEOUT = 30000; // 30 seconds
 const FINAL_TIMEOUT = 60000;   // 60 seconds (1 minute total)
 
-// Pages that should NOT trigger the inactivity redirect
+// Pages that should NOT trigger the inactivity redirect at all
 const EXCLUDED_PATHS = [
     '/',           // Standby page
     '/standby',    // Alternative standby path
-    '/measure/max30102',
-    '/measure/bmi',
-    '/measure/bodytemp',
-    '/measure/bloodpressure',
 ];
 
 const InactivityWrapper = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [showWarning, setShowWarning] = useState(false);
+    const [isInactivityEnabled, setIsInactivityEnabled] = useState(true);
 
     // Refs to hold timer IDs
     const warningTimerRef = useRef(null);
     const finalTimerRef = useRef(null);
-
-    const isExcludedPage = EXCLUDED_PATHS.includes(location.pathname);
 
     // Function to start/reset timers
     const startTimers = useCallback(() => {
@@ -34,8 +39,11 @@ const InactivityWrapper = ({ children }) => {
         if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
         if (finalTimerRef.current) clearTimeout(finalTimerRef.current);
 
-        // Don't start timers if on excluded page
-        if (isExcludedPage) {
+        const currentPath = location.pathname;
+        const isExcludedPage = EXCLUDED_PATHS.includes(currentPath);
+
+        // Don't start timers if excluded or explicitly disabled
+        if (isExcludedPage || !isInactivityEnabled) {
             setShowWarning(false);
             return;
         }
@@ -49,9 +57,10 @@ const InactivityWrapper = ({ children }) => {
         finalTimerRef.current = setTimeout(() => {
             console.log('⏰ User inactive for 1 minute - Redirecting to Standby...');
 
-            // Clear items like simple `afkHandler` did
+            // Clear items to reset progress
             localStorage.removeItem('currentUser');
             sessionStorage.removeItem('currentUser');
+            // Add any other specific cleanup if needed
 
             setShowWarning(false);
             navigate('/', {
@@ -59,17 +68,21 @@ const InactivityWrapper = ({ children }) => {
                 state: { fromInactivity: true }
             });
         }, FINAL_TIMEOUT);
-    }, [isExcludedPage, navigate]);
+    }, [location.pathname, isInactivityEnabled, navigate]);
 
-    // Handler for user activity
+    // Handler for user activity - also called by components via signalActivity
     const handleActivity = useCallback(() => {
-        // Only reset if we are not already redirecting (implied by component mount)
-        // If the warning is shown, hiding it provides feedback that activity was registered
         if (showWarning) {
             setShowWarning(false);
         }
         startTimers();
     }, [showWarning, startTimers]);
+
+    // NEW: Function for components to signal activity (e.g., finger detected on sensor)
+    const signalActivity = useCallback(() => {
+        console.log('[InactivityWrapper] External activity signal received');
+        handleActivity();
+    }, [handleActivity]);
 
     useEffect(() => {
         // Activity events to listen for
@@ -77,7 +90,7 @@ const InactivityWrapper = ({ children }) => {
             'mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'click'
         ];
 
-        // Attach listeners
+        // Attach listeners with throttle
         const throttleDelay = 1000;
         let lastCall = 0;
 
@@ -106,15 +119,32 @@ const InactivityWrapper = ({ children }) => {
         };
     }, [handleActivity, startTimers]);
 
-    // Reset when location changes (optional, but good for UX)
+    // Reset enabled state and timers when location changes
     useEffect(() => {
+        setIsInactivityEnabled(true); // Default to enabled on navigation
         startTimers();
     }, [location.pathname, startTimers]);
 
+    // React to isInactivityEnabled changes - IMPORTANT: Also hide warning immediately
+    useEffect(() => {
+        if (!isInactivityEnabled) {
+            setShowWarning(false); // Immediately hide any warning when disabled
+        }
+        startTimers();
+    }, [isInactivityEnabled, startTimers]);
+
+    // Determine if we should show the overlay
+    const canShowWarning = () => {
+        if (!showWarning) return false;
+        if (EXCLUDED_PATHS.includes(location.pathname)) return false;
+        if (!isInactivityEnabled) return false;
+        return true;
+    };
+
     return (
-        <>
+        <InactivityContext.Provider value={{ isInactivityEnabled, setIsInactivityEnabled, signalActivity }}>
             {children}
-            {showWarning && !isExcludedPage && (
+            {canShowWarning() && (
                 <div className="inactivity-overlay" onClick={handleActivity}>
                     <div className="inactivity-modal">
                         {/* Top Shimmer Bar */}
@@ -132,7 +162,7 @@ const InactivityWrapper = ({ children }) => {
                     </div>
                 </div>
             )}
-        </>
+        </InactivityContext.Provider>
     );
 };
 

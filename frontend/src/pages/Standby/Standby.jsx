@@ -75,6 +75,44 @@ export default function Standby() {
     }
   }, [location.state]);
 
+  // CRITICAL: Clear ALL measurement data when Standby loads
+  // This ensures a fresh start for every new user
+  useEffect(() => {
+    const clearAllMeasurementData = async () => {
+      console.log('🧹 Standby: Clearing all measurement data for new user...');
+
+      // 1. Clear localStorage
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('measurementData');
+      localStorage.removeItem('vitalSignsData');
+      localStorage.removeItem('bmiData');
+      localStorage.removeItem('temperatureData');
+      localStorage.removeItem('bloodPressureData');
+      localStorage.removeItem('max30102Data');
+
+      // 2. Clear sessionStorage
+      sessionStorage.removeItem('currentUser');
+      sessionStorage.removeItem('measurementData');
+      sessionStorage.removeItem('vitalSignsData');
+      sessionStorage.removeItem('bmiData');
+      sessionStorage.removeItem('temperatureData');
+      sessionStorage.removeItem('bloodPressureData');
+      sessionStorage.removeItem('max30102Data');
+
+      // 3. Reset sensors on backend (if connected)
+      try {
+        await sensorAPI.reset();
+        console.log('✅ Backend sensor data reset');
+      } catch (error) {
+        console.log('ℹ️ Backend reset skipped (may not be connected yet)');
+      }
+
+      console.log('✅ All measurement data cleared - ready for new user');
+    };
+
+    clearAllMeasurementData();
+  }, []); // Run once on mount
+
   // Perform comprehensive system check
   const performSystemCheck = useCallback(async () => {
     console.log('🔍 Performing comprehensive system check...');

@@ -13,7 +13,9 @@ import {
     PhotoLibrary,
     FlashOn,
     Settings,
-    FlipCameraIos
+    FlipCameraIos,
+    MonitorHeart,
+    PlayArrow
 } from '@mui/icons-material';
 import './Maintenance.css';
 
@@ -21,7 +23,7 @@ const Maintenance = () => {
     const navigate = useNavigate();
 
     // UI State
-    const [activeTab, setActiveTab] = useState('feet'); // 'feet' or 'body'
+    const [activeTab, setActiveTab] = useState('feet'); // 'feet', 'body', or 'bp'
     const [backendStatus, setBackendStatus] = useState('Disconnected');
     const [complianceStatus, setComplianceStatus] = useState('Waiting...');
     const [isCompliant, setIsCompliant] = useState(false);
@@ -29,6 +31,11 @@ const Maintenance = () => {
     const [captureCount, setCaptureCount] = useState(0);
     const [lastCapturePath, setLastCapturePath] = useState('');
     const [showCaptureFlash, setShowCaptureFlash] = useState(false);
+
+    // BP Reading State
+    const [bpReading, setBpReading] = useState(null);
+    const [isBpReading, setIsBpReading] = useState(false);
+    const [bpHistory, setBpHistory] = useState([]);
 
     // Camera Settings State
     const [settings, setSettings] = useState({
@@ -44,7 +51,8 @@ const Maintenance = () => {
 
     const modes = {
         feet: ["platform", "barefeet", "socks", "footwear"],
-        body: ["null", "bag", "cap", "id", "watch"]
+        body: ["null", "bag", "cap", "id", "watch"],
+        bp: [] // No capture classes for BP mode
     };
 
     useEffect(() => {
@@ -100,14 +108,25 @@ const Maintenance = () => {
 
     const handleTabChange = async (mode) => {
         setActiveTab(mode);
-        const recommendedIndex = mode === 'feet' ? 0 : 1;
+        // Camera mapping: 0=feet, 1=body, 2=blood pressure
+        let recommendedIndex;
+        if (mode === 'feet') recommendedIndex = 0;
+        else if (mode === 'body') recommendedIndex = 1;
+        else recommendedIndex = 2; // BP uses camera 2
+
+        const backendMode = mode === 'bp' ? 'reading' : mode;
         setSettings(prev => ({ ...prev, camera_index: recommendedIndex }));
+
+        // Clear BP reading when switching tabs
+        if (mode !== 'bp') {
+            setBpReading(null);
+        }
 
         try {
             await fetch('/api/camera/set_mode', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode })
+                body: JSON.stringify({ mode: backendMode })
             });
             await fetch('/api/camera/set_camera', {
                 method: 'POST',
@@ -176,6 +195,40 @@ const Maintenance = () => {
         setTimeout(startCamera, 1000);
     };
 
+    const handleBpRead = async () => {
+        if (isBpReading) return; // Prevent double-clicks
+
+        setIsBpReading(true);
+        setBpReading(null);
+        setShowCaptureFlash(true);
+        setTimeout(() => setShowCaptureFlash(false), 150);
+
+        try {
+            const res = await fetch('/api/bp-camera/analyze-bp-camera', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                const reading = {
+                    systolic: data.systolic,
+                    diastolic: data.diastolic,
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                setBpReading(reading);
+                setBpHistory(prev => [reading, ...prev].slice(0, 10)); // Keep last 10 readings
+            } else {
+                setBpReading({ error: data.message || 'Could not read BP values' });
+            }
+        } catch (err) {
+            console.error('BP Read error:', err);
+            setBpReading({ error: 'Failed to connect to AI service' });
+        } finally {
+            setIsBpReading(false);
+        }
+    };
+
     return (
         <div className="maintenance-container">
             <AnimatePresence>
@@ -208,6 +261,7 @@ const Maintenance = () => {
                     <div className="tabs-container">
                         <button className={`tab-btn ${activeTab === 'feet' ? 'active' : ''}`} onClick={() => handleTabChange('feet')}>Weight (Feet)</button>
                         <button className={`tab-btn ${activeTab === 'body' ? 'active' : ''}`} onClick={() => handleTabChange('body')}>Body (Wearables)</button>
+                        <button className={`tab-btn ${activeTab === 'bp' ? 'active' : ''}`} onClick={() => handleTabChange('bp')}>Blood Pressure</button>
                     </div>
 
                     <div className="camera-viewport">
@@ -220,25 +274,86 @@ const Maintenance = () => {
                             <div className="fps-badge">FPS: {fps}</div>
                         </div>
                         <div className="viewport-overlay bottom">
-                            <div className="capture-info">Session: {captureCount} images captured</div>
+                            <div className="capture-info">
+                                {activeTab === 'bp'
+                                    ? 'Align BP monitor screen in frame'
+                                    : `Session: ${captureCount} images captured`
+                                }
+                            </div>
                         </div>
                     </div>
 
-                    <div className="class-selector">
-                        <h3>Select Category to Capture:</h3>
-                        <div className="class-buttons">
-                            {modes[activeTab].map(cls => (
-                                <button
-                                    key={cls}
-                                    data-class={cls}
-                                    className={`class-btn ${selectedClass === cls ? 'active' : ''}`}
-                                    onClick={() => setSelectedClass(cls)}
-                                >
-                                    {cls.replace('_', ' ')}
-                                </button>
-                            ))}
+                    {/* Conditional Section: Training Categories OR BP Reading */}
+                    {activeTab === 'bp' ? (
+                        <div className="bp-results-section">
+                            <h3><MonitorHeart /> Blood Pressure Reading</h3>
+
+                            {/* Current Reading Display */}
+                            <div className="bp-current-reading">
+                                {isBpReading ? (
+                                    <div className="bp-loading">
+                                        <div className="bp-spinner"></div>
+                                        <span>AI is reading the BP monitor...</span>
+                                    </div>
+                                ) : bpReading ? (
+                                    bpReading.error ? (
+                                        <div className="bp-error">
+                                            <span>⚠️ {bpReading.error}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="bp-values">
+                                            <div className="bp-value systolic">
+                                                <span className="bp-label">SYS</span>
+                                                <span className="bp-number">{bpReading.systolic}</span>
+                                                <span className="bp-unit">mmHg</span>
+                                            </div>
+                                            <div className="bp-divider">/</div>
+                                            <div className="bp-value diastolic">
+                                                <span className="bp-label">DIA</span>
+                                                <span className="bp-number">{bpReading.diastolic}</span>
+                                                <span className="bp-unit">mmHg</span>
+                                            </div>
+                                        </div>
+                                    )
+                                ) : (
+                                    <div className="bp-placeholder">
+                                        <span>Point camera at BP monitor and press "Read BP"</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Reading History */}
+                            {bpHistory.length > 0 && (
+                                <div className="bp-history">
+                                    <h4>Recent Readings</h4>
+                                    <div className="bp-history-list">
+                                        {bpHistory.map((reading, idx) => (
+                                            <div key={idx} className="bp-history-item">
+                                                <span className="bp-history-values">{reading.systolic}/{reading.diastolic}</span>
+                                                <span className="bp-history-time">{reading.timestamp}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    ) : (
+                        <div className="class-selector">
+                            <h3>Select Category to Capture:</h3>
+                            <div className="class-buttons">
+                                {modes[activeTab].map(cls => (
+                                    <button
+                                        key={cls}
+                                        data-class={cls}
+                                        className={`class-btn ${selectedClass === cls ? 'active' : ''}`}
+                                        onClick={() => setSelectedClass(cls)}
+                                    >
+                                        {cls.replace('_', ' ')}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="right-panel">
@@ -252,9 +367,9 @@ const Maintenance = () => {
                                 onChange={(e) => handleCameraIndexChange(e.target.value)}
                                 className="styled-select"
                             >
-                                <option value="0">Camera 0 (Default Feet)</option>
-                                <option value="1">Camera 1 (Default Body)</option>
-                                <option value="2">Camera 2 (External)</option>
+                                <option value="0">Camera 0 (Feet/Weight)</option>
+                                <option value="1">Camera 1 (Body/Wearables)</option>
+                                <option value="2">Camera 2 (Blood Pressure)</option>
                             </select>
                         </div>
 
@@ -304,15 +419,28 @@ const Maintenance = () => {
                     </div>
 
                     <div className="capture-section">
-                        <button className="big-capture-btn" onClick={handleCapture}>
-                            <FlashOn /> CAPTURE
-                            <span className="shortcut-hint">SPACEBAR</span>
-                        </button>
-                        {lastCapturePath && (
-                            <div className="last-saved">
-                                <PhotoLibrary fontSize="small" />
-                                <span>Last saved: {lastCapturePath.split('\\').pop()}</span>
-                            </div>
+                        {activeTab === 'bp' ? (
+                            <button
+                                className={`big-capture-btn bp-read-btn ${isBpReading ? 'loading' : ''}`}
+                                onClick={handleBpRead}
+                                disabled={isBpReading}
+                            >
+                                <MonitorHeart /> {isBpReading ? 'READING...' : 'READ BP'}
+                                <span className="shortcut-hint">AI VISION</span>
+                            </button>
+                        ) : (
+                            <>
+                                <button className="big-capture-btn" onClick={handleCapture}>
+                                    <FlashOn /> CAPTURE
+                                    <span className="shortcut-hint">SPACEBAR</span>
+                                </button>
+                                {lastCapturePath && (
+                                    <div className="last-saved">
+                                        <PhotoLibrary fontSize="small" />
+                                        <span>Last saved: {lastCapturePath.split('\\').pop()}</span>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 

@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useInactivity } from "../../../components/InactivityWrapper/InactivityWrapper";
 import "./BloodPressure.css";
 import "../main-components-measurement.css";
 import bpIcon from "../../../assets/icons/bp-icon.png";
-import { sensorAPI, cameraAPI } from "../../../utils/api";
+import { cameraAPI, sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
 
 export default function BloodPressure() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setIsInactivityEnabled } = useInactivity();
   const [systolic, setSystolic] = useState("");
   const [diastolic, setDiastolic] = useState("");
   const [isVisible, setIsVisible] = useState(false);
@@ -36,15 +38,28 @@ export default function BloodPressure() {
   const progressIntervalRef = useRef(null);
 
   useEffect(() => {
+    // Reset inactivity setting on mount (timer enabled by default)
+    setIsInactivityEnabled(true);
+
     const timer = setTimeout(() => setIsVisible(true), 100);
     console.log("📍 BloodPressure received location.state:", location.state);
+
+    // Call init
     initializeBloodPressureSensor();
 
     return () => {
       clearTimeout(timer);
       stopAllTimers();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync inactivity with measurement
+  useEffect(() => {
+    // If measuring/analyzing, DISABLE inactivity (enabled = false)
+    // If NOT measuring, ENABLE inactivity (enabled = true)
+    setIsInactivityEnabled(!isMeasuring && !isAnalyzing);
+  }, [isMeasuring, isAnalyzing, setIsInactivityEnabled]);
 
   const initializeBloodPressureSensor = async () => {
     try {
@@ -273,7 +288,12 @@ export default function BloodPressure() {
 
   const handleExit = () => setShowExitModal(true);
 
-  const confirmExit = () => {
+  const confirmExit = async () => {
+    try {
+      await sensorAPI.reset();
+    } catch (e) {
+      console.error("Error resetting sensors:", e);
+    }
     setShowExitModal(false);
     navigate("/login");
   };

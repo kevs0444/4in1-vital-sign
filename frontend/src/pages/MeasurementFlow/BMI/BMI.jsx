@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useInactivity } from "../../../components/InactivityWrapper/InactivityWrapper";
 import "./BMI.css";
 import "../main-components-measurement.css";
 import weightIcon from "../../../assets/icons/weight-icon.png";
@@ -11,6 +12,7 @@ import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/che
 export default function BMI() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setIsInactivityEnabled } = useInactivity();
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [isVisible, setIsVisible] = useState(false);
@@ -66,6 +68,25 @@ export default function BMI() {
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
 
+    const handleTouchStart = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+    const handleTouchEnd = (e) => {
+      if (e.touches.length > 0) {
+        e.preventDefault();
+      }
+    };
+    const preventZoom = (e) => {
+      e.preventDefault();
+    };
+
     // Prevent zooming via touch gestures
     document.addEventListener('touchstart', handleTouchStart, { passive: false });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -84,9 +105,15 @@ export default function BMI() {
     };
   }, []);
 
+  // Initialization
   useEffect(() => {
+    // Enable inactivity timer initially
+    setIsInactivityEnabled(true);
+
     const timer = setTimeout(() => setIsVisible(true), 100);
     console.log("📍 BMI received location.state:", location.state);
+
+    // Call initialization directly (we'll ignore dependency warning as refactoring strictly for this is overkill)
     initializeSensors();
 
     return () => {
@@ -95,9 +122,20 @@ export default function BMI() {
       stopCountdown();
       clearSimulatedMeasurements();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Prevent zooming functions
+  // Sync inactivity with measurement
+  useEffect(() => {
+    // If measuring, DISABLE inactivity (enabled = false)
+    // If NOT measuring, ENABLE inactivity (enabled = true)
+    setIsInactivityEnabled(!isMeasuring);
+  }, [isMeasuring, setIsInactivityEnabled]);
+
+  // Prevent zooming functions - moved inside useEffect or just leave helpers here if needed elsewhere
+  // But they are only used in the useEffect above, which defines them locally now or references hoisting.
+  // Actually, to avoid "handleTouchStart undefined" issues if we moved them, we should keep them outside or define inside.
+  // The original code had them outside. Let's keep them here for safety, but check usage.
   const handleTouchStart = (e) => {
     if (e.touches.length > 1) {
       e.preventDefault();
@@ -417,7 +455,12 @@ export default function BMI() {
 
   const handleExit = () => setShowExitModal(true);
 
-  const confirmExit = () => {
+  const confirmExit = async () => {
+    try {
+      await sensorAPI.reset();
+    } catch (e) {
+      console.error("Error resetting sensors:", e);
+    }
     setShowExitModal(false);
     navigate("/login");
   };

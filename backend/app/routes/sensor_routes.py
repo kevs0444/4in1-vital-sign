@@ -192,6 +192,13 @@ def get_max30102_status():
     """Get MAX30102 sensor status and measurements"""
     return jsonify(sensor_manager.get_max30102_status())
 
+@sensor_bp.route('/max30102/stop', methods=['POST'])
+def stop_max30102():
+    """Stop MAX30102 measurement - called by frontend when 30s timer completes"""
+    print("⏹️ Stopping MAX30102 measurement (frontend request)...")
+    result = sensor_manager.stop_max30102_measurement()
+    return jsonify(result)
+
 @sensor_bp.route('/shutdown', methods=['POST'])
 def shutdown_sensors():
     """Shuts down all sensors (call this at the end of the flow)."""

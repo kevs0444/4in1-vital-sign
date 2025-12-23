@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useInactivity } from "../../../components/InactivityWrapper/InactivityWrapper";
 import "./Max30102.css";
 import "../main-components-measurement.css";
 import heartRateIcon from "../../../assets/icons/heart-rate-icon.png";
@@ -12,6 +13,7 @@ import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/che
 export default function Max30102() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setIsInactivityEnabled, signalActivity } = useInactivity();
   const [isVisible, setIsVisible] = useState(false);
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurementComplete, setMeasurementComplete] = useState(false);
@@ -25,7 +27,13 @@ export default function Max30102() {
   // Arrays to store all readings for averaging
   const [heartRateReadings, setHeartRateReadings] = useState([]);
   const [spo2Readings, setSpo2Readings] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [respiratoryRateReadings, setRespiratoryRateReadings] = useState([]);
+
+  // REFS to store readings - survives re-renders and closures
+  const heartRateReadingsRef = useRef([]);
+  const spo2ReadingsRef = useRef([]);
+  const respiratoryRateReadingsRef = useRef([]);
 
   const [progressSeconds, setProgressSeconds] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
@@ -33,7 +41,8 @@ export default function Max30102() {
   const [sensorReady, setSensorReady] = useState(false);
   const [measurementStep, setMeasurementStep] = useState(0);
   const [countdown, setCountdown] = useState(30);
-  const [irValue, setIrValue] = useState(0);
+  // Removed unused irValue state
+  // const [irValue, setIrValue] = useState(0);
 
   const [showFingerRemovedAlert, setShowFingerRemovedAlert] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
@@ -53,20 +62,62 @@ export default function Max30102() {
   // Refs to track measurement state for use inside intervals (avoid stale closures)
   const isMeasuringRef = useRef(false);
   const measurementCompleteRef = useRef(false);
+  const isStoppingRef = useRef(false); // Fix race conditions for stop commands
   const totalMeasurementTime = 30;
 
+  // Initialize sensors ONCE
   useEffect(() => {
+    // Reset inactivity setting on mount (timer enabled by default)
+    setIsInactivityEnabled(true);
+
     const timer = setTimeout(() => setIsVisible(true), 100);
     console.log("📍 Max30102 received location.state:", location.state);
+
+    // We can define this here or use useCallback, but easiest is to call the function which we can't do if it's defined later.
+    // So we just call a dedicated init function that is outside or hoisting.
+    // However, since initializeMax30102Sensor is defined in the component scope, we need to be careful with dependencies.
+    // For now, we'll disable the warning for this line as refactoring the whole initialization flow is risky.
+    // The previous implementation had this warning.
+
+    // Actually, let's just trigger it.
     initializeMax30102Sensor();
 
     return () => {
       clearTimeout(timer);
       stopAllTimers();
       clearFingerRemovedAlert();
-      // Removed shutdown on unmount to prevent premature shutdown in Strict Mode
-      // sensorAPI.shutdownMax30102().catch(err => console.error("Error shutting down MAX30102 on unmount:", err));
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
+
+  // Sync inactivity timer with measurement status
+  useEffect(() => {
+    // UPDATED LOGIC:
+    // Disable inactivity if:
+    // - Finger is detected (user is interacting with sensor)
+    // - Measuring is active (isMeasuring = true)
+    // - Measurement is complete (showing results)
+    // Enable inactivity ONLY when:
+    // - Waiting for finger AND no finger detected (user walked away)
+    const isUserInteracting = fingerDetected || isMeasuring || measurementComplete;
+    const shouldEnableInactivity = !isUserInteracting;
+
+    console.log(`[InactivityLogic] Finger:${fingerDetected} Measuring:${isMeasuring} Complete:${measurementComplete} -> InactivityEnabled: ${shouldEnableInactivity}`);
+
+    setIsInactivityEnabled(shouldEnableInactivity);
+  }, [isMeasuring, fingerDetected, measurementComplete, setIsInactivityEnabled]);
+
+  // Reset measurements on mount
+  useEffect(() => {
+    // Clear any previous data when entering the page
+    setMeasurements({
+      heartRate: "--",
+      spo2: "--",
+      respiratoryRate: "--"
+    });
+    setHeartRateReadings([]);
+    setSpo2Readings([]);
+    setRespiratoryRateReadings([]);
   }, []);
 
   // Update progress percentage when seconds change
@@ -77,26 +128,30 @@ export default function Max30102() {
     // Update countdown (remaining time)
     const remaining = Math.max(0, totalMeasurementTime - progressSeconds);
     setCountdown(remaining);
+  }, [progressSeconds]);
 
-    // Auto-complete when time is up
-    // MODIFIED: Do NOT auto-complete based on local timer. Wait for backend signal.
-    // This allows the Arduino to finish its cycle and send data even if it takes > 30s.
-    // if (progressSeconds >= totalMeasurementTime && isMeasuring && !measurementComplete) {
-    //   completeMeasurement();
-    // }
-  }, [progressSeconds, isMeasuring, measurementComplete]);
-
+  // FRONTEND CONTROLLED: Local timer for reliable countdown - auto-completes at 30s
   const startProgressTimer = () => {
     stopProgressTimer();
 
     progressTimerRef.current = setInterval(() => {
       setProgressSeconds(prev => {
         const newSeconds = prev + 1;
-        // Cap visual progress at 29s (99%) until backend signals completion
-        // This prevents the UI from showing "100%" before we actually have the data
+
+        // FRONTEND TRIGGERS COMPLETION at 30 seconds
         if (newSeconds >= totalMeasurementTime) {
-          return totalMeasurementTime - 1;
+          // IMMEDIATELY stop the timer to prevent multiple calls
+          clearInterval(progressTimerRef.current);
+          progressTimerRef.current = null;
+
+          // Auto-complete the measurement (only if not already complete)
+          if (!measurementCompleteRef.current) {
+            console.log("⏱️ Frontend timer reached 30s - triggering completion");
+            setTimeout(() => completeMeasurement(), 100);
+          }
+          return totalMeasurementTime; // Lock at 30
         }
+
         return newSeconds;
       });
     }, 1000);
@@ -114,11 +169,8 @@ export default function Max30102() {
 
     if (fingerRemovedAlertRef.current) {
       clearTimeout(fingerRemovedAlertRef.current);
+      fingerRemovedAlertRef.current = null;
     }
-
-    fingerRemovedAlertRef.current = setTimeout(() => {
-      setShowFingerRemovedAlert(false);
-    }, 5000); // Show for 5 seconds
   };
 
   const clearFingerRemovedAlert = () => {
@@ -176,24 +228,35 @@ export default function Max30102() {
         });
 
         // Check if finger was JUST REMOVED (was detected, now not detected) during measurement
-        if (previousFingerStateRef.current && !newFingerDetected && isMeasuring && !measurementComplete) {
+        if (previousFingerStateRef.current && !newFingerDetected && isMeasuringRef.current && !measurementCompleteRef.current) {
           console.log("Finger removed during measurement - stopping timer and showing alert");
           showFingerRemovedNotification();
-          setStatusMessage("❌ Finger removed! Please reinsert finger to continue measurement.");
-          pauseMeasurement(); // STOP COUNTING BUT DON'T RESET YET
+          setStatusMessage("❌ Finger removed! Please reinsert finger to RESTART measurement.");
+          invalidateMeasurement(); // INVALIDATE AND RESET EVERYTHING
         }
 
         // Check if finger was JUST INSERTED (was not detected, now detected) AND sensor is ready
         if (!previousFingerStateRef.current && newFingerDetected && newSensorReady) {
-          if (isMeasuring && !measurementComplete) {
+          // NEW: Signal activity to InactivityWrapper - finger insertion counts as user activity!
+          signalActivity();
+
+          if (isMeasuringRef.current && !measurementCompleteRef.current) {
             // Finger was reinserted after removal - RESET TO 0 and start over
             console.log("Finger reinserted during measurement - resetting to 0 and starting over");
             resetAndStartMeasurement();
-          } else if (!isMeasuring && !measurementComplete) {
+          } else if (!isMeasuringRef.current && !measurementCompleteRef.current) {
             // First time finger insertion - start measurement
             console.log("Finger detected for the first time - starting measurement");
             startMeasurement();
           }
+        }
+
+        // FAILSAFE: If backend says "Not Measuring" but frontend thinks "Measuring", sync up!
+        // This handles cases where backend detected finger removal but frontend logic missed the edge trigger
+        if (isMeasuringRef.current && measurementCompleteRef.current === false && data.measurement_started === false) {
+          console.log("SYNC CHECK: Backend says measurement stopped. Invalidating...");
+          // Only invalidate if we didn't just complete it (race condition check)
+          invalidateMeasurement();
         }
 
         // Update previous state
@@ -202,15 +265,11 @@ export default function Max30102() {
         setFingerDetected(newFingerDetected);
         setSensorReady(newSensorReady);
 
-        if (data.ir_value !== undefined) {
-          setIrValue(data.ir_value);
-        }
-
       } catch (error) {
         console.error("Error checking finger status:", error);
         setStatusMessage("⚠️ Connection issue, retrying...");
       }
-    }, 1000); // Check every second
+    }, 200); // Poll check every 200ms for faster response
 
     startMainPolling();
   };
@@ -225,20 +284,52 @@ export default function Max30102() {
     setProgressSeconds(0); // Start from 0
     setProgressPercent(0);
     setCountdown(30);
-    // Clear previous readings
+    // Clear previous readings (both state and refs)
     setHeartRateReadings([]);
     setSpo2Readings([]);
     setRespiratoryRateReadings([]);
+    heartRateReadingsRef.current = [];
+    spo2ReadingsRef.current = [];
+    respiratoryRateReadingsRef.current = [];
     startProgressTimer();
     clearFingerRemovedAlert();
   };
 
-  const pauseMeasurement = () => {
-    console.log("Pausing measurement due to finger removal");
-    stopProgressTimer(); // STOP COUNTING but keep current progress
+  const invalidateMeasurement = () => {
+    console.log("Invalidating measurement due to finger removal");
+    stopProgressTimer();
     setIsMeasuring(false);
     isMeasuringRef.current = false; // Update ref
-    // Don't reset progressSeconds here - keep it where it was
+
+    // Reset Progress
+    setProgressSeconds(0);
+    setProgressPercent(0);
+    setCountdown(30);
+
+    // Clear Reading History (both state and refs)
+    setHeartRateReadings([]);
+    setSpo2Readings([]);
+    setRespiratoryRateReadings([]);
+    heartRateReadingsRef.current = [];
+    spo2ReadingsRef.current = [];
+    respiratoryRateReadingsRef.current = [];
+
+    // Reset Display Values
+    setMeasurements({
+      heartRate: "--",
+      spo2: "--",
+      respiratoryRate: "--"
+    });
+
+    // Reset Final Meas Ref
+    finalMeasurementsRef.current = {
+      heartRate: null,
+      spo2: null,
+      respiratoryRate: null
+    };
+
+    // Reset UI Step to "Ready" (Step 2) so it prompts for finger again
+    setMeasurementStep(2);
   };
 
   const resetAndStartMeasurement = () => {
@@ -247,6 +338,22 @@ export default function Max30102() {
     setProgressSeconds(0); // RESET TO 0
     setProgressPercent(0); // RESET PROGRESS TO 0%
     setCountdown(30); // RESET COUNTDOWN TO 30
+
+    // CRITICAL: Clear ALL previous readings to prevent old data from mixing!
+    setHeartRateReadings([]);
+    setSpo2Readings([]);
+    setRespiratoryRateReadings([]);
+    heartRateReadingsRef.current = [];
+    spo2ReadingsRef.current = [];
+    respiratoryRateReadingsRef.current = [];
+
+    // Also reset displayed values to "--"
+    setMeasurements({
+      heartRate: "--",
+      spo2: "--",
+      respiratoryRate: "--"
+    });
+
     setStatusMessage("✅ Finger detected! Measurement restarting from beginning...");
     setIsMeasuring(true);
     isMeasuringRef.current = true; // Update ref
@@ -254,9 +361,15 @@ export default function Max30102() {
     clearFingerRemovedAlert();
   };
 
-  const completeMeasurement = () => {
+  const completeMeasurement = async () => {
     console.log("🏁 Measurement completion triggered");
-    console.log(`📊 Collected readings - HR: ${heartRateReadings.length}, SpO2: ${spo2Readings.length}, RR: ${respiratoryRateReadings.length}`);
+
+    // USE REFS for readings (survives closures/re-renders)
+    const hrReadings = heartRateReadingsRef.current;
+    const spo2ReadingsData = spo2ReadingsRef.current;
+    const rrReadings = respiratoryRateReadingsRef.current;
+
+    console.log(`📊 Collected readings - HR: ${hrReadings.length}, SpO2: ${spo2ReadingsData.length}, RR: ${rrReadings.length}`);
 
     stopProgressTimer();
     setIsMeasuring(false);
@@ -268,18 +381,41 @@ export default function Max30102() {
     setProgressSeconds(totalMeasurementTime);
     setCountdown(0);
 
-    // Calculate averages from all collected readings
+    // Check if we are already stopping to prevent duplicate calls
+    if (isStoppingRef.current) return;
+    isStoppingRef.current = true;
+
+    // STOP and SHUTDOWN the Arduino MAX30102 - tell backend we're done
+    try {
+      console.log("⏹️ Sending stop command to Arduino...");
+      await sensorAPI.stopMax30102();
+      console.log("✅ Arduino MAX30102 stopped successfully");
+
+      // Small delay before shutdown to ensure serial buffer is clear
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Also fully shutdown/power down the sensor
+      console.log("🔌 Powering down MAX30102 sensor...");
+      await sensorAPI.shutdownMax30102();
+      console.log("✅ MAX30102 sensor powered down");
+    } catch (error) {
+      console.error("Error stopping/shutting down MAX30102:", error);
+    } finally {
+      isStoppingRef.current = false;
+    }
+
+    // Calculate averages from all collected readings (from refs)
     let avgHeartRate = "--";
     let avgSpo2 = "--";
     let avgRespiratoryRate = "--";
 
-    // DEBUG: Log all readings to see what we actually captured
-    console.log("DEBUG RAW READINGS:", { HR: heartRateReadings, SpO2: spo2Readings, RR: respiratoryRateReadings });
+    // DEBUG: Log all readings
+    console.log("DEBUG RAW READINGS FROM REFS:", { HR: hrReadings, SpO2: spo2ReadingsData, RR: rrReadings });
 
     // Filter out invalid readings (0 or negative values) before averaging
-    const validHeartRateReadings = heartRateReadings.filter(val => val > 0 && val < 200);
-    const validSpo2Readings = spo2Readings.filter(val => val > 0 && val <= 100);
-    const validRespiratoryRateReadings = respiratoryRateReadings.filter(val => val > 0 && val < 60);
+    const validHeartRateReadings = hrReadings.filter(val => val > 0 && val < 200);
+    const validSpo2Readings = spo2ReadingsData.filter(val => val > 0 && val <= 100);
+    const validRespiratoryRateReadings = rrReadings.filter(val => val > 0 && val < 60);
 
     if (validHeartRateReadings.length > 0) {
       avgHeartRate = Math.round(validHeartRateReadings.reduce((a, b) => a + b, 0) / validHeartRateReadings.length).toString();
@@ -316,11 +452,16 @@ export default function Max30102() {
       finalHeartRate = backendResults.heartRate.toString();
       console.log(`✅ Using Backend Final Heart Rate: ${finalHeartRate}`);
     }
-    // 2. Fallback to Frontend Average
+    // 2. Prioritize Last Valid Reading (Matches what user sees, prevents "jump")
+    else if (validHeartRateReadings.length > 0) {
+      finalHeartRate = validHeartRateReadings[validHeartRateReadings.length - 1].toString();
+      console.log(`✅ Using Last Valid Heart Rate matches visual: ${finalHeartRate}`);
+    }
+    // 3. Fallback to Average
     else if (avgHeartRate !== "--") {
       finalHeartRate = avgHeartRate;
     }
-    // 3. Fallback to Last Seen Live Value
+    // 4. Fallback to Last Seen Live State
     else if (measurements.heartRate !== "--") {
       finalHeartRate = measurements.heartRate;
     } else {
@@ -330,6 +471,8 @@ export default function Max30102() {
     if (backendResults.spo2) {
       finalSpo2 = backendResults.spo2.toString();
       console.log(`✅ Using Backend Final SpO2: ${finalSpo2}`);
+    } else if (validSpo2Readings.length > 0) {
+      finalSpo2 = validSpo2Readings[validSpo2Readings.length - 1].toString();
     } else if (avgSpo2 !== "--") {
       finalSpo2 = avgSpo2;
     } else if (measurements.spo2 !== "--") {
@@ -341,6 +484,8 @@ export default function Max30102() {
     if (backendResults.respiratoryRate) {
       finalRespiratoryRate = backendResults.respiratoryRate.toString();
       console.log(`✅ Using Backend Final Respiratory Rate: ${finalRespiratoryRate}`);
+    } else if (validRespiratoryRateReadings.length > 0) {
+      finalRespiratoryRate = validRespiratoryRateReadings[validRespiratoryRateReadings.length - 1].toString();
     } else if (avgRespiratoryRate !== "--") {
       finalRespiratoryRate = avgRespiratoryRate;
     } else if (measurements.respiratoryRate !== "--") {
@@ -349,7 +494,7 @@ export default function Max30102() {
       finalRespiratoryRate = "--";
     }
 
-    // Update with final results (prefer average, fallback to last seen)
+    // Update with final results
     setMeasurements({
       heartRate: finalHeartRate,
       spo2: finalSpo2,
@@ -373,11 +518,14 @@ export default function Max30102() {
       console.log("✅ Measurement completed successfully (used average or last valid data)");
     } else {
       // Emergency Fallback: If absolutely NO valid data was collected, check if we have ANY raw readings at all
-      if (heartRateReadings.length > 0) {
-        setMeasurements(prev => ({ ...prev, heartRate: heartRateReadings[heartRateReadings.length - 1] }));
+      const hrReadingsFallback = heartRateReadingsRef.current;
+      const spo2ReadingsFallback = spo2ReadingsRef.current;
+
+      if (hrReadingsFallback.length > 0) {
+        setMeasurements(prev => ({ ...prev, heartRate: hrReadingsFallback[hrReadingsFallback.length - 1] }));
       }
-      if (spo2Readings.length > 0) {
-        setMeasurements(prev => ({ ...prev, spo2: spo2Readings[spo2Readings.length - 1] }));
+      if (spo2ReadingsFallback.length > 0) {
+        setMeasurements(prev => ({ ...prev, spo2: spo2ReadingsFallback[spo2ReadingsFallback.length - 1] }));
       }
 
       setStatusMessage("✅ Measurement Complete.");
@@ -387,10 +535,8 @@ export default function Max30102() {
     stopAllTimers();
     clearFingerRemovedAlert();
 
-    // AUTO-SHUTDOWN SENSOR upon completion
-    sensorAPI.shutdownMax30102().then(() => {
-      console.log("✅ Sensor auto-shutdown after measurement complete");
-    }).catch(err => console.error("⚠️ Failed to auto-shutdown sensor:", err));
+    // NOTE: Sensor is already stopped in completeMeasurement() via stopMax30102()
+    // No need to call shutdownMax30102() here - it causes serial buffer issues
   };
 
   const startMainPolling = () => {
@@ -402,67 +548,35 @@ export default function Max30102() {
       try {
         const data = await sensorAPI.getMax30102Status();
 
-        // Update measurements from API data if available and store for averaging
-        // Only update if we have valid, non-zero readings from Arduino
-        // Check both live_data values AND final_results from backend
-        const liveHR = data.heart_rate;
-        const liveSpo2 = data.spo2;
-        const liveRR = data.respiratory_rate;
-        const finalHR = data.final_results?.heart_rate;
-        const finalSpo2 = data.final_results?.spo2;
-        const finalRR = data.final_results?.respiratory_rate;
+        // SIMPLIFIED: Frontend controls timing, just collect live data from Arduino
+        // Ensure values are whole numbers (integers)
+        const liveHR = data.heart_rate ? Math.round(data.heart_rate) : data.heart_rate;
+        const liveSpo2 = data.spo2 ? Math.round(data.spo2) : data.spo2;
+        const liveRR = data.respiratory_rate ? Math.round(data.respiratory_rate) : data.respiratory_rate;
 
-        // Use final results if available, otherwise use live data
-        const heartRate = finalHR || liveHR;
-        const spo2Val = finalSpo2 || liveSpo2;
-        const rrVal = finalRR || liveRR;
+        // ONLY update UI and collect readings if we are actively measuring!
+        if (isMeasuringRef.current) {
+          // SIGNAL ACTIVITY to prevent timeout during measurement
+          signalActivity();
 
-        if (heartRate && heartRate > 0 && !isNaN(heartRate)) {
-          updateCurrentMeasurement('heartRate', heartRate);
-          // Store reading for averaging only during active measurement
-          // Use ref to avoid stale closure - state would capture old value
-          if (isMeasuringRef.current) {
-            console.log(`💓 Collected HR reading: ${heartRate}`);
-            setHeartRateReadings(prev => [...prev, heartRate]);
+          if (liveHR && liveHR > 0 && !isNaN(liveHR)) {
+            updateCurrentMeasurement('heartRate', liveHR);
+            // setHeartRateReadings(prev => [...prev, liveHR]); // PERFORMANCE: Removed state update to prevent re-renders
+            heartRateReadingsRef.current.push(liveHR); // Store in ref!
+          }
+          if (liveSpo2 && liveSpo2 > 0 && !isNaN(liveSpo2)) {
+            updateCurrentMeasurement('spo2', liveSpo2);
+            // setSpo2Readings(prev => [...prev, liveSpo2]); // PERFORMANCE: Removed state update
+            spo2ReadingsRef.current.push(liveSpo2); // Store in ref!
+          }
+          if (liveRR && liveRR > 0 && !isNaN(liveRR)) {
+            updateCurrentMeasurement('respiratoryRate', liveRR);
+            // setRespiratoryRateReadings(prev => [...prev, liveRR]); // PERFORMANCE: Removed state update
+            respiratoryRateReadingsRef.current.push(liveRR); // Store in ref!
           }
         }
 
-        if (spo2Val && spo2Val > 0 && !isNaN(spo2Val)) {
-          updateCurrentMeasurement('spo2', spo2Val);
-          // Store reading for averaging only during active measurement
-          if (isMeasuringRef.current) {
-            console.log(`🫁 Collected SpO2 reading: ${spo2Val}`);
-            setSpo2Readings(prev => [...prev, spo2Val]);
-          }
-        }
-
-        if (rrVal && rrVal > 0 && !isNaN(rrVal)) {
-          updateCurrentMeasurement('respiratoryRate', rrVal);
-          // Store reading for averaging only during active measurement
-          if (isMeasuringRef.current) {
-            console.log(`🌬️ Collected RR reading: ${rrVal}`);
-            setRespiratoryRateReadings(prev => [...prev, rrVal]);
-          }
-        }
-
-        // Check for API-based completion - when Arduino sends final results
-        if (data.final_result_shown && !measurementCompleteRef.current) {
-          console.log("🏁 Backend signals completion - using final results:", data.final_results);
-          // Store final results in ref before calling completeMeasurement
-          if (data.final_results) {
-            if (data.final_results.heart_rate) {
-              finalMeasurementsRef.current.heartRate = data.final_results.heart_rate;
-            }
-            if (data.final_results.spo2) {
-              finalMeasurementsRef.current.spo2 = data.final_results.spo2;
-            }
-            if (data.final_results.respiratory_rate) {
-              finalMeasurementsRef.current.respiratoryRate = data.final_results.respiratory_rate;
-            }
-            console.log("📌 Updated finalMeasurementsRef from backend:", finalMeasurementsRef.current);
-          }
-          completeMeasurement();
-        }
+        // NOTE: NO backend completion check here - Frontend timer triggers completion!
 
       } catch (error) {
         console.error("Error polling MAX30102 status:", error);
@@ -470,14 +584,26 @@ export default function Max30102() {
           setStatusMessage("⚠️ Connection issue, retrying...");
         }
       }
-    }, 200); // Increased polling frequency to 200ms for better data capture
+    }, 500); // Poll every 500ms to match Arduino's ~1s data rate
   };
 
   const updateCurrentMeasurement = (type, value) => {
-    setMeasurements(prev => ({
-      ...prev,
-      [type]: Math.round(value).toString()
-    }));
+    // CRITICAL: Prevent updating if measurement was just invalidated (race condition fix)
+    if (!isMeasuringRef.current) return;
+
+    const newVal = Math.round(value).toString();
+
+    // Optimize: Only update state if value changed to prevent glitches/re-renders
+    setMeasurements(prev => {
+      // Double check inside updater for safety - if we reset to "--", don't overwrite!
+      if (!isMeasuringRef.current) return prev;
+
+      if (prev[type] === newVal) return prev;
+      return {
+        ...prev,
+        [type]: newVal
+      };
+    });
   };
 
   const handleRetry = () => {
@@ -623,6 +749,7 @@ export default function Max30102() {
     return "ready";
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleBack = () => {
     if (measurementStep > 2) {
       stopAllTimers();
@@ -636,7 +763,12 @@ export default function Max30102() {
 
   const handleExit = () => setShowExitModal(true);
 
-  const confirmExit = () => {
+  const confirmExit = async () => {
+    try {
+      await sensorAPI.reset();
+    } catch (e) {
+      console.error("Error resetting sensors:", e);
+    }
     setShowExitModal(false);
     navigate("/login");
   };
@@ -648,21 +780,7 @@ export default function Max30102() {
       <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
 
 
-        {/* Finger Removed Alert */}
-        {showFingerRemovedAlert && (
-          <div className="finger-removed-alert">
-            <div className="alert-content">
-              <span className="alert-icon">⚠️</span>
-              <span className="alert-text">Finger removed! Please reinsert to continue measurement.</span>
-              <button
-                className="alert-close"
-                onClick={clearFingerRemovedAlert}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {/* Progress bar for Step X of Y */}
         <div className="w-100 mb-4">
@@ -850,6 +968,34 @@ export default function Max30102() {
           )}
         </div>
       </div>
+
+      {/* Finger Removed Modal - Moved to root level for proper overlay */}
+      {showFingerRemovedAlert && (
+        <div className="exit-modal-overlay" onClick={clearFingerRemovedAlert}>
+          <motion.div
+            className="exit-modal-content"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="exit-modal-icon" style={{ background: 'linear-gradient(135deg, #ff9f43, #ff6b6b)' }}>
+              <span>⚠️</span>
+            </div>
+            <h2 className="exit-modal-title">Finger Removed</h2>
+            <p className="exit-modal-message">Please reinsert your finger to continue the measurement.</p>
+            <div className="exit-modal-buttons">
+              <button
+                className="exit-modal-button secondary"
+                onClick={clearFingerRemovedAlert}
+              >
+                Dismiss
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Modern Exit Confirmation Popup Modal */}
       {

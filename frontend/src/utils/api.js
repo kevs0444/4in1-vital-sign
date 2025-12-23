@@ -992,6 +992,22 @@ export const sensorAPI = {
     }
   },
 
+  // NEW: Stop MAX30102 measurement - called by frontend when 30s timer completes
+  stopMax30102: async () => {
+    try {
+      console.log('⏹️ Stopping MAX30102 measurement (frontend request)...');
+      return await fetchWithTimeout(`${API_URL}/sensor/max30102/stop`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error stopping MAX30102 measurement:', error);
+      return {
+        error: 'Failed to stop MAX30102 measurement',
+        details: error.message
+      };
+    }
+  },
+
   // Check finger detection
   checkFingerDetection: async () => {
     try {

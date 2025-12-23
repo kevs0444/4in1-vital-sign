@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useInactivity } from "../../../components/InactivityWrapper/InactivityWrapper";
 import "./BodyTemp.css";
 import "../main-components-measurement.css";
 import tempIcon from "../../../assets/icons/temp-icon.png";
@@ -10,6 +11,7 @@ import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/che
 export default function BodyTemp() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setIsInactivityEnabled } = useInactivity();
   const [temperature, setTemperature] = useState("");
   const [isVisible, setIsVisible] = useState(false);
   const [isMeasuring, setIsMeasuring] = useState(false);
@@ -44,7 +46,26 @@ export default function BodyTemp() {
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
 
-    // Prevent zooming via touch gestures
+    // Prevent zooming via touch gestures - Helper functions defined inside to avoid dependency issues if kept outside
+    const handleTouchStart = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+    const handleTouchEnd = (e) => {
+      if (e.touches.length > 0) {
+        e.preventDefault();
+      }
+    };
+    const preventZoom = (e) => {
+      e.preventDefault();
+    };
+
     document.addEventListener('touchstart', handleTouchStart, { passive: false });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -62,9 +83,15 @@ export default function BodyTemp() {
     };
   }, []);
 
+  // Initialization
   useEffect(() => {
+    // Enable inactivity timer initially
+    setIsInactivityEnabled(true);
+
     const timer = setTimeout(() => setIsVisible(true), 100);
     console.log("📍 BodyTemp received location.state:", location.state);
+
+    // Call initialization
     initializeTemperatureSensor();
 
     return () => {
@@ -72,9 +99,25 @@ export default function BodyTemp() {
       stopMonitoring();
       stopCountdown();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Prevent zooming functions
+  // Sync inactivity with measurement
+  useEffect(() => {
+    // If measuring, DISABLE inactivity (enabled = false)
+    // If NOT measuring, ENABLE inactivity (enabled = true)
+    setIsInactivityEnabled(!isMeasuring);
+  }, [isMeasuring, setIsInactivityEnabled]);
+
+  // Prevent zooming functions - placeholders if referenced elsewhere (unlikely due to scoping above, removing global ones)
+  // Actually, keeping them might be safer if used by other hooks, but they are not. Removing to keep clean.
+
+  // Need to define dependencies for handlers if defined outside.
+  // We'll define dummy handles just in case or better, rely on the ones inside useEffect scope.
+  // BUT the previous implementation had them outside.
+  // The 'no-unused-vars' warning for 'handleBack' needs to be addressed too in the rest of the file.
+  // We'll deal with hooks here.
+
   const handleTouchStart = (e) => {
     if (e.touches.length > 1) {
       e.preventDefault();
@@ -304,15 +347,15 @@ export default function BodyTemp() {
       };
     } else if (tempValue >= 37.3 && tempValue <= 38.0) {
       return {
-        text: "Elevated",
+        text: "Slight fever",
         class: "warning",
-        description: "Your body temperature is elevated"
+        description: "Your body temperature indicates a slight fever"
       };
     } else if (tempValue > 38.0) {
       return {
         text: "Critical",
         class: "error",
-        description: "Your body temperature indicates fever"
+        description: "Your body temperature is in the critical range"
       };
     }
 
@@ -382,7 +425,12 @@ export default function BodyTemp() {
 
   const handleExit = () => setShowExitModal(true);
 
-  const confirmExit = () => {
+  const confirmExit = async () => {
+    try {
+      await sensorAPI.reset();
+    } catch (e) {
+      console.error("Error resetting sensors:", e);
+    }
     setShowExitModal(false);
     navigate("/login");
   };
