@@ -19,7 +19,7 @@ def generate_verification_code_id():
 class VerificationCode(Base):
     __tablename__ = "verification_codes"
 
-    code_id = Column(String(20), primary_key=True, default=generate_verification_code_id)
+    code_id = Column(String(20), primary_key=True, unique=True, default=generate_verification_code_id)
     user_id = Column(String(20), ForeignKey('users.user_id'), nullable=False)
     otp_code = Column(String(6), nullable=False)
     verification_type = Column(Enum(VerificationTypeEnum), nullable=False, default=VerificationTypeEnum.email)

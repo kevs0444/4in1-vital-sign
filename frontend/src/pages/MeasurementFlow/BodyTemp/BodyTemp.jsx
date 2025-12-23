@@ -7,6 +7,7 @@ import "../main-components-measurement.css";
 import tempIcon from "../../../assets/icons/temp-icon.png";
 import { sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
+import { speak } from "../../../utils/speech";
 
 export default function BodyTemp() {
   const navigate = useNavigate();
@@ -108,6 +109,20 @@ export default function BodyTemp() {
     // If NOT measuring, ENABLE inactivity (enabled = true)
     setIsInactivityEnabled(!isMeasuring);
   }, [isMeasuring, setIsInactivityEnabled]);
+
+  // Voice Instructions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (measurementStep === 1) {
+        speak("Step 1. Position Sensor. Point sensor at forehead.");
+      } else if (measurementStep === 2) {
+        speak("Step 2. Start Measurement. Click Start button.");
+      } else if (measurementStep === 3) {
+        speak("Step 3. Measurement Complete. Proceed to next step.");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [measurementStep]);
 
   // Prevent zooming functions - placeholders if referenced elsewhere (unlikely due to scoping above, removing global ones)
   // Actually, keeping them might be safer if used by other hooks, but they are not. Removing to keep clean.

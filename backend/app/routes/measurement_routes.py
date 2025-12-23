@@ -1,0 +1,164 @@
+from flask import Blueprint, request, jsonify
+from app.utils.db import get_db
+from app.models.measurement_model import Measurement
+from sqlalchemy.orm import Session
+import datetime
+
+measurement_bp = Blueprint('measurement', __name__)
+
+@measurement_bp.route('/save', methods=['POST'])
+def save_measurement():
+    """
+    Saves a new measurement record.
+    Expects JSON payload with optional keys:
+    - user_id
+    - temperature, systolic, diastolic, heart_rate, spo2, weight, height, bmi
+    - risk_level, risk_category
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+        # Extract data with .get() to return None if missing (handling NULLs)
+        # We explicitly cast simplistic types to avoid SQL errors if empty strings are sent
+        
+        def clean_float(value):
+            if value is None or value == "":
+                return None
+            try:
+                return float(value)
+            except ValueError:
+                return None
+
+        def clean_int(value):
+            if value is None or value == "":
+                return None
+            try:
+                return int(float(value)) # int(float("36.5")) -> 36
+            except ValueError:
+                return None
+
+        # Create new Measurement object
+        new_measurement = Measurement(
+            user_id=data.get('user_id'),
+            temperature=clean_float(data.get('temperature')),
+            systolic=clean_int(data.get('systolic')),
+            diastolic=clean_int(data.get('diastolic')),
+            heart_rate=clean_int(data.get('heart_rate')),
+            spo2=clean_int(data.get('spo2')),
+            respiratory_rate=clean_int(data.get('respiratory_rate')),
+            weight=clean_float(data.get('weight')),
+            height=clean_float(data.get('height')),
+            bmi=clean_float(data.get('bmi')),
+            risk_level=clean_float(data.get('risk_level')),
+            risk_category=data.get('risk_category')
+        )
+
+        db: Session = next(get_db())
+        db.add(new_measurement)
+        db.flush() # Flush to get ID without committing transaction yet
+
+        # Save Recommendations (Flattened Structure)
+        from app.models.recommendation_model import Recommendation
+
+        # Helper to join list into string if needed (since DB column is Text)
+        def format_content(content):
+            if not content: return None
+            if isinstance(content, list):
+                return "\n".join([str(c) for c in content if c])
+            return str(content)
+
+        # Check if we have any recommendations to save
+        has_recs = any([
+            data.get('suggestions'),
+            data.get('preventions'),
+            data.get('wellnessTips'),
+            data.get('providerGuidance')
+        ])
+
+        if has_recs:
+            rec = Recommendation(
+                measurement_id=new_measurement.id,
+                user_id=new_measurement.user_id, # Link to user as well
+                medical_action=format_content(data.get('suggestions')),
+                preventive_strategy=format_content(data.get('preventions')),
+                wellness_tips=format_content(data.get('wellnessTips')),
+                provider_guidance=format_content(data.get('providerGuidance'))
+            )
+            db.add(rec)
+
+        db.commit()
+
+        return jsonify({
+            'success': True, 
+            'message': 'Measurement saved successfully',
+            'id': new_measurement.id
+        }), 201
+
+    except Exception as e:
+        print(f"❌ Error saving measurement: {e}")
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@measurement_bp.route('/<string:measurement_id>/share-status', methods=['POST'])
+def update_share_status(measurement_id):
+    """
+    Updates the sharing status (email sent / receipt printed) for a measurement.
+    Expects JSON: { "type": "email" | "print", "status": true }
+    """
+    try:
+        data = request.get_json()
+        share_type = data.get('type')
+        status = 1 if data.get('status') else 0
+
+        db: Session = next(get_db())
+        measurement = db.query(Measurement).filter(Measurement.id == measurement_id).first()
+
+        if not measurement:
+            return jsonify({'success': False, 'message': 'Measurement not found'}), 404
+
+        if share_type == 'email':
+            measurement.email_sent = status
+        elif share_type == 'print':
+            measurement.receipt_printed = status
+        else:
+            return jsonify({'success': False, 'message': 'Invalid share type'}), 400
+
+        db.commit()
+        return jsonify({'success': True, 'message': f'Updated {share_type} status'}), 200
+
+    except Exception as e:
+        print(f"❌ Error updating share status: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@measurement_bp.route('/history/<user_id>', methods=['GET'])
+def get_user_history(user_id):
+    """
+    Retrieves measurement history for a specific user.
+    """
+    try:
+        db: Session = next(get_db())
+        # Sort by latest first
+        measurements = db.query(Measurement).filter(Measurement.user_id == user_id).order_by(Measurement.created_at.desc()).all()
+        
+        history = []
+        for m in measurements:
+            history.append({
+                'id': m.id,
+                'created_at': m.created_at.isoformat(),
+                'temperature': m.temperature,
+                'systolic': m.systolic,
+                'diastolic': m.diastolic,
+                'heart_rate': m.heart_rate,
+                'spo2': m.spo2,
+                'weight': m.weight,
+                'bmi': m.bmi,
+                'risk_category': m.risk_category
+            })
+            
+        return jsonify({'success': True, 'history': history}), 200
+
+    except Exception as e:
+        print(f"❌ Error fetching history: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500

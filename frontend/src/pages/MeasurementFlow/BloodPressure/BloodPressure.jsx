@@ -7,6 +7,7 @@ import "../main-components-measurement.css";
 import bpIcon from "../../../assets/icons/bp-icon.png";
 import { cameraAPI, sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
+import { speak } from "../../../utils/speech";
 
 export default function BloodPressure() {
   const navigate = useNavigate();
@@ -60,6 +61,20 @@ export default function BloodPressure() {
     // If NOT measuring, ENABLE inactivity (enabled = true)
     setIsInactivityEnabled(!isMeasuring && !isAnalyzing);
   }, [isMeasuring, isAnalyzing, setIsInactivityEnabled]);
+
+  // Voice Instructions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (measurementStep === 1) {
+        speak("Step 1. Ready. Click Start to begin measurement.");
+      } else if (measurementStep === 2) {
+        speak("Step 2. Measuring. Blood pressure measurement in progress.");
+      } else if (measurementStep === 3) {
+        speak("Step 3. AI Results. View complete AI analysis and results.");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [measurementStep]);
 
   const initializeBloodPressureSensor = async () => {
     try {

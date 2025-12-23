@@ -15,22 +15,31 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# --- LOAD THE "MATH BRAIN" (XGBoost) ---
-# We load these once when the server starts to make it fast
+# --- LAZY LOAD THE "MATH BRAIN" (XGBoost) ---
 MODEL_PATH = os.path.join(os.path.dirname(__file__), '../../juan_ai/juan_ai_model.pkl')
 SCALER_PATH = os.path.join(os.path.dirname(__file__), '../../juan_ai/juan_ai_scaler.pkl')
 ENCODER_PATH = os.path.join(os.path.dirname(__file__), '../../juan_ai/juan_ai_gender_encoder.pkl')
 
-print("🧠 Loading Juan AI Models...")
-try:
-    risk_model = joblib.load(MODEL_PATH)
-    scaler = joblib.load(SCALER_PATH)
-    gender_encoder = joblib.load(ENCODER_PATH)
-    print("✅ Juan AI 'Math Brain' Loaded Successfully!")
-    MODEL_LOADED = True
-except Exception as e:
-    print(f"⚠️ Warning: Could not load Juan AI models. Using fallback mode. Error: {e}")
-    MODEL_LOADED = False
+risk_model = None
+scaler = None
+gender_encoder = None
+MODEL_LOADED = False
+
+def load_models_if_needed():
+    global risk_model, scaler, gender_encoder, MODEL_LOADED
+    if MODEL_LOADED:
+        return
+
+    print("🧠 Loading Juan AI Models (Lazy Load)...")
+    try:
+        risk_model = joblib.load(MODEL_PATH)
+        scaler = joblib.load(SCALER_PATH)
+        gender_encoder = joblib.load(ENCODER_PATH)
+        print("✅ Juan AI 'Math Brain' Loaded Successfully!")
+        MODEL_LOADED = True
+    except Exception as e:
+        print(f"⚠️ Warning: Could not load Juan AI models. Using fallback mode. Error: {e}")
+        MODEL_LOADED = False
 
 from app.sensors.camera_manager import camera_manager
 
@@ -103,6 +112,9 @@ def predict_risk():
         risk_score = 0
         risk_level = "Unknown"
         
+        if not MODEL_LOADED:
+            load_models_if_needed()
+
         if MODEL_LOADED:
             # Scale the data
             input_scaled = scaler.transform(input_data)

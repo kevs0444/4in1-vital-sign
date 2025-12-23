@@ -8,6 +8,7 @@ import weightIcon from "../../../assets/icons/weight-icon.png";
 import heightIcon from "../../../assets/icons/height-icon.png";
 import { sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
+import { speak } from "../../../utils/speech";
 
 export default function BMI() {
   const navigate = useNavigate();
@@ -132,31 +133,25 @@ export default function BMI() {
     setIsInactivityEnabled(!isMeasuring);
   }, [isMeasuring, setIsInactivityEnabled]);
 
+  // Voice Instructions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (measurementStep === 1) {
+        speak("Step 1. Measure Weight. Stand still for 3 seconds.");
+      } else if (measurementStep === 2) {
+        speak("Step 2. Measure Height. Stand still under height sensor for 2 seconds.");
+      } else if (measurementStep === 3) {
+        speak("Step 3. Complete. BMI calculated. Continue to Body Temperature.");
+      }
+    }, 500); // Add delay for smoother experience
+    return () => clearTimeout(timer);
+  }, [measurementStep]);
+
   // Prevent zooming functions - moved inside useEffect or just leave helpers here if needed elsewhere
   // But they are only used in the useEffect above, which defines them locally now or references hoisting.
   // Actually, to avoid "handleTouchStart undefined" issues if we moved them, we should keep them outside or define inside.
   // The original code had them outside. Let's keep them here for safety, but check usage.
-  const handleTouchStart = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
 
-  const handleTouchMove = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = (e) => {
-    if (e.touches.length > 0) {
-      e.preventDefault();
-    }
-  };
-
-  const preventZoom = (e) => {
-    e.preventDefault();
-  };
 
   const initializeSensors = async () => {
     setStatusMessage("Initializing sensors...");
@@ -215,10 +210,7 @@ export default function BMI() {
   const startWeightMeasurement = async () => {
     try {
       setCurrentMeasurement("weight");
-      setIsMeasuring(true);
-      setWeightMeasuring(true);
       setStatusMessage("Starting weight measurement...");
-      setMeasurementStep(1);
 
       // CLEAR PREVIOUS DATA
       setWeight("");
@@ -239,6 +231,11 @@ export default function BMI() {
         return;
       }
 
+      // Update state only after successful start
+      setIsMeasuring(true);
+      setWeightMeasuring(true);
+      setMeasurementStep(1);
+
       setStatusMessage("Please step on the scale and stand still for 3 seconds");
       measurementStarted.current = true;
       startCountdown(3);
@@ -257,10 +254,7 @@ export default function BMI() {
       await sensorAPI.shutdownWeight();
 
       setCurrentMeasurement("height");
-      setIsMeasuring(true);
-      setHeightMeasuring(true);
       setStatusMessage("Starting height measurement...");
-      setMeasurementStep(2);
 
       // CLEAR PREVIOUS DATA
       setHeight("");
@@ -280,6 +274,11 @@ export default function BMI() {
         handleRetry();
         return;
       }
+
+      // Update state only after successful start
+      setIsMeasuring(true);
+      setHeightMeasuring(true);
+      setMeasurementStep(2);
 
       setStatusMessage("Please stand under the height sensor for 2 seconds");
       measurementStarted.current = true;
@@ -445,13 +444,7 @@ export default function BMI() {
 
 
 
-  const handleBack = () => {
-    if (measurementStep > 0) {
-      clearSimulatedMeasurements();
-    } else {
-      navigate(-1);
-    }
-  };
+
 
   const handleExit = () => setShowExitModal(true);
 

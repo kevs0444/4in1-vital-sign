@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
 import "./Result.css";
 
 export default function Result() {
@@ -13,7 +12,6 @@ export default function Result() {
   const [preventions, setPreventions] = useState([]);
   const [wellnessTips, setWellnessTips] = useState([]);
   const [providerGuidance, setProviderGuidance] = useState([]);
-  const [isVisible, setIsVisible] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     recommendations: false,
     prevention: false,
@@ -56,11 +54,7 @@ export default function Result() {
       }
     }
 
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
-
-    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, navigate]);
 
   // Effect to update HTML class for scrollbar colors
@@ -320,12 +314,7 @@ export default function Result() {
     return "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)";
   };
 
-  const getRiskColor = (level) => {
-    if (level < 20) return "#10b981";
-    if (level < 50) return "#f59e0b";
-    if (level < 75) return "#ef4444";
-    return "#dc2626";
-  };
+
 
   const getRiskGlow = (level) => {
     if (level < 20) return "0 0 40px rgba(16, 185, 129, 0.4)";
@@ -403,17 +392,7 @@ export default function Result() {
     }
   };
 
-  const getDoctorRecommendation = () => {
-    if (riskLevel < 20) {
-      return "Routine health maintenance recommended. Schedule annual check-up within 6 months.";
-    } else if (riskLevel < 50) {
-      return "Consult primary care physician for comprehensive evaluation within 2-4 weeks.";
-    } else if (riskLevel < 75) {
-      return "Urgent medical consultation advised. Schedule appointment within 1-2 weeks.";
-    } else {
-      return "Immediate medical attention recommended. Consider emergency evaluation if symptoms present.";
-    }
-  };
+
 
   const calculateBMI = (data) => {
     // If BMI is already calculated and passed, use it
@@ -438,8 +417,6 @@ export default function Result() {
 
       // Analysis results
       riskLevel,
-      riskCategory,
-      suggestions,
       riskCategory,
       suggestions,
       preventions,
@@ -478,7 +455,6 @@ export default function Result() {
   const bmiData = getBMICategory(calculateBMI(userData));
   const tempData = getTemperatureStatus(userData.temperature);
   const hrData = getHeartRateStatus(userData.heartRate);
-  const spo2Data = getSPO2Status(userData.spo2);
   const respData = getRespiratoryStatus(userData.respiratoryRate);
   const bpData = getBloodPressureStatus(userData.systolic, userData.diastolic);
 
@@ -837,12 +813,12 @@ export default function Result() {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="d-flex gap-3 justify-content-center">
-          <button className="btn btn-outline-secondary px-4 py-2 rounded-pill" onClick={() => navigate('/measure/checklist')}>
-            New Measurement
-          </button>
-          <button className="btn btn-primary px-5 py-2 rounded-pill shadow-sm fw-bold" onClick={handleSaveResults}>
+        <div className="d-flex gap-3 justify-content-center w-100">
+          <button
+            className="continue-button"
+            onClick={handleSaveResults}
+            style={{ maxWidth: '500px' }}
+          >
             Save & Share Results
           </button>
         </div>

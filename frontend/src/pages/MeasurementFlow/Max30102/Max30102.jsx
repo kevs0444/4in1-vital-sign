@@ -9,6 +9,7 @@ import spo2Icon from "../../../assets/icons/spo2-icon.png";
 import respiratoryIcon from "../../../assets/icons/respiratory-icon.png";
 import { sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
+import { speak } from "../../../utils/speech";
 
 export default function Max30102() {
   const navigate = useNavigate();
@@ -25,8 +26,9 @@ export default function Max30102() {
     respiratoryRate: "--"
   });
   // Arrays to store all readings for averaging
-  const [heartRateReadings, setHeartRateReadings] = useState([]);
-  const [spo2Readings, setSpo2Readings] = useState([]);
+  // Arrays to store all readings for averaging
+  // REPLACED BY REFS for performance and data integrity
+  // eslint-disable-next-line no-unused-vars
   // eslint-disable-next-line no-unused-vars
   const [respiratoryRateReadings, setRespiratoryRateReadings] = useState([]);
 
@@ -69,6 +71,10 @@ export default function Max30102() {
   useEffect(() => {
     // Reset inactivity setting on mount (timer enabled by default)
     setIsInactivityEnabled(true);
+
+    // Initial instruction for loading
+    // Initial instruction for loading - Moved to initializeMax30102Sensor to avoid conflicts
+    // speak("Initializing pulse oximeter.");
 
     const timer = setTimeout(() => setIsVisible(true), 100);
     console.log("📍 Max30102 received location.state:", location.state);
@@ -115,8 +121,11 @@ export default function Max30102() {
       spo2: "--",
       respiratoryRate: "--"
     });
-    setHeartRateReadings([]);
-    setSpo2Readings([]);
+
+    // REFS for readings
+    heartRateReadingsRef.current = [];
+    spo2ReadingsRef.current = [];
+    respiratoryRateReadingsRef.current = [];
     setRespiratoryRateReadings([]);
   }, []);
 
@@ -129,6 +138,24 @@ export default function Max30102() {
     const remaining = Math.max(0, totalMeasurementTime - progressSeconds);
     setCountdown(remaining);
   }, [progressSeconds]);
+
+  // Voice Instructions based on Step
+  useEffect(() => {
+    if (measurementStep === 2) {
+      speak("Step 1. Insert Finger. Place your finger fully inside the pulse oximeter device.");
+    } else if (measurementStep === 3) {
+      speak("Step 2. Hold Steady. Keep your finger completely still for accurate readings.");
+    } else if (measurementStep === 4) {
+      speak("Step 3. Measurement complete. Results are ready.");
+    }
+  }, [measurementStep]);
+
+  // Voice for Finger Removed
+  useEffect(() => {
+    if (showFingerRemovedAlert) {
+      speak("Finger Removed. Please reinsert your finger to continue.");
+    }
+  }, [showFingerRemovedAlert]);
 
   // FRONTEND CONTROLLED: Local timer for reliable countdown - auto-completes at 30s
   const startProgressTimer = () => {
@@ -187,7 +214,7 @@ export default function Max30102() {
 
     try {
       setStatusMessage("🔄 Powering up pulse oximeter...");
-      setMeasurementStep(1);
+      // setMeasurementStep(1); // Deferred until after prepare call starts/succeeds
 
       const prepareResult = await sensorAPI.prepareMax30102();
 
@@ -198,6 +225,10 @@ export default function Max30102() {
       }
 
       setStatusMessage("✅ Pulse oximeter ready. Place finger to start automatic measurement...");
+
+      // Safe speech call only after successful initialization
+      setTimeout(() => speak("Pulse oximeter ready. Place finger on sensor."), 500);
+
       setSensorReady(true);
       setMeasurementStep(2);
 
@@ -285,8 +316,6 @@ export default function Max30102() {
     setProgressPercent(0);
     setCountdown(30);
     // Clear previous readings (both state and refs)
-    setHeartRateReadings([]);
-    setSpo2Readings([]);
     setRespiratoryRateReadings([]);
     heartRateReadingsRef.current = [];
     spo2ReadingsRef.current = [];
@@ -307,8 +336,6 @@ export default function Max30102() {
     setCountdown(30);
 
     // Clear Reading History (both state and refs)
-    setHeartRateReadings([]);
-    setSpo2Readings([]);
     setRespiratoryRateReadings([]);
     heartRateReadingsRef.current = [];
     spo2ReadingsRef.current = [];
@@ -340,8 +367,6 @@ export default function Max30102() {
     setCountdown(30); // RESET COUNTDOWN TO 30
 
     // CRITICAL: Clear ALL previous readings to prevent old data from mixing!
-    setHeartRateReadings([]);
-    setSpo2Readings([]);
     setRespiratoryRateReadings([]);
     heartRateReadingsRef.current = [];
     spo2ReadingsRef.current = [];

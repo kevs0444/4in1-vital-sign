@@ -9,30 +9,101 @@ export default function Saving() {
   const [progress, setProgress] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
 
+  const dataSavedRef = React.useRef(false);
+  const saveSuccessRef = React.useRef(false); // Track success across renders
+
   useEffect(() => {
-    // Fast progress animation - 2s total duration
+    // 1. Start the progress animation
     const duration = 2000;
     const interval = 20;
     const steps = duration / interval;
     const increment = 100 / steps;
+    let measurementId = null;
 
     const timer = setInterval(() => {
       setProgress((prev) => {
         const next = prev + increment;
+
+        // Check component-level ref instead of local variable
+        if (next >= 90 && !saveSuccessRef.current) {
+          // Pause at 90% until save is confirmed
+          return 90;
+        }
+
         if (next >= 100) {
           clearInterval(timer);
           setIsSaved(true);
 
           // Brief pause on success before navigating
           setTimeout(() => {
-            navigate("/measure/sharing", { state: location.state });
+            // Get ID from the ref or state if needed, but for now relies on valid save flow
+            // If measurementId is null here due to closure issues, we might need a ref for ID too.
+            // But let's fix the stuck 90% first.
+            const nextState = { ...location.state, measurement_id: saveSuccessRef.current.id };
+            navigate("/measure/sharing", { state: nextState });
           }, 800);
-
           return 100;
         }
         return next;
       });
     }, interval);
+
+    // 2. Perform actual save in background
+    const saveData = async () => {
+      // Prevent duplicate saves (React Strict Mode or re-renders)
+      if (dataSavedRef.current) return;
+      dataSavedRef.current = true;
+
+      try {
+        const data = location.state || {};
+        // Map frontend keys to backend keys
+        const payload = {
+          user_id: data.user_id || data.userId || data.id,
+          temperature: data.temperature,
+          systolic: data.systolic,
+          diastolic: data.diastolic,
+          heart_rate: data.heartRate,
+          spo2: data.spo2,
+          respiratory_rate: data.respiratoryRate,
+          weight: data.weight,
+          height: data.height,
+          bmi: data.bmi,
+          risk_level: data.riskLevel,
+          risk_category: data.riskCategory,
+          suggestions: data.suggestions,
+          preventions: data.preventions,
+          wellnessTips: data.wellnessTips,
+          providerGuidance: data.providerGuidance
+        };
+
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/measurements/save`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log("✅ Measurement saved with ID:", result.id);
+          // Store object { id: ... } in ref to indicate success AND holding data
+          saveSuccessRef.current = { id: result.id };
+        } else {
+          console.error("❌ Failed to save measurement");
+          // Even on error, we proceed so user isn't stuck
+          saveSuccessRef.current = { id: null };
+        }
+      } catch (error) {
+        console.error("❌ Network error saving measurement:", error);
+        saveSuccessRef.current = { id: null };
+      }
+    };
+
+    if (location.state) {
+      saveData();
+    } else {
+      // If technical error (no state), just finish animation
+      saveSuccessRef.current = { id: null };
+    }
 
     return () => clearInterval(timer);
   }, [navigate, location.state]);

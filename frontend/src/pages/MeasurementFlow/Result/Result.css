@@ -760,44 +760,65 @@
   font-size: 0.85rem;
 }
 
-/* 100% Zoom Compatibility */
-@media screen and (min-resolution: 96dpi) {
-  .result-container {
-    zoom: 100%;
-    transform: scale(1);
-  }
+/* Continue Button Style (Copied from MeasurementWelcome to ensure consistency) */
+.continue-button {
+  width: 100%;
+  padding: 1.5rem 2rem !important;
+  border-radius: 20px !important;
+  font-size: 1.8rem !important;
+  font-weight: 700 !important;
+  background: linear-gradient(to bottom, #ef4444, #dc2626) !important;
+  border: none !important;
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+  min-height: 100px;
+  color: white !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  text-transform: none;
 }
+
+.continue-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(220, 38, 38, 0.5) !important;
+  filter: brightness(1.05);
+}
+
+.continue-button:active {
+  transform: translateY(-1px);
+}
+
+/* Ensure Risk Score Text is White */
+.risk-score-card .display-1,
+.risk-score-card .h3,
+.risk-score-card .risk-labels {
+  color: white !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Main Highlight Text White Override */
+.result-header .fw-bold.mb-2 {
+  color: #333;
+  /* Keep title dark for readability on white bg */
+}
+
+/* If the user meant the text inside the colored cards, it's already white. 
+   If they meant specific highlighting, we ensure High contrast. */
 
 /* Extra Small Devices */
 @media (max-width: 480px) {
+
+  /* ... existing styles ... */
   .result-container {
     padding: 8px;
   }
 
-  .result-content {
-    padding: 15px;
-    margin: 8px 0;
-    border-radius: 12px;
-  }
-
-  .result-title {
-    font-size: 1.6rem;
-  }
-
-  .result-subtitle {
-    font-size: 0.9rem;
-  }
-
-  .risk-number {
-    font-size: 3rem;
-  }
-
-  .risk-category {
-    font-size: 1.2rem;
-  }
-
-  .vital-signs-grid {
-    gap: 12px;
+  .continue-button {
+    font-size: 1.4rem !important;
+    padding: 1rem !important;
+    min-height: 70px;
   }
 
   .vital-sign-card {

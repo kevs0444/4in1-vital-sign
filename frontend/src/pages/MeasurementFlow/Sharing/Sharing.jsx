@@ -57,6 +57,21 @@ export default function Sharing() {
     setModalConfig({ ...modalConfig, show: false });
   };
 
+  const updateShareStatus = async (type) => {
+    const measurementId = userData?.measurement_id;
+    if (!measurementId) return;
+
+    try {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/measurements/${measurementId}/share-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: type, status: true })
+      });
+    } catch (e) {
+      console.error(`Failed to update ${type} status:`, e);
+    }
+  };
+
   const handleSendEmail = async () => {
     // Rely solely on user_id or ID if available
     const userId = userData?.user_id || userData?.userId || userData?.id;
@@ -84,6 +99,7 @@ export default function Sharing() {
 
       if (response.ok) {
         setEmailSent(true);
+        updateShareStatus('email'); // Update backend status
         setAutoRedirectTimer(15);
         setModalConfig({
           show: true,
@@ -127,6 +143,7 @@ export default function Sharing() {
 
       if (response.ok) {
         setPrintSent(true);
+        updateShareStatus('print'); // Update backend status
         // Do not block print button forever, let them print again if needed? 
         // User asked to "make the box of print receipt being checked". Usually implies a done state.
         // We will keep it checked.

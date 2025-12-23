@@ -55,7 +55,7 @@ int sampleCount = 0;
 // =================================================================
 // --- TEMPERATURE CONSTANTS ---
 // =================================================================
-const float TEMPERATURE_CALIBRATION_OFFSET = 3.6;  // Calibration offset
+const float TEMPERATURE_CALIBRATION_OFFSET = 2.5;  // Calibration offset
 const float TEMPERATURE_THRESHOLD = 35.0;          // Minimum valid temperature
 const float TEMPERATURE_MAX = 42.0;                // Maximum valid temperature
 
@@ -287,17 +287,33 @@ float estimateRespiratoryRate(int bpm) {
 }
 
 void powerUpMax30102Sensor() {
+  // Force stop any other ongoing measurement phase to prevent conflicts (e.g., Weight loop running)
+  if (measurementActive) {
+    measurementActive = false;
+    currentPhase = IDLE;
+    Serial.println("STATUS:ACTIVE_MEASUREMENT_STOPPED_FOR_MAX30102");
+  }
+
   if (!max30102SensorPowered) {
     Serial.println("STATUS:POWERING_UP_MAX30102");
     
+    // Attempt to wake up the sensor first (in case it was just shut down)
+    particleSensor.wakeUp(); 
+    delay(100);
+
     for (int attempt = 0; attempt < 3; attempt++) {
       if (particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
         particleSensor.setup();
         particleSensor.setPulseAmplitudeRed(0x0A);
         particleSensor.setPulseAmplitudeGreen(0);
+        particleSensor.wakeUp(); // Ensure it's awake after setup
         
         max30102SensorPowered = true;
         max30102SensorInitialized = true;
+        
+        // Clear any old flags that might be stuck
+        fingerDetected = false;
+        
         Serial.println("STATUS:MAX30102_SENSOR_POWERED_UP");
         Serial.println("STATUS:MAX30102_SENSOR_INITIALIZED");
         

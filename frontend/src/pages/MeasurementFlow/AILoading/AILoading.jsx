@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
 import "./AILoading.css";
 import aiLoadingIcon from "../../../assets/icons/ai-icon.png";
 
@@ -75,6 +74,7 @@ export default function AILoading() {
       clearTimeout(timer);
       document.body.classList.remove('ai-loading-active-768');
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
   const simulateAIThinkingProcess = async () => {
@@ -183,80 +183,86 @@ export default function AILoading() {
           <strong>Status:</strong> {statusMessage}
         </div>
 
-        {/* AI Thinking Animation */}
+        {/* AI Thinking Animation - Modern Circular Design */}
         {isAnalyzing && (
-          <div className="ai-analysis-animation-768 d-flex flex-column flex-grow-1 justify-content-around gap-3 my-3">
-            <div className="ai-progress-ring-768 mx-auto position-relative" style={{ width: '140px', height: '140px' }}>
-              <div className="ai-ring-background-768 position-absolute w-100 h-100 rounded-circle border border-5"></div>
-              <div className="ai-ring-progress-768 position-absolute w-100 h-100 rounded-circle border border-5"></div>
-              <div className="ai-ring-center-768 position-absolute top-50 start-50 translate-middle bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style={{ width: '85px', height: '85px' }}>
+          <div className="ai-analysis-animation-768 d-flex flex-column flex-grow-1 justify-content-center align-items-center gap-4 my-3">
+
+            {/* Central Pulse Circle */}
+            <div className="ai-central-circle-container position-relative">
+              {/* Spinning / Pulsing Rings */}
+              <div className="ai-ripple-ring ring-1"></div>
+              <div className="ai-ripple-ring ring-2"></div>
+              <div className="ai-ripple-ring ring-3"></div>
+
+              {/* Main Circular Platform */}
+              <div className="ai-main-circle bg-white shadow-lg rounded-circle d-flex align-items-center justify-content-center position-relative">
                 <div className="ai-brain-pulse-768 fs-1">🧠</div>
+
+                {/* Progress Border SVG */}
+                <svg className="ai-progress-svg" width="100%" height="100%" viewBox="0 0 100 100">
+                  <circle
+                    className="ai-progress-bg"
+                    cx="50" cy="50" r="46"
+                    fill="none"
+                    stroke="#eaeaea"
+                    strokeWidth="4"
+                  />
+                  <circle
+                    className="ai-progress-bar"
+                    cx="50" cy="50" r="46"
+                    fill="none"
+                    strokeWidth="4"
+                    strokeDasharray="289"
+                    strokeDashoffset={289 - (289 * ((currentStep + 1) / analysisSteps.length))}
+                    strokeLinecap="round"
+                    transform="rotate(-90 50 50)"
+                  />
+                </svg>
               </div>
             </div>
 
-            {/* Dynamic Analysis Steps */}
-            <div className="ai-analysis-steps-768 d-flex flex-column align-items-center gap-2 my-2 w-100">
-              {analysisSteps.map((step, index) => (
-                <div
-                  key={index}
-                  className={`ai-analysis-step-768 d-flex align-items-center gap-3 p-3 rounded-4 w-100 border ${index <= currentStep ? 'active border-success bg-white shadow-sm' : 'bg-light border-transparent'}`}
-                  style={{ maxWidth: '320px', transition: 'all 0.3s' }}
-                >
-                  <span className={`ai-step-check-768 d-flex align-items-center justify-content-center rounded-circle text-white fw-bold ${index < currentStep ? 'bg-success' : 'bg-secondary'}`} style={{ width: '28px', height: '28px', minWidth: '28px' }}>
-                    {index < currentStep ? '✓' : index === currentStep ? '⟳' : ''}
-                  </span>
-                  <span className="ai-step-text-768 flex-grow-1 text-start fw-semibold text-dark">{step}</span>
-                  {index === currentStep && (
-                    <div className="thinking-dots-768 d-flex gap-1 text-success fw-bold fs-5">
-                      <span>.</span>
-                      <span>.</span>
-                      <span>.</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+            {/* Current Step Text */}
+            <div className="ai-status-text-container text-center mt-4">
+              <h2 className="ai-current-step-text display-6 fw-bold mb-2">
+                {analysisSteps[currentStep]}
+              </h2>
+              <p className="ai-step-subtitle text-secondary">
+                Analyzing data point {currentStep + 1} of {analysisSteps.length}
+              </p>
+
+              <div className="thinking-dots-768 d-flex justify-content-center gap-2 mt-2">
+                <div className="dot"></div>
+                <div className="dot"></div>
+                <div className="dot"></div>
+              </div>
             </div>
 
-            {/* AI Thinking Status */}
-            <div className="ai-thinking-status-768 px-3">
-              <div className="thinking-text-768 text-secondary fw-medium mb-2 text-center">
-                Juan AI is analyzing {currentStep + 1}/{analysisSteps.length} steps...
-              </div>
-              <div className="progress rounded-pill" style={{ height: '8px' }}>
-                <div
-                  className="progress-bar bg-success progress-bar-striped progress-bar-animated"
-                  role="progressbar"
-                  style={{ width: `${((currentStep + 1) / analysisSteps.length) * 100}%` }}
-                ></div>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* Analysis Complete */}
+        {/* Analysis Complete - Modern Success State */}
         {analysisComplete && (
-          <div className="ai-analysis-complete-768 d-flex flex-column flex-grow-1 justify-content-around gap-4 my-3">
-            <div className="ai-success-animation-768 position-relative mx-auto" style={{ width: '150px', height: '150px' }}>
-              <div className="ai-checkmark-768 position-absolute top-50 start-50 translate-middle bg-success text-white rounded-circle d-flex align-items-center justify-content-center shadow" style={{ width: '80px', height: '80px', fontSize: '2.5rem' }}>✓</div>
+          <div className="ai-analysis-complete-768 d-flex flex-column flex-grow-1 justify-content-center align-items-center gap-4 my-3">
+            <div className="ai-success-animation-768 position-relative">
+              <div className="ai-checkmark-768 bg-success text-white rounded-circle d-flex align-items-center justify-content-center shadow-lg">
+                <span style={{ fontSize: '3rem' }}>✓</span>
+              </div>
               <div className="ai-ring-768 ai-ring-1-768 position-absolute border border-success rounded-circle"></div>
               <div className="ai-ring-768 ai-ring-2-768 position-absolute border border-success rounded-circle"></div>
-              <div className="ai-ring-768 ai-ring-3-768 position-absolute border border-success rounded-circle"></div>
             </div>
-            <div className="ai-complete-message-768 text-center px-2">
-              <h3 className="fw-bold text-success mb-2">Juan AI Analysis Complete!</h3>
-              <p className="text-secondary mb-0 lead">Your health data has been processed and insights are ready for review.</p>
-              <div className="completion-stats-768 d-flex justify-content-center gap-4 mt-3">
-                <div className="stat-item-768 d-flex flex-column align-items-center">
-                  <strong className="text-success fs-4">{analysisSteps.length}</strong>
-                  <span className="text-secondary small">Analysis Steps</span>
+
+            <div className="ai-complete-message-768 text-center px-3">
+              <h2 className="fw-bold text-success mb-2 display-6">Analysis Complete!</h2>
+              <p className="text-secondary mb-4 lead">Your comprehensive health report is ready.</p>
+
+              <div className="completion-stats-row d-flex gap-4 justify-content-center">
+                <div className="stat-pill px-4 py-2 bg-light rounded-pill border d-flex align-items-center gap-2">
+                  <span className="text-success">●</span>
+                  <strong>100%</strong> Accuracy
                 </div>
-                <div className="stat-item-768 d-flex flex-column align-items-center">
-                  <strong className="text-success fs-4">100%</strong>
-                  <span className="text-secondary small">Data Processed</span>
-                </div>
-                <div className="stat-item-768 d-flex flex-column align-items-center">
-                  <strong className="text-success fs-4">Juan AI</strong>
-                  <span className="text-secondary small">Powered</span>
+                <div className="stat-pill px-4 py-2 bg-light rounded-pill border d-flex align-items-center gap-2">
+                  <span className="text-success">●</span>
+                  <strong>{analysisSteps.length}</strong> Metrics
                 </div>
               </div>
             </div>

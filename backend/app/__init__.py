@@ -68,12 +68,49 @@ def create_app():
     
     from app.routes.bp_ai_camera import bp_ai_camera_bp
     app.register_blueprint(bp_ai_camera_bp, url_prefix='/api/bp-camera')
-    
+
+    from app.routes.measurement_routes import measurement_bp
+    app.register_blueprint(measurement_bp, url_prefix='/api/measurements')
+
+    # --- PRIORITY 1: ARDUINO CONNECTION & AUTO-TARE ---
+    from app.routes.sensor_routes import sensor_manager
     print("\n" + "="*60)
+    print("🔌 PRIORITY 1: ARDUINO CONNECTION & AUTO-TARE")
+    print("="*60)
+    if not sensor_manager.is_connected:
+        print("⏳ Attempting to connect to Arduino...")
+        try:
+            connected, message = sensor_manager.connect()
+            if connected:
+                print(f"✅ Arduino connected: {message}")
+            else:
+                print(f"⚠️ Arduino not found: {message}")
+        except Exception as e:
+            print(f"⚠️ Arduino auto-connect failed: {e}")
+    else:
+        print("✅ Arduino already connected")
+    print("="*60 + "\n")
+
+    # --- PRIORITY 2: DATABASE TABLES (Fallback creation if needed) ---
+    print("🗄️ PRIORITY 2: DATABASE TABLES")
+    print("-"*40)
+    from app.utils.db import engine, Base
+    from app.models.user_model import User
+    from app.models.measurement_model import Measurement
+    from app.models.recommendation_model import Recommendation
+    
+    try:
+        # checkfirst=True means it won't error if tables already exist
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+        print("✅ Database tables verified/created")
+    except Exception as e:
+        print(f"⚠️ Database table check failed (non-critical): {e}")
+    print("-"*40 + "\n")
+
+    print("="*60)
     print("🚀 BACKEND SERVER is READY and RUNNING")
     print("="*60)
-    print("📡 Waiting for Arduino connection on COM port...")
-    print("💡 Connect Arduino and visit Standby page to initialize")
+    print("📍 API available at: http://127.0.0.1:5000")
     print("="*60 + "\n")
     sys.stdout.flush()
     

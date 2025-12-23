@@ -205,6 +205,10 @@ class SensorManager:
             elif "FULL_SYSTEM_INITIALIZATION_COMPLETE" in status_type:
                 self.full_system_initialized = True
                 logger.info("✅ Full system initialized")
+            elif "ERROR:MAX30102_NOT_FOUND" in data:
+                self.max30102_sensor_ready = False
+                self.live_data['max30102']['sensor_prepared'] = False
+                logger.error("❌ MAX30102 Sensor not found/failed to initialize") # Log detection
 
         # ==================== MEASUREMENT RESULTS ====================
         elif data.startswith("RESULT:WEIGHT:"):
@@ -904,6 +908,11 @@ class SensorManager:
         
         try:
             self.serial_conn.write("POWER_DOWN_MAX30102\n".encode())
+            
+            # CRITICAL: Mark as not ready so next prepare calls know to re-initialize
+            self.max30102_sensor_ready = False
+            self.live_data['max30102']['sensor_prepared'] = False
+            
             time.sleep(1)
             return {"status": "success", "message": "MAX30102 sensor shutdown"}
         except Exception as e:

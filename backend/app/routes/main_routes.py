@@ -81,30 +81,7 @@ def system_check():
         "message": "Checking system components..."
     }
     
-    # Priority 1: Check Database Connection
-    try:
-        from app.utils.db import engine
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT 1"))
-            result.fetchone()
-        
-        system_status["components"]["database"] = {
-            "status": "connected",
-            "connected": True,
-            "message": "Database connection active"
-        }
-    except Exception as e:
-        system_status["components"]["database"] = {
-            "status": "error",
-            "connected": False,
-            "message": f"Database connection failed: {str(e)}"
-        }
-        system_status["overall_status"] = "database_error"
-        system_status["message"] = "Database connection failed. Cannot proceed."
-        print(f"❌ System check: Database connection failed: {e}")
-        return jsonify(system_status), 200
-    
-    # Priority 2: Check Arduino Connection
+    # Priority 1: Check Arduino Connection
     try:
         from app.routes.sensor_routes import sensor_manager
         
@@ -122,7 +99,6 @@ def system_check():
                 "port": None,
                 "message": "Arduino not connected"
             }
-            system_status["can_proceed"] = True  # Can still proceed in offline mode
     except Exception as e:
         system_status["components"]["arduino"] = {
             "status": "error",
@@ -130,10 +106,9 @@ def system_check():
             "port": None,
             "message": f"Arduino check failed: {str(e)}"
         }
-        system_status["can_proceed"] = True  # Can still proceed in offline mode
         print(f"❌ System check: Arduino check failed: {e}")
-    
-    # Priority 3: Check Auto-Tare Status
+
+    # Priority 2: Check Auto-Tare Status (Dependent on Arduino)
     try:
         from app.routes.sensor_routes import sensor_manager
         
@@ -162,13 +137,45 @@ def system_check():
             "message": f"Auto-tare check failed: {str(e)}"
         }
         print(f"❌ System check: Auto-tare check failed: {e}")
+
+    # Priority 3: Check Database Connection
+    try:
+        from app.utils.db import engine
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            result.fetchone()
+        
+        system_status["components"]["database"] = {
+            "status": "connected",
+            "connected": True,
+            "message": "Database connection active"
+        }
+    except Exception as e:
+        system_status["components"]["database"] = {
+            "status": "error",
+            "connected": False,
+            "message": f"Database connection failed: {str(e)}"
+        }
+        # We don't return early anymore, so we can report Arduino status too
+        print(f"❌ System check: Database connection failed: {e}")
     
     # Determine overall system status
     db_ok = system_status["components"]["database"]["connected"]
     arduino_ok = system_status["components"]["arduino"]["connected"]
     tare_ok = system_status["components"]["auto_tare"]["completed"]
     
-    if db_ok and arduino_ok and tare_ok:
+    # Determine overall system status
+    db_ok = system_status["components"]["database"]["connected"]
+    arduino_ok = system_status["components"]["arduino"]["connected"]
+    tare_ok = system_status["components"]["auto_tare"]["completed"]
+    
+    if not db_ok:
+        system_status["overall_status"] = "database_error"
+        # Even if DB is down, we successfully checked Arduino, so we see that status above.
+        system_status["system_ready"] = False
+        system_status["can_proceed"] = False # Cannot save data without DB
+        system_status["message"] = "Database Error - Measurements cannot be saved"
+    elif db_ok and arduino_ok and tare_ok:
         system_status["overall_status"] = "ready"
         system_status["system_ready"] = True
         system_status["can_proceed"] = True

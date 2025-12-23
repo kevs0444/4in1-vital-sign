@@ -27,15 +27,16 @@ logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
 from app import create_app
 from app.utils.db import engine, text
 
-# Test database connection
-try:
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT DATABASE() as db_name"))
-        db_name = result.fetchone()[0]  # Access by index
-        print(f"✅ Database connected: {db_name}")
-except Exception as e:
-    print(f"❌ Database connection failed: {e}")
-    exit(1)
+# Test database connection - DISABLED to prioritize Arduino/Server startup
+# try:
+#     with engine.connect() as conn:
+#         result = conn.execute(text("SELECT DATABASE() as db_name"))
+#         db_name = result.fetchone()[0]  # Access by index
+#         print(f"✅ Database connected: {db_name}")
+# except Exception as e:
+#     print(f"❌ Database connection failed: {e}")
+#     # Don't exit, let the app try to start anyway
+#     # exit(1)
 
 app = create_app()
 
