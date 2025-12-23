@@ -19,6 +19,8 @@ import {
 } from '@mui/icons-material';
 import './Maintenance.css';
 
+const API_BASE = 'http://127.0.0.1:5000/api';
+
 const Maintenance = () => {
     const navigate = useNavigate();
 
@@ -52,7 +54,7 @@ const Maintenance = () => {
     const modes = {
         feet: ["platform", "barefeet", "socks", "footwear"],
         body: ["null", "bag", "cap", "id", "watch"],
-        bp: [] // No capture classes for BP mode
+        bp: ["monitor", "numbers", "error", "null"] // Data collection classes
     };
 
     useEffect(() => {
@@ -79,7 +81,7 @@ const Maintenance = () => {
 
     const startCamera = async () => {
         try {
-            await fetch('/api/camera/start', { method: 'POST' });
+            await fetch(`${API_BASE}/camera/start`, { method: 'POST' });
             updateSettingsOnBackend(settings);
             handleTabChange(activeTab);
         } catch (err) { console.error(err); }
@@ -87,7 +89,7 @@ const Maintenance = () => {
 
     const checkStatus = async () => {
         try {
-            const res = await fetch('/api/camera/status');
+            const res = await fetch(`${API_BASE}/camera/status`);
             const data = await res.json();
             setComplianceStatus(data.message);
             setIsCompliant(data.is_compliant);
@@ -98,7 +100,7 @@ const Maintenance = () => {
 
     const updateSettingsOnBackend = async (newSettings) => {
         try {
-            await fetch('/api/camera/set_settings', {
+            await fetch(`${API_BASE}/camera/set_settings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newSettings)
@@ -108,13 +110,14 @@ const Maintenance = () => {
 
     const handleTabChange = async (mode) => {
         setActiveTab(mode);
-        // Camera mapping: 0=feet, 1=body, 2=blood pressure
-        let recommendedIndex;
-        if (mode === 'feet') recommendedIndex = 0;
-        else if (mode === 'body') recommendedIndex = 1;
-        else recommendedIndex = 2; // BP uses camera 2
+        // Smart Camera System: Default to Camera 0 for all modes (Single Camera / Temporary Setup)
+        // User Request: "when one camera is available make it default for all" & "camera 0 is for bp now"
+        let recommendedIndex = 0;
 
-        const backendMode = mode === 'bp' ? 'reading' : mode;
+        // Disable AI model for BP and use 'capture_only' to prevent burnt-in text/overlays
+        // User Request: "remove make the capturte here like no waiting for user taag"
+        const backendMode = mode === 'bp' ? 'capture_only' : mode;
+
         setSettings(prev => ({ ...prev, camera_index: recommendedIndex }));
 
         // Clear BP reading when switching tabs
@@ -123,12 +126,12 @@ const Maintenance = () => {
         }
 
         try {
-            await fetch('/api/camera/set_mode', {
+            await fetch(`${API_BASE}/camera/set_mode`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mode: backendMode })
             });
-            await fetch('/api/camera/set_camera', {
+            await fetch(`${API_BASE}/camera/set_camera`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ index: recommendedIndex })
@@ -146,7 +149,7 @@ const Maintenance = () => {
         const idx = parseInt(index);
         setSettings(prev => ({ ...prev, camera_index: idx }));
         try {
-            await fetch('/api/camera/set_camera', {
+            await fetch(`${API_BASE}/camera/set_camera`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ index: idx })
@@ -176,7 +179,7 @@ const Maintenance = () => {
             // Fix: Re-attach listener or use a ref. Let's use a simple approach:
             const currentClass = document.querySelector('.class-btn.active')?.dataset.class || 'unknown';
 
-            const res = await fetch('/api/camera/capture', {
+            const res = await fetch(`${API_BASE}/camera/capture`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ class_name: currentClass })
@@ -191,7 +194,7 @@ const Maintenance = () => {
 
     const handleRestart = async () => {
         setBackendStatus('Restarting...');
-        await fetch('/api/camera/stop', { method: 'POST' });
+        await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
         setTimeout(startCamera, 1000);
     };
 
@@ -204,7 +207,7 @@ const Maintenance = () => {
         setTimeout(() => setShowCaptureFlash(false), 150);
 
         try {
-            const res = await fetch('/api/bp-camera/analyze-bp-camera', {
+            const res = await fetch(`${API_BASE}/bp-camera/analyze-bp-camera`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -265,95 +268,39 @@ const Maintenance = () => {
                     </div>
 
                     <div className="camera-viewport">
-                        <img src={`/api/camera/video_feed?t=${Date.now()}`} alt="Feed" className="main-feed" />
+                        <img src={`${API_BASE}/camera/video_feed?t=${Date.now()}`} alt="Feed" className="main-feed" />
                         <button className="viewport-overlay switch-cam-btn" onClick={handleToggleCamera} title="Switch between Camera 0 and 1">
                             <FlipCameraIos />
                         </button>
                         <div className="viewport-overlay top">
-                            <div className="ai-badge">AI LIVE: {complianceStatus}</div>
+                            {activeTab !== 'bp' && (
+                                <div className="ai-badge">AI LIVE: {complianceStatus}</div>
+                            )}
                             <div className="fps-badge">FPS: {fps}</div>
                         </div>
                         <div className="viewport-overlay bottom">
                             <div className="capture-info">
-                                {activeTab === 'bp'
-                                    ? 'Align BP monitor screen in frame'
-                                    : `Session: ${captureCount} images captured`
-                                }
+                                {`Session: ${captureCount} images captured`}
                             </div>
                         </div>
                     </div>
 
-                    {/* Conditional Section: Training Categories OR BP Reading */}
-                    {activeTab === 'bp' ? (
-                        <div className="bp-results-section">
-                            <h3><MonitorHeart /> Blood Pressure Reading</h3>
-
-                            {/* Current Reading Display */}
-                            <div className="bp-current-reading">
-                                {isBpReading ? (
-                                    <div className="bp-loading">
-                                        <div className="bp-spinner"></div>
-                                        <span>AI is reading the BP monitor...</span>
-                                    </div>
-                                ) : bpReading ? (
-                                    bpReading.error ? (
-                                        <div className="bp-error">
-                                            <span>⚠️ {bpReading.error}</span>
-                                        </div>
-                                    ) : (
-                                        <div className="bp-values">
-                                            <div className="bp-value systolic">
-                                                <span className="bp-label">SYS</span>
-                                                <span className="bp-number">{bpReading.systolic}</span>
-                                                <span className="bp-unit">mmHg</span>
-                                            </div>
-                                            <div className="bp-divider">/</div>
-                                            <div className="bp-value diastolic">
-                                                <span className="bp-label">DIA</span>
-                                                <span className="bp-number">{bpReading.diastolic}</span>
-                                                <span className="bp-unit">mmHg</span>
-                                            </div>
-                                        </div>
-                                    )
-                                ) : (
-                                    <div className="bp-placeholder">
-                                        <span>Point camera at BP monitor and press "Read BP"</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Reading History */}
-                            {bpHistory.length > 0 && (
-                                <div className="bp-history">
-                                    <h4>Recent Readings</h4>
-                                    <div className="bp-history-list">
-                                        {bpHistory.map((reading, idx) => (
-                                            <div key={idx} className="bp-history-item">
-                                                <span className="bp-history-values">{reading.systolic}/{reading.diastolic}</span>
-                                                <span className="bp-history-time">{reading.timestamp}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                    {/* Standard Class Selector for ALL modes (including BP for training) */}
+                    <div className="class-selector">
+                        <h3>Select Category to Capture:</h3>
+                        <div className="class-buttons">
+                            {modes[activeTab].map(cls => (
+                                <button
+                                    key={cls}
+                                    data-class={cls}
+                                    className={`class-btn ${selectedClass === cls ? 'active' : ''}`}
+                                    onClick={() => setSelectedClass(cls)}
+                                >
+                                    {cls.replace('_', ' ')}
+                                </button>
+                            ))}
                         </div>
-                    ) : (
-                        <div className="class-selector">
-                            <h3>Select Category to Capture:</h3>
-                            <div className="class-buttons">
-                                {modes[activeTab].map(cls => (
-                                    <button
-                                        key={cls}
-                                        data-class={cls}
-                                        className={`class-btn ${selectedClass === cls ? 'active' : ''}`}
-                                        onClick={() => setSelectedClass(cls)}
-                                    >
-                                        {cls.replace('_', ' ')}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    </div>
                 </div>
 
                 <div className="right-panel">
@@ -361,16 +308,26 @@ const Maintenance = () => {
                         <h3><Settings /> System & Image</h3>
 
                         <div className="control-item">
-                            <label>Hardware Camera Source</label>
-                            <select
-                                value={settings.camera_index}
-                                onChange={(e) => handleCameraIndexChange(e.target.value)}
-                                className="styled-select"
-                            >
-                                <option value="0">Camera 0 (Feet/Weight)</option>
-                                <option value="1">Camera 1 (Body/Wearables)</option>
-                                <option value="2">Camera 2 (Blood Pressure)</option>
-                            </select>
+                            <label>Hardware Camera Source (Select to Switch)</label>
+                            <div className="camera-selector-list">
+                                {[
+                                    { id: 0, name: 'Camera 0', desc: 'Feet/Weight' },
+                                    { id: 1, name: 'Camera 1', desc: 'Body/Wearables' },
+                                    { id: 2, name: 'Camera 2', desc: 'Blood Pressure' }
+                                ].map(cam => (
+                                    <div
+                                        key={cam.id}
+                                        className={`camera-card ${settings.camera_index === cam.id ? 'active' : ''}`}
+                                        onClick={() => handleCameraIndexChange(cam.id)}
+                                    >
+                                        <div className="camera-card-info">
+                                            <span className="camera-card-name">{cam.name}</span>
+                                            <span className="camera-card-desc">{cam.desc}</span>
+                                        </div>
+                                        <div className="camera-status-indicator" title={settings.camera_index === cam.id ? "Active" : "Inactive"}></div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="control-item">
@@ -419,28 +376,16 @@ const Maintenance = () => {
                     </div>
 
                     <div className="capture-section">
-                        {activeTab === 'bp' ? (
-                            <button
-                                className={`big-capture-btn bp-read-btn ${isBpReading ? 'loading' : ''}`}
-                                onClick={handleBpRead}
-                                disabled={isBpReading}
-                            >
-                                <MonitorHeart /> {isBpReading ? 'READING...' : 'READ BP'}
-                                <span className="shortcut-hint">AI VISION</span>
-                            </button>
-                        ) : (
-                            <>
-                                <button className="big-capture-btn" onClick={handleCapture}>
-                                    <FlashOn /> CAPTURE
-                                    <span className="shortcut-hint">SPACEBAR</span>
-                                </button>
-                                {lastCapturePath && (
-                                    <div className="last-saved">
-                                        <PhotoLibrary fontSize="small" />
-                                        <span>Last saved: {lastCapturePath.split('\\').pop()}</span>
-                                    </div>
-                                )}
-                            </>
+                        {/* Standard Capture Button for all modes including BP data collection */}
+                        <button className="big-capture-btn" onClick={handleCapture}>
+                            <FlashOn /> CAPTURE
+                            <span className="shortcut-hint">SPACEBAR</span>
+                        </button>
+                        {lastCapturePath && (
+                            <div className="last-saved">
+                                <PhotoLibrary fontSize="small" />
+                                <span>Last saved: {lastCapturePath.split('\\').pop()}</span>
+                            </div>
                         )}
                     </div>
 

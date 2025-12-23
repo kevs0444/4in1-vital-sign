@@ -1,6 +1,6 @@
 # Project Folder Structure (Auto-Generated)
 
-Values are based on actual file system scan as of 2025-12-21.
+Values are based on actual file system scan as of 2025-12-24.
 
 ## 4IN1-VITAL-SIGN/
 
@@ -27,13 +27,16 @@ Values are based on actual file system scan as of 2025-12-21.
 │   │   ├── routes/
 │   │   │   ├── __init__.py
 │   │   │   ├── admin_routes.py
+│   │   │   ├── bp_ai_camera.py
 │   │   │   ├── camera_routes.py
 │   │   │   ├── forgot_password_routes.py
+│   │   │   ├── juan_ai_routes.py
 │   │   │   ├── login_routes.py
 │   │   │   ├── main_routes.py
 │   │   │   ├── print_routes.py
 │   │   │   ├── register_routes.py
-│   │   │   └── sensor_routes.py
+│   │   │   ├── sensor_routes.py
+│   │   │   └── share_routes.py
 │   │   │
 │   │   ├── sensors/
 │   │   │   ├── __init__.py
@@ -56,6 +59,13 @@ Values are based on actual file system scan as of 2025-12-21.
 │   │   └── bp_sensors/
 │   │       └── bp_sensor.ino
 │   │
+│   ├── juan_ai/                         # 🧠 Juan AI Training (New)
+│   │   ├── HOW_TO_TRAIN_ON_COLAB.md
+│   │   ├── generate_dataset.py
+│   │   ├── juan_ai_dataset.csv
+│   │   ├── juan_ai_model.pkl
+│   │   └── train_model.py
+│   │
 │   ├── run.py
 │   └── requirements.txt
 │
@@ -76,7 +86,8 @@ Values are based on actual file system scan as of 2025-12-21.
 │   │   │   ├── Button/
 │   │   │   ├── Cards/
 │   │   │   ├── Footer/
-│   │   │   └── Header/
+│   │   │   ├── Header/
+│   │   │   └── InactivityWrapper/
 │   │   │
 │   │   ├── pages/
 │   │   │   ├── Dashboards/
@@ -105,7 +116,8 @@ Values are based on actual file system scan as of 2025-12-21.
 │   │   │   │   ├── Result/
 │   │   │   │   ├── Saving/
 │   │   │   │   ├── Sharing/
-│   │   │   │   └── Starting/
+│   │   │   │   ├── Starting/
+│   │   │   │   └── main-components-measurement.css
 │   │   │   │
 │   │   │   ├── NotFound/
 │   │   │   │

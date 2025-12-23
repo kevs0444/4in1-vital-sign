@@ -199,7 +199,12 @@ class CameraManager:
             # Run detection based on mode
             current_mode = getattr(self, 'current_mode', 'feet')
             
-            if current_mode == 'reading':
+            if current_mode == 'capture_only':
+                 annotated_frame = frame
+                 status_msg = "Capture Mode"
+                 is_compliant = True
+            
+            elif current_mode == 'reading':
                  # --- NEW SMART BP DETECTION ---
                  annotated_frame = frame.copy()
                  h, w = frame.shape[:2]

@@ -26,7 +26,7 @@ def set_mode():
     from flask import request
     data = request.json
     mode = data.get('mode')
-    if mode in ['feet', 'body', 'reading']:
+    if mode in ['feet', 'body', 'reading', 'capture_only']:
         camera_manager.set_mode(mode)
         return jsonify({"status": "success", "message": f"Mode set to {mode}"})
     return jsonify({"status": "error", "message": "Invalid mode"}), 400
