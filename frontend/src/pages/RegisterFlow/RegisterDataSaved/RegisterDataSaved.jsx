@@ -111,10 +111,14 @@ export default function RegisterDataSaved() {
   const mapUserTypeToRole = (userType) => {
     const roleMap = {
       "rtu-students": "Student",
+      "student": "Student",
       "rtu-employees": "Employee",
+      "employee": "Employee",
       "rtu-admin": "Admin",
       "rtu-doctor": "Doctor",
-      "rtu-nurse": "Nurse"
+      "doctor": "Doctor",
+      "rtu-nurse": "Nurse",
+      "nurse": "Nurse"
     };
     return roleMap[userType] || "Student";
   };
@@ -165,7 +169,7 @@ export default function RegisterDataSaved() {
           : null,
 
         // Contact info
-        mobileNumber: registrationData.mobile || '',
+
         email: registrationData.email || '',
 
         // Authentication
@@ -253,16 +257,10 @@ export default function RegisterDataSaved() {
   };
 
   const getRoleDisplay = () => {
-    const userType = registrationData.userType;
-    const roleMap = {
-      "rtu-students": "Student",
-      "rtu-employees": "Employee",
-      "rtu-admin": "Administrator",
-      "rtu-doctor": "Doctor",
-      "rtu-nurse": "Nurse"
-    };
-    return roleMap[userType] || "Member";
+    return mapUserTypeToRole(registrationData.userType) || "Member";
   };
+
+  const isPending = ['Doctor', 'Nurse'].includes(mapUserTypeToRole(registrationData.userType));
 
   return (
     <div className="register-saved-container">
@@ -280,13 +278,13 @@ export default function RegisterDataSaved() {
 
           <h1 className="status-title">
             {registrationStatus === 'saving' && 'Finalizing Registration...'}
-            {registrationStatus === 'success' && 'Registration Complete!'}
+            {registrationStatus === 'success' && (isPending ? 'Registration Submitted!' : 'Registration Complete!')}
             {registrationStatus === 'error' && (isDuplicate ? 'Already Registered' : 'Registration Failed')}
           </h1>
 
           <p className="status-subtitle">
             {registrationStatus === 'saving' && 'Please wait while we secure your data.'}
-            {registrationStatus === 'success' && 'Your account has been successfully created.'}
+            {registrationStatus === 'success' && (isPending ? 'Your account is pending administrator approval.' : 'Your account has been successfully created.')}
             {registrationStatus === 'error' && errorMessage}
           </p>
         </div>
@@ -296,7 +294,7 @@ export default function RegisterDataSaved() {
           <div className="success-content">
 
             {/* Digital ID Card Preview */}
-            <div className="digital-id-card">
+            <div className={`digital-id-card ${isPending ? 'pending' : ''}`}>
               <div className="id-card-header">
                 <div className="id-card-logo">RTU</div>
                 <div className="id-card-type">{getRoleDisplay()}</div>
@@ -316,7 +314,7 @@ export default function RegisterDataSaved() {
                   <span className="chip-icon">📡</span>
                   <span>{backendResponse?.data?.rfid_tag ? 'RFID Active' : 'No RFID'}</span>
                 </div>
-                <div className="id-status">Active</div>
+                <div className="id-status">{isPending ? 'Pending' : 'Active'}</div>
               </div>
             </div>
 
@@ -346,8 +344,17 @@ export default function RegisterDataSaved() {
                 <div className="timeline-item">
                   <div className="timeline-marker">1</div>
                   <div className="timeline-content">
-                    <strong>Login</strong>
-                    <p>Use your School ID or tap your RFID card</p>
+                    {isPending ? (
+                      <>
+                        <strong>Admin Verification</strong>
+                        <p>Wait for an administrator to approve your account</p>
+                      </>
+                    ) : (
+                      <>
+                        <strong>Login</strong>
+                        <p>Use your School ID or tap your RFID card</p>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="timeline-item">

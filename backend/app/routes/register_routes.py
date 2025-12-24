@@ -21,8 +21,10 @@ def register_user():
             }), 400
 
         # Extract and validate required fields
+        # Extract and validate required fields
         # Note: rfidTag is OPTIONAL, so it is NOT in this list
-        required_fields = ['userId', 'firstname', 'lastname', 'role', 'age', 'sex', 'mobileNumber', 'email', 'password']
+        # mobileNumber removed as per request
+        required_fields = ['userId', 'firstname', 'lastname', 'role', 'age', 'sex', 'email', 'password']
         
         for field in required_fields:
             if field not in data or not data[field]:
@@ -103,14 +105,18 @@ def register_user():
         # Hash the password
         hashed_password = generate_password_hash(data['password'])
 
+        # Determine Approval Status
+        role_lower = data['role'].lower()
+        approval_status = 'pending' if role_lower in ['nurse', 'doctor'] else 'approved'
+
         # Insert new user
         insert_query = text("""
             INSERT INTO users (
                 user_id, rfid_tag, firstname, lastname, role, school_number, 
-                birthday, age, sex, mobile_number, email, password, created_at
+                birthday, age, sex, email, password, approval_status, created_at
             ) VALUES (
                 :user_id, :rfid_tag, :firstname, :lastname, :role, :school_number,
-                :birthday, :age, :sex, :mobile_number, :email, :password, :created_at
+                :birthday, :age, :sex, :email, :password, :approval_status, :created_at
             )
         """)
         
@@ -124,9 +130,9 @@ def register_user():
             'birthday': data.get('birthday', None),
             'age': data['age'],
             'sex': data['sex'],
-            'mobile_number': data['mobileNumber'],
             'email': data['email'],
             'password': hashed_password, # Use hashed password
+            'approval_status': approval_status,
             'created_at': data.get('created_at', None)
         })
         
@@ -144,6 +150,7 @@ def register_user():
                 'lastname': data['lastname'],
                 'role': data['role'],
                 'school_number': data.get('school_number', data['userId']),
+                'approval_status': approval_status,
                 'created_at': data.get('created_at', None)
             }
         }), 201
@@ -212,33 +219,7 @@ def check_email(email):
             'message': f'Error checking email: {str(e)}'
         }), 500
 
-@register_bp.route('/check-mobile/<mobile>', methods=['GET'])
-def check_mobile(mobile):
-    """Check if mobile number already exists"""
-    try:
-        db = next(get_db())
-        
-        # Clean mobile number (remove spaces)
-        clean_mobile = mobile.replace(' ', '').replace('-', '')
-        
-        query = text("SELECT mobile_number FROM users WHERE REPLACE(REPLACE(mobile_number, ' ', ''), '-', '') = :mobile")
-        result = db.execute(query, {'mobile': clean_mobile})
-        user = result.fetchone()
-        
-        exists = user is not None
-        print(f"🔍 Check mobile {mobile}: {'Exists' if exists else 'Available'}")
 
-        return jsonify({
-            'exists': exists,
-            'message': 'Mobile number already registered' if exists else 'Mobile number available'
-        }), 200
-
-    except Exception as e:
-        print(f"Check mobile error: {e}")
-        return jsonify({
-            'exists': False,
-            'message': f'Error checking mobile: {str(e)}'
-        }), 500
 
 @register_bp.route('/check-school-number/<school_number>', methods=['GET'])
 def check_school_number(school_number):

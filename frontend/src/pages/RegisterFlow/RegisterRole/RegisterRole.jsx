@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import "./RegisterRole.css";
 import employeeIcon from "../../../assets/icons/employee-icon.png";
 import studentIcon from "../../../assets/icons/student-icon.png";
+import medicalIcon from "../../../assets/icons/medical-icon.png";
+import femaleIcon from "../../../assets/icons/female-icon.png";
 
 export default function RegisterRole() {
   const navigate = useNavigate();
@@ -67,7 +69,7 @@ export default function RegisterRole() {
     {
       id: "rtu-employees",
       title: "RTU Employees",
-      description: "Faculty, staff, and professors of Rizal Technological University",
+      description: "Faculty and Employees of Rizal Technological University",
       icon: employeeIcon,
       color: "#16a34a",
       route: "/register/personal-info"
@@ -78,6 +80,22 @@ export default function RegisterRole() {
       description: "Currently enrolled students of Rizal Technological University",
       icon: studentIcon,
       color: "#0ea5e9",
+      route: "/register/personal-info"
+    },
+    {
+      id: "nurse",
+      title: "Nurse",
+      description: "Registered Nurses providing patient care and assistance",
+      icon: femaleIcon,
+      color: "#ec4899",
+      route: "/register/personal-info"
+    },
+    {
+      id: "doctor",
+      title: "Doctor",
+      description: "Licensed Physicians for medical diagnosis and consultation",
+      icon: medicalIcon,
+      color: "#8b5cf6",
       route: "/register/personal-info"
     }
   ];
@@ -134,53 +152,31 @@ export default function RegisterRole() {
         </div>
 
         <div className="role-cards-section">
-          {/* Left Card - RTU Employees */}
-          <div
-            className={`role-card rtu-employees ${selectedRole === 'rtu-employees' ? 'selected' : ''} ${touchFeedback === 'rtu-employees' ? 'touch-feedback' : ''}`}
-            onClick={() => handleRoleSelect('rtu-employees')}
-            onTouchStart={() => handleCardTouchStart('rtu-employees')}
-            onTouchEnd={handleCardTouchEnd}
-            style={{ '--role-color': roles[0].color }}
-          >
-            <div className="role-card-icon">
-              <img
-                src={roles[0].icon}
-                alt={`${roles[0].title} Icon`}
-                className="role-icon-image"
-              />
+          {roles.map((role) => (
+            <div
+              key={role.id}
+              className={`role-card ${role.id} ${selectedRole === role.id ? 'selected' : ''} ${touchFeedback === role.id ? 'touch-feedback' : ''}`}
+              onClick={() => handleRoleSelect(role.id)}
+              onTouchStart={() => handleCardTouchStart(role.id)}
+              onTouchEnd={handleCardTouchEnd}
+              style={{ '--role-color': role.color }}
+            >
+              <div className="role-card-icon">
+                <img
+                  src={role.icon}
+                  alt={`${role.title} Icon`}
+                  className="role-icon-image"
+                />
+              </div>
+              <div className="role-card-content">
+                <h3 className="role-card-title">{role.title}</h3>
+                <p className="role-card-description">{role.description}</p>
+              </div>
+              <div className="role-selection-indicator">
+                <div className="selection-circle"></div>
+              </div>
             </div>
-            <div className="role-card-content">
-              <h3 className="role-card-title">{roles[0].title}</h3>
-              <p className="role-card-description">{roles[0].description}</p>
-            </div>
-            <div className="role-selection-indicator">
-              <div className="selection-circle"></div>
-            </div>
-          </div>
-
-          {/* Right Card - RTU Students */}
-          <div
-            className={`role-card rtu-students ${selectedRole === 'rtu-students' ? 'selected' : ''} ${touchFeedback === 'rtu-students' ? 'touch-feedback' : ''}`}
-            onClick={() => handleRoleSelect('rtu-students')}
-            onTouchStart={() => handleCardTouchStart('rtu-students')}
-            onTouchEnd={handleCardTouchEnd}
-            style={{ '--role-color': roles[1].color }}
-          >
-            <div className="role-card-icon">
-              <img
-                src={roles[1].icon}
-                alt={`${roles[1].title} Icon`}
-                className="role-icon-image"
-              />
-            </div>
-            <div className="role-card-content">
-              <h3 className="role-card-title">{roles[1].title}</h3>
-              <p className="role-card-description">{roles[1].description}</p>
-            </div>
-            <div className="role-selection-indicator">
-              <div className="selection-circle"></div>
-            </div>
-          </div>
+          ))}
         </div>
 
         <div className="role-controls">

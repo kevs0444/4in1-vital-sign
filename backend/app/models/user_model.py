@@ -26,9 +26,10 @@ class User(Base):
     birthday = Column(Date, nullable=True)
     age = Column(Integer, nullable=False)
     sex = Column(Enum(SexEnum), nullable=False)
-    mobile_number = Column(String(15), unique=True, nullable=False)  # Unique mobile number
+    # mobile_number removed as per request
     email = Column(String(100), unique=True, nullable=False)  # Unique email
     password = Column(String(255), nullable=False)
+    approval_status = Column(String(20), default='approved') # approved, pending, rejected
     created_at = Column(DateTime)
 
     # Relationship to VerificationCode

@@ -56,7 +56,7 @@ def handle_rfid_login(rfid_tag):
         # Try exact match first
         query = text("""
             SELECT user_id, rfid_tag, firstname, lastname, role, school_number, 
-                   email, mobile_number, age, sex, created_at
+                   email, age, sex, created_at, approval_status
             FROM users 
             WHERE rfid_tag = :rfid_tag
         """)
@@ -92,6 +92,15 @@ def handle_rfid_login(rfid_tag):
                 'success': False,
                 'message': '❌ RFID card not registered. Please register first.'
             }), 404
+            
+        # Check Approval Status
+        approval_status = user[10]
+        if approval_status and approval_status != 'approved':
+             print(f"❌ User approval status is {approval_status}")
+             return jsonify({
+                'success': False,
+                'message': '⚠️ Your account is pending administrator approval. Please wait for confirmation.'
+            }), 403
         
         # Convert row to dictionary
         user_dict = {
@@ -102,10 +111,10 @@ def handle_rfid_login(rfid_tag):
             'role': user[4],
             'school_number': user[5],
             'email': user[6],
-            'mobile_number': user[7],
-            'age': user[8],
-            'sex': user[9],
-            'created_at': user[10]
+            'age': user[7],
+            'sex': user[8],
+            'created_at': user[9],
+            'approval_status': user[10]
         }
         
         print(f"✅ RFID login successful for user: {user_dict['firstname']} {user_dict['lastname']}")
@@ -134,7 +143,7 @@ def handle_manual_login(school_number, password):
         # Query user by school_number OR email
         query = text("""
             SELECT user_id, rfid_tag, firstname, lastname, role, school_number, 
-                   email, mobile_number, age, sex, created_at, password
+                   email, age, sex, created_at, approval_status, password
             FROM users 
             WHERE school_number = :identifier OR email = :identifier
         """)
@@ -174,6 +183,15 @@ def handle_manual_login(school_number, password):
                 'success': False,
                 'message': '❌ Invalid School Number/Email or password'
             }), 401
+            
+        # Check Approval Status
+        approval_status = user[10]
+        if approval_status and approval_status != 'approved':
+             print(f"❌ User approval status is {approval_status}")
+             return jsonify({
+                'success': False,
+                'message': '⚠️ Your account is pending administrator approval. Please wait for confirmation.'
+            }), 403
         
         # Convert row to dictionary (excluding password)
         user_dict = {
@@ -184,10 +202,10 @@ def handle_manual_login(school_number, password):
             'role': user[4],
             'school_number': user[5],
             'email': user[6],
-            'mobile_number': user[7],
-            'age': user[8],
-            'sex': user[9],
-            'created_at': user[10]
+            'age': user[7],
+            'sex': user[8],
+            'created_at': user[9],
+            'approval_status': user[10]
         }
         
         print(f"✅ Manual login successful for user: {user_dict['firstname']} {user_dict['lastname']}")
@@ -196,6 +214,7 @@ def handle_manual_login(school_number, password):
         return jsonify({
             'success': True,
             'message': f"✅ Login successful! Welcome {user_dict['firstname']} {user_dict['lastname']}",
+
             'user': user_dict
         }), 200
         

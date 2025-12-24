@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "react-bootstrap";
 import { motion } from "framer-motion";
+import { Dashboard, MonitorHeart } from "@mui/icons-material";
 import "./MeasurementWelcome.css";
-import logo from "../../../assets/images/welcome.png";
+import welcomeImg from "../../../assets/images/welcome.png";
+import brandLogo from "../../../assets/images/logo.png";
 
 export default function MeasurementWelcome() {
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ export default function MeasurementWelcome() {
   const [showTerms, setShowTerms] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showSelection, setShowSelection] = useState(false); // New state for selection view
   const [userData, setUserData] = useState({
     firstName: "",
     lastName: "",
@@ -57,6 +60,8 @@ export default function MeasurementWelcome() {
     if (location.state) {
       console.log("📥 Received user data in MeasurementWelcome:", location.state);
       setUserData(location.state);
+      // ENABLE SELECTION FOR ALL ROLES
+      setShowSelection(true);
     } else {
       // If no data passed, try to get from localStorage
       try {
@@ -74,6 +79,8 @@ export default function MeasurementWelcome() {
             user_id: user.user_id || user.id || "",
             email: user.email || ""
           });
+          // ENABLE SELECTION FOR ALL ROLES
+          setShowSelection(true);
         }
       } catch (error) {
         console.error("❌ Error retrieving user data:", error);
@@ -85,6 +92,13 @@ export default function MeasurementWelcome() {
     }, 100);
     return () => clearTimeout(timer);
   }, [location.state]);
+
+  const checkRole = (role) => {
+    // Role check disabled - showing selection for everyone
+    if (role) {
+      setShowSelection(true);
+    }
+  };
 
   // Prevent zooming functions
   const handleTouchStart = (e) => {
@@ -114,6 +128,17 @@ export default function MeasurementWelcome() {
     navigate("/measure/starting", {
       state: userData
     });
+  };
+
+  const handleDashboard = () => {
+    console.log("🚀 Navigating to Dashboard");
+    navigate("/admin/dashboard", {
+      state: { user: userData }
+    });
+  };
+
+  const handleStartMeasure = () => {
+    setShowSelection(false);
   };
 
   const handleShowTerms = () => setShowTerms(true);
@@ -149,68 +174,98 @@ export default function MeasurementWelcome() {
             Welcome, {userData.firstName || "User"}!
           </h1>
           <p className="register-subtitle">
-            Ready to check your vital signs with{" "}
-            <span className="juan-nowrap">
-              4 in <span className="juan-red">Juan</span>
-            </span>
+            {showSelection ? "How would you like to proceed?" : (
+              <>
+                Ready to check your vital signs with{" "}
+                <span className="juan-nowrap">
+                  4 in <span className="juan-red">Juan</span>
+                </span>
+              </>
+            )}
           </p>
         </div>
 
-        {/* Card Section */}
+        {/* Card Section - Always Visible */}
         <div className="register-card-section">
           <div className="register-welcome-card">
             <div className="register-card-icon">
               <img
-                src={logo}
+                src={welcomeImg}
                 alt="4 in Juan Logo"
                 className="register-icon-image"
               />
             </div>
             <div className="register-card-content">
-              <h3 className="register-card-title">Let's Get Started!</h3>
+              <h3 className="register-card-title">
+                {showSelection ? "Select an Option" : "Let's Get Started!"}
+              </h3>
               <p className="register-card-description">
-                Before we begin, please review and accept our Terms and Conditions to ensure accurate monitoring and personalized health insights.
+                {showSelection
+                  ? "Please choose where you would like to go."
+                  : "Before we begin, please review and accept our Terms and Conditions to ensure accurate monitoring and personalized health insights."
+                }
               </p>
             </div>
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="register-controls">
-          {/* Terms and Conditions */}
-          <div className="terms-section">
-            <div className="terms-checkbox">
-              <input
-                type="checkbox"
-                id="termsCheckbox"
-                className="terms-checkbox-input"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-              />
-              <label htmlFor="termsCheckbox" className="terms-checkbox-label">
-                I agree to the{" "}
-                <Button
-                  variant="link"
-                  className="terms-link"
-                  onClick={handleShowTerms}
-                >
-                  Terms and Conditions
-                </Button>
-              </label>
+        {/* Dynamic Controls Section */}
+        {showSelection ? (
+          <div className="selection-container">
+            <div className="selection-card" onClick={handleDashboard}>
+              <div className="selection-icon-wrapper">
+                <Dashboard style={{ fontSize: '3.5rem', color: '#dc2626' }} />
+              </div>
+              <h3 className="selection-title">Dashboard</h3>
+              <p className="selection-desc">Manage records & analytics.</p>
+            </div>
+
+            <div className="selection-card" onClick={handleStartMeasure}>
+              <div className="selection-icon-wrapper">
+                <MonitorHeart style={{ fontSize: '3.5rem', color: '#dc2626' }} />
+              </div>
+              <h3 className="selection-title">Measure</h3>
+              <p className="selection-desc">New measurement session.</p>
             </div>
           </div>
+        ) : (
+          /* Controls */
+          <div className="register-controls">
+            {/* Terms and Conditions */}
+            <div className="terms-section">
+              <div className="terms-checkbox">
+                <input
+                  type="checkbox"
+                  id="termsCheckbox"
+                  className="terms-checkbox-input"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                />
+                <label htmlFor="termsCheckbox" className="terms-checkbox-label">
+                  I agree to the{" "}
+                  <Button
+                    variant="link"
+                    className="terms-link"
+                    onClick={handleShowTerms}
+                  >
+                    Terms and Conditions
+                  </Button>
+                </label>
+              </div>
+            </div>
 
-          {/* Action Buttons */}
-          <div className="button-section">
-            <button
-              className="continue-button"
-              onClick={handleContinue}
-              disabled={!acceptedTerms}
-            >
-              OK, Let's Start
-            </button>
+            {/* Action Buttons */}
+            <div className="button-section">
+              <button
+                className="continue-button"
+                onClick={handleContinue}
+                disabled={!acceptedTerms}
+              >
+                OK, Let's Start
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </motion.div>
 
       {/* Modern Exit Confirmation Popup Modal */}
@@ -227,8 +282,10 @@ export default function MeasurementWelcome() {
             <div className="exit-modal-icon">
               <span>🚪</span>
             </div>
-            <h2 className="exit-modal-title">Exit Measurement?</h2>
-            <p className="exit-modal-message">Do you want to go back to login and cancel the measurement?</p>
+            <h2 className="exit-modal-title">{showSelection ? "Log Out?" : "Exit Measurement?"}</h2>
+            <p className="exit-modal-message">
+              {showSelection ? "Do you want to log out and return to the login screen?" : "Do you want to go back to login and cancel the measurement?"}
+            </p>
             <div className="exit-modal-buttons">
               <button
                 className="exit-modal-button secondary"

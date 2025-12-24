@@ -863,7 +863,7 @@ class SensorManager:
         self.measurements['height'] = None
         self.live_data['height'].update({
             'current': None,
-            'progress': 0,
+            'progress': 0,  
             'status': 'idle',
             'elapsed': 0
         })

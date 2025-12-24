@@ -68,8 +68,8 @@
   gap: 20px;
   margin-bottom: 30px;
   width: 100%;
-  flex-wrap: nowrap !important;
-  /* NEVER WRAP on desktop */
+  flex-wrap: wrap !important;
+  /* Allow wrap for 4 cards */
 }
 
 /* Individual Card Styling */
@@ -108,6 +108,18 @@
   /* Visible Light Blue */
 }
 
+.role-card:nth-of-type(3) {
+  /* Nurse */
+  border-color: #fbcfe8;
+  /* Pink */
+}
+
+.role-card:nth-of-type(4) {
+  /* Doctor */
+  border-color: #ddd6fe;
+  /* Light Purple */
+}
+
 .role-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
@@ -136,6 +148,20 @@
   box-shadow: 0 10px 30px rgba(14, 165, 233, 0.25);
   background-color: #f0f9ff;
   /* Subtle blue tinge */
+}
+
+.role-card.selected.nurse {
+  border-color: #ec4899 !important;
+  /* Pink */
+  box-shadow: 0 10px 30px rgba(236, 72, 153, 0.25);
+  background-color: #fdf2f8;
+}
+
+.role-card.selected.doctor {
+  border-color: #8b5cf6 !important;
+  /* Purple */
+  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.25);
+  background-color: #f5f3ff;
 }
 
 /* Icons within cards - Keep neutral background even when selected */
@@ -180,6 +206,14 @@
 
 .role-card.selected.rtu-students .role-card-title {
   color: #0ea5e9;
+}
+
+.role-card.selected.nurse .role-card-title {
+  color: #ec4899;
+}
+
+.role-card.selected.doctor .role-card-title {
+  color: #8b5cf6;
 }
 
 .role-card-description {
@@ -241,7 +275,32 @@
   background-repeat: no-repeat;
   background-position: center;
   transform: scale(1.1);
+  transform: scale(1.1);
   box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+}
+
+/* Pink (Nurse) Selected State */
+.role-card.selected.nurse .selection-circle {
+  background-color: #ec4899 !important;
+  border-color: #ec4899 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-size: 60%;
+  background-repeat: no-repeat;
+  background-position: center;
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(236, 72, 153, 0.3);
+}
+
+/* Purple (Doctor) Selected State */
+.role-card.selected.doctor .selection-circle {
+  background-color: #8b5cf6 !important;
+  border-color: #8b5cf6 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-size: 60%;
+  background-repeat: no-repeat;
+  background-position: center;
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
 }
 
 /* Ensure inner checkmark div is hidden if it exists to prevent conflict */
@@ -269,6 +328,20 @@
   border-color: #0369a1 !important;
   /* Darker Blue */
   background-color: #e0f2fe !important;
+}
+
+/* Pink Card Touch */
+.role-card:nth-of-type(3):active,
+.role-card:nth-of-type(3).touch-feedback {
+  border-color: #be185d !important;
+  background-color: #fce7f3 !important;
+}
+
+/* Purple Card Touch */
+.role-card:nth-of-type(4):active,
+.role-card:nth-of-type(4).touch-feedback {
+  border-color: #6d28d9 !important;
+  background-color: #ede9fe !important;
 }
 
 /* Controls Section */
@@ -368,6 +441,24 @@
 
 .continue-button.rtu-students:hover:not(:disabled) {
   box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+}
+
+.continue-button.nurse {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+}
+
+.continue-button.nurse:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
+}
+
+.continue-button.doctor {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+
+.continue-button.doctor:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
 }
 
 /* Close Button (Back Arrow) */

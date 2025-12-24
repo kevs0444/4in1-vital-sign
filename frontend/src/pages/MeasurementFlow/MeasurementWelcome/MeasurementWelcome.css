@@ -148,6 +148,71 @@
   margin: 0 auto;
 }
 
+/* Selection View Styles */
+.selection-container {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.selection-card {
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid #f0f0f0;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.selection-card:hover {
+  transform: translateY(-8px);
+  border-color: var(--red-500);
+  box-shadow: 0 15px 40px rgba(220, 38, 38, 0.15);
+}
+
+.selection-icon-wrapper {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  font-size: 3rem;
+  transition: all 0.3s ease;
+}
+
+.selection-card:hover .selection-icon-wrapper {
+  background: rgba(220, 38, 38, 5%);
+  color: var(--red-500);
+}
+
+.selection-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.selection-desc {
+  font-size: 1rem;
+  color: #666;
+  line-height: 1.5;
+  padding: 0;
+}
+
 /* Controls Section (Terms + Button) */
 .register-controls {
   width: 100%;
@@ -195,37 +260,11 @@
   text-decoration: underline;
 }
 
-/* Main Button Wrapper */
+/* Main Button Wrapper - Styles merged with lower section */
 .button-section {
   width: 100%;
-  width: 500px;
+  max-width: 500px;
   max-width: 100%;
-}
-
-.continue-button {
-  width: 100%;
-  padding: 18px;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  color: white;
-  font-size: 1.3rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.continue-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
-}
-
-.continue-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background: #6c757d;
-  box-shadow: none;
 }
 
 /* Media Queries */
@@ -424,6 +463,8 @@
   background: #ccc !important;
   box-shadow: none !important;
   transform: none !important;
+  pointer-events: none !important;
+  filter: none !important;
 }
 
 .welcome-back-button {

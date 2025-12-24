@@ -15,7 +15,6 @@ export default function RegisterTapID() {
     idNumber: "",
     password: "",
     email: "",
-    mobile: "09",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -37,7 +36,6 @@ export default function RegisterTapID() {
   const idNumberInputRef = useRef(null);
   const passwordInputRef = useRef(null);
   const emailInputRef = useRef(null);
-  const mobileInputRef = useRef(null);
   const rfidInputRef = useRef(null);
   const rfidDataRef = useRef('');
   const rfidTimeoutRef = useRef(null);
@@ -65,15 +63,56 @@ export default function RegisterTapID() {
   }, [isScanning, idRegistered, currentStep, formData, location.state]);
 
   const userType = location.state?.userType || "rtu-students";
-  // const personalInfo = location.state?.personalInfo || {};
-  const isEmployee = userType === "rtu-employees";
+
+  const getRoleSettings = (type) => {
+    switch (type) {
+      case 'nurse':
+      case 'doctor':
+        return {
+          title: "Enter ID / License Number",
+          subtitle: "Your official medical license or identification number",
+          label: "ID / License Number",
+          placeholder: "e.g., 1234-5678",
+          shortLabel: "ID/Lic",
+          securityNote: "Your ID or license number will be used for professional verification.",
+          hint: "Numbers and hyphens only",
+          duplicateTitle: "ID Number Already Registered",
+          duplicateMessage: "This ID number is already registered. Please use a different number."
+        };
+      case 'rtu-employees':
+        return {
+          title: "Enter Employee Number",
+          subtitle: "Your official RTU employee identification number",
+          label: "Employee Number",
+          placeholder: "e.g., 2023-001",
+          shortLabel: "Emp ID",
+          securityNote: "Your employee number will be used for official identification and record keeping.",
+          hint: "Numbers and hyphens only (e.g., 2023-001)",
+          duplicateTitle: "Employee Number Already Registered",
+          duplicateMessage: "This employee number is already registered. Please use a different number or contact support."
+        };
+      case 'rtu-students':
+      default:
+        return {
+          title: "Enter Student Number",
+          subtitle: "Your official RTU student identification number",
+          label: "Student Number",
+          placeholder: "e.g., 2022-200901",
+          shortLabel: "Stud ID",
+          securityNote: "Your student number will be used for official identification and academic records.",
+          hint: "Numbers and hyphens only (e.g., 2022-200901)",
+          duplicateTitle: "Student Number Already Registered",
+          duplicateMessage: "This student number is already registered. Please use a different number or contact support."
+        };
+    }
+  };
+
+  const roleSettings = getRoleSettings(userType);
 
   const steps = [
     {
-      title: isEmployee ? "Enter Employee Number" : "Enter Student Number",
-      subtitle: isEmployee
-        ? "Your official RTU employee identification number"
-        : "Your official RTU student identification number",
+      title: roleSettings.title,
+      subtitle: roleSettings.subtitle,
       type: "idNumber"
     },
     {
@@ -145,12 +184,12 @@ export default function RegisterTapID() {
 
   // Get placeholder based on user type
   const getIdNumberPlaceholder = () => {
-    return isEmployee ? "e.g., 2023-001" : "e.g., 2022-200901";
+    return roleSettings.placeholder;
   };
 
   // Get input label based on user type
   const getIdNumberLabel = () => {
-    return isEmployee ? "Employee Number" : "Student Number";
+    return roleSettings.label;
   };
 
   // Auto-focus email input when reaching contact step
@@ -242,14 +281,18 @@ export default function RegisterTapID() {
 
     const currentState = stateRef.current;
 
+    // Normalize userType for backend (e.g., 'rtu-employees' -> 'employee')
+    let normalizedUserType = currentState.userType;
+    if (currentState.userType === 'rtu-employees') normalizedUserType = 'employee';
+    if (currentState.userType === 'rtu-students') normalizedUserType = 'student';
+
     // Prepare ALL registration data to pass to RegisterDataSaved
     const completeRegistrationData = {
-      userType: currentState.userType,
+      userType: normalizedUserType,
       personalInfo: currentState.personalInfo,
       idNumber: currentState.formData.idNumber,
       password: currentState.formData.password,
       email: currentState.formData.email,
-      mobile: currentState.formData.mobile,
       rfidCode: rfidCode, // EXACT RFID DATA - NO MODIFICATIONS
       registrationDate: new Date().toISOString()
     };
@@ -343,8 +386,8 @@ export default function RegisterTapID() {
         const checkResult = await checkResponse.json();
 
         if (checkResult.exists) {
-          setDuplicateModalTitle(`${isEmployee ? 'Employee' : 'Student'} Number Already Registered`);
-          setDuplicateRfidMessage(`This ${isEmployee ? 'employee' : 'student'} number is already registered. Please use a different number or contact support if this is your number.`);
+          setDuplicateModalTitle(roleSettings.duplicateTitle);
+          setDuplicateRfidMessage(roleSettings.duplicateMessage);
           setShowDuplicateModal(true);
           return;
         }
@@ -356,10 +399,6 @@ export default function RegisterTapID() {
     } else if (currentStep === 1) {
       if (!validateEmail(formData.email)) {
         setErrorMessage("Please enter a valid email address");
-        return;
-      }
-      if (!validateMobile(formData.mobile)) {
-        setErrorMessage("Please enter a valid Philippine mobile number (09XXXXXXXXX)");
         return;
       }
 
@@ -378,21 +417,7 @@ export default function RegisterTapID() {
         console.warn('Could not verify email uniqueness:', error);
       }
 
-      // Check for duplicate mobile number
-      try {
-        const cleanMobile = formData.mobile.replace(/\s/g, '');
-        const mobileResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/register/check-mobile/${encodeURIComponent(cleanMobile)}`);
-        const mobileResult = await mobileResponse.json();
 
-        if (mobileResult.exists) {
-          setDuplicateModalTitle("Mobile Number Already Registered");
-          setDuplicateRfidMessage("This mobile number is already registered. Please use a different number or login with your existing account.");
-          setShowDuplicateModal(true);
-          return;
-        }
-      } catch (error) {
-        console.warn('Could not verify mobile uniqueness:', error);
-      }
 
       setCurrentStep(2);
     }
@@ -451,11 +476,6 @@ export default function RegisterTapID() {
     return emailRegex.test(email);
   };
 
-  const validateMobile = (mobile) => {
-    const mobileRegex = /^09\d{9}$/;
-    return mobileRegex.test(mobile.replace(/\s/g, ''));
-  };
-
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errorMessage) setErrorMessage(""); // Clear error on input
@@ -490,21 +510,6 @@ export default function RegisterTapID() {
     setShowPassword(!showPassword);
   };
 
-  const formatMobileNumber = (value) => {
-    let cleaned = value.replace(/\D/g, '');
-
-    if (!cleaned.startsWith('09')) {
-      cleaned = '09' + cleaned.replace(/^09/, '');
-    }
-
-    cleaned = cleaned.slice(0, 11);
-
-    if (cleaned.length > 4) {
-      return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7)}`;
-    }
-    return cleaned;
-  };
-
   const handleKeyboardPress = (key) => {
     if (key === "↑") {
       setIsShift(!isShift);
@@ -530,7 +535,7 @@ export default function RegisterTapID() {
       } else if (activeInput === "email") {
         setFormData(prev => ({ ...prev, email: prev.email.slice(0, -1) }));
       } else {
-        setFormData(prev => ({ ...prev, mobile: formatMobileNumber(prev.mobile.replace(/\s/g, '').slice(0, -1)) }));
+        // Mobile removed
       }
     } else if (key === "Space") {
       if (activeInput === "idNumber") {
@@ -544,7 +549,7 @@ export default function RegisterTapID() {
       } else if (activeInput === "email") {
         setFormData(prev => ({ ...prev, email: prev.email + " " }));
       } else {
-        setFormData(prev => ({ ...prev, mobile: formatMobileNumber(prev.mobile.replace(/\s/g, '') + " ") }));
+        // Mobile removed
       }
     } else {
       if (activeInput === "idNumber") {
@@ -560,10 +565,7 @@ export default function RegisterTapID() {
       } else if (activeInput === "email") {
         setFormData(prev => ({ ...prev, email: applyFormatting(prev.email, key) }));
       } else {
-        setFormData(prev => ({
-          ...prev,
-          mobile: formatMobileNumber(applyFormatting(prev.mobile.replace(/\s/g, ''), key))
-        }));
+        // Mobile removed
       }
     }
   };
@@ -577,7 +579,7 @@ export default function RegisterTapID() {
       case 0:
         return validateIDNumber(formData.idNumber) && validatePassword(formData.password);
       case 1:
-        return validateEmail(formData.email) && validateMobile(formData.mobile);
+        return validateEmail(formData.email);
       case 2:
         return true;
       default:
@@ -642,7 +644,7 @@ export default function RegisterTapID() {
                 {currentStep > index ? '✓' : index + 4}
               </div>
               <span className="step-label">
-                {step.type === 'idNumber' ? (isEmployee ? 'Emp ID' : 'Stud ID') :
+                {step.type === 'idNumber' ? roleSettings.shortLabel :
                   step.type === 'contact' ? 'Contact' : 'ID Tap'}
               </span>
             </div>
@@ -706,7 +708,7 @@ export default function RegisterTapID() {
                       inputMode="none"
                     />
                     <div className="input-hint">
-                      Numbers and hyphens only (e.g., {isEmployee ? "2023-001" : "2022-200901"})
+                      {roleSettings.hint}
                     </div>
                   </div>
 
@@ -778,10 +780,7 @@ export default function RegisterTapID() {
                   <div className="security-note">
                     <div className="security-icon">🎓</div>
                     <p>
-                      {isEmployee
-                        ? "Your employee number will be used for official identification and record keeping."
-                        : "Your student number will be used for official identification and academic records."
-                      }
+                      {roleSettings.securityNote}
                     </p>
                   </div>
                 </div>
@@ -828,27 +827,7 @@ export default function RegisterTapID() {
                     )}
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor="mobile" className="form-label">
-                      Mobile Number
-                    </label>
-                    <input
-                      ref={mobileInputRef}
-                      id="mobile"
-                      type="tel"
-                      className={`form-input ${activeInput === 'mobile' ? 'active' : ''}`}
-                      placeholder="0912 345 6789"
-                      value={formData.mobile}
-                      onChange={(e) => handleInputChange('mobile', e.target.value)}
-                      onFocus={() => {
-                        if (mobileInputRef.current) mobileInputRef.current.blur();
-                        handleInputFocus("mobile");
-                      }}
-                      autoComplete="off"
-                      readOnly
-                      inputMode="none"
-                    />
-                  </div>
+
 
                   <div className="security-note">
                     <div className="security-icon">🔒</div>

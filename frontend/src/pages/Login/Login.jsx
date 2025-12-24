@@ -120,32 +120,43 @@ export default function LoginPage() {
         console.log("📤 Passing User Data to Welcome:", userDataForState);
 
         // Navigate based on role with delay for feedback
+        // Navigate to welcome page
         setTimeout(() => {
-          if (user.role && user.role.toLowerCase() === 'admin') {
-            navigate('/admin/dashboard', {
-              state: { user: user }
-            });
-          } else {
-            navigate('/measure/welcome', {
-              state: userDataForState
-            });
-          }
+          navigate('/measure/welcome', {
+            state: userDataForState
+          });
         }, 1500);
 
       } else {
         console.log('❌ RFID validation failed:', response.message);
         setRfidStatus('error');
-        setErrorTitle('Card Recognition Failed');
+
+        // Intelligent Error Title
+        if (response.message && (response.message.toLowerCase().includes('pending') || response.message.toLowerCase().includes('approval'))) {
+          setErrorTitle('Approval Pending');
+        } else {
+          setErrorTitle('Card Recognition Failed');
+        }
+
         setError(response.message); // No emoji prefix
         setShowErrorModal(true);
         setRfidLoading(false);
       }
-
     } catch (err) {
       console.error('❌ RFID login error:', err);
       setRfidStatus('error');
-      setErrorTitle('System Error');
-      setError('RFID login failed. Please try again.'); // No emoji prefix
+
+      const errorMessage = err.message || 'RFID login failed. Please try again.';
+
+      // Intelligent Error Title for Catch Block
+      if (errorMessage.toLowerCase().includes('pending') || errorMessage.toLowerCase().includes('approval')) {
+        setErrorTitle('Approval Pending');
+        setError(errorMessage);
+      } else {
+        setErrorTitle('System Error');
+        setError('RFID login failed. Please try again.');
+      }
+
       setShowErrorModal(true);
       setRfidLoading(false);
     }
@@ -277,19 +288,20 @@ export default function LoginPage() {
         console.log("📤 Passing User Data to Welcome (Manual):", userDataForState);
 
         // Navigate based on role
-        if (user.role && user.role.toLowerCase() === 'admin') {
-          navigate('/admin/dashboard', {
-            state: { user: user }
-          });
-        } else {
-          navigate('/measure/welcome', {
-            state: userDataForState
-          });
-        }
+        navigate('/measure/welcome', {
+          state: userDataForState
+        });
       } else {
         // Use the specific message from the backend if available
         const specificMessage = response.message || 'Invalid credentials';
-        setErrorTitle('Login Failed');
+
+        // Intelligent Error Title
+        if (specificMessage.toLowerCase().includes('pending') || specificMessage.toLowerCase().includes('approval')) {
+          setErrorTitle('Approval Pending');
+        } else {
+          setErrorTitle('Login Failed');
+        }
+
         setError(specificMessage);
         setShowErrorModal(true);
         setIsLoading(false);

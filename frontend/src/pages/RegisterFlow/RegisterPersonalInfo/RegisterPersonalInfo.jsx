@@ -795,7 +795,7 @@ export default function RegisterPersonalInfo() {
           <Modal.Title style={{ fontWeight: '700', color: '#dc2626' }}>Age Restriction</Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ padding: '10px 25px 20px', fontSize: '1.2rem', color: '#333' }}>
-          <p>For users <strong>15 years old and below</strong>, please ask for guidance from our medical staff before proceeding.</p>
+          <p>For users <strong>15 years old and below</strong>, please ask for guidance from our medical personnel before proceeding.</p>
         </Modal.Body>
         <Modal.Footer style={{ borderTop: 'none', padding: '0 25px 25px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
           <Button
