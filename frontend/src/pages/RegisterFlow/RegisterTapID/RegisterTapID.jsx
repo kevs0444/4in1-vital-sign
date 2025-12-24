@@ -69,7 +69,11 @@ export default function RegisterTapID() {
       case 'nurse':
       case 'doctor':
         return {
-          title: "Enter ID / License Number",
+          title: (
+            <span>
+              Enter <span style={{ color: "var(--red-500)" }}>ID / License Number</span>
+            </span>
+          ),
           subtitle: "Your official medical license or identification number",
           label: "ID / License Number",
           placeholder: "e.g., 1234-5678",
@@ -81,7 +85,11 @@ export default function RegisterTapID() {
         };
       case 'rtu-employees':
         return {
-          title: "Enter Employee Number",
+          title: (
+            <span>
+              Enter <span style={{ color: "var(--red-500)" }}>Employee Number</span>
+            </span>
+          ),
           subtitle: "Your official RTU employee identification number",
           label: "Employee Number",
           placeholder: "e.g., 2023-001",
@@ -94,7 +102,11 @@ export default function RegisterTapID() {
       case 'rtu-students':
       default:
         return {
-          title: "Enter Student Number",
+          title: (
+            <span>
+              Enter <span style={{ color: "var(--red-500)" }}>Student Number</span>
+            </span>
+          ),
           subtitle: "Your official RTU student identification number",
           label: "Student Number",
           placeholder: "e.g., 2022-200901",
@@ -116,12 +128,20 @@ export default function RegisterTapID() {
       type: "idNumber"
     },
     {
-      title: "Contact Information",
+      title: (
+        <span>
+          Contact <span style={{ color: "var(--red-500)" }}>Information</span>
+        </span>
+      ),
       subtitle: "We'll use these for important updates and account recovery",
       type: "contact"
     },
     {
-      title: "Register your ID",
+      title: (
+        <span>
+          Register your <span style={{ color: "var(--red-500)" }}>ID</span>
+        </span>
+      ),
       subtitle: "RFID scanner is active - Tap your ID card anytime",
       type: "id"
     }

@@ -6,6 +6,8 @@ import { Dashboard, MonitorHeart } from "@mui/icons-material";
 import "./MeasurementWelcome.css";
 import welcomeImg from "../../../assets/images/welcome.png";
 import brandLogo from "../../../assets/images/logo.png";
+import dashboard3d from "../../../assets/icons/dashboard-3d.png";
+import measure3d from "../../../assets/icons/measure-3d.png";
 
 export default function MeasurementWelcome() {
   const navigate = useNavigate();
@@ -138,7 +140,11 @@ export default function MeasurementWelcome() {
   };
 
   const handleStartMeasure = () => {
-    setShowSelection(false);
+    // Direct navigation, skipping the confirmation screen
+    console.log("🚀 Starting measurement flow immediately...");
+    navigate("/measure/starting", {
+      state: userData
+    });
   };
 
   const handleShowTerms = () => setShowTerms(true);
@@ -171,7 +177,7 @@ export default function MeasurementWelcome() {
         {/* Header */}
         <div className="register-header">
           <h1 className="register-title">
-            Welcome, {userData.firstName || "User"}!
+            Welcome, <span className="juan-red">{userData.firstName || "User"}</span>!
           </h1>
           <p className="register-subtitle">
             {showSelection ? "How would you like to proceed?" : (
@@ -202,7 +208,7 @@ export default function MeasurementWelcome() {
               <p className="register-card-description">
                 {showSelection
                   ? "Please choose where you would like to go."
-                  : "Before we begin, please review and accept our Terms and Conditions to ensure accurate monitoring and personalized health insights."
+                  : "Press continue to begin your health measurement session."
                 }
               </p>
             </div>
@@ -214,7 +220,7 @@ export default function MeasurementWelcome() {
           <div className="selection-container">
             <div className="selection-card" onClick={handleDashboard}>
               <div className="selection-icon-wrapper">
-                <Dashboard style={{ fontSize: '3.5rem', color: '#dc2626' }} />
+                <img src={dashboard3d} alt="Dashboard" className="selection-icon-image" />
               </div>
               <h3 className="selection-title">Dashboard</h3>
               <p className="selection-desc">Manage records & analytics.</p>
@@ -222,7 +228,7 @@ export default function MeasurementWelcome() {
 
             <div className="selection-card" onClick={handleStartMeasure}>
               <div className="selection-icon-wrapper">
-                <MonitorHeart style={{ fontSize: '3.5rem', color: '#dc2626' }} />
+                <img src={measure3d} alt="Measure" className="selection-icon-image" />
               </div>
               <h3 className="selection-title">Measure</h3>
               <p className="selection-desc">New measurement session.</p>
@@ -231,35 +237,11 @@ export default function MeasurementWelcome() {
         ) : (
           /* Controls */
           <div className="register-controls">
-            {/* Terms and Conditions */}
-            <div className="terms-section">
-              <div className="terms-checkbox">
-                <input
-                  type="checkbox"
-                  id="termsCheckbox"
-                  className="terms-checkbox-input"
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                />
-                <label htmlFor="termsCheckbox" className="terms-checkbox-label">
-                  I agree to the{" "}
-                  <Button
-                    variant="link"
-                    className="terms-link"
-                    onClick={handleShowTerms}
-                  >
-                    Terms and Conditions
-                  </Button>
-                </label>
-              </div>
-            </div>
-
             {/* Action Buttons */}
             <div className="button-section">
               <button
                 className="continue-button"
                 onClick={handleContinue}
-                disabled={!acceptedTerms}
               >
                 OK, Let's Start
               </button>

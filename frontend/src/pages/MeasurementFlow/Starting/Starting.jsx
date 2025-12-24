@@ -174,7 +174,9 @@ export default function Starting() {
 
         {/* Title */}
         <div className="starting-header text-center mb-4">
-          <h1 className="starting-title display-4 fw-bold text-danger mb-2">Ready to Begin!</h1>
+          <h1 className="starting-title display-4 fw-bold mb-2 text-dark">
+            Ready to <span style={{ color: "var(--red-500)" }}>Begin!</span>
+          </h1>
           <p className="starting-subtitle lead text-secondary">Let's start gathering your vital signs</p>
         </div>
 

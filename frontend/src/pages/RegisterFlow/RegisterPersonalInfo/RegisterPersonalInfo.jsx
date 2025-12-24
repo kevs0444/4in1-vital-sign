@@ -94,9 +94,36 @@ export default function RegisterPersonalInfo() {
   }, [currentStep]);
 
   const steps = [
-    { title: "What's your name?", subtitle: "Great to have you here! Let's start with your name", image: nameImage },
-    { title: "How old are you?", subtitle: "Select your birthday to calculate your age", image: ageImage },
-    { title: "What is your biological sex?", subtitle: "Required for accurate health assessments", image: null }
+    {
+      title: (
+        <span>
+          What's your <span style={{ color: "var(--red-500)" }}>name?</span>
+        </span>
+      ),
+      label: "Name",
+      subtitle: "Great to have you here! Let's start with your name",
+      image: nameImage
+    },
+    {
+      title: (
+        <span>
+          How old <span style={{ color: "var(--red-500)" }}>are you?</span>
+        </span>
+      ),
+      label: "Age",
+      subtitle: "Select your birthday to calculate your age",
+      image: ageImage
+    },
+    {
+      title: (
+        <span>
+          What is your <span style={{ color: "var(--red-500)" }}>biological sex?</span>
+        </span>
+      ),
+      label: "Sex",
+      subtitle: "Required for accurate health assessments",
+      image: null
+    }
   ];
 
   // Add viewport meta tag to prevent zooming
@@ -475,7 +502,7 @@ export default function RegisterPersonalInfo() {
               <div className="step-circle">
                 {currentStep > index ? '✓' : index + 1}
               </div>
-              <span className="step-label">{step.title.split('?')[0]}</span>
+              <span className="step-label">{step.label}</span>
             </div>
           ))}
         </div>
@@ -491,7 +518,7 @@ export default function RegisterPersonalInfo() {
             <div className="register-image-section">
               <img
                 src={steps[currentStep].image}
-                alt={steps[currentStep].title}
+                alt={steps[currentStep].label}
                 className="register-step-image"
               />
             </div>

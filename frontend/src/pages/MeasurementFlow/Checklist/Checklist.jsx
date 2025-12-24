@@ -3,10 +3,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import "./Checklist.css";
 
-// Import icons (using placeholders or existing icons if available)
-// Assuming icons exist based on other files, but for now I'll use emojis or text if imports fail
-// In a real scenario, I'd check the assets folder.
-// I'll use text/emojis for the prototype as requested.
+// Import 3D Icon Assets
+import bmiIcon from "../../../assets/icons/bmi-3d.png";
+import tempIcon from "../../../assets/icons/temp-icon.png";
+import oximeterIcon from "../../../assets/icons/oximeter-3d.png";
+import bloodPressureIcon from "../../../assets/icons/bloodpressure-3d.png";
 
 export default function Checklist() {
   const navigate = useNavigate();
@@ -14,12 +15,12 @@ export default function Checklist() {
   const [isVisible, setIsVisible] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
 
-  // Available processes
+  // Available processes with 3D icons
   const processes = [
-    { id: 'bmi', name: 'BMI', route: '/measure/bmi', icon: '⚖️', description: 'Height & Weight' },
-    { id: 'bodytemp', name: 'Body Temperature', route: '/measure/bodytemp', icon: '🌡️', description: 'Forehead Sensor' },
-    { id: 'max30102', name: 'Pulse Oximeter', route: '/measure/max30102', icon: '❤️', description: 'Heart Rate & SpO2' },
-    { id: 'bloodpressure', name: 'Blood Pressure', route: '/measure/bloodpressure', icon: '🩺', description: 'Systolic & Diastolic' }
+    { id: 'bmi', name: 'BMI', route: '/measure/bmi', icon: bmiIcon, description: 'Height & Weight' },
+    { id: 'bodytemp', name: 'Body Temperature', route: '/measure/bodytemp', icon: tempIcon, description: 'Forehead Sensor' },
+    { id: 'max30102', name: 'Pulse Oximeter', route: '/measure/max30102', icon: oximeterIcon, description: 'Heart Rate & SpO2' },
+    { id: 'bloodpressure', name: 'Blood Pressure', route: '/measure/bloodpressure', icon: bloodPressureIcon, description: 'Systolic & Diastolic' }
   ];
 
   // State for selected items (default none selected as per request)
@@ -82,7 +83,9 @@ export default function Checklist() {
       <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 checklist-content page-transition`}>
         <button className="close-button" onClick={handleExit}>←</button>
         <div className="text-center mb-5">
-          <h1 className="checklist-title">Measurement Checklist</h1>
+          <h1 className="checklist-title">
+            Measurement <span style={{ color: "var(--red-500)" }}>Checklist</span>
+          </h1>
           <p className="checklist-subtitle">Select the vital signs you want to measure for this session.</p>
         </div>
 
@@ -93,7 +96,9 @@ export default function Checklist() {
                 className={`checklist-item h-100 ${selectedItems.includes(process.id) ? 'selected' : ''}`}
                 onClick={() => toggleItem(process.id)}
               >
-                <div className="item-icon">{process.icon}</div>
+                <div className="item-icon">
+                  <img src={process.icon} alt={`${process.name} Icon`} className="icon-image" />
+                </div>
                 <div className="item-info">
                   <div className="item-name">{process.name}</div>
                   <div className="item-description">{process.description}</div>

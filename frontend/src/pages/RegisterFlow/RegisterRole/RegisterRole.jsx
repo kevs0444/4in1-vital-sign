@@ -6,6 +6,8 @@ import employeeIcon from "../../../assets/icons/employee-icon.png";
 import studentIcon from "../../../assets/icons/student-icon.png";
 import medicalIcon from "../../../assets/icons/medical-icon.png";
 import femaleIcon from "../../../assets/icons/female-icon.png";
+import nurseJuanIcon from "../../../assets/icons/nurse-juan-icon.png";
+import doctorJuanIcon from "../../../assets/icons/doctor-juan-icon.png";
 
 export default function RegisterRole() {
   const navigate = useNavigate();
@@ -86,15 +88,15 @@ export default function RegisterRole() {
       id: "nurse",
       title: "Nurse",
       description: "Registered Nurses providing patient care and assistance",
-      icon: femaleIcon,
+      icon: nurseJuanIcon,
       color: "#ec4899",
       route: "/register/personal-info"
     },
     {
       id: "doctor",
       title: "Doctor",
-      description: "Licensed Physicians for medical diagnosis and consultation",
-      icon: medicalIcon,
+      description: "Licensed Medical Doctors specialized in diagnosis and treatment",
+      icon: doctorJuanIcon,
       color: "#8b5cf6",
       route: "/register/personal-info"
     }
@@ -147,7 +149,9 @@ export default function RegisterRole() {
       <div className="role-content">
         <button className="close-button" onClick={handleBack}>←</button>
         <div className="role-header">
-          <h1 className="role-title">Choose Your Category</h1>
+          <h1 className="role-title">
+            Choose Your <span style={{ color: "var(--red-500)" }}>Category</span>
+          </h1>
           <p className="role-subtitle">Select the option that best describes your relationship with Rizal Technological University</p>
         </div>
 

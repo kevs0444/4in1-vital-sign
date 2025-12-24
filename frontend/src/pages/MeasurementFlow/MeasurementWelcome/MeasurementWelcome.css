@@ -41,7 +41,8 @@
   background: white;
   border-radius: 20px;
   width: 100%;
-  max-width: 700px;
+  max-width: 850px;
+  /* Increased from 700px to fit cards + gap */
   max-height: 90vh;
   padding: 40px 30px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
@@ -51,6 +52,34 @@
   align-items: center;
   position: relative;
   overflow-y: auto;
+}
+
+/* Header Styles - Restored & Updated */
+.register-header {
+  text-align: center;
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+.register-title {
+  font-size: 2.2rem;
+  color: #000000;
+  /* Black as requested */
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.register-subtitle {
+  font-size: 1.3rem;
+  color: #666;
+}
+
+.juan-red {
+  color: var(--red-500);
+}
+
+.juan-nowrap {
+  white-space: nowrap;
 }
 
 /* Back Arrow */
@@ -68,33 +97,6 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
-}
-
-/* Header */
-.register-header {
-  text-align: center;
-  margin-bottom: 30px;
-  width: 100%;
-}
-
-.register-title {
-  font-size: 2.2rem;
-  color: #333;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.register-subtitle {
-  font-size: 1.3rem;
-  color: #666;
-}
-
-.juan-red {
-  color: var(--red-500);
-}
-
-.juan-nowrap {
-  white-space: nowrap;
 }
 
 /* Illustration Section */
@@ -151,53 +153,112 @@
 /* Selection View Styles */
 .selection-container {
   display: flex;
-  gap: 30px;
+  gap: 50px;
+  /* Increased from 30px for more spacing */
   justify-content: center;
   align-items: stretch;
   width: 100%;
   margin-top: 20px;
 }
 
+
+/* Synced Zoom Animation */
 .selection-card {
   background: white;
-  border-radius: 20px;
-  padding: 30px;
-  width: 280px;
+  border: 4px solid #e9ecef;
+  border-radius: 24px;
+  padding: 80px 30px 40px;
+  /* Increased top padding to prevent overlap */
+  width: 320px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   cursor: pointer;
-  border: 2px solid #f0f0f0;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
   position: relative;
   overflow: hidden;
+  /* Contain within border */
 }
 
-.selection-card:hover {
+/* Dashboard Card (First) - Red Theme */
+.selection-card:nth-of-type(1) {
+  border-color: #ef4444;
+  /* Red */
+}
+
+.selection-card:nth-of-type(1):hover {
   transform: translateY(-8px);
-  border-color: var(--red-500);
-  box-shadow: 0 15px 40px rgba(220, 38, 38, 0.15);
+  box-shadow: 0 15px 40px rgba(239, 68, 68, 0.15);
+  /* Red shadow */
 }
 
+.selection-card:nth-of-type(1):active {
+  border-color: #b91c1c !important;
+  /* Dark red */
+  background-color: white !important;
+  /* Keep white on click */
+  transform: scale(0.98);
+}
+
+.selection-card:nth-of-type(1) .selection-icon-wrapper {
+  background: transparent;
+  /* No tint */
+}
+
+/* Measure Card (Second) - Red Theme */
+.selection-card:nth-of-type(2) {
+  border-color: #ef4444;
+  /* Red */
+}
+
+.selection-card:nth-of-type(2):hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgba(239, 68, 68, 0.15);
+  /* background-color: white; Keep white */
+}
+
+.selection-card:nth-of-type(2):active {
+  border-color: #b91c1c !important;
+  background-color: white !important;
+  /* Keep white on click */
+  transform: scale(0.98);
+}
+
+.selection-card:nth-of-type(2) .selection-icon-wrapper {
+  background: transparent;
+  /* No tint */
+}
+
+/* Generic Icon Wrapper Style */
 .selection-icon-wrapper {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: #f8f9fa;
+  width: 160px;
+  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
-  font-size: 3rem;
-  transition: all 0.3s ease;
+  margin-bottom: 30px;
+  position: relative;
+  overflow: visible !important;
+  /* Allow zoom to extend */
 }
 
-.selection-card:hover .selection-icon-wrapper {
-  background: rgba(220, 38, 38, 5%);
-  color: var(--red-500);
+.selection-icon-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform-origin: center center;
+  /* Zoom from center */
 }
+
+.selection-card:hover .selection-icon-image {
+  transform: scale(1.05);
+  /* Gentle zoom within padding bounds */
+}
+
+
 
 .selection-title {
   font-size: 1.5rem;

@@ -76,8 +76,8 @@
 .role-card {
   background: white;
   border: 4px solid #e9ecef;
-  /* Thicker border */
-  border-radius: 20px;
+  /* Thicker border like gender cards */
+  border-radius: 25px;
   padding: 20px 15px;
   /* Tighter padding */
   width: 48%;
@@ -166,17 +166,42 @@
 
 /* Icons within cards - Keep neutral background even when selected */
 .role-card-icon {
-  width: 90px;
-  height: 90px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
-  background: #f8f9fa;
-  /* Always neutral gray */
+  background: white;
+  /* White bg like gender cards */
+  border: 5px solid #f1f3f4;
+  /* Added border */
   padding: 15px;
   margin-bottom: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.role-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+}
+
+.role-card:hover .role-icon-image {
+  transform: scale(1.1);
+  filter: grayscale(0);
+}
+
+.role-card.selected .role-icon-image {
+  transform: scale(1.15);
+  filter: grayscale(0);
+}
+
+.role-card.selected .role-card-icon {
+  border-color: inherit;
+  /* Use the card's color */
+  transform: scale(1.05);
+  background: white;
 }
 
 /* Removed colored backgrounds for selected state - icon stays neutral */
@@ -185,6 +210,10 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), filter 0.3s ease;
+  transform-origin: center center;
+  filter: grayscale(1);
+  /* Start grayscale like gender cards */
 }
 
 .role-icon-image {

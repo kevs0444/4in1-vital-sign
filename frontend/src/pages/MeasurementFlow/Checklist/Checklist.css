@@ -33,7 +33,8 @@
 
 .checklist-title {
   font-size: 1.8rem;
-  color: #333;
+  color: #000000;
+  /* Explicit Black */
   font-weight: 700;
   margin-bottom: 0;
   line-height: 1.2;
@@ -116,23 +117,35 @@
 }
 
 .item-icon {
-  font-size: 5rem;
-  margin-bottom: 20px;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  border: 3px solid #f0f0f0;
-  border-radius: 50%;
   width: 120px;
   height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 20px;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 3px solid #f0f0f0;
+  border-radius: 50%;
   background: white;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  padding: 15px;
+  overflow: hidden;
+}
+
+.icon-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 0.3s ease;
 }
 
 .checklist-item:hover .item-icon {
-  transform: scale(1.2) rotate(5deg);
+  transform: scale(1.1);
   border-color: #ef4444;
+}
+
+.checklist-item:hover .icon-image {
+  transform: scale(1.05);
 }
 
 .checklist-item:active .item-icon {
