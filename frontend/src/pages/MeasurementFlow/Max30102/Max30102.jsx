@@ -67,34 +67,6 @@ export default function Max30102() {
   const isStoppingRef = useRef(false); // Fix race conditions for stop commands
   const totalMeasurementTime = 30;
 
-  // Initialize sensors ONCE
-  useEffect(() => {
-    // Reset inactivity setting on mount (timer enabled by default)
-    setIsInactivityEnabled(true);
-
-    // Initial instruction for loading
-    // Initial instruction for loading - Moved to initializeMax30102Sensor to avoid conflicts
-    // speak("Initializing pulse oximeter.");
-
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    console.log("📍 Max30102 received location.state:", location.state);
-
-    // We can define this here or use useCallback, but easiest is to call the function which we can't do if it's defined later.
-    // So we just call a dedicated init function that is outside or hoisting.
-    // However, since initializeMax30102Sensor is defined in the component scope, we need to be careful with dependencies.
-    // For now, we'll disable the warning for this line as refactoring the whole initialization flow is risky.
-    // The previous implementation had this warning.
-
-    // Actually, let's just trigger it.
-    initializeMax30102Sensor();
-
-    return () => {
-      clearTimeout(timer);
-      stopAllTimers();
-      clearFingerRemovedAlert();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
 
   // Sync inactivity timer with measurement status
   useEffect(() => {
@@ -140,14 +112,19 @@ export default function Max30102() {
   }, [progressSeconds]);
 
   // Voice Instructions based on Step
+  // Voice Instructions based on Step
   useEffect(() => {
-    if (measurementStep === 2) {
-      speak("Step 1. Insert Finger. Place your finger fully inside the pulse oximeter device.");
-    } else if (measurementStep === 3) {
-      speak("Step 2. Hold Steady. Keep your finger completely still for accurate readings.");
-    } else if (measurementStep === 4) {
-      speak("Step 3. Measurement complete. Results are ready.");
-    }
+    const timer = setTimeout(() => {
+      if (measurementStep === 2) {
+        // Only speak if not already handled by initialization
+        // speak("Step 1. Insert Finger. Place your finger fully inside the pulse oximeter device.");
+      } else if (measurementStep === 3) {
+        speak("Step 2. Hold Steady. Keep your finger completely still for accurate readings.");
+      } else if (measurementStep === 4) {
+        speak("Step 3. Measurement complete. Results are ready.");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
   }, [measurementStep]);
 
   // Voice for Finger Removed
@@ -218,8 +195,8 @@ export default function Max30102() {
 
       const prepareResult = await sensorAPI.prepareMax30102();
 
-      if (prepareResult.error) {
-        setStatusMessage(`❌ ${prepareResult.error}`);
+      if (prepareResult.error || prepareResult.status === 'error') {
+        setStatusMessage(`❌ ${prepareResult.error || prepareResult.message || 'Initialization failed'}`);
         handleRetry();
         return;
       }
@@ -797,6 +774,24 @@ export default function Max30102() {
     setShowExitModal(false);
     navigate("/login");
   };
+
+  // Initialize sensors ONCE - Moved to end to ensure functions are defined
+  useEffect(() => {
+    // Reset inactivity setting on mount (timer enabled by default)
+    setIsInactivityEnabled(true);
+
+    const timer = setTimeout(() => setIsVisible(true), 100);
+    console.log("📍 Max30102 received location.state:", location.state);
+
+    initializeMax30102Sensor();
+
+    return () => {
+      clearTimeout(timer);
+      stopAllTimers();
+      clearFingerRemovedAlert();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   return (
     <div

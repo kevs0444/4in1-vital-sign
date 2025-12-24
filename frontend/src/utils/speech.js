@@ -6,14 +6,22 @@ const loadVoices = () => {
 };
 
 if (window.speechSynthesis) {
+    console.log("🎙️ Speech Synthesis Supported");
     loadVoices();
     // Chrome requires this event to populate the voice list
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = loadVoices;
+        window.speechSynthesis.onvoiceschanged = () => {
+            loadVoices();
+            console.log("🎙️ Voices loaded:", voices.length);
+        };
     }
+} else {
+    console.warn("⚠️ Speech Synthesis NOT supported in this browser");
 }
 
 export const speak = (text) => {
+    if (!text || typeof text !== 'string') return;
+
     try {
         if (!window.speechSynthesis) return;
 

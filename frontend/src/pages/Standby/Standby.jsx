@@ -67,10 +67,16 @@ export default function Standby() {
     return () => clearInterval(timer);
   }, []);
 
-  // Check if we're coming from Sharing page with reset flag
+  // Check if we're coming from Sharing page with reset flag OR from inactivity
   useEffect(() => {
     if (location.state?.fromSharing && location.state?.reset) {
-      console.log('🔄 System reset detected - ready for new user');
+      console.log('🔄 System reset detected from Sharing - ready for new user');
+      initialCheckDone.current = false;
+    }
+
+    // Handle inactivity redirect - ensure full reset
+    if (location.state?.fromInactivity) {
+      console.log('⏰ Returned from inactivity - triggering full sensor reset');
       initialCheckDone.current = false;
     }
   }, [location.state]);

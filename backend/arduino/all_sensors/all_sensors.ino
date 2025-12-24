@@ -294,13 +294,17 @@ void powerUpMax30102Sensor() {
     Serial.println("STATUS:ACTIVE_MEASUREMENT_STOPPED_FOR_MAX30102");
   }
 
+  // If already powered, just ensure it's awake and restart monitoring
+  if (max30102SensorPowered) {
+    Serial.println("STATUS:MAX30102_SENSOR_POWERED_UP"); // Send standard success message
+    particleSensor.wakeUp();
+    startFingerDetection();
+    return;
+  }
+
   if (!max30102SensorPowered) {
     Serial.println("STATUS:POWERING_UP_MAX30102");
     
-    // Attempt to wake up the sensor first (in case it was just shut down)
-    particleSensor.wakeUp(); 
-    delay(100);
-
     for (int attempt = 0; attempt < 3; attempt++) {
       if (particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
         particleSensor.setup();
@@ -332,10 +336,10 @@ void powerUpMax30102Sensor() {
 
 void powerDownMax30102Sensor() {
   // Always set flag to false
-  max30102SensorPowered = false;
+  // max30102SensorPowered = false; // KEEP SENSOR ACTIVE (Fake Shutdown to avoid I2C hangs)
   
-  // Force hardware shutdown
-  particleSensor.shutDown(); 
+  // Force hardware shutdown (Sleep mode is safe)
+  // particleSensor.shutDown(); // KEEP SENSOR ACTIVE avoids wake-up issues
   
   Serial.println("STATUS:MAX30102_SENSOR_POWERED_DOWN");
 }
@@ -676,6 +680,11 @@ void powerDownWeightSensor() {
 }
 
 void powerUpHeightSensor() {
+  if (heightSensorPowered) {
+    Serial.println("STATUS:HEIGHT_SENSOR_POWERED_UP");
+    return;
+  }
+
   if (!heightSensorPowered) {
     delay(100);
     heightSensorPowered = true;
@@ -685,14 +694,25 @@ void powerUpHeightSensor() {
 
 void powerDownHeightSensor() {
   if (heightSensorPowered) {
-    heightSensorPowered = false;
+    // heightSensorPowered = false; // KEEP SENSOR ACTIVE
     Serial.println("STATUS:HEIGHT_SENSOR_POWERED_DOWN");
   }
 }
-
 void powerUpTemperatureSensor() {
+  if (temperatureSensorPowered) {
+    // If already on, just confirm to backend
+    Serial.println("STATUS:TEMPERATURE_SENSOR_POWERED_UP");
+    return;
+  }
+  
   if (!temperatureSensorPowered) {
     delay(100);
+    
+    if (temperatureSensorInitialized) {
+      temperatureSensorPowered = true;
+      Serial.println("STATUS:TEMPERATURE_SENSOR_POWERED_UP");
+      return;
+    }
     
     if (mlx.begin()) {
       temperatureSensorPowered = true;
@@ -711,16 +731,16 @@ void powerUpTemperatureSensor() {
 
 void powerDownTemperatureSensor() {
   if (temperatureSensorPowered) {
-    temperatureSensorPowered = false;
+    // temperatureSensorPowered = false; // KEEP SENSOR ACTIVE to avoid re-init crash
     Serial.println("STATUS:TEMPERATURE_SENSOR_POWERED_DOWN");
   }
 }
 
 void shutdownAllSensors() {
-  powerDownWeightSensor();
-  powerDownHeightSensor();
-  powerDownTemperatureSensor();
-  powerDownMax30102Sensor();
+  // powerDownWeightSensor(); // KEEP WEIGHT SENSOR ACTIVE AS PER REQUIREMENTS
+  // powerDownHeightSensor(); // KEEP HEIGHT ACTIVE TO PREVENT RE-INIT ISSUES
+  // powerDownTemperatureSensor(); // KEEP TEMP ACTIVE TO PREVENT RE-INIT ISSUES
+  powerDownMax30102Sensor(); // Only power down MAX30102 (has internal wake/sleep)
   measurementActive = false;
   currentPhase = IDLE;
   Serial.println("STATUS:ALL_SENSORS_SHUTDOWN");

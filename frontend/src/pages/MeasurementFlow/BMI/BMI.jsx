@@ -225,8 +225,8 @@ export default function BMI() {
 
       const response = await sensorAPI.startWeight();
 
-      if (response.error) {
-        setStatusMessage(`❌ ${response.error}`);
+      if (response.error || response.status === 'error') {
+        setStatusMessage(`❌ ${response.error || response.message || 'Start failed'}`);
         handleRetry();
         return;
       }
@@ -269,8 +269,8 @@ export default function BMI() {
 
       const response = await sensorAPI.startHeight();
 
-      if (response.error) {
-        setStatusMessage(`❌ ${response.error}`);
+      if (response.error || response.status === 'error') {
+        setStatusMessage(`❌ ${response.error || response.message || 'Start failed'}`);
         handleRetry();
         return;
       }

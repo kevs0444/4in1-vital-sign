@@ -60,12 +60,14 @@ const InactivityWrapper = ({ children }) => {
             // Clear items to reset progress
             localStorage.removeItem('currentUser');
             sessionStorage.removeItem('currentUser');
-            // Add any other specific cleanup if needed
+
+            // Attempt to trigger a backend reset if possible
+            // We'll rely on the Standby page to handle the cleanup or add global cleanup here later
 
             setShowWarning(false);
             navigate('/', {
                 replace: true,
-                state: { fromInactivity: true }
+                state: { fromInactivity: true, reset: true } // Add reset flag
             });
         }, FINAL_TIMEOUT);
     }, [location.pathname, isInactivityEnabled, navigate]);

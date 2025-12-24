@@ -196,11 +196,38 @@ class SensorManager:
                 self.weight_sensor_ready = True
                 logger.info("✅ Weight sensor ready")
                 print("✅ ARDUINO: WEIGHT SENSOR READY")
+            
+            # TEMPERATURE SENSOR STATUS
+            elif "TEMPERATURE_SENSOR_POWERED_UP" in status_type or "TEMPERATURE_SENSOR_INITIALIZED" in status_type:
+                self.temperature_sensor_ready = True
+                logger.info("✅ Temperature sensor ready")
                 
-            elif "MAX30102_SENSOR_INITIALIZED" in status_type:
+            elif "TEMPERATURE_SENSOR_POWERED_DOWN" in status_type:
+                self.temperature_sensor_ready = False
+                self._temperature_measurement_active = False
+                logger.info("🌡️ Temperature sensor powered down")
+            
+            # HEIGHT SENSOR STATUS
+            elif "HEIGHT_SENSOR_POWERED_UP" in status_type:
+                self.height_sensor_ready = True
+                logger.info("✅ Height sensor ready")
+                
+            elif "HEIGHT_SENSOR_POWERED_DOWN" in status_type:
+                self.height_sensor_ready = False
+                self._height_measurement_active = False
+                logger.info("📏 Height sensor powered down")
+            
+            # MAX30102 SENSOR STATUS
+            elif "MAX30102_SENSOR_POWERED_UP" in status_type or "MAX30102_SENSOR_INITIALIZED" in status_type:
                 self.max30102_sensor_ready = True
                 self.live_data['max30102']['sensor_prepared'] = True
                 logger.info("✅ MAX30102 sensor initialized")
+            
+            elif "MAX30102_SENSOR_POWERED_DOWN" in status_type:
+                self.max30102_sensor_ready = False
+                self.live_data['max30102']['sensor_prepared'] = False
+                self._max30102_measurement_active = False
+                logger.info("❤️ MAX30102 sensor powered down")
                 
             elif "FULL_SYSTEM_INITIALIZATION_COMPLETE" in status_type:
                 self.full_system_initialized = True
@@ -559,7 +586,11 @@ class SensorManager:
         return self.measurements
 
     def reset_measurements(self):
-        """Reset all measurements"""
+        """Reset all measurements and shut down dynamic sensors"""
+        # Trigger physical shutdown of dynamic sensors (TFLuna, Temp, MAX30102)
+        # Weight sensor remains active per Arduino logic
+        self.shutdown_all_sensors()
+
         self.measurements = {
             'weight': None,
             'height': None,
@@ -570,7 +601,6 @@ class SensorManager:
         }
         
         # Reset live data but keep sensor prepared status
-        sensor_prepared = self.live_data['max30102']['sensor_prepared']
         self.live_data = {
             'weight': {
                 'current': None,
@@ -603,7 +633,7 @@ class SensorManager:
                 'elapsed': 0,
                 'total': 30,
                 'ir_value': 0,
-                'sensor_prepared': sensor_prepared,
+                'sensor_prepared': False,
                 'measurement_started': False,
                 'final_result_shown': False
             }
@@ -677,12 +707,24 @@ class SensorManager:
             'measurement_started': False,
             'final_result_shown': False
         })
+        
+        # Reset ready flag - Arduino will set it when powered up
+        self.max30102_sensor_ready = False
+        self._max30102_measurement_active = False
 
         try:
+            logger.info("❤️ Sending POWER_UP_MAX30102 command to Arduino...")
             self.serial_conn.write("POWER_UP_MAX30102\n".encode())
             time.sleep(2)  # Wait for sensor to initialize
+            
+            # Optimistically set ready (Arduino message will confirm)
+            self.max30102_sensor_ready = True
+            self.live_data['max30102']['sensor_prepared'] = True
+            
+            logger.info("✅ MAX30102 sensor prepare command sent")
             return {"status": "success", "message": "MAX30102 sensor prepared"}
         except Exception as e:
+            logger.error(f"❌ Failed to prepare MAX30102 sensor: {e}")
             return {"status": "error", "message": f"Failed to prepare MAX30102 sensor: {str(e)}"}
 
     def stop_max30102_measurement(self):
@@ -732,14 +774,29 @@ class SensorManager:
         return status
 
     def shutdown_all_sensors(self):
-        """Shutdown all sensors"""
+        """Shutdown all sensors (except weight per requirements)"""
         if not self.is_connected:
             return {"status": "error", "message": "Not connected to Arduino"}
         
         try:
             self.serial_conn.write("SHUTDOWN_ALL\n".encode())
+            
+            # Reset sensor ready flags for dynamic sensors (NOT weight)
+            self.height_sensor_ready = False
+            self.temperature_sensor_ready = False
+            self.max30102_sensor_ready = False
+            
+            # Reset measurement active flags
+            self._height_measurement_active = False
+            self._temperature_measurement_active = False
+            self._max30102_measurement_active = False
+            
+            # Reset MAX30102 live data prepared status
+            self.live_data['max30102']['sensor_prepared'] = False
+            
             time.sleep(1)
-            return {"status": "success", "message": "All sensors shutdown"}
+            logger.info("✅ Dynamic sensors shutdown (weight kept active)")
+            return {"status": "success", "message": "Dynamic sensors shutdown (weight active)"}
         except Exception as e:
             return {"status": "error", "message": f"Failed to shutdown sensors: {str(e)}"}
 
@@ -811,11 +868,22 @@ class SensorManager:
             'elapsed': 0
         })
         
+        # Reset ready flag - Arduino will set it when powered up
+        self.height_sensor_ready = False
+        self._height_measurement_active = False
+        
         try:
+            logger.info("📏 Sending POWER_UP_HEIGHT command to Arduino...")
             self.serial_conn.write("POWER_UP_HEIGHT\n".encode())
             time.sleep(1)
+            
+            # Optimistically set ready (Arduino message will confirm)
+            self.height_sensor_ready = True
+            
+            logger.info("✅ Height sensor prepare command sent")
             return {"status": "success", "message": "Height sensor prepared"}
         except Exception as e:
+            logger.error(f"❌ Failed to prepare height sensor: {e}")
             return {"status": "error", "message": f"Failed to prepare height sensor: {str(e)}"}
 
     def shutdown_height_sensor(self):
@@ -861,11 +929,22 @@ class SensorManager:
             'elapsed': 0
         })
         
+        # Reset ready flag - Arduino will set it when powered up
+        self.temperature_sensor_ready = False
+        self._temperature_measurement_active = False
+        
         try:
+            logger.info("🌡️ Sending POWER_UP_TEMPERATURE command to Arduino...")
             self.serial_conn.write("POWER_UP_TEMPERATURE\n".encode())
-            time.sleep(1)
+            time.sleep(1.5)  # Give Arduino time to initialize and respond
+            
+            # Optimistically set ready (Arduino message will confirm)
+            self.temperature_sensor_ready = True
+            
+            logger.info("✅ Temperature sensor prepare command sent")
             return {"status": "success", "message": "Temperature sensor prepared"}
         except Exception as e:
+            logger.error(f"❌ Failed to prepare temperature sensor: {e}")
             return {"status": "error", "message": f"Failed to prepare temperature sensor: {str(e)}"}
 
     def shutdown_temperature_sensor(self):

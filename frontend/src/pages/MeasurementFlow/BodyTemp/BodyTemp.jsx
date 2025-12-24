@@ -160,8 +160,8 @@ export default function BodyTemp() {
       setStatusMessage("Powering up temperature sensor...");
       const prepareResult = await sensorAPI.prepareTemperature();
 
-      if (prepareResult.error) {
-        setStatusMessage(`❌ ${prepareResult.error}`);
+      if (prepareResult.error || prepareResult.status === 'error') {
+        setStatusMessage(`❌ ${prepareResult.error || prepareResult.message || 'Initialization failed'}`);
         handleRetry();
         return;
       }
