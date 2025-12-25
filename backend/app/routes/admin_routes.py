@@ -60,8 +60,9 @@ def get_all_users():
                 'birthday': user.birthday.isoformat() if user.birthday else None,
                 'age': user.age,
                 'sex': user.sex.value if hasattr(user.sex, 'value') else str(user.sex),
-                'mobile_number': user.mobile_number,
+                # 'mobile_number': user.mobile_number, # Removed
                 'email': user.email,
+                'approval_status': user.approval_status,
                 'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else None
             })
 

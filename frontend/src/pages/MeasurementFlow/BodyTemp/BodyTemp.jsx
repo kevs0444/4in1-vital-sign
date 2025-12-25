@@ -8,6 +8,9 @@ import tempIcon from "../../../assets/icons/temp-icon.png";
 import { sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
 import { speak } from "../../../utils/speech";
+import step1Icon from "../../../assets/icons/bodytemp-step1.png";
+import step2Icon from "../../../assets/icons/bodytemp-step2.png";
+import step3Icon from "../../../assets/icons/bodytemp-step3.png";
 
 export default function BodyTemp() {
   const navigate = useNavigate();
@@ -18,7 +21,7 @@ export default function BodyTemp() {
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurementComplete, setMeasurementComplete] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Initializing...");
-  const [liveReading, setLiveReading] = useState("");
+
   const [isReady, setIsReady] = useState(false);
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
@@ -110,18 +113,15 @@ export default function BodyTemp() {
     setIsInactivityEnabled(!isMeasuring);
   }, [isMeasuring, setIsInactivityEnabled]);
 
-  // Voice Instructions
+  // Voice Instructions - Removed Delay
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (measurementStep === 1) {
-        speak("Step 1. Position Sensor. Point sensor at forehead.");
-      } else if (measurementStep === 2) {
-        speak("Step 2. Start Measurement. Click Start button.");
-      } else if (measurementStep === 3) {
-        speak("Step 3. Measurement Complete. Proceed to next step.");
-      }
-    }, 500);
-    return () => clearTimeout(timer);
+    if (measurementStep === 1) {
+      speak("Step 1. Position Sensor. Point sensor at forehead.");
+    } else if (measurementStep === 2) {
+      speak("Step 2. Start Measurement. Click Start button.");
+    } else if (measurementStep === 3) {
+      speak("Step 3. Measurement Complete. Proceed to next step.");
+    }
   }, [measurementStep]);
 
   // Prevent zooming functions - placeholders if referenced elsewhere (unlikely due to scoping above, removing global ones)
@@ -133,27 +133,7 @@ export default function BodyTemp() {
   // The 'no-unused-vars' warning for 'handleBack' needs to be addressed too in the rest of the file.
   // We'll deal with hooks here.
 
-  const handleTouchStart = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
 
-  const handleTouchMove = (e) => {
-    if (e.touches.length > 1) {
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = (e) => {
-    if (e.touches.length > 0) {
-      e.preventDefault();
-    }
-  };
-
-  const preventZoom = (e) => {
-    e.preventDefault();
-  };
 
   const initializeTemperatureSensor = async () => {
     try {
@@ -212,7 +192,6 @@ export default function BodyTemp() {
         // Update live reading from actual sensor data
         if (data.live_temperature !== null && data.live_temperature !== undefined) {
           const currentTemp = data.live_temperature.toFixed(1);
-          setLiveReading(currentTemp);
           setLiveTempValue(currentTemp);
 
           // Show live temperature when sensor is ready but not measuring
@@ -426,17 +405,7 @@ export default function BodyTemp() {
     return isMeasuring;
   };
 
-  const handleBack = () => {
-    if (measurementStep > 1) {
-      stopMonitoring();
-      stopCountdown();
-      resetMeasurement();
-      setMeasurementStep(1);
-      setStatusMessage("✅ Temperature sensor ready. Point at forehead and click Start Measurement");
-    } else {
-      navigate(-1);
-    }
-  };
+
 
   const handleExit = () => setShowExitModal(true);
 
@@ -537,7 +506,9 @@ export default function BodyTemp() {
               <div className="col-12 col-md-4">
                 <div className={`instruction-card h-100 ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
                   <div className="instruction-step-number">1</div>
-                  <div className="instruction-icon">📍</div>
+                  <div className="instruction-icon">
+                    <img src={step1Icon} alt="Position Sensor" className="step-icon-image" />
+                  </div>
                   <h4 className="instruction-title">Position Sensor</h4>
                   <p className="instruction-text">
                     Point sensor at forehead
@@ -549,7 +520,9 @@ export default function BodyTemp() {
               <div className="col-12 col-md-4">
                 <div className={`instruction-card h-100 ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
                   <div className="instruction-step-number">2</div>
-                  <div className="instruction-icon">📱</div>
+                  <div className="instruction-icon">
+                    <img src={step2Icon} alt="Start Measurement" className="step-icon-image" />
+                  </div>
                   <h4 className="instruction-title">Start Measurement</h4>
                   <p className="instruction-text">
                     Click Start button
@@ -566,7 +539,9 @@ export default function BodyTemp() {
               <div className="col-12 col-md-4">
                 <div className={`instruction-card h-100 ${measurementStep >= 3 ? 'completed' : ''}`}>
                   <div className="instruction-step-number">3</div>
-                  <div className="instruction-icon">✅</div>
+                  <div className="instruction-icon">
+                    <img src={step3Icon} alt="Complete" className="step-icon-image" />
+                  </div>
                   <h4 className="instruction-title">Continue</h4>
                   <p className="instruction-text">
                     Proceed to next step

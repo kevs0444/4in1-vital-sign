@@ -410,6 +410,36 @@
     border-radius: 50%;
 }
 
+.status-badge.pending {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.status-badge.pending::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    background: #f97316;
+    border-radius: 50%;
+}
+
+.status-badge.rejected,
+.status-badge.inactive {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.status-badge.rejected::before,
+.status-badge.inactive::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    background: #ef4444;
+    border-radius: 50%;
+}
+
 /* Scrollbar Styling */
 .table-container-wrapper::-webkit-scrollbar {
     width: 8px;

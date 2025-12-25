@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import {
     Logout,
     Search,
-    FilterList,
     Download,
     Person
 } from '@mui/icons-material';
@@ -45,6 +44,7 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRole, setSelectedRole] = useState('All');
+    const [selectedStatus, setSelectedStatus] = useState('All');
 
     useEffect(() => {
         // Get user from location state or localStorage
@@ -198,8 +198,9 @@ const AdminDashboard = () => {
             u.role.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesRole = selectedRole === 'All' || u.role === selectedRole;
+        const matchesStatus = selectedStatus === 'All' || (u.approval_status || 'approved').toLowerCase() === selectedStatus.toLowerCase();
 
-        return matchesSearch && matchesRole;
+        return matchesSearch && matchesRole && matchesStatus;
     });
 
     if (!user) return null;
@@ -290,7 +291,7 @@ const AdminDashboard = () => {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <div className="role-filter-wrapper">
+                            <div className="role-filter-wrapper" style={{ display: 'flex', gap: '0.8rem' }}>
                                 <select
                                     className="role-select"
                                     value={selectedRole}
@@ -300,6 +301,16 @@ const AdminDashboard = () => {
                                     {Object.keys(stats.roles_distribution || {}).map(role => (
                                         <option key={role} value={role}>{role}</option>
                                     ))}
+                                </select>
+                                <select
+                                    className="role-select"
+                                    value={selectedStatus}
+                                    onChange={(e) => setSelectedStatus(e.target.value)}
+                                >
+                                    <option value="All">All Status</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="rejected">Rejected</option>
                                 </select>
                             </div>
 
@@ -315,7 +326,6 @@ const AdminDashboard = () => {
                                     <th>Role</th>
                                     <th>School ID</th>
                                     <th>Email</th>
-                                    <th>Mobile</th>
                                     <th>Registered Date</th>
                                     <th>Status</th>
                                 </tr>
@@ -323,7 +333,7 @@ const AdminDashboard = () => {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="7" className="text-center p-4">Loading user data...</td>
+                                        <td colSpan="6" className="text-center p-4">Loading user data...</td>
                                     </tr>
                                 ) : filteredUsers.length > 0 ? (
                                     filteredUsers.map((u, i) => (
@@ -344,16 +354,17 @@ const AdminDashboard = () => {
                                             </td>
                                             <td>{u.school_number || 'N/A'}</td>
                                             <td>{u.email}</td>
-                                            <td>{u.mobile_number}</td>
                                             <td>{u.created_at || 'N/A'}</td>
                                             <td>
-                                                <span className="status-badge active">Active</span>
+                                                <span className={`status-badge ${u.approval_status ? u.approval_status.toLowerCase() : 'active'}`}>
+                                                    {u.approval_status ? (u.approval_status.charAt(0).toUpperCase() + u.approval_status.slice(1)) : 'Active'}
+                                                </span>
                                             </td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="7" className="text-center p-4">No users found matching "{searchTerm}"</td>
+                                        <td colSpan="6" className="text-center p-4">No users found matching "{searchTerm}"</td>
                                     </tr>
                                 )}
                             </tbody>
