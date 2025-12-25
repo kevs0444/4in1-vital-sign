@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import "./Starting.css";
 import logo from "../../../assets/images/logo.png";
+import { speak, reinitSpeech } from "../../../utils/speech";
+import { isLocalDevice } from "../../../utils/network";
 
 export default function Starting() {
   const navigate = useNavigate();
@@ -48,6 +50,14 @@ export default function Starting() {
     };
   }, []);
 
+  // RESTRICT ACCESS TO LOCAL DEVICE ONLY
+  useEffect(() => {
+    if (!isLocalDevice()) {
+      alert("Measurements can only be performed on the main Kiosk device.");
+      navigate("/admin/dashboard", { replace: true, state: { user: userData } });
+    }
+  }, [navigate, userData]);
+
   useEffect(() => {
     // Get user data from location state (passed from MeasurementWelcome)
     if (location.state) {
@@ -75,7 +85,11 @@ export default function Starting() {
       }
     }
 
-    const timer = setTimeout(() => setIsVisible(true), 100);
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+      reinitSpeech();
+      speak("Getting ready to start your health measurement. Tap the Start button to continue.");
+    }, 100);
     return () => clearTimeout(timer);
   }, [location.state]);
 

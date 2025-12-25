@@ -9,11 +9,21 @@ import heightIcon from "../../../assets/icons/height-icon.png";
 import { sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
 import { speak } from "../../../utils/speech";
+import { isLocalDevice } from "../../../utils/network";
+import step3Icon from "../../../assets/icons/measurement-step3.png";
 
 export default function BMI() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setIsInactivityEnabled } = useInactivity();
+
+  // BLOCK REMOTE ACCESS
+  useEffect(() => {
+    if (!isLocalDevice()) {
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
+
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [isVisible, setIsVisible] = useState(false);
@@ -136,7 +146,9 @@ export default function BMI() {
   // Voice Instructions
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (measurementStep === 1) {
+      if (measurementStep === 0) {
+        speak("BMI Measurement. Get ready to measure your weight and height.");
+      } else if (measurementStep === 1) {
         speak("Step 1. Measure Weight. Stand still for 3 seconds.");
       } else if (measurementStep === 2) {
         speak("Step 2. Measure Height. Stand still under height sensor for 2 seconds.");
@@ -755,11 +767,17 @@ export default function BMI() {
               <div className="col-12 col-md-4">
                 <div className={`instruction-card h-100 ${measurementStep >= 3 ? 'completed' : ''}`}>
                   <div className="instruction-step-number">3</div>
-                  <div className="instruction-icon">✅</div>
-                  <h4 className="instruction-title">Complete</h4>
+                  <div className="instruction-icon">
+                    <img src={step3Icon} alt="Complete" className="step-icon-image" />
+                  </div>
+                  <h4 className="instruction-title">
+                    {isLastStep('bmi', location.state?.checklist) ? 'Results Ready' : 'Complete'}
+                  </h4>
                   <p className="instruction-text">
                     {measurementComplete
-                      ? "BMI calculated! Continue to Body Temperature"
+                      ? (isLastStep('bmi', location.state?.checklist)
+                        ? "All measurements complete!"
+                        : "Continue to next measurement")
                       : "BMI will be calculated automatically"
                     }
                   </p>

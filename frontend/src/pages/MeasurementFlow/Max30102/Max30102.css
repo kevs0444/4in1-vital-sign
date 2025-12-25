@@ -5,24 +5,26 @@
 
 /* Container Layout Optimization */
 .max30102-page .measurement-content {
-  padding: 20px !important;
+  padding: 15px !important;
   max-width: 950px !important;
-  /* Increased to accommodate larger cards */
-  gap: 15px;
+  gap: 10px;
 }
 
 .max30102-page .measurement-display-section {
-  gap: 20px !important;
-  /* More space between sections */
-  margin: 10px 0 !important;
+  gap: 12px !important;
+  margin: 8px auto !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-/* Finger Sensor - Make Larger to match card proportions */
+/* Finger Sensor - Optimized size */
 .max30102-page .finger-sensor {
-  width: 180px !important;
-  /* Larger sensor */
-  height: 180px !important;
-  padding: 20px !important;
+  width: 140px !important;
+  height: 140px !important;
+  padding: 15px !important;
 }
 
 .max30102-page .sensor-light {
@@ -41,24 +43,34 @@
   margin-top: 8px !important;
 }
 
-/* Vital Sign Cards - Make much larger and optimized for column layout */
-.max30102-page .measurement-row {
-  gap: 20px !important;
-  /* More space between cards */
-  width: 100%;
-  justify-content: center;
-  align-items: stretch;
-  /* Make all cards same height */
+/* Vital Sign Cards - Force centered single row */
+.max30102-page .row.g-4.mb-4 {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  flex-wrap: nowrap !important;
+  gap: 15px !important;
+  width: 100% !important;
+  margin: 0 auto 15px auto !important;
+  padding: 0 10px !important;
+}
+
+/* Override Bootstrap column widths */
+.max30102-page .row.g-4.mb-4>.col-12,
+.max30102-page .row.g-4.mb-4>.col-md-4 {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 !important;
 }
 
 .max30102-page .measurement-card {
-  padding: 25px !important;
-  /* Much larger padding */
-  min-height: 280px !important;
-  /* Much taller - from 216px to 280px */
-  min-width: 220px !important;
-  /* Much wider - from 192px to 220px */
-  border-radius: 20px !important;
+  padding: 15px !important;
+  min-height: 200px !important;
+  min-width: 150px !important;
+  max-width: 200px !important;
+  border-radius: 16px !important;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -69,13 +81,38 @@
   /* Allow cards to grow and fill space equally */
   max-width: 240px;
   /* Prevent cards from getting too wide */
+  border: 3px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+/* Dynamic Border Colors Based on Status */
+.max30102-page .measurement-card.status-pending {
+  border-color: #dee2e6;
+  background: #fff;
+}
+
+.max30102-page .measurement-card.status-complete {
+  border-color: #28a745;
+  background: linear-gradient(135deg, #f0fff4, #ffffff);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
+}
+
+.max30102-page .measurement-card.status-warning {
+  border-color: #ffc107;
+  background: linear-gradient(135deg, #fffbf0, #ffffff);
+  box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2);
+}
+
+.max30102-page .measurement-card.status-error {
+  border-color: #dc3545;
+  background: linear-gradient(135deg, #fff5f5, #ffffff);
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.2);
 }
 
 .max30102-page .measurement-icon {
-  width: 65px !important;
-  /* Much larger icon */
-  height: 65px !important;
-  margin-bottom: 15px !important;
+  width: 55px !important;
+  height: 55px !important;
+  margin-bottom: 10px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -88,9 +125,8 @@
 }
 
 .max30102-page .instruction-title {
-  font-size: 1.3rem !important;
-  /* Larger title */
-  margin-bottom: 8px !important;
+  font-size: 1.05rem !important;
+  margin-bottom: 6px !important;
   text-align: center;
   width: 100%;
 }
@@ -118,8 +154,7 @@
 }
 
 .max30102-page .measurement-value {
-  font-size: 3.5rem !important;
-  /* Much larger value - from 3rem to 3.5rem */
+  font-size: 3rem !important;
   font-weight: 800;
   line-height: 1;
   text-align: center;
@@ -134,31 +169,59 @@
 }
 
 .max30102-page .measurement-status-badge {
-  padding: 10px 20px !important;
-  /* Larger badge */
-  min-width: 120px !important;
-  font-size: 1rem !important;
-  margin-top: 12px !important;
-  border-radius: 25px !important;
+  padding: 8px 16px !important;
+  min-width: 100px !important;
+  font-size: 0.9rem !important;
+  margin-top: 10px !important;
+  border-radius: 20px !important;
   text-align: center;
 }
 
-/* Instruction Cards - Make proportional to main cards */
+/* Instruction Cards - Force centered single row */
+.max30102-page .row.g-3 {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  flex-wrap: nowrap !important;
+  gap: 15px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 0 10px !important;
+}
+
+/* Override Bootstrap column widths for instruction cards */
+.max30102-page .row.g-3>.col-12,
+.max30102-page .row.g-3>.col-md-4 {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
 .max30102-page .instruction-cards {
-  gap: 20px !important;
+  gap: 15px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  margin: 0 auto !important;
 }
 
 .max30102-page .instruction-card {
-  padding: 20px !important;
-  min-width: 180px !important;
-  border-radius: 18px !important;
-  min-height: 180px !important;
-  /* Make instruction cards taller too */
+  padding: 14px !important;
+  min-width: 140px !important;
+  max-width: 180px !important;
+  border-radius: 14px !important;
+  min-height: 140px !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   text-align: center !important;
-  justify-content: center;
+  justify-content: center !important;
+  margin: 0 !important;
+  flex: 1 1 0 !important;
 }
 
 .max30102-page .instruction-step-number {
@@ -174,10 +237,20 @@
 .max30102-page .instruction-icon {
   font-size: 1.8rem !important;
   margin-bottom: 12px !important;
-  display: block !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   text-align: center !important;
   width: 100% !important;
-  line-height: 1 !important;
+  min-height: 80px !important;
+}
+
+.max30102-page .instruction-icon .step-icon-image {
+  width: 80px !important;
+  height: 80px !important;
+  object-fit: contain !important;
+  display: block !important;
+  margin: 0 auto !important;
 }
 
 .max30102-page .instruction-title {
@@ -196,21 +269,21 @@
 
 /* Header & Button Optimization */
 .max30102-page .measurement-header {
-  margin-bottom: 20px !important;
+  margin-bottom: 12px !important;
 }
 
 .max30102-page .measurement-title {
-  font-size: 2rem !important;
-  /* Slightly larger title */
+  font-size: 1.8rem !important;
+  margin-bottom: 8px !important;
 }
 
 .max30102-page .measurement-subtitle {
-  font-size: 1rem !important;
-  /* Slightly larger subtitle */
+  font-size: 0.95rem !important;
+  margin-bottom: 8px !important;
 }
 
 .max30102-page .measurement-action-container {
-  margin-top: 20px !important;
+  margin-top: 12px !important;
   padding-top: 0 !important;
 }
 
@@ -272,21 +345,110 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* MAX30102 FINGER SENSOR STYLES (Integrated & Red Themed) */
+/* MAX30102 PULSE OXIMETER DISPLAY - 3D Image with Glow Effects */
 /* -------------------------------------------------------------------------- */
 
-/* Modern Pulse Oximeter Display */
-.finger-sensor-container {
+/* Oximeter Display Container */
+.oximeter-display {
   display: flex;
   justify-content: center;
-  width: 100%;
-  margin: 15px 0;
+  align-items: center;
+  transition: all 0.5s ease;
+  border-radius: 20px;
+  padding: 15px;
 }
+
+/* Oximeter Image */
+.oximeter-image {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  transition: all 0.5s ease;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.2));
+}
+
+/* Initializing State - Yellow Glow */
+.oximeter-display.initializing .oximeter-image {
+  filter: drop-shadow(0 0 25px rgba(243, 156, 18, 0.6)) drop-shadow(0 0 50px rgba(243, 156, 18, 0.4));
+  animation: oximeterPulse 2s ease-in-out infinite;
+}
+
+/* Ready State - Green Glow */
+.oximeter-display.ready .oximeter-image {
+  filter: drop-shadow(0 0 20px rgba(39, 174, 96, 0.5)) drop-shadow(0 0 40px rgba(39, 174, 96, 0.3));
+}
+
+/* Active State - Red Glow (Measuring) */
+.oximeter-display.active .oximeter-image {
+  filter: drop-shadow(0 0 30px rgba(220, 38, 38, 0.7)) drop-shadow(0 0 60px rgba(220, 38, 38, 0.5));
+  animation: oximeterHeartbeat 1.2s ease-in-out infinite;
+}
+
+/* Complete State - Green Success Glow */
+.oximeter-display.complete .oximeter-image {
+  filter: drop-shadow(0 0 25px rgba(40, 167, 69, 0.6)) drop-shadow(0 0 50px rgba(40, 167, 69, 0.4));
+  animation: oximeterSuccess 0.6s ease-out;
+}
+
+/* Animations */
+@keyframes oximeterPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 25px rgba(243, 156, 18, 0.6)) drop-shadow(0 0 50px rgba(243, 156, 18, 0.4));
+  }
+
+  50% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 35px rgba(243, 156, 18, 0.8)) drop-shadow(0 0 70px rgba(243, 156, 18, 0.5));
+  }
+}
+
+@keyframes oximeterHeartbeat {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  25% {
+    transform: scale(1.08);
+  }
+
+  50% {
+    transform: scale(1.04);
+  }
+
+  75% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes oximeterSuccess {
+  0% {
+    transform: scale(1);
+  }
+
+  30% {
+    transform: scale(1.1) rotate(2deg);
+  }
+
+  60% {
+    transform: scale(1.05) rotate(-2deg);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Keep old styles for backwards compatibility */
 
 .finger-sensor {
   width: 200px;
   height: 200px;
-  background: linear-gradient(135deg, #2c3e50, #34495e);
+  background: linear-gradient(135deg, #e8f4f8, #d1e8f0);
   border-radius: 30px;
   margin: 0 auto;
   display: flex;
@@ -298,19 +460,19 @@
   transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   padding: 25px;
   box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.3),
-    inset 0 2px 10px rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  backdrop-filter: blur(10px);
+    0 10px 30px rgba(0, 0, 0, 0.15),
+    inset 0 2px 10px rgba(255, 255, 255, 0.3);
+  overflow: visible;
+  margin-bottom: 50px;
 }
 
 /* Modern Initializing State */
 .finger-sensor.initializing {
   border-color: #f39c12;
-  background: linear-gradient(135deg, #34495e, #2c3e50);
+  background: linear-gradient(135deg, #fff9e6, #fff3cc);
   box-shadow:
-    0 10px 30px rgba(243, 156, 18, 0.3),
-    inset 0 2px 10px rgba(255, 255, 255, 0.1);
+    0 10px 30px rgba(243, 156, 18, 0.2),
+    inset 0 2px 10px rgba(255, 255, 255, 0.3);
   animation: modernPulse 2s ease-in-out infinite;
 }
 
@@ -323,13 +485,13 @@
     inset 0 2px 10px rgba(255, 255, 255, 0.1);
 }
 
-/* Modern Active State - Finger Detected - RED THEME */
+/* Modern Active State - Finger Detected - LIGHT THEME */
 .finger-sensor.active {
   border-color: #dc2626;
-  background: linear-gradient(135deg, #b91c1c, #dc2626);
+  background: linear-gradient(135deg, #ffe4e4, #ffd6d6);
   box-shadow:
-    0 15px 40px rgba(220, 38, 38, 0.4),
-    inset 0 2px 15px rgba(255, 255, 255, 0.2);
+    0 15px 40px rgba(220, 38, 38, 0.2),
+    inset 0 2px 15px rgba(255, 255, 255, 0.5);
   animation: activeGlowRed 1.5s ease-in-out infinite;
 }
 
@@ -395,9 +557,11 @@
 /* Modern Finger Placeholder */
 .finger-placeholder {
   font-size: 4rem;
-  margin-bottom: 15px;
   transition: all 0.4s ease;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .finger-sensor.active .finger-placeholder {
@@ -411,11 +575,19 @@
 
 /* Sensor Status Text */
 .sensor-status-text {
-  font-size: 0.9rem;
-  color: white;
-  margin-top: 10px;
-  font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-size: 1.1rem;
+  color: #333;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px 18px;
+  border-radius: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: absolute;
+  bottom: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 10;
 }
 
 /* Finger Removed Alert */

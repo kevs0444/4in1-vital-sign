@@ -264,8 +264,8 @@
 .instruction-card {
     padding: 24px 20px;
     background: white;
-    border-radius: 18px;
-    border: 2px solid var(--border-color);
+    border-radius: 24px;
+    border: 3px solid var(--border-color);
     transition: all 0.3s ease;
     text-align: center;
     height: 100%;
@@ -273,22 +273,62 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.instruction-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    transition: all 0.3s ease;
+    z-index: 0;
+}
+
+.instruction-card>* {
+    position: relative;
+    z-index: 1;
 }
 
 .instruction-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
-    border-color: var(--primary-color);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
 }
 
+/* Pending state - Gray */
+.instruction-card:not(.active):not(.completed) {
+    border-color: #dee2e6;
+    background: #f8f9fa;
+}
+
+.instruction-card:not(.active):not(.completed)::before {
+    background: linear-gradient(135deg, rgba(108, 117, 125, 0.05), transparent);
+}
+
+/* Active state - Red */
 .instruction-card.active {
-    border-color: var(--secondary-color);
-    background: linear-gradient(135deg, #fff8f8, #ffffff);
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, #fff5f5, #ffffff);
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.15);
 }
 
+.instruction-card.active::before {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.08), transparent);
+}
+
+/* Completed state - Green */
 .instruction-card.completed {
     border-color: var(--success-color);
-    background: linear-gradient(135deg, #f8fff9, #ffffff);
+    background: linear-gradient(135deg, #f0fdf4, #ffffff);
+    box-shadow: 0 4px 20px rgba(40, 167, 69, 0.15);
+}
+
+.instruction-card.completed::before {
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.08), transparent);
 }
 
 .instruction-step-number {
@@ -312,7 +352,37 @@
 .instruction-icon {
     font-size: 2rem;
     margin-bottom: 10px;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+}
+
+.instruction-icon .step-icon-image {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+}
+
+.instruction-card:hover .step-icon-image {
+    transform: scale(1.05);
+}
+
+.instruction-card.active .step-icon-image {
+    animation: pulse-icon 2s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.08);
+    }
 }
 
 .instruction-title {

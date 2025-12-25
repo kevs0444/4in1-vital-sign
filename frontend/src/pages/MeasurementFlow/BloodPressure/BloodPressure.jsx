@@ -7,12 +7,22 @@ import "../main-components-measurement.css";
 import bpIcon from "../../../assets/icons/bp-icon.png";
 import { cameraAPI, sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
+import { isLocalDevice } from "../../../utils/network";
 import { speak } from "../../../utils/speech";
+import step3Icon from "../../../assets/icons/measurement-step3.png";
 
 export default function BloodPressure() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setIsInactivityEnabled } = useInactivity();
+
+  // BLOCK REMOTE ACCESS
+  useEffect(() => {
+    if (!isLocalDevice()) {
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
+
   const [systolic, setSystolic] = useState("");
   const [diastolic, setDiastolic] = useState("");
   const [isVisible, setIsVisible] = useState(false);
@@ -65,16 +75,23 @@ export default function BloodPressure() {
   // Voice Instructions
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (measurementStep === 1) {
+      const isLast = isLastStep('bloodpressure', location.state?.checklist);
+      if (measurementStep === 0) {
+        speak("Blood Pressure Measurement. Get ready to measure your blood pressure.");
+      } else if (measurementStep === 1) {
         speak("Step 1. Ready. Click Start to begin measurement.");
       } else if (measurementStep === 2) {
         speak("Step 2. Measuring. Blood pressure measurement in progress.");
       } else if (measurementStep === 3) {
-        speak("Step 3. AI Results. View complete AI analysis and results.");
+        if (isLast) {
+          speak("Step 3. Results Ready. All measurements complete.");
+        } else {
+          speak("Step 3. Measurement Complete. Continue to next step.");
+        }
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [measurementStep]);
+  }, [measurementStep, location.state?.checklist]);
 
   const initializeBloodPressureSensor = async () => {
     try {
@@ -369,7 +386,7 @@ export default function BloodPressure() {
                     }}>
                       <div className="camera-feed-wrapper" style={{ width: '100%', height: '100%', position: 'relative' }}>
                         <img
-                          src="http://localhost:5000/api/camera/video_feed"
+                          src={`${window.location.protocol}//${window.location.hostname}:5000/api/camera/video_feed`}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           alt="Camera Stream"
                         />
@@ -504,10 +521,16 @@ export default function BloodPressure() {
               <div className="col-12 col-md-4">
                 <div className={`instruction-card h-100 ${measurementStep >= 3 ? 'completed' : ''}`}>
                   <div className="instruction-step-number">3</div>
-                  <div className="instruction-icon">🤖</div>
-                  <h4 className="instruction-title">AI Results</h4>
+                  <div className="instruction-icon">
+                    <img src={step3Icon} alt="Complete" className="step-icon-image" />
+                  </div>
+                  <h4 className="instruction-title">
+                    {isLastStep('bloodpressure', location.state?.checklist) ? 'Results Ready' : 'Complete'}
+                  </h4>
                   <p className="instruction-text">
-                    View complete AI analysis and results
+                    {isLastStep('bloodpressure', location.state?.checklist)
+                      ? "All measurements complete!"
+                      : "Continue to next measurement"}
                   </p>
                 </div>
               </div>

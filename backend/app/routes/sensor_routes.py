@@ -43,7 +43,10 @@ def get_sensor_status():
 @sensor_bp.route('/system_status', methods=['GET'])
 def get_system_status():
     """Returns detailed system status including sensor readiness."""
-    return jsonify(sensor_manager.get_system_status())
+    status = sensor_manager.get_system_status()
+    arduino_status = "connected" if sensor_manager.is_connected else "disconnected"
+    print(f"💓 System Heartbeat: Arduino {arduino_status}") 
+    return jsonify(status)
 
 @sensor_bp.route('/initialize', methods=['POST'])
 def initialize_system():

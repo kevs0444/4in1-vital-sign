@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, createContext, useCont
 import { useNavigate, useLocation } from 'react-router-dom';
 import './InactivityWrapper.css';
 import juanSadIcon from '../../assets/icons/juan-sad-icon.png';
+import { isLocalDevice } from '../../utils/network';
 
 // Create Context
 const InactivityContext = createContext({
@@ -41,6 +42,11 @@ const InactivityWrapper = ({ children }) => {
 
         const currentPath = location.pathname;
         const isExcludedPage = EXCLUDED_PATHS.includes(currentPath);
+
+        // DISABLE FOR REMOTE DEVICES
+        if (!isLocalDevice()) {
+            return;
+        }
 
         // Don't start timers if excluded or explicitly disabled
         if (isExcludedPage || !isInactivityEnabled) {

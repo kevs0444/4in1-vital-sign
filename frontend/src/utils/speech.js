@@ -1,31 +1,91 @@
+import { isLocalDevice } from './network';
+
 let voices = [];
+let voicesLoaded = false;
 
 // Helper to reliably load voices (Chrome loads them async)
 const loadVoices = () => {
     voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+        voicesLoaded = true;
+        console.log("🎙️ Voices loaded:", voices.length);
+    }
 };
 
-if (window.speechSynthesis) {
+// Initialize speech synthesis
+const initSpeech = () => {
+    if (!window.speechSynthesis) {
+        console.warn("⚠️ Speech Synthesis NOT supported in this browser");
+        return;
+    }
+
     console.log("🎙️ Speech Synthesis Supported");
     loadVoices();
+
     // Chrome requires this event to populate the voice list
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = () => {
-            loadVoices();
-            console.log("🎙️ Voices loaded:", voices.length);
-        };
+        window.speechSynthesis.onvoiceschanged = loadVoices;
     }
-} else {
-    console.warn("⚠️ Speech Synthesis NOT supported in this browser");
-}
+};
+
+// Initialize on load
+initSpeech();
+
+// Re-initialize function for use after navigation/refresh
+export const reinitSpeech = () => {
+    if (window.speechSynthesis) {
+        loadVoices();
+        // Force Chrome to reload voices
+        window.speechSynthesis.cancel();
+    }
+};
+
+// Get preferred voice with fallback logic
+const getPreferredVoice = () => {
+    // Always try to reload voices if empty
+    if (voices.length === 0) {
+        voices = window.speechSynthesis.getVoices();
+    }
+
+    // Log available voices for debugging (only once)
+    if (voices.length > 0 && !window._voicesLogged) {
+        console.log("🎙️ Available voices:", voices.map(v => `${v.name} (${v.lang})`));
+        window._voicesLogged = true;
+    }
+
+    // Smart Voice Selection Strategy - MALE VOICES ONLY
+    // 1. Microsoft David (Windows male - guaranteed male)
+    // 2. Google UK English Male (Chrome male)
+    // 3. Microsoft Mark (Another Windows male)
+    // 4. Any voice with "male" in name
+    // 5. Microsoft George (UK male)
+    // 6. Fallback: Google US English (may be female but better than nothing)
+    const maleVoice =
+        voices.find(v => v.name.includes('David')) ||
+        voices.find(v => v.name === 'Google UK English Male') ||
+        voices.find(v => v.name.includes('Mark') && v.lang.includes('en')) ||
+        voices.find(v => v.name.toLowerCase().includes('male') && v.lang.includes('en')) ||
+        voices.find(v => v.name.includes('George')) ||
+        voices.find(v => v.name === 'Google US English') ||
+        voices.find(v => v.lang.includes('en-US') || v.lang.includes('en-GB'));
+
+    if (maleVoice) {
+        console.log("🎙️ Selected voice:", maleVoice.name);
+    }
+
+    return maleVoice;
+};
 
 export const speak = (text) => {
+    // DISABLE SPEECH ON REMOTE DEVICES (Mini PC acts as Kiosk with speech)
+    if (!isLocalDevice()) return;
+
     if (!text || typeof text !== 'string') return;
 
     try {
         if (!window.speechSynthesis) return;
 
-        // Retry loading voices if they weren't ready yet
+        // Always reload voices before speaking (ensures it works after navigation)
         if (voices.length === 0) {
             voices = window.speechSynthesis.getVoices();
         }
@@ -35,26 +95,46 @@ export const speak = (text) => {
 
         const utterance = new SpeechSynthesisUtterance(text);
 
-        // Smart Voice Selection Strategy
-        // 1. Google US English (Natural, high quality)
-        // 2. Microsoft Zira (Standard Windows decent voice)
-        // 3. Any "Google" voice (Android/Chrome defaults)
-        const preferredVoice = voices.find(v => v.name === 'Google US English') ||
-            voices.find(v => v.name.includes('Google') && v.lang.includes('en-US')) ||
-            voices.find(v => v.name.includes('Zira')) ||
-            voices.find(v => v.name.includes('Google')) ||
-            voices.find(v => v.lang.includes('en-US'));
-
+        const preferredVoice = getPreferredVoice();
         if (preferredVoice) {
             utterance.voice = preferredVoice;
+            console.log("🎙️ Using voice:", preferredVoice.name);
         }
 
-        // Slightly adjust for clarity
+        // Adjust for male voice - lower pitch for deeper sound
         utterance.rate = 1.0;
-        utterance.pitch = 1.0;
+        utterance.pitch = 0.8;
+
+        // Chrome bug fix: sometimes speech gets stuck, resume it
+        if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+        }
 
         window.speechSynthesis.speak(utterance);
+
+        // Chrome bug fix: keep speech alive on long pauses
+        const resumeInterval = setInterval(() => {
+            if (!window.speechSynthesis.speaking) {
+                clearInterval(resumeInterval);
+            } else {
+                window.speechSynthesis.pause();
+                window.speechSynthesis.resume();
+            }
+        }, 10000);
+
     } catch (e) {
         console.warn("Speech synthesis error:", e);
     }
+};
+
+// Stop any ongoing speech
+export const stopSpeaking = () => {
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
+};
+
+// Check if speech is currently active
+export const isSpeaking = () => {
+    return window.speechSynthesis ? window.speechSynthesis.speaking : false;
 };

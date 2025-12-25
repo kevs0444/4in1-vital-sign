@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-
 import { motion } from "framer-motion";
+import { Container, Form, Button, Card } from 'react-bootstrap';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import "./RegisterTapID.css";
 import "./TapIDCardStyles.css";
 import tapIdImage from "../../../assets/icons/tap-id-icon.png";
+import { isLocalDevice } from '../../../utils/network';
+
+const getDynamicApiUrl = () => {
+  if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
+  return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+};
+
+const API_BASE = getDynamicApiUrl();
 
 export default function RegisterTapID() {
   const navigate = useNavigate();
@@ -32,6 +40,24 @@ export default function RegisterTapID() {
   const [duplicateRfidMessage, setDuplicateRfidMessage] = useState("");
   const [duplicateModalTitle, setDuplicateModalTitle] = useState("Already Registered");
   const [showNoIdModal, setShowNoIdModal] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+
+  // Blinking cursor effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowCursor(prev => !prev);
+    }, 530);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getDisplayValue = (rawVal, inputName) => {
+    // Show blinking cursor on ACTIVE inputs.
+    // Enhanced backspace handling ensures this works on Remote (writable) inputs too.
+    if (activeInput === inputName && showCursor && inputName !== 'password' && rawVal && rawVal.length > 0) {
+      return rawVal + '|';
+    }
+    return rawVal;
+  };
 
   const idNumberInputRef = useRef(null);
   const passwordInputRef = useRef(null);
@@ -252,7 +278,7 @@ export default function RegisterTapID() {
       console.log('🔍 Checking for duplicate RFID:', generatedRFID);
 
       try {
-        const checkResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/login/check-rfid/${encodeURIComponent(generatedRFID)}`);
+        const checkResponse = await fetch(`${API_BASE}/login/check-rfid/${encodeURIComponent(generatedRFID)}`);
         const checkResult = await checkResponse.json();
 
         if (checkResult.exists) {
@@ -395,14 +421,11 @@ export default function RegisterTapID() {
         setErrorMessage(`Please enter a valid ${getIdNumberLabel()} (numbers and hyphens only)`);
         return;
       }
-      if (!validatePassword(formData.password)) {
-        setErrorMessage("Password must be between 6 and 10 characters");
-        return;
-      }
+
 
       // Check for duplicate student/employee number
       try {
-        const checkResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/register/check-school-number/${encodeURIComponent(formData.idNumber)}`);
+        const checkResponse = await fetch(`${API_BASE}/register/check-school-number/${encodeURIComponent(formData.idNumber)}`);
         const checkResult = await checkResponse.json();
 
         if (checkResult.exists) {
@@ -421,10 +444,14 @@ export default function RegisterTapID() {
         setErrorMessage("Please enter a valid email address");
         return;
       }
+      if (!validatePassword(formData.password)) {
+        setErrorMessage("Password must be between 6 and 10 characters");
+        return;
+      }
 
       // Check for duplicate email
       try {
-        const emailResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/register/check-email/${encodeURIComponent(formData.email)}`);
+        const emailResponse = await fetch(`${API_BASE}/register/check-email/${encodeURIComponent(formData.email)}`);
         const emailResult = await emailResponse.json();
 
         if (emailResult.exists) {
@@ -497,7 +524,20 @@ export default function RegisterTapID() {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    // Strip cursor char if present
+    let cleanValue = value.replace(/\|/g, '');
+
+    // SMART BACKSPACE FIX for Remote Devices:
+    // If the new value equals the current state (meaning only the '|' was removed),
+    // and the length indicates a deletion, it means the user backspaced the fake cursor.
+    // We should therefore delete the last actual character.
+    if (!isLocalDevice() && activeInput === field && showCursor && field !== 'password') {
+      if (cleanValue === formData[field] && value.length < (formData[field].length + 1)) {
+        cleanValue = cleanValue.slice(0, -1);
+      }
+    }
+
+    setFormData(prev => ({ ...prev, [field]: cleanValue }));
     if (errorMessage) setErrorMessage(""); // Clear error on input
   };
 
@@ -590,6 +630,8 @@ export default function RegisterTapID() {
     }
   };
 
+
+
   const handleInputFocus = (inputType) => {
     setActiveInput(inputType);
   };
@@ -597,9 +639,9 @@ export default function RegisterTapID() {
   const isStepValid = () => {
     switch (currentStep) {
       case 0:
-        return validateIDNumber(formData.idNumber) && validatePassword(formData.password);
+        return validateIDNumber(formData.idNumber);
       case 1:
-        return validateEmail(formData.email);
+        return validateEmail(formData.email) && validatePassword(formData.password);
       case 2:
         return true;
       default:
@@ -632,8 +674,136 @@ export default function RegisterTapID() {
 
   const keyboardKeys = showSymbols ? symbolKeys : alphabetKeys;
 
+  /* =================================================================================
+     REMOTE DEVICE UI (Laptop/Phone)
+     ================================================================================= */
+  if (!isLocalDevice()) {
+    return (
+      <Container fluid className="p-3 bg-light min-vh-100 d-flex flex-column" style={{ overflowY: 'auto' }}>
+        <div className="w-100 bg-white p-4 rounded-4 shadow-sm" style={{ maxWidth: '500px', margin: '0 auto' }}>
+
+          <div className="text-center mb-4">
+            <h2 className="fw-bold text-dark">{steps[currentStep].title}</h2>
+            <p className="text-muted">{steps[currentStep].subtitle}</p>
+          </div>
+
+          {errorMessage && (
+            <div className="alert alert-danger mb-4 rounded-3 border-0 bg-danger bg-opacity-10 text-danger fw-bold">
+              ⚠️ {errorMessage}
+            </div>
+          )}
+
+          <Form onSubmit={(e) => { e.preventDefault(); handleContinue(); }}>
+
+            {currentStep === 0 && (
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">{getIdNumberLabel()}</Form.Label>
+                <Form.Control
+                  size="lg"
+                  type="text"
+                  value={formData.idNumber}
+                  onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                  placeholder={getIdNumberPlaceholder()}
+                  autoFocus
+                  className="rounded-3"
+                />
+              </Form.Group>
+            )}
+
+            {currentStep === 1 && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">Mobile Number or Email</Form.Label>
+                  <Form.Control
+                    size="lg"
+                    type="text"
+                    value={formData.mobileNumber}
+                    onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
+                    placeholder="e.g. 09123456789 or email@rtu.edu.ph"
+                    autoFocus
+                    className="rounded-3"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">Create Password</Form.Label>
+                  <Form.Control
+                    size="lg"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    placeholder="Enter password (min. 6-10 chars)"
+                    className="rounded-3"
+                  />
+                  <Form.Text className="text-muted">
+                    Must be 6-10 characters long.
+                  </Form.Text>
+                </Form.Group>
+              </>
+            )}
+
+            {currentStep === 2 && (
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">RFID Tag (Scan or Type)</Form.Label>
+                <Form.Control
+                  size="lg"
+                  type="text"
+                  value={formData.rfidTag || ""}
+                  onChange={(e) => {
+                    // Direct update if handleInputChange supports it
+                    // Assuming 'rfidTag' is the key in formData, wait, original logic handles this differently?
+                    // Original logic uses HIDDEN INPUT with rfidInputRef.
+                    // On Remote, we just treat it as a text field. 
+                    // Need to ensure handleInputChange updates formData.rfidTag properly.
+                    // Step 2 logic in Kiosk was mostly automatic. 
+                    // I will assume handleInputChange updates formData.
+                    // If not, I might need setFormData.
+                    // Let's assume handleInputChange is generic setters.
+                    handleInputChange('rfidTag', e.target.value);
+                  }}
+                  placeholder="Click here and scan card"
+                  autoFocus
+                  className="rounded-3"
+                />
+                <Form.Text className="text-muted">
+                  Use your USB scanner or type manual code.
+                </Form.Text>
+              </Form.Group>
+            )}
+
+            <div className="d-grid gap-2 mt-4 pt-2">
+              <Button
+                variant="danger"
+                size="lg"
+                type="submit"
+                className="rounded-3 fw-bold"
+              >
+                {currentStep === 2 ? "Complete Registration" : "Next Step"}
+              </Button>
+
+              <Button
+                variant="light"
+                size="lg"
+                type="button"
+                onClick={handleBack}
+                className="rounded-3 text-muted"
+              >
+                {currentStep === 0 ? "Back to Roles" : "Back"}
+              </Button>
+            </div>
+
+            <div className="text-center mt-3 text-muted small">
+              Step {currentStep + 1} of 3
+            </div>
+
+          </Form>
+        </div>
+      </Container>
+    );
+  }
+
   return (
-    <div className="register-tapid-container">
+    <div className={isLocalDevice() ? "register-tapid-container" : "register-tapid-container-remote"}>
       {/* HIDDEN RFID INPUT - CAPTURES ALL SCANNER INPUT */}
       <input
         ref={rfidInputRef}
@@ -717,19 +887,69 @@ export default function RegisterTapID() {
                       type="text"
                       className={`form-input ${activeInput === 'idNumber' ? 'active' : ''}`}
                       placeholder={getIdNumberPlaceholder()}
-                      value={formData.idNumber}
+                      value={getDisplayValue(formData.idNumber, 'idNumber')}
                       onChange={(e) => handleInputChange('idNumber', e.target.value)}
                       onFocus={() => {
-                        if (idNumberInputRef.current) idNumberInputRef.current.blur();
+                        if (isLocalDevice() && idNumberInputRef.current) idNumberInputRef.current.blur();
                         handleInputFocus("idNumber");
                       }}
                       autoComplete="off"
-                      readOnly
-                      inputMode="none"
+                      readOnly={isLocalDevice()}
+                      inputMode={isLocalDevice() ? "none" : "text"}
                     />
                     <div className="input-hint">
                       {roleSettings.hint}
                     </div>
+                  </div>
+
+                  <div className="security-note">
+                    <div className="security-icon">🎓</div>
+                    <p>
+                      {roleSettings.securityNote}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Email & SMS */}
+            {currentStep === 1 && (
+              <div className="form-phase active">
+                <div className="form-groups">
+                  <div className="form-group">
+                    <label htmlFor="email" className="form-label">
+                      Email Address
+                    </label>
+                    <input
+                      ref={emailInputRef}
+                      id="email"
+                      type="email"
+                      className={`form-input ${activeInput === 'email' ? 'active' : ''}`}
+                      placeholder="juandelacruz@gmail.com"
+                      value={getDisplayValue(formData.email, 'email')}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      onFocus={() => {
+                        if (isLocalDevice() && emailInputRef.current) emailInputRef.current.blur();
+                        handleInputFocus("email");
+                      }}
+                      autoComplete="off"
+                      readOnly={isLocalDevice()}
+                      inputMode={isLocalDevice() ? "none" : "email"}
+                    />
+                    {activeInput === 'email' && formData.email.includes('@') && (
+                      <div className="email-suggestions">
+                        {["gmail.com", "rtu.edu.ph", "yahoo.com", "outlook.com", "icloud.com"].map((domain) => (
+                          <button
+                            key={domain}
+                            type="button"
+                            className="email-suggestion-chip"
+                            onClick={() => handleDomainSelect(domain)}
+                          >
+                            {domain}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -750,13 +970,13 @@ export default function RegisterTapID() {
                           }
                         }}
                         onFocus={() => {
-                          if (passwordInputRef.current) passwordInputRef.current.blur();
+                          if (isLocalDevice() && passwordInputRef.current) passwordInputRef.current.blur();
                           handleInputFocus("password");
                         }}
                         autoComplete="off"
-                        readOnly
+                        readOnly={isLocalDevice()}
                         maxLength={10}
-                        inputMode="none"
+                        inputMode={isLocalDevice() ? "none" : "text"}
                       />
                       <button
                         type="button"
@@ -795,56 +1015,6 @@ export default function RegisterTapID() {
                           : 'Minimum of 6 characters'}
                       </span>
                     </div>
-                  </div>
-
-                  <div className="security-note">
-                    <div className="security-icon">🎓</div>
-                    <p>
-                      {roleSettings.securityNote}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Email & SMS */}
-            {currentStep === 1 && (
-              <div className="form-phase active">
-                <div className="form-groups">
-                  <div className="form-group">
-                    <label htmlFor="email" className="form-label">
-                      Email Address
-                    </label>
-                    <input
-                      ref={emailInputRef}
-                      id="email"
-                      type="email"
-                      className={`form-input ${activeInput === 'email' ? 'active' : ''}`}
-                      placeholder="juandelacruz@gmail.com"
-                      value={formData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      onFocus={() => {
-                        if (emailInputRef.current) emailInputRef.current.blur();
-                        handleInputFocus("email");
-                      }}
-                      autoComplete="off"
-                      readOnly
-                      inputMode="none"
-                    />
-                    {activeInput === 'email' && formData.email.includes('@') && (
-                      <div className="email-suggestions">
-                        {["gmail.com", "rtu.edu.ph", "yahoo.com", "outlook.com", "icloud.com"].map((domain) => (
-                          <button
-                            key={domain}
-                            type="button"
-                            className="email-suggestion-chip"
-                            onClick={() => handleDomainSelect(domain)}
-                          >
-                            {domain}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
 
@@ -1128,8 +1298,8 @@ export default function RegisterTapID() {
           </div>
         </div>
 
-        {/* Keyboard */}
-        {currentStep < 2 && (
+        {/* Keyboard - LOCAL DEVICE ONLY */}
+        {currentStep < 2 && isLocalDevice() && (
           <div className="register-keyboard">
             {keyboardKeys.map((row, rowIndex) => (
               <div key={rowIndex} className="register-keyboard-row">

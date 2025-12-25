@@ -191,6 +191,7 @@
   -webkit-tap-highlight-color: transparent;
   color: #333;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  caret-color: #dc2626;
 }
 
 .form-input:focus {
@@ -2117,4 +2118,98 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   background-color: #9ca3af;
   /* Gray-400 */
+}
+
+/* Mobile/Remote Optimization (Phone Size) - DOES NOT AFFECT KIOSK (min 768px) */
+@media (max-width: 580px) {
+  .register-tapid-container {
+    padding: 0;
+  }
+
+  .register-tapid-content {
+    border-radius: 0;
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border: none;
+    padding: 15px;
+  }
+
+  .register-tapid-title {
+    font-size: 1.6rem;
+  }
+
+  .form-input {
+    font-size: 1.2rem;
+    padding: 15px;
+  }
+
+  .tap-id-card-container {
+    padding: 5px;
+  }
+
+  .tap-id-main-image {
+    width: 200px;
+    height: 200px;
+  }
+
+  .form-navigation {
+    padding-bottom: 20px;
+  }
+
+  .nav-button {
+    font-size: 1.2rem;
+    min-height: 60px;
+    padding: 15px;
+  }
+
+  .register-tapid-header {
+    margin-bottom: 10px;
+  }
+
+  .register-tapid-subtitle {
+    font-size: 1rem;
+  }
+
+  /* Scrollable Override */
+  .register-tapid-container {
+    position: relative !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    display: block !important;
+  }
+
+  .register-tapid-content {
+    height: auto !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
+/* REMOTE CONTAINER STYLES */
+.register-tapid-container-remote * {
+  box-sizing: border-box;
+}
+
+.register-tapid-container-remote {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100vw;
+  background: #ffffff;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 10px;
+  position: relative;
+  overflow-y: auto;
+}
+
+@media (max-width: 580px) {
+  .register-tapid-container-remote {
+    justify-content: flex-start;
+    padding: 0;
+  }
 }

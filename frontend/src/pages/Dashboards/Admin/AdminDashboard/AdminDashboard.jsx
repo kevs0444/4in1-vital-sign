@@ -19,6 +19,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import './AdminDashboard.css';
+import { getAdminStats, getAdminUsers } from '../../../../utils/api';
 
 // Register ChartJS components
 ChartJS.register(
@@ -69,13 +70,10 @@ const AdminDashboard = () => {
                 setLoading(true);
 
                 // Parallel fetching
-                const [statsRes, usersRes] = await Promise.all([
-                    fetch('/api/admin/stats'),
-                    fetch('/api/admin/users')
+                const [statsData, usersData] = await Promise.all([
+                    getAdminStats(),
+                    getAdminUsers()
                 ]);
-
-                const statsData = await statsRes.json();
-                const usersData = await usersRes.json();
 
                 if (statsData.success) {
                     setStats(statsData.stats);

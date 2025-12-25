@@ -9,12 +9,25 @@ import spo2Icon from "../../../assets/icons/spo2-icon.png";
 import respiratoryIcon from "../../../assets/icons/respiratory-icon.png";
 import { sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
+import { isLocalDevice } from "../../../utils/network";
 import { speak } from "../../../utils/speech";
+import step3Icon from "../../../assets/icons/measurement-step3.png";
+import step1Icon from "../../../assets/icons/max30102-step1.png";
+import step2Icon from "../../../assets/icons/max30102-step2.png";
+import oximeterImage from "../../../assets/icons/oximeter-3d.png";
 
 export default function Max30102() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setIsInactivityEnabled, signalActivity } = useInactivity();
+
+  // BLOCK REMOTE ACCESS
+  useEffect(() => {
+    if (!isLocalDevice()) {
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
+
   const [isVisible, setIsVisible] = useState(false);
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurementComplete, setMeasurementComplete] = useState(false);
@@ -112,20 +125,26 @@ export default function Max30102() {
   }, [progressSeconds]);
 
   // Voice Instructions based on Step
-  // Voice Instructions based on Step
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (measurementStep === 2) {
+      const isLast = isLastStep('max30102', location.state?.checklist);
+      if (measurementStep === 1) {
+        speak("Pulse Oximeter Measurement. Get ready to measure heart rate and blood oxygen.");
+      } else if (measurementStep === 2) {
         // Only speak if not already handled by initialization
-        // speak("Step 1. Insert Finger. Place your finger fully inside the pulse oximeter device.");
+        speak("Step 1. Insert Finger. Place your left index finger on the pulse oximeter.");
       } else if (measurementStep === 3) {
         speak("Step 2. Hold Steady. Keep your finger completely still for accurate readings.");
       } else if (measurementStep === 4) {
-        speak("Step 3. Measurement complete. Results are ready.");
+        if (isLast) {
+          speak("Step 3. Results Ready. All measurements complete.");
+        } else {
+          speak("Step 3. Measurement Complete. Continue to next step.");
+        }
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [measurementStep]);
+  }, [measurementStep, location.state?.checklist]);
 
   // Voice for Finger Removed
   useEffect(() => {
@@ -745,6 +764,7 @@ export default function Max30102() {
     return "initializing";
   };
 
+  // eslint-disable-next-line no-unused-vars
   const getCardStatus = () => {
     if (measurementComplete) return "complete";
     if (isMeasuring) return "measuring";
@@ -843,19 +863,14 @@ export default function Max30102() {
 
         <div className="w-100">
 
-          {/* Finger Sensor Display */}
-          <div className="d-flex justify-content-center mb-5">
-            <div className={`finger-sensor ${getSensorState()}`}>
-              <div className="sensor-light"></div>
-              <div className="finger-placeholder">
-                {fingerDetected ? "👆" : "👇"}
-              </div>
-              <div className="sensor-status-text">
-                {getSensorState() === 'initializing' && 'Initializing...'}
-                {getSensorState() === 'ready' && (fingerDetected ? 'Finger Detected - Ready' : 'Ready - Insert Finger')}
-                {getSensorState() === 'active' && `Measuring... ${progressSeconds}s`}
-                {getSensorState() === 'complete' && 'Complete'}
-              </div>
+          {/* Pulse Oximeter Display */}
+          <div className="d-flex justify-content-center mb-4">
+            <div className={`oximeter-display ${getSensorState()}`}>
+              <img
+                src={oximeterImage}
+                alt="Pulse Oximeter"
+                className="oximeter-image"
+              />
             </div>
           </div>
 
@@ -863,7 +878,7 @@ export default function Max30102() {
           <div className="row g-4 justify-content-center mb-4">
             {/* Heart Rate Card */}
             <div className="col-12 col-md-4">
-              <div className={`measurement-card h-100 ${getCardStatus() === 'measuring' ? 'active' : ''} ${getCardStatus() === 'complete' ? 'completed' : ''}`}>
+              <div className={`measurement-card h-100 status-${getStatusColor('heartRate', measurements.heartRate)}`}>
                 <div className="measurement-icon">
                   <img src={heartRateIcon} alt="Heart Rate" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
@@ -885,7 +900,7 @@ export default function Max30102() {
 
             {/* SpO2 Card */}
             <div className="col-12 col-md-4">
-              <div className={`measurement-card h-100 ${getCardStatus() === 'measuring' ? 'active' : ''} ${getCardStatus() === 'complete' ? 'completed' : ''}`}>
+              <div className={`measurement-card h-100 status-${getStatusColor('spo2', measurements.spo2)}`}>
                 <div className="measurement-icon">
                   <img src={spo2Icon} alt="Blood Oxygen" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
@@ -907,7 +922,7 @@ export default function Max30102() {
 
             {/* Respiratory Rate Card */}
             <div className="col-12 col-md-4">
-              <div className={`measurement-card h-100 ${getCardStatus() === 'measuring' ? 'active' : ''} ${getCardStatus() === 'complete' ? 'completed' : ''}`}>
+              <div className={`measurement-card h-100 status-${getStatusColor('respiratoryRate', measurements.respiratoryRate)}`}>
                 <div className="measurement-icon">
                   <img src={respiratoryIcon} alt="Respiratory Rate" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
@@ -934,10 +949,12 @@ export default function Max30102() {
               <div className="col-12 col-md-4">
                 <div className={`instruction-card h-100 ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
                   <div className="instruction-step-number">1</div>
-                  <div className="instruction-icon">👆</div>
-                  <h4 className="instruction-title">Insert Finger</h4>
+                  <div className="instruction-icon">
+                    <img src={step1Icon} alt="Insert Finger" className="step-icon-image" />
+                  </div>
+                  <h4 className="instruction-title">Left Index Finger</h4>
                   <p className="instruction-text">
-                    Place your finger fully inside the pulse oximeter device
+                    Place your left index finger on the pulse oximeter
                   </p>
                 </div>
               </div>
@@ -945,7 +962,9 @@ export default function Max30102() {
               <div className="col-12 col-md-4">
                 <div className={`instruction-card h-100 ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
                   <div className="instruction-step-number">2</div>
-                  <div className="instruction-icon">✋</div>
+                  <div className="instruction-icon">
+                    <img src={step2Icon} alt="Hold Steady" className="step-icon-image" />
+                  </div>
                   <h4 className="instruction-title">Hold Steady</h4>
                   <p className="instruction-text">
                     Keep your finger completely still for accurate readings
@@ -955,15 +974,18 @@ export default function Max30102() {
               </div>
 
               <div className="col-12 col-md-4">
-                <div className={`instruction-card h-100 ${measurementStep >= 3 ? (measurementStep > 3 ? 'completed' : 'active') : ''}`}>
+                <div className={`instruction-card h-100 ${measurementStep >= 4 ? 'completed' : ''}`}>
                   <div className="instruction-step-number">3</div>
-                  <div className="instruction-icon">⏱️</div>
-                  <h4 className="instruction-title">Wait for Results</h4>
+                  <div className="instruction-icon">
+                    <img src={step3Icon} alt="Complete" className="step-icon-image" />
+                  </div>
+                  <h4 className="instruction-title">
+                    {isLastStep('max30102', location.state?.checklist) ? 'Results Ready' : 'Complete'}
+                  </h4>
                   <p className="instruction-text">
-                    {measurementComplete
-                      ? "Measurement complete! Results are ready"
-                      : "30-second automatic measurement"
-                    }
+                    {isLastStep('max30102', location.state?.checklist)
+                      ? "All measurements complete!"
+                      : "Continue to next measurement"}
                   </p>
                 </div>
               </div>
@@ -980,12 +1002,6 @@ export default function Max30102() {
           >
             {getButtonText()}
           </button>
-
-          {isMeasuring && (
-            <div className="mt-3 text-warning fw-bold">
-              ⚠️ Important: Keep your finger completely still for accurate results
-            </div>
-          )}
         </div>
       </div>
 

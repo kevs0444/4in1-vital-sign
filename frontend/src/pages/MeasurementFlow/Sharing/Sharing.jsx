@@ -2,6 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Sharing.css";
+import { speak, reinitSpeech } from "../../../utils/speech";
+
+const getDynamicApiUrl = () => {
+  if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
+  return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+};
+
+const API_BASE = getDynamicApiUrl();
 
 export default function Sharing() {
   const navigate = useNavigate();
@@ -26,6 +34,8 @@ export default function Sharing() {
   useEffect(() => {
     if (location.state) {
       setUserData(location.state);
+      reinitSpeech();
+      speak("Your measurement is complete. You can now email your results or print a receipt.");
     } else {
       // Fallback if no state
       navigate("/measure/result");
@@ -62,7 +72,7 @@ export default function Sharing() {
     if (!measurementId) return;
 
     try {
-      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/measurements/${measurementId}/share-status`, {
+      await fetch(`${API_BASE}/measurements/${measurementId}/share-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: type, status: true })
@@ -88,7 +98,7 @@ export default function Sharing() {
 
     setIsSending(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/share/email`, {
+      const response = await fetch(`${API_BASE}/share/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -133,7 +143,7 @@ export default function Sharing() {
   const handlePrint = async () => {
     setIsPrinting(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/print/receipt`, {
+      const response = await fetch(`${API_BASE}/print/receipt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),

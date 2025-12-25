@@ -1,18 +1,21 @@
-// Standby.jsx - Simple Status Badge with Priority System Checks
+// Standby.jsx - Dual Mode: Status Badge (Kiosk) | Landing Page (Remote)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Container, Row, Col, Button } from 'react-bootstrap';
+import { Container, Row, Col, Button, Card } from 'react-bootstrap';
 import { motion } from 'framer-motion';
 import {
   Circle,
   CheckCircle,
   Error,
-  Warning
+  Warning,
+  Dashboard as DashboardIcon,
+  Login as LoginIcon
 } from '@mui/icons-material';
 import logo from '../../assets/images/juan.png';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Standby.css';
 import { checkSystemStatus, sensorAPI } from '../../utils/api';
+import { isLocalDevice } from '../../utils/network';
 
 export default function Standby() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -105,12 +108,14 @@ export default function Standby() {
       sessionStorage.removeItem('bloodPressureData');
       sessionStorage.removeItem('max30102Data');
 
-      // 3. Reset sensors on backend (if connected)
-      try {
-        await sensorAPI.reset();
-        console.log('✅ Backend sensor data reset');
-      } catch (error) {
-        console.log('ℹ️ Backend reset skipped (may not be connected yet)');
+      // 3. Reset sensors on backend (if connected) - ONLY FOR LOCAL COMPONENT
+      if (isLocalDevice()) {
+        try {
+          await sensorAPI.reset();
+          console.log('✅ Backend sensor data reset');
+        } catch (error) {
+          console.log('ℹ️ Backend reset skipped (may not be connected yet)');
+        }
       }
 
       console.log('✅ All measurement data cleared - ready for new user');
@@ -121,16 +126,17 @@ export default function Standby() {
 
   // Perform comprehensive system check
   const performSystemCheck = useCallback(async () => {
-    console.log('🔍 Performing comprehensive system check...');
+    // console.log('🔍 Performing comprehensive system check...');
 
     try {
       const status = await checkSystemStatus();
-      console.log('📊 System check result:', status);
+      // console.log('📊 System check result:', status);
 
       setSystemCheck(status);
 
       // If Arduino is not connected and we haven't tried connecting, attempt connection
-      if (!status.components.arduino.connected && !isConnecting) {
+      // ONLY LOCAL DEVICE SHOULD ATTEMPT TO CONNECT SENSORS
+      if (isLocalDevice() && !status.components.arduino.connected && !isConnecting) {
         console.log('🔌 Arduino not connected - attempting connection...');
         setIsConnecting(true);
 
@@ -199,6 +205,11 @@ export default function Standby() {
     }, 200);
   };
 
+  const handleRemoteAccess = () => {
+    // Direct navigation for remote users
+    navigate('/login');
+  };
+
   const formatTime = (date) =>
     date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
@@ -256,7 +267,7 @@ export default function Standby() {
       case 'database_error':
         return 'Database Error';
       case 'backend_down':
-        return 'Backend Offline';
+        return 'Backend Online'; // Keep as online if accessible for remote landing
       case 'critical_error':
         return 'System Error';
       default:
@@ -281,6 +292,111 @@ export default function Standby() {
 
   const isStartButtonEnabled = systemCheck.can_proceed;
 
+  /* =========================================
+     RENDER LOGIC: DISTINGUISH KIOSK VS REMOTE
+     ========================================= */
+
+  // 1. REMOTE DEVICE (Laptop/Tablet/Phone)
+  if (!isLocalDevice()) {
+    return (
+      <div className="standby-container remote-landing-container" style={{
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: "'Inter', sans-serif" // Ensure font matches theme
+      }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="remote-landing-card"
+          style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            padding: '40px',
+            borderRadius: '24px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
+            maxWidth: '500px',
+            width: '90%',
+            textAlign: 'center'
+          }}
+        >
+          <div className="mb-4 d-flex justify-content-center">
+            <div style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              background: '#fff',
+              padding: '15px',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <img src={logo} alt="4 in Juan Logo" style={{ width: '100%', height: 'auto' }} />
+            </div>
+          </div>
+
+          <h1 style={{
+            color: '#2d3748',
+            fontSize: '2rem',
+            fontWeight: '800',
+            marginBottom: '10px'
+          }}>
+            VitalSign Portal
+          </h1>
+
+          <p style={{
+            color: '#718096',
+            fontSize: '1.1rem',
+            marginBottom: '30px',
+            lineHeight: '1.6'
+          }}>
+            Access your health records comfortably from your personal device.
+          </p>
+
+          <div className="d-grid gap-3">
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleRemoteAccess}
+              style={{
+                background: 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)',
+                border: 'none',
+                padding: '16px',
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                borderRadius: '12px',
+                boxShadow: '0 10px 20px rgba(13, 110, 253, 0.2)',
+                transition: 'transform 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px'
+              }}
+            >
+              <LoginIcon /> Login to Dashboard
+            </Button>
+          </div>
+
+          <div className="mt-4 pt-4 border-top">
+            <div className="d-flex justify-content-center align-items-center gap-2 mb-2">
+              <div className={`status-dot ${systemCheck.overall_status === 'ready' ? 'bg-success' : 'bg-warning'}`}
+                style={{ width: '10px', height: '10px', borderRadius: '50%' }}></div>
+              <span style={{ color: '#718096', fontSize: '0.9rem' }}>{getStatusText()}</span>
+            </div>
+            <p style={{ color: '#a0aec0', fontSize: '0.85rem' }}>
+              Connected to Kiosk System
+            </p>
+          </div>
+
+        </motion.div>
+      </div>
+    );
+  }
+
+  // 2. KIOSK DEVICE (Mini PC) - Original Standby UI
   return (
     <div className="standby-container container-fluid">
       {/* Simple Status Badge - Top Right */}

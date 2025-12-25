@@ -12,7 +12,14 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './ForgotPassword.css';
 import forgotPassIcon from '../../assets/icons/forgot-pass-icon.png';
 
-const API_BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5000') + '/api';
+import { isLocalDevice } from '../../utils/network';
+
+const getDynamicApiUrl = () => {
+    if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
+    return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+};
+
+const API_BASE_URL = getDynamicApiUrl();
 
 export default function ForgotPassword() {
     const navigate = useNavigate();
@@ -360,6 +367,195 @@ export default function ForgotPassword() {
 
     const passwordStrength = calculatePasswordStrength(newPassword);
 
+    // =================================================================================
+    // REMOTE DEVICE UI (Standard Responsive Web Layout)
+    // =================================================================================
+    if (!isLocalDevice()) {
+        return (
+            <div style={{
+                background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%)',
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px',
+                fontFamily: "'Inter', sans-serif"
+            }}>
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white rounded-4 shadow-lg p-4 p-md-5 w-100"
+                    style={{ maxWidth: '500px' }}
+                >
+                    {/* Header */}
+                    <div className="text-center mb-4">
+                        <h2 className="fw-bold mb-2 text-dark">
+                            {step === 1 && "Account Recovery"}
+                            {step === 2 && "Verification"}
+                            {step === 3 && "Reset Password"}
+                            {step === 4 && "Success!"}
+                        </h2>
+                        <p className="text-muted small">
+                            {step === 1 && "Enter your School Number or Email to proceed"}
+                            {step === 2 && "Enter the 6-digit code sent to your email"}
+                            {step === 3 && "Create a new strong password"}
+                            {step === 4 && "Your password has been updated"}
+                        </p>
+                    </div>
+
+                    {/* Step 1: Identifier */}
+                    {step === 1 && (
+                        <form onSubmit={handleSendOTP}>
+                            <div className="mb-4">
+                                <label className="form-label fw-bold">School Number or Email</label>
+                                <div className="input-group">
+                                    <span className="input-group-text bg-light border-end-0"><School /></span>
+                                    <input
+                                        type="text"
+                                        className="form-control form-control-lg border-start-0 ps-0"
+                                        placeholder="e.g. 2023-12345 or email@rtu.edu.ph"
+                                        value={identifier}
+                                        onChange={(e) => setIdentifier(e.target.value)}
+                                        autoFocus
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                className="btn btn-primary w-100 btn-lg mb-3"
+                                disabled={isLoading || (lastRequestedIdentifier === identifier && otpCooldown > 0)}
+                            >
+                                {isLoading ? 'Sending...' : (lastRequestedIdentifier === identifier && otpCooldown > 0) ? `Wait ${otpCooldown}s` : 'Send Verification Code'}
+                            </button>
+                            <button type="button" className="btn btn-light w-100" onClick={() => navigate('/login')}>
+                                Return to Login
+                            </button>
+                        </form>
+                    )}
+
+                    {/* Step 2: OTP */}
+                    {step === 2 && (
+                        <form onSubmit={handleVerifyOTP}>
+                            <div className="mb-4 text-center">
+                                <label className="form-label fw-bold mb-3">Enter Verification Code</label>
+                                <input
+                                    type="text"
+                                    className="form-control form-control-lg text-center fw-bold "
+                                    style={{ letterSpacing: '0.5em', fontSize: '1.5rem' }}
+                                    placeholder="XXXXXX"
+                                    value={otp}
+                                    onChange={(e) => {
+                                        const val = e.target.value.toUpperCase().slice(0, 6);
+                                        setOtp(val);
+                                    }}
+                                    autoFocus
+                                    maxLength={6}
+                                />
+                                {timeLeft > 0 ? (
+                                    <div className="text-muted small mt-2">Expires in {formatTime(timeLeft)}</div>
+                                ) : (
+                                    <div className="text-danger small mt-2 fw-bold">Code Expired</div>
+                                )}
+                            </div>
+                            <button type="submit" className="btn btn-primary w-100 btn-lg mb-3" disabled={isLoading || timeLeft === 0 || otp.length < 6}>
+                                {isLoading ? 'Verifying...' : 'Verify Code'}
+                            </button>
+                            <button type="button" className="btn btn-light w-100" onClick={() => { setStep(1); setOtp(''); }}>
+                                Start Over
+                            </button>
+                        </form>
+                    )}
+
+                    {/* Step 3: New Password */}
+                    {step === 3 && (
+                        <form onSubmit={handleResetPassword}>
+                            <div className="mb-3">
+                                <label className="form-label fw-bold">New Password</label>
+                                <div className="input-group">
+                                    <span className="input-group-text bg-light border-end-0"><Password /></span>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        className="form-control form-control-lg border-start-0 ps-0"
+                                        placeholder="Min. 6 characters"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <button className="btn btn-outline-secondary" type="button" onClick={() => setShowPassword(!showPassword)}>
+                                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                                    </button>
+                                </div>
+                                {/* Strength Bar */}
+                                {newPassword.length > 0 && (
+                                    <div className="mt-2 d-flex align-items-center gap-2" style={{ height: '4px' }}>
+                                        {[1, 2, 3].map(lvl => (
+                                            <div key={lvl} className="flex-grow-1 rounded-pill" style={{
+                                                height: '100%',
+                                                background: lvl <= passwordStrength.score ? passwordStrength.color : '#e9ecef'
+                                            }} />
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="small mt-1 text-end" style={{ color: passwordStrength.color }}>{passwordStrength.label}</div>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="form-label fw-bold">Confirm Password</label>
+                                <div className="input-group">
+                                    <span className="input-group-text bg-light border-end-0"><Password /></span>
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        className="form-control form-control-lg border-start-0 ps-0"
+                                        placeholder="Re-enter password"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                    />
+                                    <button className="btn btn-outline-secondary" type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={isLoading}>
+                                {isLoading ? 'Updating...' : 'Reset Password'}
+                            </button>
+                        </form>
+                    )}
+
+                    {/* Step 4: Success */}
+                    {step === 4 && (
+                        <div className="text-center py-4">
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mb-4 text-success">
+                                <CheckCircle style={{ fontSize: '5rem' }} />
+                            </motion.div>
+                            <h4 className="fw-bold text-success mb-3">Password Updated!</h4>
+                            <p className="text-muted mb-4">You can now login with your new credentials.</p>
+                            <button className="btn btn-primary w-100 btn-lg" onClick={() => navigate('/login')}>
+                                Go to Login
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Error Toast/Modal */}
+                    {showErrorModal && (
+                        <div className="alert alert-danger mt-3 d-flex align-items-center position-absolute top-0 start-50 translates-middle-x mt-4 shadow" role="alert" style={{ width: '90%', maxWidth: '400px', zIndex: 1050 }}>
+                            <span className="me-2">⚠️</span>
+                            <div className="flex-grow-1 small fw-bold">
+                                {error}
+                            </div>
+                            <button type="button" className="btn-close ms-2" onClick={() => setShowErrorModal(false)}></button>
+                        </div>
+                    )}
+
+                </motion.div>
+            </div>
+        );
+    }
+
+    // =================================================================================
+    // KIOSK DEVICE UI (Virtual Keyboard + Full Touch)
+    // =================================================================================
     return (
         <div className="forgot-password-container">
             <div className={`forgot-password-content`}>

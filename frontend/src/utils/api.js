@@ -1,5 +1,12 @@
 // frontend/src/utils/api.js - COMPLETE UPDATED VERSION WITH MISSING SENSOR FUNCTIONS
-const API_URL = (process.env.REACT_APP_API_URL || "http://127.0.0.1:5000") + "/api";
+const getDynamicApiUrl = () => {
+  if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
+  // Dynamically assume backend is on port 5000 of the same host
+  // This allows localhost access on Kiosk AND network IP access on other devices
+  return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+};
+
+const API_URL = getDynamicApiUrl();
 
 // Timeout configuration
 const TIMEOUTS = {
@@ -567,6 +574,30 @@ export const deleteMeasurement = async (measurementId) => {
     }, TIMEOUTS.MEDIUM);
   } catch (error) {
     console.error('Error deleting measurement:', error);
+    throw error;
+  }
+};
+
+// ==================== ADMIN API FUNCTIONS ====================
+
+// Get admin stats
+export const getAdminStats = async () => {
+  try {
+    console.log('📊 Getting admin stats...');
+    return await fetchWithTimeout(`${API_URL}/admin/stats`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Error getting admin stats:', error);
+    throw error;
+  }
+};
+
+// Get all users for admin
+export const getAdminUsers = async () => {
+  try {
+    console.log('👥 Getting all users for admin...');
+    return await fetchWithTimeout(`${API_URL}/admin/users`, {}, TIMEOUTS.MEDIUM);
+  } catch (error) {
+    console.error('Error getting admin users:', error);
     throw error;
   }
 };

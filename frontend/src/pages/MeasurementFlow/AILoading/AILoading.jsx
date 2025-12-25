@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./AILoading.css";
 import aiLoadingIcon from "../../../assets/icons/ai-icon.png";
+import { speak, reinitSpeech } from "../../../utils/speech";
 
 export default function AILoading() {
   const navigate = useNavigate();
@@ -67,6 +68,8 @@ export default function AILoading() {
     // Animation trigger and start analysis process
     const timer = setTimeout(() => {
       setIsVisible(true);
+      reinitSpeech(); // Ensure speech is ready
+      speak("Juan AI is now analyzing your health data. Please wait.");
       simulateAIThinkingProcess();
     }, 100);
 
@@ -99,7 +102,12 @@ export default function AILoading() {
       // Minimum wait time of 3 seconds for UX (so the animation isn't too fast)
       const minWaitTime = new Promise(resolve => setTimeout(resolve, 3000));
 
-      const apiCall = fetch('http://localhost:5000/api/juan-ai/predict-risk', {
+      const getDynamicApiUrl = () => {
+        if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
+        return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+      };
+
+      const apiCall = fetch(`${getDynamicApiUrl()}/juan-ai/predict-risk`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,6 +127,7 @@ export default function AILoading() {
         setAnalysisComplete(true);
         setCurrentStep(analysisSteps.length - 1);
         setStatusMessage("Analysis complete! Redirecting to results...");
+        speak("Analysis complete. Your health report is now ready.");
 
         // Success! Navigate with the AI Analysis Results
         setTimeout(() => {

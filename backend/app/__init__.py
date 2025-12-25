@@ -58,7 +58,8 @@ def create_app():
     app.register_blueprint(print_bp, url_prefix='/api/print')
 
     from app.routes.admin_routes import admin_bp
-    app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(admin_bp, url_prefix='/admin', name='admin_legacy') # Fallback alias
 
     from app.routes.share_routes import share_bp
     app.register_blueprint(share_bp, url_prefix='/api/share')

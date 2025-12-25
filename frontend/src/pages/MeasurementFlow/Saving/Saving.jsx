@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import "./Saving.css";
+import { speak, reinitSpeech } from "../../../utils/speech";
 
 export default function Saving() {
   const navigate = useNavigate();
@@ -13,6 +14,10 @@ export default function Saving() {
   const saveSuccessRef = React.useRef(false); // Track success across renders
 
   useEffect(() => {
+    // Initial speech announcement
+    reinitSpeech();
+    speak("Saving your health data. Please wait.");
+
     // 1. Start the progress animation
     const duration = 2000;
     const interval = 20;
@@ -76,7 +81,12 @@ export default function Saving() {
           providerGuidance: data.providerGuidance
         };
 
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/measurements/save`, {
+        const getDynamicApiUrl = () => {
+          if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
+          return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+        };
+
+        const response = await fetch(`${getDynamicApiUrl()}/measurements/save`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)

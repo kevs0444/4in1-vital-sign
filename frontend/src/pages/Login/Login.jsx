@@ -1,4 +1,4 @@
-// src/pages/Login/Login.jsx - NUMERIC RFID ONLY
+// src/pages/Login/Login.jsx - DUAL MODE: KIOSK (RFID/Virtual Key) & REMOTE (Standard)
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Container, Row, Col, Form, Button } from 'react-bootstrap';
@@ -19,6 +19,9 @@ import './Login.css';
 
 // Import API functions
 import { loginWithRFID, loginWithCredentials, storeUserData, testLoginConnection } from '../../utils/api';
+import { speak, reinitSpeech } from '../../utils/speech';
+import { isLocalDevice } from '../../utils/network';
+import logo from '../../assets/images/juan.png';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -62,6 +65,14 @@ export default function LoginPage() {
 
     checkConnection();
     setIsVisible(true);
+
+    // Voice announcement ONLY for Kiosk
+    if (isLocalDevice()) {
+      reinitSpeech();
+      setTimeout(() => {
+        speak("Please enter your credentials or tap your ID card.");
+      }, 500);
+    }
   }, []);
 
   // Process RFID data - Extract numbers only (NO RTU PREFIX)
@@ -165,6 +176,9 @@ export default function LoginPage() {
   // FIXED: Handle ALL keyboard input for RFID scanning with null check
   // Wrapped in useCallback to be a stable dependency
   const handleGlobalKeyDown = React.useCallback((e) => {
+    // DISABLE GLOBAL KEYDOWN FOR REMOTE DEVICES (prevents typing issues)
+    if (!isLocalDevice()) return;
+
     // Ignore if we're already processing RFID
     if (rfidLoading || isLoading) {
       return;
@@ -219,34 +233,39 @@ export default function LoginPage() {
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
 
-    // Prevent zooming via touch gestures
-    const preventZoom = (e) => e.touches.length > 1 && e.preventDefault();
-    const preventGesture = (e) => e.preventDefault();
+    // Prevent zooming via touch gestures - ONLY ON KIOSK
+    if (isLocalDevice()) {
+      const preventZoom = (e) => e.touches.length > 1 && e.preventDefault();
+      const preventGesture = (e) => e.preventDefault();
 
-    document.addEventListener('touchstart', preventZoom, { passive: false });
-    document.addEventListener('touchmove', preventZoom, { passive: false });
-    document.addEventListener('gesturestart', preventGesture, { passive: false });
-    document.addEventListener('gesturechange', preventGesture, { passive: false });
+      document.addEventListener('touchstart', preventZoom, { passive: false });
+      document.addEventListener('touchmove', preventZoom, { passive: false });
+      document.addEventListener('gesturestart', preventGesture, { passive: false });
+      document.addEventListener('gesturechange', preventGesture, { passive: false });
 
-    return () => {
-      document.removeEventListener('touchstart', preventZoom);
-      document.removeEventListener('touchmove', preventZoom);
-      document.removeEventListener('gesturestart', preventGesture);
-      document.removeEventListener('gesturechange', preventGesture);
-    };
+      return () => {
+        document.removeEventListener('touchstart', preventZoom);
+        document.removeEventListener('touchmove', preventZoom);
+        document.removeEventListener('gesturestart', preventGesture);
+        document.removeEventListener('gesturechange', preventGesture);
+      };
+    }
   }, []);
 
   // Setup RFID Scanner Listener - Run when handler changes (due to dependency update)
   useEffect(() => {
-    console.log('🔔 RFID Scanner Active - Ready to accept any card');
-    document.addEventListener('keydown', handleGlobalKeyDown);
+    // ONLY ENABLE RFID ON KIOSK
+    if (isLocalDevice()) {
+      console.log('🔔 RFID Scanner Active - Ready to accept any card');
+      document.addEventListener('keydown', handleGlobalKeyDown);
 
-    return () => {
-      document.removeEventListener('keydown', handleGlobalKeyDown);
-      if (rfidTimeoutRef.current) {
-        clearTimeout(rfidTimeoutRef.current);
-      }
-    };
+      return () => {
+        document.removeEventListener('keydown', handleGlobalKeyDown);
+        if (rfidTimeoutRef.current) {
+          clearTimeout(rfidTimeoutRef.current);
+        }
+      };
+    }
   }, [handleGlobalKeyDown]);
 
   const handleLogin = async (e) => {
@@ -406,9 +425,9 @@ export default function LoginPage() {
     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")"],
     ["-", "_", "+", "=", "{", "}", "[", "]", "|"],
-    [".", ",", "?", "!", "'", '"', ":", ";", "Del"],
     ["ABC", "~", "`", "\\", "/", "Space"],
-  ];
+    [".", ",", "?", "!", "'", '"', ":", ";", "Del"],
+  ]; // Reordered Del to be reachable
 
   const keyboardKeys = showSymbols ? symbolKeys : alphabetKeys;
 
@@ -457,6 +476,125 @@ export default function LoginPage() {
     }
   };
 
+
+  /* =================================================================================
+     REMOTE DEVICE UI (Laptop/Phone) - STANDARD LOGIN FORM
+     ================================================================================= */
+  if (!isLocalDevice()) {
+    return (
+      <div style={{
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%)',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        fontFamily: "'Inter', sans-serif"
+      }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-4 shadow-lg p-4 p-md-5 w-100"
+          style={{ maxWidth: '450px' }}
+        >
+          <div className="text-center mb-4">
+            <div className="d-inline-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm p-3 mb-3" style={{ width: '80px', height: '80px' }}>
+              <img src={logo} alt="Logo" style={{ width: '100%', height: 'auto' }} />
+            </div>
+            <h3 className="fw-bold mb-1 text-dark">Portal Login</h3>
+            <p className="text-muted">Access your health analytics</p>
+          </div>
+
+          <Form onSubmit={handleLogin}>
+            <Form.Group className="mb-3" controlId="remoteSchoolNumber">
+              <Form.Label>Student/Faculty ID or Email</Form.Label>
+              <Form.Control
+                ref={schoolNumberInputRef}
+                type="text"
+                placeholder="Enter ID number or email"
+                disabled={isLoading}
+                autoFocus
+                size="lg"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-4" controlId="remotePassword">
+              <Form.Label>Password</Form.Label>
+              <div className="input-group">
+                <Form.Control
+                  ref={passwordInputRef}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter password"
+                  disabled={isLoading}
+                  size="lg"
+                />
+                <Button
+                  variant="outline-secondary"
+                  onClick={() => setShowPassword(!showPassword)}
+                  type="button"
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </Button>
+              </div>
+            </Form.Group>
+
+            <div className="d-flex justify-content-end mb-4">
+              <Link to="/forgot-password" className="text-primary text-decoration-none small">
+                Forgot Password?
+              </Link>
+            </div>
+
+            <div className="d-grid gap-3">
+              <Button
+                variant="primary"
+                type="submit"
+                size="lg"
+                disabled={isLoading}
+                style={{ background: '#0d6efd', border: 'none' }}
+              >
+                {isLoading ? 'Signing In...' : 'Login to Dashboard'}
+              </Button>
+
+              <div className="text-center text-muted small my-1">OR</div>
+
+              <Button
+                variant="outline-primary"
+                as={Link}
+                to="/register/welcome"
+                size="lg"
+                disabled={isLoading}
+              >
+                Create an Account
+              </Button>
+            </div>
+          </Form>
+
+          <div className="mt-4 pt-4 border-top text-center text-muted small">
+            4 in Juan Vital Sign Kiosk Portal
+          </div>
+
+        </motion.div>
+
+        {/* Error Modal for Remote */}
+        {showErrorModal && (
+          <div className="login-error-overlay" onClick={() => setShowErrorModal(false)}>
+            <div className="bg-white p-4 rounded-4 shadow-lg" style={{ maxWidth: '350px' }} onClick={e => e.stopPropagation()}>
+              <h5 className="text-danger mb-3">⚠️ {errorTitle}</h5>
+              <p className="mb-4">{error}</p>
+              <Button variant="danger" className="w-100" onClick={() => setShowErrorModal(false)}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+
+  /* =================================================================================
+     KIOSK UI (Mini PC) - ORIGINAL LAYOUT (RFID + VIRTUAL KEYBOARD)
+     ================================================================================= */
   return (
     <Container fluid className="login-container">
       <Row className="justify-content-center align-items-center w-100 m-0 h-100">

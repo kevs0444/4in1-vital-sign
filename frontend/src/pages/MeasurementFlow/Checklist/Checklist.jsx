@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import "./Checklist.css";
+import { speak, reinitSpeech } from "../../../utils/speech";
+import { isLocalDevice } from "../../../utils/network";
 
 // Import 3D Icon Assets
 import bmiIcon from "../../../assets/icons/bmi-3d.png";
@@ -27,7 +29,17 @@ export default function Checklist() {
   const [selectedItems, setSelectedItems] = useState([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 100);
+    // BLOCK REMOTE ACCESS
+    if (!isLocalDevice()) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+      reinitSpeech();
+      speak("Please select the measurements you want to perform, then tap Start.");
+    }, 100);
     return () => clearTimeout(timer);
   }, []);
 

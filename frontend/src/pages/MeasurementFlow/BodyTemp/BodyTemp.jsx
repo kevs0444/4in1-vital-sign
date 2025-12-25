@@ -7,15 +7,24 @@ import "../main-components-measurement.css";
 import tempIcon from "../../../assets/icons/temp-icon.png";
 import { sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
+import { isLocalDevice } from "../../../utils/network";
 import { speak } from "../../../utils/speech";
 import step1Icon from "../../../assets/icons/bodytemp-step1.png";
 import step2Icon from "../../../assets/icons/bodytemp-step2.png";
-import step3Icon from "../../../assets/icons/bodytemp-step3.png";
+import step3Icon from "../../../assets/icons/measurement-step3.png";
 
 export default function BodyTemp() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setIsInactivityEnabled } = useInactivity();
+
+  // BLOCK REMOTE ACCESS
+  useEffect(() => {
+    if (!isLocalDevice()) {
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
+
   const [temperature, setTemperature] = useState("");
   const [isVisible, setIsVisible] = useState(false);
   const [isMeasuring, setIsMeasuring] = useState(false);
@@ -113,16 +122,26 @@ export default function BodyTemp() {
     setIsInactivityEnabled(!isMeasuring);
   }, [isMeasuring, setIsInactivityEnabled]);
 
-  // Voice Instructions - Removed Delay
+  // Voice Instructions - Synced with UI
   useEffect(() => {
-    if (measurementStep === 1) {
-      speak("Step 1. Position Sensor. Point sensor at forehead.");
-    } else if (measurementStep === 2) {
-      speak("Step 2. Start Measurement. Click Start button.");
-    } else if (measurementStep === 3) {
-      speak("Step 3. Measurement Complete. Proceed to next step.");
-    }
-  }, [measurementStep]);
+    const timer = setTimeout(() => {
+      const isLast = isLastStep('bodytemp', location.state?.checklist);
+      if (measurementStep === 0) {
+        speak("Body Temperature Measurement. Get ready to measure your temperature.");
+      } else if (measurementStep === 1) {
+        speak("Step 1. Position Sensor. Point sensor at forehead.");
+      } else if (measurementStep === 2) {
+        speak("Step 2. Start Measurement. Click Start button.");
+      } else if (measurementStep === 3) {
+        if (isLast) {
+          speak("Step 3. Results Ready. All measurements complete.");
+        } else {
+          speak("Step 3. Measurement Complete. Continue to next step.");
+        }
+      }
+    }, 300); // Small delay to sync with UI update
+    return () => clearTimeout(timer);
+  }, [measurementStep, location.state?.checklist]);
 
   // Prevent zooming functions - placeholders if referenced elsewhere (unlikely due to scoping above, removing global ones)
   // Actually, keeping them might be safer if used by other hooks, but they are not. Removing to keep clean.
@@ -542,9 +561,13 @@ export default function BodyTemp() {
                   <div className="instruction-icon">
                     <img src={step3Icon} alt="Complete" className="step-icon-image" />
                   </div>
-                  <h4 className="instruction-title">Continue</h4>
+                  <h4 className="instruction-title">
+                    {isLastStep('bodytemp', location.state?.checklist) ? 'Results Ready' : 'Complete'}
+                  </h4>
                   <p className="instruction-text">
-                    Proceed to next step
+                    {isLastStep('bodytemp', location.state?.checklist)
+                      ? "All measurements complete!"
+                      : "Continue to next measurement"}
                   </p>
                 </div>
               </div>

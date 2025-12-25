@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Button } from "react-bootstrap";
 import { motion } from "framer-motion";
-import { Dashboard, MonitorHeart } from "@mui/icons-material";
 import "./MeasurementWelcome.css";
 import welcomeImg from "../../../assets/images/welcome.png";
-import brandLogo from "../../../assets/images/logo.png";
 import dashboard3d from "../../../assets/icons/dashboard-3d.png";
 import measure3d from "../../../assets/icons/measure-3d.png";
+import { speak, reinitSpeech } from "../../../utils/speech";
+import { isLocalDevice } from "../../../utils/network";
 
 export default function MeasurementWelcome() {
   const navigate = useNavigate();
   const location = useLocation();
+  // eslint-disable-next-line no-unused-vars
   const [isVisible, setIsVisible] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showSelection, setShowSelection] = useState(false); // New state for selection view
   const [userData, setUserData] = useState({
@@ -59,9 +60,11 @@ export default function MeasurementWelcome() {
 
   useEffect(() => {
     // Get user data from location state (passed from Login)
+    let userName = "";
     if (location.state) {
       console.log("📥 Received user data in MeasurementWelcome:", location.state);
       setUserData(location.state);
+      userName = location.state.firstName || "";
       // ENABLE SELECTION FOR ALL ROLES
       setShowSelection(true);
     } else {
@@ -71,6 +74,7 @@ export default function MeasurementWelcome() {
         if (storedUser) {
           const user = JSON.parse(storedUser);
           console.log("📥 Retrieved user data from localStorage:", user);
+          userName = user.firstName || "";
           setUserData({
             firstName: user.firstName || "",
             lastName: user.lastName || "",
@@ -91,10 +95,17 @@ export default function MeasurementWelcome() {
 
     const timer = setTimeout(() => {
       setIsVisible(true);
+      reinitSpeech();
+      if (userName) {
+        speak(`Hello ${userName}. Please choose to start measurement or view your dashboard.`);
+      } else {
+        speak("Please choose to start measurement or view your dashboard.");
+      }
     }, 100);
     return () => clearTimeout(timer);
   }, [location.state]);
 
+  // eslint-disable-next-line no-unused-vars
   const checkRole = (role) => {
     // Role check disabled - showing selection for everyone
     if (role) {
@@ -147,6 +158,7 @@ export default function MeasurementWelcome() {
     });
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleShowTerms = () => setShowTerms(true);
   const handleCloseTerms = () => setShowTerms(false);
 
@@ -159,6 +171,86 @@ export default function MeasurementWelcome() {
     navigate("/login");
   };
 
+  /* =================================================================================
+     REMOTE DEVICE UI (Portal Style - No Measurement)
+     ================================================================================= */
+  if (!isLocalDevice()) {
+    return (
+      <div style={{
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%)',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        fontFamily: "'Inter', sans-serif"
+      }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-4 shadow-lg p-4 p-md-5 w-100 text-center"
+          style={{ maxWidth: '500px' }}
+        >
+          <div className="mb-4 d-flex justify-content-center">
+            <img src={welcomeImg} alt="Welcome" style={{ width: '120px', height: 'auto' }} />
+          </div>
+
+          <h2 className="fw-bold text-dark mb-2">Welcome, {userData.firstName || 'User'}!</h2>
+          <p className="text-muted mb-4">You are logged into the 4-in-Juan Portal.</p>
+
+          <div className="d-grid gap-3">
+            <button
+              onClick={handleDashboard}
+              className="btn btn-primary btn-lg py-3 shadow-sm border-0"
+              style={{ background: 'linear-gradient(90deg, #0d6efd 0%, #0a58ca 100%)' }}
+            >
+              <div className="d-flex align-items-center justify-content-center gap-2">
+                <img src={dashboard3d} style={{ width: '24px' }} alt="" />
+                View Dashboard
+              </div>
+            </button>
+
+            <button
+              onClick={() => setShowExitModal(true)}
+              className="btn btn-outline-danger btn-lg py-2"
+            >
+              Log Out
+            </button>
+          </div>
+
+          <div className="mt-4 pt-4 border-top text-muted small">
+            <p className="mb-0">Vital Sign Kiosk Portal</p>
+            <p className="mb-0" style={{ fontSize: '0.8rem' }}>Measurements can only be taken at the physical kiosk.</p>
+          </div>
+
+        </motion.div>
+
+        {/* Exit/Logout Modal for Remote */}
+        {showExitModal && (
+          <div className="exit-modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowExitModal(false)}>
+            <motion.div
+              className="bg-white p-4 rounded-4 shadow"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '350px', width: '90%' }}
+            >
+              <h4 className="fw-bold mb-3">Log Out?</h4>
+              <p className="text-muted mb-4">Are you sure you want to sign out directly?</p>
+              <div className="d-grid gap-2">
+                <button className="btn btn-danger" onClick={confirmExit}>Yes, Log Out</button>
+                <button className="btn btn-light" onClick={() => setShowExitModal(false)}>Cancel</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // =================================================================================
+  // KIOSK DEVICE UI (Original)
+  // =================================================================================
   return (
     <div
       className="register-container"
@@ -226,12 +318,12 @@ export default function MeasurementWelcome() {
               <p className="selection-desc">Manage records & analytics.</p>
             </div>
 
-            <div className="selection-card" onClick={handleStartMeasure}>
+            <div className="selection-card" onClick={isLocalDevice() ? handleStartMeasure : null} style={{ opacity: isLocalDevice() ? 1 : 0.5, cursor: isLocalDevice() ? 'pointer' : 'not-allowed' }}>
               <div className="selection-icon-wrapper">
                 <img src={measure3d} alt="Measure" className="selection-icon-image" />
               </div>
               <h3 className="selection-title">Measure</h3>
-              <p className="selection-desc">New measurement session.</p>
+              <p className="selection-desc">{isLocalDevice() ? "New measurement session." : "Available on Kiosk only."}</p>
             </div>
           </div>
         ) : (
@@ -240,10 +332,12 @@ export default function MeasurementWelcome() {
             {/* Action Buttons */}
             <div className="button-section">
               <button
-                className="continue-button"
+                className={`continue-button ${!isLocalDevice() ? 'disabled' : ''}`}
                 onClick={handleContinue}
+                disabled={!isLocalDevice()}
+                style={{ opacity: isLocalDevice() ? 1 : 0.5, cursor: isLocalDevice() ? 'pointer' : 'not-allowed' }}
               >
-                OK, Let's Start
+                {isLocalDevice() ? "OK, Let's Start" : "Kiosk Only"}
               </button>
             </div>
           </div>

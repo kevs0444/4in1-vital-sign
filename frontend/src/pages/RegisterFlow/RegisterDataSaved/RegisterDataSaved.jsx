@@ -9,7 +9,12 @@ const registerUser = async (userData) => {
   try {
     console.log('📤 Sending registration data to backend:', userData);
 
-    const API_BASE = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
+    const getDynamicApiUrl = () => {
+      if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
+      return `${window.location.protocol}//${window.location.hostname}:5000`;
+    };
+
+    const API_BASE = getDynamicApiUrl();
     const response = await fetch(`${API_BASE}/api/register/register`, {
       method: 'POST',
       headers: {

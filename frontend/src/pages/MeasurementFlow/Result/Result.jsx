@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Result.css";
+import { speak, reinitSpeech } from "../../../utils/speech";
 
 export default function Result() {
   const navigate = useNavigate();
@@ -69,6 +70,17 @@ export default function Result() {
       document.documentElement.classList.remove('low-risk', 'moderate-risk', 'high-risk', 'critical-risk');
     };
   }, [riskLevel]);
+
+  // Voice announcement when results are ready
+  useEffect(() => {
+    if (riskLevel > 0 && riskCategory) {
+      reinitSpeech();
+      // Announce results are ready without revealing percentage for privacy
+      setTimeout(() => {
+        speak("Your health assessment results are now ready. Please review the screen for your personalized recommendations.");
+      }, 500);
+    }
+  }, [riskLevel, riskCategory]);
 
   const analyzeHealthData = (data) => {
     console.log("🔍 Analyzing health data:", data);
