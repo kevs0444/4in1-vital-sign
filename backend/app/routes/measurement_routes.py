@@ -144,6 +144,15 @@ def get_user_history(user_id):
         
         history = []
         for m in measurements:
+            rec_data = {}
+            if m.recommendation:
+                rec_data = {
+                    'medical_action': m.recommendation.medical_action,
+                    'preventive_strategy': m.recommendation.preventive_strategy,
+                    'wellness_tips': m.recommendation.wellness_tips,
+                    'provider_guidance': m.recommendation.provider_guidance
+                }
+
             history.append({
                 'id': m.id,
                 'created_at': m.created_at.isoformat(),
@@ -152,9 +161,13 @@ def get_user_history(user_id):
                 'diastolic': m.diastolic,
                 'heart_rate': m.heart_rate,
                 'spo2': m.spo2,
+                'respiratory_rate': m.respiratory_rate,
                 'weight': m.weight,
+                'height': m.height,
                 'bmi': m.bmi,
-                'risk_category': m.risk_category
+                'risk_category': m.risk_category,
+                'risk_score': m.risk_level,
+                'recommendation': rec_data
             })
             
         return jsonify({'success': True, 'history': history}), 200
