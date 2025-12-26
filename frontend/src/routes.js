@@ -1,6 +1,6 @@
 // src/routes.js (FIXED)
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 // 🩺 Measurement Flow
 import AILoading from "./pages/MeasurementFlow/AILoading/AILoading";
@@ -33,43 +33,55 @@ import Maintenance from "./pages/Dashboards/Admin/Maintenance/Maintenance";
 
 // 🔐 Login
 import LoginPage from "./pages/Login/Login";
+import LoginRemote from "./pages/Remote/Login/LoginRemote";
 import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
+import ForgotPasswordRemote from "./pages/Remote/ForgotPassword/ForgotPasswordRemote";
 
 // 💤 Standby & 404
 import Standby from "./pages/Standby/Standby";
+import StandbyRemote from "./pages/Remote/Standby/StandbyRemote";
 import NotFound from "./pages/NotFound/NotFound";
+import { isLocalDevice } from "./utils/network";
+
+// Remote Register Components
+import RegisterWelcomeRemote from "./pages/Remote/RegisterFlow/RegisterWelcome/RegisterWelcomeRemote";
+import RegisterRoleRemote from "./pages/Remote/RegisterFlow/RegisterRole/RegisterRoleRemote";
+import RegisterPersonalInfoRemote from "./pages/Remote/RegisterFlow/RegisterPersonalInfo/RegisterPersonalInfoRemote";
+import RegisterTapIDRemote from "./pages/Remote/RegisterFlow/RegisterTapID/RegisterTapIDRemote";
+import RegisterDataSavedRemote from "./pages/Remote/RegisterFlow/RegisterDataSaved/RegisterDataSavedRemote";
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* 🏠 Default route */}
-      <Route path="/" element={<Standby />} />
+      {/* 🏠 Default route - Auto-detects Kiosk vs Remote */}
+      <Route path="/" element={isLocalDevice() ? <Standby /> : <StandbyRemote />} />
 
       {/* 🔐 Login */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/login" element={isLocalDevice() ? <LoginPage /> : <LoginRemote />} />
+      <Route path="/forgot-password" element={isLocalDevice() ? <ForgotPassword /> : <ForgotPasswordRemote />} />
 
-      {/* 🩺 Measurement Flow */}
-      <Route path="/measure/welcome" element={<MeasurementWelcome />} />
-      <Route path="/measure/starting" element={<Starting />} />
-      <Route path="/measure/ai-loading" element={<AILoading />} />
-      <Route path="/measure/checklist" element={<Checklist />} />
-      <Route path="/measure/bloodpressure" element={<BloodPressure />} />
-      <Route path="/measure/bmi" element={<BMI />} />
-      <Route path="/measure/bodytemp" element={<BodyTemp />} />
-      <Route path="/measure/max30102" element={<Max30102 />} />
-      <Route path="/measure/result" element={<Result />} />
-      <Route path="/measure/saving" element={<Saving />} />
-      <Route path="/measure/sharing" element={<Sharing />} />
+      {/* 🩺 Measurement Flow - Kiosk Only */}
+      <Route path="/measure/welcome" element={isLocalDevice() ? <MeasurementWelcome /> : <Navigate to="/" />} />
+      <Route path="/measure/starting" element={isLocalDevice() ? <Starting /> : <Navigate to="/" />} />
+      <Route path="/measure/ai-loading" element={isLocalDevice() ? <AILoading /> : <Navigate to="/" />} />
+      <Route path="/measure/checklist" element={isLocalDevice() ? <Checklist /> : <Navigate to="/" />} />
+      <Route path="/measure/bloodpressure" element={isLocalDevice() ? <BloodPressure /> : <Navigate to="/" />} />
+      <Route path="/measure/bmi" element={isLocalDevice() ? <BMI /> : <Navigate to="/" />} />
+      <Route path="/measure/bodytemp" element={isLocalDevice() ? <BodyTemp /> : <Navigate to="/" />} />
+      <Route path="/measure/max30102" element={isLocalDevice() ? <Max30102 /> : <Navigate to="/" />} />
+      <Route path="/measure/result" element={isLocalDevice() ? <Result /> : <Navigate to="/" />} />
+      <Route path="/measure/saving" element={isLocalDevice() ? <Saving /> : <Navigate to="/" />} />
+      <Route path="/measure/sharing" element={isLocalDevice() ? <Sharing /> : <Navigate to="/" />} />
 
       {/* 🧾 Register Flow */}
-      <Route path="/register/welcome" element={<RegisterWelcome />} />
-      <Route path="/register/role" element={<RegisterRole />} />
-      <Route path="/register/tapid" element={<RegisterTapID />} />
-      <Route path="/register/personal-info" element={<RegisterPersonalInfo />} />
-      <Route path="/register/saved" element={<RegisterDataSaved />} />
+      <Route path="/register/welcome" element={isLocalDevice() ? <RegisterWelcome /> : <RegisterWelcomeRemote />} />
+      <Route path="/register/role" element={isLocalDevice() ? <RegisterRole /> : <RegisterRoleRemote />} />
+      <Route path="/register/tapid" element={isLocalDevice() ? <RegisterTapID /> : <RegisterTapIDRemote />} />
+      <Route path="/register/personal-info" element={isLocalDevice() ? <RegisterPersonalInfo /> : <RegisterPersonalInfoRemote />} />
+      <Route path="/register/saved" element={isLocalDevice() ? <RegisterDataSaved /> : <RegisterDataSavedRemote />} />
 
       {/* 🧭 Dashboards */}
+      <Route path="/dashboard" element={<Navigate to="/student/dashboard" replace />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
       <Route path="/employee/dashboard" element={<EmployeeDashboard />} />

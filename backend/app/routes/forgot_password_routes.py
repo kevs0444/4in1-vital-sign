@@ -375,6 +375,10 @@ def reset_password():
         print("❌ Missing required fields")
         return jsonify({'success': False, 'message': 'All fields are required'}), 400
 
+    if len(new_password) < 6:
+        print("❌ Password too short")
+        return jsonify({'success': False, 'message': 'Password must be at least 6 characters'}), 400
+
     try:
         db = next(get_db())
         

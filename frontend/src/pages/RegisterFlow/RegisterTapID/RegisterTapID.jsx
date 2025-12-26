@@ -509,9 +509,9 @@ export default function RegisterTapID() {
   };
 
   const validateIDNumber = (idNumber) => {
-    // Allow only numbers and hyphens, minimum 3 characters
+    // Allow only numbers and hyphens, minimum 1 character
     const idRegex = /^[0-9-]+$/;
-    return idRegex.test(idNumber) && idNumber.trim().length >= 3;
+    return idRegex.test(idNumber) && idNumber.trim().length >= 1;
   };
 
   const validatePassword = (password) => {
@@ -677,130 +677,7 @@ export default function RegisterTapID() {
   /* =================================================================================
      REMOTE DEVICE UI (Laptop/Phone)
      ================================================================================= */
-  if (!isLocalDevice()) {
-    return (
-      <Container fluid className="p-3 bg-light min-vh-100 d-flex flex-column" style={{ overflowY: 'auto' }}>
-        <div className="w-100 bg-white p-4 rounded-4 shadow-sm" style={{ maxWidth: '500px', margin: '0 auto' }}>
 
-          <div className="text-center mb-4">
-            <h2 className="fw-bold text-dark">{steps[currentStep].title}</h2>
-            <p className="text-muted">{steps[currentStep].subtitle}</p>
-          </div>
-
-          {errorMessage && (
-            <div className="alert alert-danger mb-4 rounded-3 border-0 bg-danger bg-opacity-10 text-danger fw-bold">
-              ⚠️ {errorMessage}
-            </div>
-          )}
-
-          <Form onSubmit={(e) => { e.preventDefault(); handleContinue(); }}>
-
-            {currentStep === 0 && (
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold">{getIdNumberLabel()}</Form.Label>
-                <Form.Control
-                  size="lg"
-                  type="text"
-                  value={formData.idNumber}
-                  onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                  placeholder={getIdNumberPlaceholder()}
-                  autoFocus
-                  className="rounded-3"
-                />
-              </Form.Group>
-            )}
-
-            {currentStep === 1 && (
-              <>
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-bold">Mobile Number or Email</Form.Label>
-                  <Form.Control
-                    size="lg"
-                    type="text"
-                    value={formData.mobileNumber}
-                    onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
-                    placeholder="e.g. 09123456789 or email@rtu.edu.ph"
-                    autoFocus
-                    className="rounded-3"
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-bold">Create Password</Form.Label>
-                  <Form.Control
-                    size="lg"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    placeholder="Enter password (min. 6-10 chars)"
-                    className="rounded-3"
-                  />
-                  <Form.Text className="text-muted">
-                    Must be 6-10 characters long.
-                  </Form.Text>
-                </Form.Group>
-              </>
-            )}
-
-            {currentStep === 2 && (
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold">RFID Tag (Scan or Type)</Form.Label>
-                <Form.Control
-                  size="lg"
-                  type="text"
-                  value={formData.rfidTag || ""}
-                  onChange={(e) => {
-                    // Direct update if handleInputChange supports it
-                    // Assuming 'rfidTag' is the key in formData, wait, original logic handles this differently?
-                    // Original logic uses HIDDEN INPUT with rfidInputRef.
-                    // On Remote, we just treat it as a text field. 
-                    // Need to ensure handleInputChange updates formData.rfidTag properly.
-                    // Step 2 logic in Kiosk was mostly automatic. 
-                    // I will assume handleInputChange updates formData.
-                    // If not, I might need setFormData.
-                    // Let's assume handleInputChange is generic setters.
-                    handleInputChange('rfidTag', e.target.value);
-                  }}
-                  placeholder="Click here and scan card"
-                  autoFocus
-                  className="rounded-3"
-                />
-                <Form.Text className="text-muted">
-                  Use your USB scanner or type manual code.
-                </Form.Text>
-              </Form.Group>
-            )}
-
-            <div className="d-grid gap-2 mt-4 pt-2">
-              <Button
-                variant="danger"
-                size="lg"
-                type="submit"
-                className="rounded-3 fw-bold"
-              >
-                {currentStep === 2 ? "Complete Registration" : "Next Step"}
-              </Button>
-
-              <Button
-                variant="light"
-                size="lg"
-                type="button"
-                onClick={handleBack}
-                className="rounded-3 text-muted"
-              >
-                {currentStep === 0 ? "Back to Roles" : "Back"}
-              </Button>
-            </div>
-
-            <div className="text-center mt-3 text-muted small">
-              Step {currentStep + 1} of 3
-            </div>
-
-          </Form>
-        </div>
-      </Container>
-    );
-  }
 
   return (
     <div className={isLocalDevice() ? "register-tapid-container" : "register-tapid-container-remote"}>
@@ -895,7 +772,7 @@ export default function RegisterTapID() {
                       }}
                       autoComplete="off"
                       readOnly={isLocalDevice()}
-                      inputMode={isLocalDevice() ? "none" : "text"}
+                      inputMode={isLocalDevice() ? "none" : "numeric"}
                     />
                     <div className="input-hint">
                       {roleSettings.hint}

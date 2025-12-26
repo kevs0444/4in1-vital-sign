@@ -12,7 +12,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './ForgotPassword.css';
 import forgotPassIcon from '../../assets/icons/forgot-pass-icon.png';
 
-import { isLocalDevice } from '../../utils/network';
+
+import { speak, reinitSpeech } from '../../utils/speech';
 
 const getDynamicApiUrl = () => {
     if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
@@ -59,6 +60,25 @@ export default function ForgotPassword() {
         }
     }, [otpCooldown]);
 
+    // Blinking cursor effect
+    const [showCursor, setShowCursor] = useState(true);
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setShowCursor(prev => !prev);
+        }, 530);
+        return () => clearInterval(interval);
+    }, []);
+
+    const getDisplayValue = (rawVal, inputName) => {
+        // Show blinking cursor on ACTIVE inputs.
+        // Enhanced backspace handling ensures this works on Remote (writable) inputs too.
+        // Matches RegisterTapID logic: Exclude passwords, only show if value exists.
+        if (activeInput === inputName && showCursor && inputName !== 'newPassword' && inputName !== 'confirmPassword' && rawVal && rawVal.length > 0) {
+            return rawVal + '|';
+        }
+        return rawVal;
+    };
+
     // OTP Expiration Timer
     useEffect(() => {
         if (step === 2 && timeLeft > 0) {
@@ -69,6 +89,55 @@ export default function ForgotPassword() {
             // Optionally auto-fail or just rely on UI state
         }
     }, [timeLeft, step]);
+
+    // Handle Speech for each step (Kiosk only - always runs)
+    useEffect(() => {
+        reinitSpeech();
+        setTimeout(() => {
+            if (step === 1) {
+                speak("Please enter your School Number or Email Address to recover your account.");
+            } else if (step === 2) {
+                speak("Please enter the verification code sent to your email.");
+            } else if (step === 3) {
+                speak("Please create a new strong password.");
+            } else if (step === 4) {
+                speak("Your password has been successfully updated. Redirecting to login.");
+            }
+        }, 500);
+    }, [step]);
+
+    // Global Keyboard Listener for OTP (replaces hidden input logic for Remote users)
+    useEffect(() => {
+        const handleGlobalKeyDown = (e) => {
+            if (step !== 2) return;
+            // Ignore if modifier keys are pressed
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+            // Only process if activeInput is 'otp'
+            if (activeInput !== 'otp') return;
+
+            const key = e.key;
+
+            if (key === 'Backspace') {
+                e.preventDefault();
+                setOtp(prev => prev.slice(0, -1));
+            } else if (key === 'Enter') {
+                e.preventDefault();
+                handleVerifyOTP();
+            } else if (/^[0-9a-zA-Z]$/.test(key)) {
+                e.preventDefault();
+                setOtp(prev => {
+                    if (prev.length < 6) {
+                        return (prev + key).toUpperCase();
+                    }
+                    return prev;
+                });
+            }
+        };
+
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, [step, activeInput]);
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -275,6 +344,27 @@ export default function ForgotPassword() {
         }
     }, [activeInput]);
 
+    // Smart Change Handler for Remote Inputs (handles pipe cursor backspacing)
+    // Matches RegisterTapID handleInputChange logic
+    const handleSmartChange = (e, currentState, setState, inputName) => {
+        let val = e.target.value;
+        // Strip cursor char if present
+        let cleanVal = val.replace(/\|/g, '');
+
+        // SMART BACKSPACE FIX for Remote Devices:
+        // If the new value equals the current state (meaning only the '|' was removed),
+        // and the length indicates a deletion, it means the user backspaced the fake cursor.
+        // We should therefore delete the last actual character.
+        // STRICTLY EXCLUDE PASSWORDS from this logic as they don't use the fake cursor.
+        if (showCursor && activeInput === inputName && inputName !== 'newPassword' && inputName !== 'confirmPassword') {
+            if (cleanVal === currentState && val.length < (currentState.length + 1)) {
+                cleanVal = cleanVal.slice(0, -1);
+            }
+        }
+
+        setState(cleanVal);
+    };
+
     // Keyboard Handling
     const handleKeyboardPress = (key) => {
         if (key === "↑") {
@@ -309,7 +399,8 @@ export default function ForgotPassword() {
         } else {
             // Limits
             if (activeInput === 'otp' && currentValue.length >= 6) return;
-            if ((activeInput === 'newPassword' || activeInput === 'confirmPassword') && currentValue.length >= 10) return;
+            // Password max length limit removed (was 10)
+            // if ((activeInput === 'newPassword' || activeInput === 'confirmPassword') && currentValue.length >= 10) return;
 
             let char = key;
 
@@ -367,191 +458,6 @@ export default function ForgotPassword() {
 
     const passwordStrength = calculatePasswordStrength(newPassword);
 
-    // =================================================================================
-    // REMOTE DEVICE UI (Standard Responsive Web Layout)
-    // =================================================================================
-    if (!isLocalDevice()) {
-        return (
-            <div style={{
-                background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%)',
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '20px',
-                fontFamily: "'Inter', sans-serif"
-            }}>
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-white rounded-4 shadow-lg p-4 p-md-5 w-100"
-                    style={{ maxWidth: '500px' }}
-                >
-                    {/* Header */}
-                    <div className="text-center mb-4">
-                        <h2 className="fw-bold mb-2 text-dark">
-                            {step === 1 && "Account Recovery"}
-                            {step === 2 && "Verification"}
-                            {step === 3 && "Reset Password"}
-                            {step === 4 && "Success!"}
-                        </h2>
-                        <p className="text-muted small">
-                            {step === 1 && "Enter your School Number or Email to proceed"}
-                            {step === 2 && "Enter the 6-digit code sent to your email"}
-                            {step === 3 && "Create a new strong password"}
-                            {step === 4 && "Your password has been updated"}
-                        </p>
-                    </div>
-
-                    {/* Step 1: Identifier */}
-                    {step === 1 && (
-                        <form onSubmit={handleSendOTP}>
-                            <div className="mb-4">
-                                <label className="form-label fw-bold">School Number or Email</label>
-                                <div className="input-group">
-                                    <span className="input-group-text bg-light border-end-0"><School /></span>
-                                    <input
-                                        type="text"
-                                        className="form-control form-control-lg border-start-0 ps-0"
-                                        placeholder="e.g. 2023-12345 or email@rtu.edu.ph"
-                                        value={identifier}
-                                        onChange={(e) => setIdentifier(e.target.value)}
-                                        autoFocus
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="submit"
-                                className="btn btn-primary w-100 btn-lg mb-3"
-                                disabled={isLoading || (lastRequestedIdentifier === identifier && otpCooldown > 0)}
-                            >
-                                {isLoading ? 'Sending...' : (lastRequestedIdentifier === identifier && otpCooldown > 0) ? `Wait ${otpCooldown}s` : 'Send Verification Code'}
-                            </button>
-                            <button type="button" className="btn btn-light w-100" onClick={() => navigate('/login')}>
-                                Return to Login
-                            </button>
-                        </form>
-                    )}
-
-                    {/* Step 2: OTP */}
-                    {step === 2 && (
-                        <form onSubmit={handleVerifyOTP}>
-                            <div className="mb-4 text-center">
-                                <label className="form-label fw-bold mb-3">Enter Verification Code</label>
-                                <input
-                                    type="text"
-                                    className="form-control form-control-lg text-center fw-bold "
-                                    style={{ letterSpacing: '0.5em', fontSize: '1.5rem' }}
-                                    placeholder="XXXXXX"
-                                    value={otp}
-                                    onChange={(e) => {
-                                        const val = e.target.value.toUpperCase().slice(0, 6);
-                                        setOtp(val);
-                                    }}
-                                    autoFocus
-                                    maxLength={6}
-                                />
-                                {timeLeft > 0 ? (
-                                    <div className="text-muted small mt-2">Expires in {formatTime(timeLeft)}</div>
-                                ) : (
-                                    <div className="text-danger small mt-2 fw-bold">Code Expired</div>
-                                )}
-                            </div>
-                            <button type="submit" className="btn btn-primary w-100 btn-lg mb-3" disabled={isLoading || timeLeft === 0 || otp.length < 6}>
-                                {isLoading ? 'Verifying...' : 'Verify Code'}
-                            </button>
-                            <button type="button" className="btn btn-light w-100" onClick={() => { setStep(1); setOtp(''); }}>
-                                Start Over
-                            </button>
-                        </form>
-                    )}
-
-                    {/* Step 3: New Password */}
-                    {step === 3 && (
-                        <form onSubmit={handleResetPassword}>
-                            <div className="mb-3">
-                                <label className="form-label fw-bold">New Password</label>
-                                <div className="input-group">
-                                    <span className="input-group-text bg-light border-end-0"><Password /></span>
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        className="form-control form-control-lg border-start-0 ps-0"
-                                        placeholder="Min. 6 characters"
-                                        value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
-                                        autoFocus
-                                    />
-                                    <button className="btn btn-outline-secondary" type="button" onClick={() => setShowPassword(!showPassword)}>
-                                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                                    </button>
-                                </div>
-                                {/* Strength Bar */}
-                                {newPassword.length > 0 && (
-                                    <div className="mt-2 d-flex align-items-center gap-2" style={{ height: '4px' }}>
-                                        {[1, 2, 3].map(lvl => (
-                                            <div key={lvl} className="flex-grow-1 rounded-pill" style={{
-                                                height: '100%',
-                                                background: lvl <= passwordStrength.score ? passwordStrength.color : '#e9ecef'
-                                            }} />
-                                        ))}
-                                    </div>
-                                )}
-                                <div className="small mt-1 text-end" style={{ color: passwordStrength.color }}>{passwordStrength.label}</div>
-                            </div>
-
-                            <div className="mb-4">
-                                <label className="form-label fw-bold">Confirm Password</label>
-                                <div className="input-group">
-                                    <span className="input-group-text bg-light border-end-0"><Password /></span>
-                                    <input
-                                        type={showConfirmPassword ? "text" : "password"}
-                                        className="form-control form-control-lg border-start-0 ps-0"
-                                        placeholder="Re-enter password"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                    />
-                                    <button className="btn btn-outline-secondary" type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={isLoading}>
-                                {isLoading ? 'Updating...' : 'Reset Password'}
-                            </button>
-                        </form>
-                    )}
-
-                    {/* Step 4: Success */}
-                    {step === 4 && (
-                        <div className="text-center py-4">
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mb-4 text-success">
-                                <CheckCircle style={{ fontSize: '5rem' }} />
-                            </motion.div>
-                            <h4 className="fw-bold text-success mb-3">Password Updated!</h4>
-                            <p className="text-muted mb-4">You can now login with your new credentials.</p>
-                            <button className="btn btn-primary w-100 btn-lg" onClick={() => navigate('/login')}>
-                                Go to Login
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Error Toast/Modal */}
-                    {showErrorModal && (
-                        <div className="alert alert-danger mt-3 d-flex align-items-center position-absolute top-0 start-50 translates-middle-x mt-4 shadow" role="alert" style={{ width: '90%', maxWidth: '400px', zIndex: 1050 }}>
-                            <span className="me-2">⚠️</span>
-                            <div className="flex-grow-1 small fw-bold">
-                                {error}
-                            </div>
-                            <button type="button" className="btn-close ms-2" onClick={() => setShowErrorModal(false)}></button>
-                        </div>
-                    )}
-
-                </motion.div>
-            </div>
-        );
-    }
 
     // =================================================================================
     // KIOSK DEVICE UI (Virtual Keyboard + Full Touch)
@@ -593,10 +499,18 @@ export default function ForgotPassword() {
                     {/* Header */}
                     <div className="forgot-password-header">
                         <h1 className="forgot-password-title">
-                            {step === 1 && "Account Recovery"}
-                            {step === 2 && "Verification"}
-                            {step === 3 && "Secure Password"}
-                            {step === 4 && "All Set!"}
+                            {step === 1 && (
+                                <span>Account <span style={{ color: "#ef4444" }}>Recovery</span></span>
+                            )}
+                            {step === 2 && (
+                                <span>Identity <span style={{ color: "#ef4444" }}>Verification</span></span>
+                            )}
+                            {step === 3 && (
+                                <span>Secure <span style={{ color: "#ef4444" }}>Password</span></span>
+                            )}
+                            {step === 4 && (
+                                <span>Password <span style={{ color: "#ef4444" }}>Updated!</span></span>
+                            )}
                         </h1>
                         <p className="forgot-password-subtitle">
                             {step === 1 && "Enter your School Number or Email Address"}
@@ -625,7 +539,7 @@ export default function ForgotPassword() {
                                     type="text"
                                     className={`form-input ${activeInput === 'identifier' ? 'active' : ''}`}
                                     placeholder="e.g. 2023-12345 or student@email.com"
-                                    value={identifier}
+                                    value={getDisplayValue(identifier, 'identifier')}
                                     onFocus={(e) => {
                                         e.preventDefault();
                                         e.target.blur(); // Prevent native keyboard
@@ -679,7 +593,7 @@ export default function ForgotPassword() {
                                         type={showPassword ? "text" : "password"}
                                         className={`form-input ${activeInput === 'newPassword' ? 'active' : ''}`}
                                         placeholder="Min. 6 chars"
-                                        value={newPassword}
+                                        value={getDisplayValue(newPassword, 'newPassword')}
                                         onFocus={(e) => {
                                             e.preventDefault();
                                             e.target.blur();
@@ -721,7 +635,7 @@ export default function ForgotPassword() {
                                 <div className="password-guidelines">
                                     <span className="guideline-text">
                                         {newPassword.length > 0
-                                            ? `${newPassword.length}/10 characters${newPassword.length < 6 ? ' (Minimum 6)' : ''}`
+                                            ? `${newPassword.length} characters${newPassword.length < 6 ? ' (Minimum 6)' : ''}`
                                             : 'Minimum of 6 characters'}
                                     </span>
                                 </div>
@@ -733,7 +647,7 @@ export default function ForgotPassword() {
                                         type={showConfirmPassword ? "text" : "password"}
                                         className={`form-input ${activeInput === 'confirmPassword' ? 'active' : ''}`}
                                         placeholder="Confirm Password"
-                                        value={confirmPassword}
+                                        value={getDisplayValue(confirmPassword, 'confirmPassword')}
                                         onFocus={(e) => {
                                             e.preventDefault();
                                             e.target.blur();

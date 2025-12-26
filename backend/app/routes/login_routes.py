@@ -97,10 +97,18 @@ def handle_rfid_login(rfid_tag):
         approval_status = user[10]
         if approval_status and approval_status != 'approved':
              print(f"❌ User approval status is {approval_status}")
-             return jsonify({
-                'success': False,
-                'message': '⚠️ Your account is pending administrator approval. Please wait for confirmation.'
-            }), 403
+             if approval_status == 'rejected':
+                 return jsonify({
+                    'success': False,
+                    'status': 'rejected',
+                    'message': '❌ Your account has been rejected by the administrator. Please contact support for assistance.'
+                }), 403
+             else:
+                 return jsonify({
+                    'success': False,
+                    'status': 'pending',
+                    'message': '⚠️ Your account is pending administrator approval. Please wait for confirmation.'
+                }), 403
         
         # Convert row to dictionary
         user_dict = {
@@ -188,10 +196,18 @@ def handle_manual_login(school_number, password):
         approval_status = user[10]
         if approval_status and approval_status != 'approved':
              print(f"❌ User approval status is {approval_status}")
-             return jsonify({
-                'success': False,
-                'message': '⚠️ Your account is pending administrator approval. Please wait for confirmation.'
-            }), 403
+             if approval_status == 'rejected':
+                 return jsonify({
+                    'success': False,
+                    'status': 'rejected',
+                    'message': '❌ Your account has been rejected by the administrator. Please contact support for assistance.'
+                }), 403
+             else:
+                 return jsonify({
+                    'success': False,
+                    'status': 'pending',
+                    'message': '⚠️ Your account is pending administrator approval. Please wait for confirmation.'
+                }), 403
         
         # Convert row to dictionary (excluding password)
         user_dict = {

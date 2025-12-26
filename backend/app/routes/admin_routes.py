@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from sqlalchemy import func, desc
 from app.utils.db import SessionLocal
 from app.models.user_model import User, RoleEnum
@@ -72,6 +72,44 @@ def get_all_users():
         })
     except Exception as e:
         print(f"Error fetching users: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+    finally:
+        session.close()
+
+@admin_bp.route('/users/<user_id>/status', methods=['PUT', 'OPTIONS'])
+def update_user_status(user_id):
+    # Handle CORS preflight request
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+    
+    session = SessionLocal()
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No JSON data provided'}), 400
+            
+        new_status = data.get('status')
+        
+        if not new_status:
+            return jsonify({'success': False, 'message': 'Status is required'}), 400
+
+        user = session.query(User).filter(User.user_id == user_id).first()
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        user.approval_status = new_status
+        session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'User status updated to {new_status}'
+        })
+    except Exception as e:
+        print(f"Error updating user status: {e}")
+        session.rollback()
         return jsonify({
             'success': False,
             'message': str(e)

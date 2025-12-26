@@ -149,71 +149,7 @@ export default function RegisterRole() {
   /* =================================================================================
      REMOTE DEVICE UI (Laptop/Phone)
      ================================================================================= */
-  if (!isLocalDevice()) {
-    return (
-      <Container fluid className="p-3 bg-light min-vh-100 d-flex flex-column" style={{ overflowY: 'auto' }}>
-        <div className="w-100" style={{ maxWidth: '600px', margin: '0 auto' }}>
-          {/* Header */}
-          <div className="text-center mb-4 pt-3">
-            <h2 className="fw-bold text-dark">Select Category</h2>
-            <p className="text-muted">Choose the option that describes you</p>
-          </div>
 
-          {/* Cards List */}
-          <div className="d-flex flex-column gap-3 mb-4">
-            {roles.map((role) => (
-              <Card
-                key={role.id}
-                onClick={() => handleRoleSelect(role.id)}
-                className={`border-2 cursor-pointer shadow-sm transition-all ${selectedRole === role.id ? 'border-danger bg-white' : 'border-white'}`}
-                style={{
-                  cursor: 'pointer',
-                  borderColor: selectedRole === role.id ? role.color : 'transparent',
-                  transform: selectedRole === role.id ? 'scale(1.02)' : 'scale(1)',
-                  transition: 'all 0.2s',
-                  backgroundColor: selectedRole === role.id ? '#fff' : '#fff'
-                }}
-              >
-                <Card.Body className="d-flex align-items-center p-3">
-                  <div className="me-3 rounded-circle p-2 bg-light d-flex align-items-center justify-content-center"
-                    style={{ width: '60px', height: '60px', flexShrink: 0 }}>
-                    <img src={role.icon} alt={role.title} style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-                  </div>
-                  <div>
-                    <h5 className="fw-bold mb-1 text-dark">{role.title}</h5>
-                    <small className="text-muted lh-1">{role.description}</small>
-                  </div>
-                  {selectedRole === role.id && (
-                    <div className="ms-auto text-success fw-bold fs-4">✓</div>
-                  )}
-                </Card.Body>
-              </Card>
-            ))}
-          </div>
-
-          {/* Controls */}
-          <div className="fixed-bottom p-3 bg-white border-top border-light" style={{ maxWidth: '600px', margin: '0 auto', position: 'sticky', bottom: 0 }}>
-            <Button
-              variant="danger"
-              size="lg"
-              className="w-100 rounded-4 fw-bold shadow-sm"
-              disabled={!selectedRole}
-              onClick={handleContinue}
-              style={{
-                background: selectedRole ? roles.find(r => r.id === selectedRole)?.color : '#6c757d',
-                borderColor: 'transparent'
-              }}
-            >
-              {selectedRole ? `Continue as ${roles.find(r => r.id === selectedRole)?.title}` : 'Select a Role'}
-            </Button>
-            <Button variant="link" className="w-100 mt-2 text-danger text-decoration-none" onClick={handleBack}>
-              Back to Login
-            </Button>
-          </div>
-        </div>
-      </Container>
-    );
-  }
 
   return (
     <div className={isLocalDevice() ? "role-container" : "role-container-remote"}>

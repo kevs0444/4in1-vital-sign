@@ -32,11 +32,13 @@ const initSpeech = () => {
 initSpeech();
 
 // Re-initialize function for use after navigation/refresh
-export const reinitSpeech = () => {
+export const reinitSpeech = (cancelInfo = false) => {
     if (window.speechSynthesis) {
         loadVoices();
         // Force Chrome to reload voices
-        window.speechSynthesis.cancel();
+        if (cancelInfo) {
+            window.speechSynthesis.cancel();
+        }
     }
 };
 

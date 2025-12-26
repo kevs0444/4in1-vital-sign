@@ -155,6 +155,7 @@ export const loginWithRFID = async (rfidTag) => {
     } else {
       return {
         success: false,
+        status: response.status, // Pass through status (rejected/pending)
         message: response.message
       };
     }
@@ -200,6 +201,7 @@ export const loginWithCredentials = async (schoolNumber, password) => {
     } else {
       return {
         success: false,
+        status: response.status, // Pass through status (rejected/pending)
         message: response.message
       };
     }
@@ -598,6 +600,20 @@ export const getAdminUsers = async () => {
     return await fetchWithTimeout(`${API_URL}/admin/users`, {}, TIMEOUTS.MEDIUM);
   } catch (error) {
     console.error('Error getting admin users:', error);
+    throw error;
+  }
+};
+
+// Update user status
+export const updateUserStatus = async (userId, status) => {
+  try {
+    console.log(`👤 Updating user status to ${status}...`);
+    return await fetchWithTimeout(`${API_URL}/admin/users/${userId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    }, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Error updating user status:', error);
     throw error;
   }
 };

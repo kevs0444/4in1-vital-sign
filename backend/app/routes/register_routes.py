@@ -40,6 +40,13 @@ def register_user():
                 'message': 'Invalid email format'
             }), 400
 
+        # Validate password length
+        if len(data['password']) < 6:
+            return jsonify({
+                'success': False,
+                'message': 'Password must be at least 6 characters'
+            }), 400
+
         db = next(get_db())
         
         # Check if user ID already exists

@@ -19,7 +19,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import './AdminDashboard.css';
-import { getAdminStats, getAdminUsers } from '../../../../utils/api';
+import { getAdminStats, getAdminUsers, updateUserStatus } from '../../../../utils/api';
 
 // Register ChartJS components
 ChartJS.register(
@@ -47,12 +47,39 @@ const AdminDashboard = () => {
     const [selectedRole, setSelectedRole] = useState('All');
     const [selectedStatus, setSelectedStatus] = useState('All');
 
+    // Handler for updating user approval status - component level function
+    const handleStatusUpdate = async (userId, newStatus) => {
+        try {
+            console.log(`📤 Updating user ${userId} status to ${newStatus}...`);
+            const response = await updateUserStatus(userId, newStatus);
+            if (response.success) {
+                console.log(`✅ Status updated successfully`);
+                setUsersList(prevUsers => prevUsers.map(u =>
+                    u.user_id === userId ? { ...u, approval_status: newStatus } : u
+                ));
+            } else {
+                console.error(`❌ Failed to update status:`, response.message);
+                alert(`Failed to update status: ${response.message}`);
+            }
+        } catch (error) {
+            console.error('Error updating user status:', error);
+            alert('Error updating status. Please try again.');
+        }
+    };
+
     useEffect(() => {
-        // Get user from location state or localStorage
-        const savedUser = location.state?.user || JSON.parse(localStorage.getItem('user'));
+        // Get user from location state or localStorage (check multiple keys for compatibility)
+        const stateUser = location.state?.user;
+        const localUser = JSON.parse(localStorage.getItem('user') || 'null');
+        const localUserData = JSON.parse(localStorage.getItem('userData') || 'null');
+        const savedUser = stateUser || localUser || localUserData;
+
+        console.log('🔍 AdminDashboard - User sources:', { stateUser, localUser, localUserData });
+        console.log('👤 AdminDashboard - Using user:', savedUser);
 
         // Redirect to login if not authenticated or not admin
         if (!savedUser) {
+            console.log('❌ No user found, redirecting to login');
             navigate('/login');
             return;
         }
@@ -354,9 +381,28 @@ const AdminDashboard = () => {
                                             <td>{u.email}</td>
                                             <td>{u.created_at || 'N/A'}</td>
                                             <td>
-                                                <span className={`status-badge ${u.approval_status ? u.approval_status.toLowerCase() : 'active'}`}>
-                                                    {u.approval_status ? (u.approval_status.charAt(0).toUpperCase() + u.approval_status.slice(1)) : 'Active'}
-                                                </span>
+                                                <select
+                                                    className={`role-select status-${u.approval_status?.toLowerCase() || 'pending'}`}
+                                                    value={u.approval_status || 'pending'}
+                                                    onChange={(e) => handleStatusUpdate(u.user_id, e.target.value)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{
+                                                        minWidth: '110px',
+                                                        padding: '6px 10px',
+                                                        borderRadius: '6px',
+                                                        fontWeight: '600',
+                                                        fontSize: '0.85rem',
+                                                        border: '1px solid #e2e8f0',
+                                                        background: u.approval_status === 'approved' ? '#dcfce7' :
+                                                            u.approval_status === 'rejected' ? '#fee2e2' : '#fff7ed',
+                                                        color: u.approval_status === 'approved' ? '#166534' :
+                                                            u.approval_status === 'rejected' ? '#991b1b' : '#c2410c'
+                                                    }}
+                                                >
+                                                    <option value="pending">Pending</option>
+                                                    <option value="approved">Approved</option>
+                                                    <option value="rejected">Rejected</option>
+                                                </select>
                                             </td>
                                         </tr>
                                     ))

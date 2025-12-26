@@ -145,7 +145,16 @@ export default function MeasurementWelcome() {
 
   const handleDashboard = () => {
     console.log("🚀 Navigating to Dashboard");
-    navigate("/admin/dashboard", {
+    const role = (userData.role || userData.userType || userData.type || "").toLowerCase();
+    let targetPath = '/student/dashboard';
+
+    if (role === 'admin' || role === 'superadmin') targetPath = '/admin/dashboard';
+    else if (role === 'doctor') targetPath = '/doctor/dashboard';
+    else if (role === 'nurse') targetPath = '/nurse/dashboard';
+    else if (role.includes('student')) targetPath = '/student/dashboard';
+    else if (role.includes('employee') || role.includes('faculty') || role.includes('staff')) targetPath = '/employee/dashboard';
+
+    navigate(targetPath, {
       state: { user: userData }
     });
   };
@@ -174,79 +183,7 @@ export default function MeasurementWelcome() {
   /* =================================================================================
      REMOTE DEVICE UI (Portal Style - No Measurement)
      ================================================================================= */
-  if (!isLocalDevice()) {
-    return (
-      <div style={{
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%)',
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        fontFamily: "'Inter', sans-serif"
-      }}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-4 shadow-lg p-4 p-md-5 w-100 text-center"
-          style={{ maxWidth: '500px' }}
-        >
-          <div className="mb-4 d-flex justify-content-center">
-            <img src={welcomeImg} alt="Welcome" style={{ width: '120px', height: 'auto' }} />
-          </div>
 
-          <h2 className="fw-bold text-dark mb-2">Welcome, {userData.firstName || 'User'}!</h2>
-          <p className="text-muted mb-4">You are logged into the 4-in-Juan Portal.</p>
-
-          <div className="d-grid gap-3">
-            <button
-              onClick={handleDashboard}
-              className="btn btn-primary btn-lg py-3 shadow-sm border-0"
-              style={{ background: 'linear-gradient(90deg, #0d6efd 0%, #0a58ca 100%)' }}
-            >
-              <div className="d-flex align-items-center justify-content-center gap-2">
-                <img src={dashboard3d} style={{ width: '24px' }} alt="" />
-                View Dashboard
-              </div>
-            </button>
-
-            <button
-              onClick={() => setShowExitModal(true)}
-              className="btn btn-outline-danger btn-lg py-2"
-            >
-              Log Out
-            </button>
-          </div>
-
-          <div className="mt-4 pt-4 border-top text-muted small">
-            <p className="mb-0">Vital Sign Kiosk Portal</p>
-            <p className="mb-0" style={{ fontSize: '0.8rem' }}>Measurements can only be taken at the physical kiosk.</p>
-          </div>
-
-        </motion.div>
-
-        {/* Exit/Logout Modal for Remote */}
-        {showExitModal && (
-          <div className="exit-modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowExitModal(false)}>
-            <motion.div
-              className="bg-white p-4 rounded-4 shadow"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{ maxWidth: '350px', width: '90%' }}
-            >
-              <h4 className="fw-bold mb-3">Log Out?</h4>
-              <p className="text-muted mb-4">Are you sure you want to sign out directly?</p>
-              <div className="d-grid gap-2">
-                <button className="btn btn-danger" onClick={confirmExit}>Yes, Log Out</button>
-                <button className="btn btn-light" onClick={() => setShowExitModal(false)}>Cancel</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   // =================================================================================
   // KIOSK DEVICE UI (Original)
