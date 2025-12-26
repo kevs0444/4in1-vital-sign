@@ -33,7 +33,7 @@ class CameraManager:
         self.current_mode = 'feet'
         
         # Image Adjustments
-        self.zoom_factor = 1.0
+        self.zoom_factor = 1.3 # Default 1.3x zoom as requested
         self.brightness = 1.0
         self.contrast = 1.0
         self.rotation = 0
@@ -123,6 +123,7 @@ class CameraManager:
         # mode: 'feet' or 'body'
         self.current_mode = mode
         logger.info(f"Switched detection mode to: {mode}")
+        return True, f"Mode set to {mode}"
 
     def set_camera(self, index):
         if self.camera_index == index:
@@ -144,6 +145,7 @@ class CameraManager:
             return True, "Camera already running"
             
         try:
+            # Init detector if needed (kept same)
             if ComplianceDetector:
                 if self.detector is None:
                     try:
@@ -153,19 +155,50 @@ class CameraManager:
             else:
                 logger.warning("ComplianceDetector class not imported")
 
-            # Proceed even if detector is None, as reading mode doesn't need it
+            # Robust Camera Opening Strategy
+            # Try specified index first, then fallback to 0 or 1
+            indices_to_try = [self.camera_index]
+            if self.camera_index == 0: indices_to_try.append(1)
+            elif self.camera_index == 1: indices_to_try.append(0)
+            
+            # Backends to try: DSHOW (fastest on Win), MSMF (default), VFW (Video for Windows)
+            backends = []
+            if os.name == 'nt':
+                backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
+            else:
+                backends = [cv2.CAP_ANY]
+                
+            for idx in indices_to_try:
+                for backend in backends:
+                    backend_name = "DSHOW" if backend == cv2.CAP_DSHOW else "MSMF" if backend == cv2.CAP_MSMF else "ANY"
+                    logger.info(f"Trying to open camera {idx} with backend {backend_name}...")
+                    
+                    try:
+                        temp_cap = cv2.VideoCapture(idx, backend)
+                        if temp_cap.isOpened():
+                            # Test read
+                            ret, frame = temp_cap.read()
+                            if ret and frame is not None and frame.size > 0:
+                                self.cap = temp_cap
+                                self.camera_index = idx
+                                logger.info(f"✅ Success! Camera {idx} opened with {backend_name}")
+                                break # Stop backend loop
+                            else:
+                                logger.warning(f"Camera {idx} with {backend_name} opened but failed to read frame.")
+                                temp_cap.release()
+                    except Exception as e:
+                        logger.error(f"Crash trying {idx} {backend_name}: {e}")
+                        
+                if self.cap and self.cap.isOpened():
+                    break # Stop index loop
 
-
-            # Try to open camera
-            logger.info(f"Opening camera index: {self.camera_index}")
-            self.cap = cv2.VideoCapture(self.camera_index)
-            if not self.cap.isOpened():
-                logger.error(f"Failed to open camera {self.camera_index}")
-                return False, "Failed to open camera"
+            if not self.cap or not self.cap.isOpened():
+                logger.error(f"❌ Failed to open ANY camera after multiple attempts.")
+                return False, "Failed to open camera (checked all backends)"
                 
             self.is_running = True
             threading.Thread(target=self._process_feed, daemon=True).start()
-            logger.info(f"Camera started successfully")
+            logger.info(f"Camera started successfully on index {self.camera_index}")
             return True, "Camera started"
             
         except Exception as e:
@@ -205,61 +238,11 @@ class CameraManager:
                  is_compliant = True
             
             elif current_mode == 'reading':
-                 # --- NEW SMART BP DETECTION ---
-                 annotated_frame = frame.copy()
-                 h, w = frame.shape[:2]
-                 
-                 # Guide Box (White, thin): Shows where to aim
-                 center_x, center_y = w // 2, h // 2
-                 box_w, box_h = int(w * 0.6), int(h * 0.6)
-                 cv2.rectangle(annotated_frame, 
-                               (center_x - box_w//2, center_y - box_h//2), 
-                               (center_x + box_w//2, center_y + box_h//2), 
-                               (255, 255, 255), 1)
-                 
-                 # Lazy Load YOLO (only if needed)
-                 if not hasattr(self, 'bp_yolo'):
-                     try:
-                         from ultralytics import YOLO
-                         yolo_path = os.path.join(os.path.dirname(__file__), '../../ai_camera/models/yolo11n.pt')
-                         self.bp_yolo = YOLO(yolo_path)
-                     except Exception as e:
-                         logger.error(f"Failed to load YOLO for BP: {e}")
-                         self.bp_yolo = None
-
-                 # Run Detection every ~3 frames to save CPU
-                 # We simply use a frame counter or time check, but for now lets try every frame for smoothness
-                 # YOLO Nano is fast!
-                 if self.bp_yolo:
-                     results = self.bp_yolo(frame, classes=[62, 63, 67, 72, 73], conf=0.15, verbose=False)
-                     
-                     monitor_detected = False
-                     if results and len(results[0].boxes) > 0:
-                         # Find largest box
-                         best_box = None
-                         max_area = 0
-                         for box in results[0].boxes:
-                             x1, y1, x2, y2 = map(int, box.xyxy[0])
-                             area = (x2 - x1) * (y2 - y1)
-                             if area > max_area:
-                                 max_area = area
-                                 best_box = (x1, y1, x2, y2)
-                         
-                         if best_box:
-                             monitor_detected = True
-                             bx1, by1, bx2, by2 = best_box
-                             
-                             # Draw GREEN Box (Success!)
-                             cv2.rectangle(annotated_frame, (bx1, by1), (bx2, by2), (0, 255, 0), 3)
-                             cv2.putText(annotated_frame, "BP MONITOR DETECTED", (bx1, by1 - 10), 
-                                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                 
-                 if not monitor_detected:
-                      cv2.putText(annotated_frame, "Align Monitor Here", (center_x - 80, center_y), 
-                                  cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1)
-
-                 status_msg = "Reading Mode"
-                 is_compliant = True # In reading mode, we are always "compliant" to allow capture
+                 # BP Reading mode is now handled by bp_sensor_controller.py
+                 # This mode is deprecated in camera_manager
+                 annotated_frame = frame
+                 status_msg = "BP Mode - Use /api/bp/* endpoints"
+                 is_compliant = True
             
             elif self.detector:
                 if current_mode == 'body':
@@ -275,12 +258,26 @@ class CameraManager:
             
             with self.lock:
                 self.latest_frame = annotated_frame
+                # Preserve existing status fields but ensure real_time_bp persists if valid
+                current_bp = self.compliance_status.get('real_time_bp', None)
+                
                 self.compliance_status = {
                     "is_compliant": is_compliant,
                     "message": status_msg,
                     "mode": getattr(self, 'current_mode', 'feet'),
-                    "fps": int(fps)
+                    "fps": int(fps),
+                    "is_running": self.is_running, # Explicitly state camera is running
+                    "real_time_bp": current_bp # Carry over
                 }
+                
+                # If we just calculated a new one, it overrides the carry over in the logic above by modifying self.compliance_status directly in the thread
+                # To be safe, let's explicitly set it in the dictionary update here if we are in reading mode
+                if current_mode == 'reading' and 'sys_str' in locals() and 'dia_str' in locals():
+                     self.compliance_status["real_time_bp"] = {
+                         "systolic": sys_str,
+                         "diastolic": dia_str,
+                         "timestamp": time.time()
+                     }
             
             # Adaptive sleep to maintain ~30 FPS cap if system is too fast
             # time.sleep(0.03) # Removed specific sleep to allow max FPS testing

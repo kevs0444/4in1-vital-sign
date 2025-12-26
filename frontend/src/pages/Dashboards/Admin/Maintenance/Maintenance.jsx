@@ -59,12 +59,11 @@ const Maintenance = () => {
     const modes = {
         feet: ["platform", "barefeet", "socks", "footwear"],
         body: ["null", "bag", "cap", "id", "watch"],
-        bp: ["monitor", "numbers", "error", "null"] // Data collection classes
+        bp: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "error"] // Data collection classes
     };
 
     useEffect(() => {
         startCamera();
-        const interval = setInterval(checkStatus, 1000);
 
         const handleKeyDown = (e) => {
             if (e.code === 'Space') {
@@ -74,11 +73,22 @@ const Maintenance = () => {
         };
         window.addEventListener('keydown', handleKeyDown);
 
+        // Cleanup: Stop all cameras when leaving page
         return () => {
-            clearInterval(interval);
             window.removeEventListener('keydown', handleKeyDown);
+            // Stop both camera backends
+            fetch(`${API_BASE}/camera/stop`, { method: 'POST' }).catch(() => { });
+            fetch(`${API_BASE}/bp/stop`, { method: 'POST' }).catch(() => { });
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only on mount
+
+    // Status polling - depends on activeTab for correct endpoint
+    useEffect(() => {
+        const interval = setInterval(checkStatus, 1000);
+        return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
 
     useEffect(() => {
         setSelectedClass(modes[activeTab][0]);
@@ -94,11 +104,30 @@ const Maintenance = () => {
 
     const checkStatus = async () => {
         try {
-            const res = await fetch(`${API_BASE}/camera/status`);
+            // Use appropriate API based on active tab
+            const endpoint = activeTab === 'bp' ? `${API_BASE}/bp/status` : `${API_BASE}/camera/status`;
+            const res = await fetch(endpoint);
             const data = await res.json();
-            setComplianceStatus(data.message);
-            setIsCompliant(data.is_compliant);
-            if (data.fps !== undefined) setFps(data.fps);
+
+            if (activeTab === 'bp') {
+                // BP status format
+                if (data.is_running) {
+                    setComplianceStatus(`BP: ${data.systolic}/${data.diastolic} (${data.trend})`);
+                    setIsCompliant(true);
+                    // Update BP reading display
+                    if (data.systolic !== '--' && data.diastolic !== '--') {
+                        setBpReading({ systolic: data.systolic, diastolic: data.diastolic });
+                    }
+                } else {
+                    setComplianceStatus('BP Camera Off');
+                    setIsCompliant(false);
+                }
+            } else {
+                // General camera status format
+                setComplianceStatus(data.message);
+                setIsCompliant(data.is_compliant);
+                if (data.fps !== undefined) setFps(data.fps);
+            }
             setBackendStatus('Connected');
         } catch (err) { setBackendStatus('Disconnected'); }
     };
@@ -115,15 +144,6 @@ const Maintenance = () => {
 
     const handleTabChange = async (mode) => {
         setActiveTab(mode);
-        // Smart Camera System: Default to Camera 0 for all modes (Single Camera / Temporary Setup)
-        // User Request: "when one camera is available make it default for all" & "camera 0 is for bp now"
-        let recommendedIndex = 0;
-
-        // Disable AI model for BP and use 'capture_only' to prevent burnt-in text/overlays
-        // User Request: "remove make the capturte here like no waiting for user taag"
-        const backendMode = mode === 'bp' ? 'capture_only' : mode;
-
-        setSettings(prev => ({ ...prev, camera_index: recommendedIndex }));
 
         // Clear BP reading when switching tabs
         if (mode !== 'bp') {
@@ -131,16 +151,24 @@ const Maintenance = () => {
         }
 
         try {
-            await fetch(`${API_BASE}/camera/set_mode`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: backendMode })
-            });
-            await fetch(`${API_BASE}/camera/set_camera`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ index: recommendedIndex })
-            });
+            // Each mode uses its own dedicated backend:
+            // - feet/body: Use general camera API (/api/camera/)
+            // - bp: Use dedicated BP sensor controller (/api/bp/)
+
+            if (mode === 'bp') {
+                // Stop general camera, start BP camera
+                await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
+                await fetch(`${API_BASE}/bp/start`, { method: 'POST' });
+            } else {
+                // Stop BP camera, start general camera with appropriate mode
+                await fetch(`${API_BASE}/bp/stop`, { method: 'POST' });
+                await fetch(`${API_BASE}/camera/start`, { method: 'POST' });
+                await fetch(`${API_BASE}/camera/set_mode`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: mode })
+                });
+            }
         } catch (err) { console.error(err); }
     };
 
@@ -273,12 +301,22 @@ const Maintenance = () => {
                     </div>
 
                     <div className="camera-viewport">
-                        <img src={`${API_BASE}/camera/video_feed?t=${Date.now()}`} alt="Feed" className="main-feed" />
+                        <img
+                            src={activeTab === 'bp'
+                                ? `${API_BASE}/bp/video_feed?t=${Date.now()}`
+                                : `${API_BASE}/camera/video_feed?t=${Date.now()}`}
+                            alt="Feed"
+                            className="main-feed"
+                        />
                         <button className="viewport-overlay switch-cam-btn" onClick={handleToggleCamera} title="Switch between Camera 0 and 1">
                             <FlipCameraIos />
                         </button>
                         <div className="viewport-overlay top">
-                            {activeTab !== 'bp' && (
+                            {activeTab === 'bp' ? (
+                                <div className="ai-badge" style={{ background: 'linear-gradient(135deg, #e74c3c, #c0392b)' }}>
+                                    🩸 BP LIVE: {complianceStatus}
+                                </div>
+                            ) : (
                                 <div className="ai-badge">AI LIVE: {complianceStatus}</div>
                             )}
                             <div className="fps-badge">FPS: {fps}</div>

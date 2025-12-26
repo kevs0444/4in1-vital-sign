@@ -391,17 +391,31 @@ export default function Result() {
     const systolicValue = parseFloat(sys);
     const diastolicValue = parseFloat(dia);
 
-    if (systolicValue >= 180 || diastolicValue >= 120) {
-      return { status: 'Crisis', color: '#dc2626', range: '≥ 180/120 mmHg' };
-    } else if (systolicValue >= 140 || diastolicValue >= 90) {
-      return { status: 'Stage 2', color: '#ef4444', range: '140-179/90-119 mmHg' };
-    } else if (systolicValue >= 130 || diastolicValue >= 80) {
-      return { status: 'Stage 1', color: '#f59e0b', range: '130-139/80-89 mmHg' };
-    } else if (systolicValue >= 120) {
-      return { status: 'Elevated', color: '#fbbf24', range: '120-129/<80 mmHg' };
-    } else {
-      return { status: 'Normal', color: '#10b981', range: '< 120/<80 mmHg' };
+    if (isNaN(systolicValue) || isNaN(diastolicValue)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
+
+    // BP Categories based on medical standards:
+    // Hypertensive Crisis: Sys > 180 OR Dia > 120
+    if (systolicValue > 180 || diastolicValue > 120) {
+      return { status: 'Hypertensive Crisis', color: '#7f1d1d', range: '> 180/120 mmHg' };
     }
+    // Hypertension Stage 2: Sys >= 140 OR Dia >= 90
+    if (systolicValue >= 140 || diastolicValue >= 90) {
+      return { status: 'Hypertension Stage 2', color: '#dc2626', range: '≥ 140/90 mmHg' };
+    }
+    // Hypertension Stage 1: Sys 130-139 OR Dia 80-89
+    if (systolicValue >= 130 || diastolicValue >= 80) {
+      return { status: 'Hypertension Stage 1', color: '#f59e0b', range: '130-139/80-89 mmHg' };
+    }
+    // Elevated: Sys 120-129 AND Dia < 80
+    if (systolicValue >= 120 && diastolicValue < 80) {
+      return { status: 'Elevated', color: '#fbbf24', range: '120-129/<80 mmHg' };
+    }
+    // Hypotension (Low): Sys < 90 OR Dia < 60
+    if (systolicValue < 90 || diastolicValue < 60) {
+      return { status: 'Hypotension (Low)', color: '#3b82f6', range: '< 90/60 mmHg' };
+    }
+    // Normal: Sys < 120 AND Dia < 80
+    return { status: 'Normal', color: '#10b981', range: '< 120/80 mmHg' };
   };
 
 

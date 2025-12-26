@@ -70,6 +70,10 @@ def create_app():
     from app.routes.bp_ai_camera import bp_ai_camera_bp
     app.register_blueprint(bp_ai_camera_bp, url_prefix='/api/bp-camera')
 
+    # NEW: Dedicated BP Sensor Controller Routes
+    from app.routes.bp_routes import bp_routes
+    app.register_blueprint(bp_routes)  # Already has url_prefix='/api/bp'
+
     from app.routes.measurement_routes import measurement_bp
     app.register_blueprint(measurement_bp, url_prefix='/api/measurements')
 

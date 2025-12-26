@@ -14,7 +14,7 @@ import step3Icon from "../../../assets/icons/measurement-step3.png";
 export default function BloodPressure() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setIsInactivityEnabled } = useInactivity();
+  const { setIsInactivityEnabled, signalActivity } = useInactivity();
 
   // BLOCK REMOTE ACCESS
   useEffect(() => {
@@ -33,6 +33,7 @@ export default function BloodPressure() {
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(0);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   // Camera State
   const [isCameraMode, setIsCameraMode] = useState(false);
@@ -58,6 +59,9 @@ export default function BloodPressure() {
     // Call init
     initializeBloodPressureSensor();
 
+    // Auto-start Smart Camera immediately
+    startLiveReading();
+
     return () => {
       clearTimeout(timer);
       stopAllTimers();
@@ -65,7 +69,72 @@ export default function BloodPressure() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Polling for Real-Time BP
+  const [isLiveReading, setIsLiveReading] = useState(false);
+  const pollInterval = useRef(null);
+  const detectionStartTimeRef = useRef(null); // For 2s delay logic
+
+  const stopLiveReading = () => {
+    setIsLiveReading(false);
+    if (pollInterval.current) clearInterval(pollInterval.current);
+    setStatusMessage("✅ Reading paused. Click Confirm to save.");
+  };
+
+  const confirmReading = () => {
+    stopLiveReading();
+    setMeasurementComplete(true);
+    setBpComplete(true);
+    setMeasurementStep(3);
+    setStatusMessage("✅ Measurement Confirmed!");
+    setTimeout(stopCameraMode, 1000);
+
+    // Announce result
+    const bpStatus = getBloodPressureStatus(systolic, diastolic);
+    speak(`Blood pressure measurement complete. Your reading is ${systolic} over ${diastolic}. Status: ${bpStatus.text}.`);
+
+    // Stop polling to be safe state cleanup
+    if (pollInterval.current) clearInterval(pollInterval.current);
+  };
+
+  const retryMeasurement = async () => {
+    // Close error modal
+    setShowErrorModal(false);
+
+    // Reset all states
+    setSystolic("");
+    setDiastolic("");
+    setStatusTrend("Smart Scan");
+    setMeasurementComplete(false);
+    setBpComplete(false);
+    setMeasurementStep(1);
+    stableCountRef.current = 0;
+    detectionStartTimeRef.current = null;
+    lastReadingRef.current = { sys: null, dia: null };
+
+    // Stop and restart BP camera
+    await stopCameraMode();
+    await new Promise(r => setTimeout(r, 500)); // Brief pause
+    await startLiveReading();
+
+    setStatusMessage("🔄 Retrying measurement...");
+  };
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (pollInterval.current) clearInterval(pollInterval.current);
+      // Stop BP camera when leaving page
+      fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/stop`, {
+        method: 'POST'
+      }).catch(() => { });
+    }
+  }, []);
+
   // Sync inactivity with measurement
+  useEffect(() => {
+    // Disable inactivity timeout while reading/pumping
+    setIsInactivityEnabled(!isLiveReading);
+  }, [isLiveReading, setIsInactivityEnabled]);
   useEffect(() => {
     // If measuring/analyzing, DISABLE inactivity (enabled = false)
     // If NOT measuring, ENABLE inactivity (enabled = true)
@@ -147,9 +216,12 @@ export default function BloodPressure() {
     };
   };
 
+  // Stability Checking Refs
+  const stableCountRef = useRef(0);
+  const lastReadingRef = useRef({ sys: null, dia: null });
+
   const startMeasurement = async () => {
-    // REFACTORED: No more simulation. Clicking start opens the camera.
-    startCameraMode();
+    startLiveReading();
   };
 
   // --- HELPER FUNCTIONS (Defined before use) ---
@@ -157,58 +229,114 @@ export default function BloodPressure() {
   const getBloodPressureStatus = (sys, dia) => {
     if (!sys || !dia || sys === "--" || dia === "--") {
       return {
-        text: "Not measured",
-        class: "pending",
-        description: "Blood pressure not measured yet"
+        text: "Measuring",
+        class: "active",
+        description: "Detecting blood pressure..."
       };
     }
 
     const systolicValue = parseInt(sys);
     const diastolicValue = parseInt(dia);
 
-    if (systolicValue >= 180 || diastolicValue >= 120) {
+    if (isNaN(systolicValue) || isNaN(diastolicValue)) {
+      return { text: "Invalid", class: "active", description: "Waiting for valid reading..." };
+    }
+
+    // BP Categories based on medical standards:
+    // Hypertensive Crisis: Sys > 180 OR Dia > 120
+    if (systolicValue > 180 || diastolicValue > 120) {
       return {
         text: "Hypertensive Crisis",
         class: "error",
-        description: "Your blood pressure requires immediate attention"
+        description: "⚠️ EMERGENCY: Seek immediate medical attention!"
       };
-    } else if (systolicValue >= 140 || diastolicValue >= 90) {
+    }
+    // Hypertension Stage 2: Sys >= 140 OR Dia >= 90
+    if (systolicValue >= 140 || diastolicValue >= 90) {
       return {
         text: "Hypertension Stage 2",
         class: "error",
-        description: "Your blood pressure indicates severe hypertension"
+        description: "High blood pressure - Consult a doctor"
       };
-    } else if (systolicValue >= 130 || diastolicValue >= 80) {
+    }
+    // Hypertension Stage 1: Sys 130-139 OR Dia 80-89
+    if (systolicValue >= 130 || diastolicValue >= 80) {
       return {
         text: "Hypertension Stage 1",
         class: "warning",
-        description: "Your blood pressure is elevated"
+        description: "Blood pressure is elevated"
       };
-    } else if (systolicValue >= 120) {
+    }
+    // Elevated: Sys 120-129 AND Dia < 80
+    if (systolicValue >= 120 && diastolicValue < 80) {
       return {
         text: "Elevated",
         class: "warning",
-        description: "Your blood pressure is slightly elevated"
-      };
-    } else {
-      return {
-        text: "Normal",
-        class: "complete",
-        description: "Your blood pressure is within normal range"
+        description: "Blood pressure is slightly elevated"
       };
     }
+    // Hypotension (Low): Sys < 90 OR Dia < 60
+    if (systolicValue < 90 || diastolicValue < 60) {
+      return {
+        text: "Hypotension (Low)",
+        class: "warning",
+        description: "Blood pressure is lower than normal"
+      };
+    }
+    // Normal: Sys < 120 AND Dia < 80
+    return {
+      text: "Normal",
+      class: "complete",
+      description: "Blood pressure is within normal range"
+    };
   };
 
   const getCurrentDisplayValue = () => {
+    // 1. Live Reading Mode (Prioritize real-time updates)
+    if (isLiveReading) {
+      // Pumping/Inflating (Single value detected)
+      if (systolic && (!diastolic || diastolic === '--')) {
+        return `${systolic}`;
+      }
+      // Full Reading
+      if (systolic && diastolic) {
+        return `${systolic}/${diastolic}`;
+      }
+    }
+
+    // 2. Completed Result
     if (measurementComplete && systolic && diastolic) {
       return `${systolic}/${diastolic}`;
     }
     return "--/--";
   };
 
+  // State for Status Trend
+  const [statusTrend, setStatusTrend] = useState("Smart Scan");
+
   const getCurrentStatusInfo = () => {
     if (measurementComplete && systolic && diastolic) {
       return getBloodPressureStatus(systolic, diastolic);
+    }
+
+    // ERROR STATE
+    if (statusTrend.includes("Error")) {
+      return { text: 'Monitor Error ⚠️', class: 'danger', description: 'Please check the BP monitor.' };
+    }
+
+    // LIVE READING STATES
+    if (isLiveReading) {
+      if (statusTrend.includes("Inflating")) {
+        return { text: 'Inflating ⬆️', class: 'warning', description: 'Pressure is rising...' };
+      }
+      if (statusTrend.includes("Deflating")) {
+        return { text: 'Deflating ⬇️', class: 'primary', description: 'Measuring pressure...' };
+      }
+
+      // Removed "Stable" check to avoid "Holding" message at start.
+
+      // Default Smart Scan
+      return { text: 'Smart Scan', class: 'active', description: 'Auto-detecting digits...' };
     }
 
     return {
@@ -225,26 +353,137 @@ export default function BloodPressure() {
 
   const startCameraMode = async () => {
     setIsCameraMode(true);
-    setStatusMessage("Starting camera...");
+    setStatusMessage("Starting BP camera...");
     try {
-      await cameraAPI.start();
-      await cameraAPI.setMode('reading');
+      // Use dedicated BP sensor controller
+      await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/start`, {
+        method: 'POST'
+      });
       setStatusMessage("Position the digital BP monitor in the frame");
     } catch (err) {
-      console.error("Camera start error:", err);
-      setStatusMessage("❌ Camera failed to start");
+      console.error("BP Camera start error:", err);
+      setStatusMessage("❌ BP Camera failed to start");
     }
   };
 
   const stopCameraMode = async () => {
     try {
-      await cameraAPI.stop();
-      // CRITICAL: Reset mode to 'feet' so we don't break compliance checks in other steps
-      await cameraAPI.setMode('feet');
+      await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/stop`, {
+        method: 'POST'
+      });
     } catch (e) { console.error(e) }
 
     setIsCameraMode(false);
-    setStatusMessage("✅ Ready to scan");
+  };
+
+  const startLiveReading = async () => {
+    // 1. Start BP Camera Backend if not running
+    if (!isCameraMode) {
+      await startCameraMode();
+    }
+
+    setIsLiveReading(true);
+    setStatusMessage("👁️ Watching Monitor...");
+
+    // Reset Stability
+    stableCountRef.current = 0;
+    detectionStartTimeRef.current = null;
+    lastReadingRef.current = { sys: null, dia: null };
+
+    // Clear previous
+    if (pollInterval.current) clearInterval(pollInterval.current);
+
+    // Poll BP status from dedicated BP endpoint
+    pollInterval.current = setInterval(async () => {
+      try {
+        const res = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/status`);
+        const data = await res.json();
+
+        // New BP controller returns flat structure: { systolic, diastolic, trend, error, is_running }
+        if (data && data.is_running) {
+          const { systolic: newSys, diastolic: newDia, error, trend } = data;
+
+          // Signal active usage
+          signalActivity();
+
+          // Update Trend State
+          if (trend) setStatusTrend(trend);
+
+          // 0. Error Detection (Priority) - Show popup
+          if (error) {
+            setStatusTrend("Error ⚠️"); // Force UI to show Error Badge
+            setSystolic("--");
+            setDiastolic("--");
+            setStatusMessage("⚠️ Monitor Error Symbol Detected");
+            setShowErrorModal(true); // Show error popup
+            speak("Error detected. Please check the cuff is wrapped properly and try again.");
+            stableCountRef.current = 0; // Reset stability
+            detectionStartTimeRef.current = null;
+            return; // Skip the rest
+          }
+
+          // 1. Update Display if valid (accept any detected number)
+          // Filter out 888/88/8 patterns - these are monitor startup self-test displays
+          const isStartupPattern = (val) => val && /^8+$/.test(val);
+
+          if (newSys && newSys !== '--' && newSys.length >= 1 && !isStartupPattern(newSys)) {
+
+            // --- QUICK DELAY LOGIC (500ms) ---
+            if (!detectionStartTimeRef.current) {
+              detectionStartTimeRef.current = Date.now();
+            }
+
+            // Wait only 500ms before showing to filter quick glitches
+            if (Date.now() - detectionStartTimeRef.current < 500) {
+              setStatusMessage("Detecting...");
+              return;
+            }
+            // -----------------------------
+
+            // If Diastolic is empty, it's PUMPING mode (Single Value)
+            if (!newDia || newDia === "") {
+              setSystolic(newSys);
+              setDiastolic("--"); // explicit placeholder
+
+              // Reset stability because we are pumping, not done
+              stableCountRef.current = 0;
+              // Use backend trend for accurate status (Inflating or Deflating)
+              setStatusMessage(`${trend || 'Measuring'}... ${newSys} mmHg`);
+
+              lastReadingRef.current = { sys: newSys, dia: "" };
+            }
+            // If Diastolic is present, it's RESULT mode (Dual Value)
+            else if (newDia.length >= 2) {
+              setSystolic(newSys);
+              setDiastolic(newDia);
+
+              // Stability Check (Only if we have BOTH values)
+              if (newSys === lastReadingRef.current.sys && newDia === lastReadingRef.current.dia) {
+                stableCountRef.current += 1;
+                // Stability: 1 check = ~1 second
+                setStatusMessage(`Verifying Result... ${Math.round((stableCountRef.current / 1) * 100)}%`);
+
+                if (stableCountRef.current >= 1) {
+                  setStatusMessage("✅ Result Confirmed!");
+                  confirmReading();
+                }
+              } else {
+                // Changing result
+                stableCountRef.current = 0;
+                setStatusMessage(`Reading: ${newSys}/${newDia}`);
+              }
+
+              lastReadingRef.current = { sys: newSys, dia: newDia };
+            }
+          } else if (!newSys || newSys === '--') {
+            // Only reset if truly no data
+            detectionStartTimeRef.current = null;
+          }
+        }
+      } catch (err) {
+        console.error("Polling error", err);
+      }
+    }, 1000); // 1Hz polling
   };
 
   const captureAndAnalyze = async () => {
@@ -322,9 +561,12 @@ export default function BloodPressure() {
 
   const confirmExit = async () => {
     try {
+      // Stop BP camera
+      await stopCameraMode();
+      // Reset sensors
       await sensorAPI.reset();
     } catch (e) {
-      console.error("Error resetting sensors:", e);
+      console.error("Error cleaning up:", e);
     }
     setShowExitModal(false);
     navigate("/login");
@@ -377,110 +619,48 @@ export default function BloodPressure() {
             <div className="col-12 col-md-8 col-lg-6">
               <div className={`measurement-card w-100 ${bpMeasuring ? 'active' : ''} ${bpComplete ? 'completed' : ''}`} style={{ minHeight: '320px' }}>
 
-                {isCameraMode ? (
-                  <div className="camera-interface w-100 d-flex flex-column align-items-center">
-                    <div className="camera-frame-container shadow-sm" style={{
-                      width: '100%', maxWidth: '400px', height: '300px',
-                      background: '#000', position: 'relative',
-                      borderRadius: '16px', overflow: 'hidden', border: '2px solid #333'
-                    }}>
-                      <div className="camera-feed-wrapper" style={{ width: '100%', height: '100%', position: 'relative' }}>
-                        <img
-                          src={`${window.location.protocol}//${window.location.hostname}:5000/api/camera/video_feed`}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          alt="Camera Stream"
-                        />
-
-                        {/* --- THE ALIGNMENT GRID --- */}
-                        {/* This SVG acts as the template for the user to align the monitor */}
-                        <div style={{
-                          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                          pointerEvents: 'none' // Allow clicks to pass through
-                        }}>
-                          <svg width="100%" height="100%">
-                            <defs>
-                              <mask id="grid-mask">
-                                {/* Visible parts */}
-                                <rect width="100%" height="100%" fill="white" opacity="0.5" />
-                                {/* Cut holes for the numbers */}
-                                <rect x="20%" y="20%" width="60%" height="20%" rx="5" fill="black" /> {/* SYS */}
-                                <rect x="25%" y="45%" width="50%" height="20%" rx="5" fill="black" /> {/* DIA */}
-                                <rect x="35%" y="70%" width="30%" height="15%" rx="5" fill="black" /> {/* PULSE */}
-                              </mask>
-                            </defs>
-
-                            {/* Darken area outside boxes */}
-                            <rect width="100%" height="100%" fill="rgba(0,0,0,0.6)" mask="url(#grid-mask)" />
-
-                            {/* Guide Lines & Labels - GREEN */}
-                            <g stroke="#00ff00" strokeWidth="2" fill="none">
-                              <rect x="20%" y="20%" width="60%" height="20%" rx="5" />
-                              <rect x="25%" y="45%" width="50%" height="20%" rx="5" />
-                            </g>
-
-                            {/* Labels */}
-                            <text x="50%" y="18%" textAnchor="middle" fill="#00ff00" fontSize="14" fontWeight="bold">SYS (Top)</text>
-                            <text x="50%" y="43%" textAnchor="middle" fill="#00ff00" fontSize="14" fontWeight="bold">DIA (Middle)</text>
-                          </svg>
-                        </div>
-                      </div>
-
-                      {isAnalyzing && (
-                        <div style={{
-                          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                          background: 'rgba(0,0,0,0.8)', color: 'white',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
-                          zIndex: 10
-                        }}>
-                          <div className="spinner mb-3"></div>
-                          <span className="fw-bold">AI Reading Template...</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-4 w-100 d-flex justify-content-center gap-3">
-                      <button className="btn btn-light border px-4 py-2 rounded-pill" onClick={stopCameraMode} disabled={isAnalyzing}>
-                        Cancel
-                      </button>
-                      <button className="btn btn-primary px-4 py-2 rounded-pill d-flex align-items-center gap-2"
-                        onClick={captureAndAnalyze} disabled={isAnalyzing}
-                        style={{ backgroundColor: '#28a745', border: 'none' }}>
-                        <span style={{ fontSize: '1.2rem' }}>📸</span> Capture Grid
-                      </button>
-                    </div>
+                <>
+                  {/* STANDARD VIEW (ALWAYS VISIBLE) */}
+                  <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
+                    <img src={bpIcon} alt="Blood Pressure Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   </div>
-                ) : (
-                  <>
-                    <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
-                      <img src={bpIcon} alt="Blood Pressure Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    </div>
 
-                    <h3 className="instruction-title fs-3">
-                      {measurementComplete ? "Blood Pressure Result" : "Blood Pressure"}
-                    </h3>
+                  <h3 className="instruction-title fs-3">
+                    {measurementComplete ? "Blood Pressure Result" : "Blood Pressure"}
+                  </h3>
 
-                    <div className="measurement-value-container">
-                      <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
-                        {displayValue}
-                      </span>
-                      <span className="measurement-unit">mmHg</span>
-                    </div>
+                  <div className="measurement-value-container">
+                    <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
+                      {displayValue}
+                    </span>
+                    <span className="measurement-unit">mmHg</span>
+                  </div>
 
-                    <div className="text-center mt-3">
-                      <span className={`measurement-status-badge ${statusInfo.class}`}>
-                        {statusInfo.text}
-                      </span>
-                      <div className="instruction-text mt-2">
-                        {statusInfo.description}
-                      </div>
-                    </div>
-
-                    {bpMeasuring && (
-                      <div className="text-info fw-bold mt-3">
-                        🔄 Measuring Blood Pressure...
+                  {/* Controls */}
+                  <div className="mt-3 w-100 d-flex justify-content-center gap-3">
+                    {!isLiveReading ? (
+                      !measurementComplete && (
+                        <div className="text-muted small">Initializing Smart Sensor...</div>
+                      )
+                    ) : (
+                      <div className="d-flex flex-column align-items-center gap-2 w-100">
+                        {/* Hidden 'Confirm' button - it now auto-confirms, but kept if manual override needed */}
+                        {/* <button ... >Confirm</button> */}
+                        <div className="text-muted small blink-text">Sensor Active - Reading...</div>
                       </div>
                     )}
-                  </>
-                )}
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className="text-center mt-3">
+                    <span className={`measurement-status-badge ${statusInfo.class}`}>
+                      {statusInfo.text}
+                    </span>
+                    <div className="instruction-text mt-2">
+                      {statusInfo.description}
+                    </div>
+                  </div>
+                </>
               </div>
             </div>
           </div>
@@ -592,6 +772,44 @@ export default function BloodPressure() {
                 onClick={confirmExit}
               >
                 Yes, Exit
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* BP Monitor Error Popup Modal */}
+      {showErrorModal && (
+        <div className="exit-modal-overlay" onClick={() => setShowErrorModal(false)}>
+          <motion.div
+            className="exit-modal-content"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="exit-modal-icon" style={{ background: 'linear-gradient(135deg, #ff4444, #cc0000)' }}>
+              <span>⚠️</span>
+            </div>
+            <h2 className="exit-modal-title">Cuff Error Detected</h2>
+            <p className="exit-modal-message">
+              The blood pressure monitor detected an error. Please ensure the cuff is
+              wrapped properly around your arm and try again.
+            </p>
+            <div className="exit-modal-buttons">
+              <button
+                className="exit-modal-button secondary"
+                onClick={() => setShowErrorModal(false)}
+              >
+                Dismiss
+              </button>
+              <button
+                className="exit-modal-button primary"
+                onClick={retryMeasurement}
+                style={{ background: 'linear-gradient(135deg, #e74c3c, #c0392b)' }}
+              >
+                🔄 Retry Again
               </button>
             </div>
           </motion.div>
