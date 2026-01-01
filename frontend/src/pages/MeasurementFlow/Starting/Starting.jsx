@@ -139,7 +139,8 @@ export default function Starting() {
   // Format the display name
   const getDisplayName = () => {
     if (userData.firstName && userData.lastName) {
-      return `${userData.firstName} ${userData.lastName}`;
+      const parts = [userData.firstName, userData.middleName, userData.lastName, userData.suffix].filter(Boolean);
+      return parts.join(' ');
     }
     return "User";
   };

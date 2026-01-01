@@ -4,6 +4,7 @@ import threading
 from serial.tools import list_ports
 import re
 import logging
+from app.config import Config
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ class SensorManager:
         self.serial_conn = None
         self.is_connected = False
         self.port = None
-        self.baudrate = 115200  # OPTIMIZED: Faster baud rate to match Arduino
+        self.baudrate = Config.SERIAL_BAUDRATE
         self.ir_log_counter = 0  # Counter for throttling logs
         
         # Sensor status flags
@@ -715,7 +716,7 @@ class SensorManager:
         try:
             logger.info("❤️ Sending POWER_UP_MAX30102 command to Arduino...")
             self.serial_conn.write("POWER_UP_MAX30102\n".encode())
-            time.sleep(2)  # Wait for sensor to initialize
+            time.sleep(0.5)  # Reduced wait time for faster response
             
             # Optimistically set ready (Arduino message will confirm)
             self.max30102_sensor_ready = True

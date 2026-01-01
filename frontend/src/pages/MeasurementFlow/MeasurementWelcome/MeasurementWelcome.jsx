@@ -83,7 +83,9 @@ export default function MeasurementWelcome() {
             schoolNumber: user.schoolNumber || "",
             role: user.role || "",
             user_id: user.user_id || user.id || "",
-            email: user.email || ""
+            email: user.email || "",
+            middleName: user.middleName || "",
+            suffix: user.suffix || ""
           });
           // ENABLE SELECTION FOR ALL ROLES
           setShowSelection(true);

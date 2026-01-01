@@ -6,7 +6,16 @@ import {
     Search,
     Download,
     Person,
-    Visibility // Added visibility icon
+    Visibility,
+    GridView,
+    TableRows,
+    Notifications,
+    FilterList,
+    MoreVert,
+    AssignmentInd,
+    Summarize,
+    Print,
+    Settings
 } from '@mui/icons-material';
 import {
     Chart as ChartJS,
@@ -19,13 +28,14 @@ import {
     Title,
     PointElement,
     LineElement,
-    RadialLinearScale
+    RadialLinearScale,
+    Filler
 } from 'chart.js';
-import { Bar, Line, Radar } from 'react-chartjs-2';
+import { Bar, Line, Radar, Doughnut } from 'react-chartjs-2';
 import './AdminDashboard.css';
-import './AdminDashboard.css';
-import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory } from '../../../../utils/api'; // Added getMeasurementHistory
+import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory, printerAPI } from '../../../../utils/api';
 import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance component
+import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 
 // Register ChartJS components
 ChartJS.register(
@@ -38,7 +48,8 @@ ChartJS.register(
     Title,
     PointElement,
     LineElement,
-    RadialLinearScale
+    RadialLinearScale,
+    Filler // Added Filler for area charts
 );
 
 const AdminDashboard = () => {
@@ -52,17 +63,19 @@ const AdminDashboard = () => {
     });
     const [usersList, setUsersList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [printerStatus, setPrinterStatus] = useState({ status: 'unknown' }); // Added printer state
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState(['All']);
     const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState('All');
+    const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
 
     // Admin's own history state
     const [myHistory, setMyHistory] = useState([]);
     const [selectedMeasurement, setSelectedMeasurement] = useState(null);
 
     // Tab State
-    const [activeTab, setActiveTab] = useState('users'); // 'users', 'history', 'maintenance'
+    const [activeTab, setActiveTab] = useState('users'); // 'users', 'history', 'maintenance', 'profile'
 
     // Filtering & Sorting State
     const [filterType, setFilterType] = useState('all'); // 'all', 'today', 'week', 'month'
@@ -228,10 +241,15 @@ const AdminDashboard = () => {
                 setLoading(true);
 
                 // Parallel fetching
-                const [statsData, usersData] = await Promise.all([
+                const [statsData, usersData, printerData] = await Promise.all([
                     getAdminStats(),
-                    getAdminUsers()
+                    getAdminUsers(),
+                    printerAPI.getStatus() // Fetch printer status
                 ]);
+
+                if (printerData) {
+                    setPrinterStatus(printerData);
+                }
 
                 if (statsData.success) {
                     setStats(statsData.stats);
@@ -362,26 +380,69 @@ const AdminDashboard = () => {
         }
     }), []);
 
-    // Memoized Chart Data
-    const chartData = React.useMemo(() => ({
+
+
+    // MODERNIZED CHART: Doughnut for Role Distribution (Red/Grey Theme)
+    const roleDoughnutData = React.useMemo(() => ({
         labels: Object.keys(stats.roles_distribution || {}),
         datasets: [{
-            label: 'Users per Role',
             data: Object.values(stats.roles_distribution || {}),
             backgroundColor: [
-                'rgba(239, 68, 68, 0.8)', // red-500
-                'rgba(59, 130, 246, 0.8)', // blue-500
-                'rgba(34, 197, 94, 0.8)',  // green-500
-                'rgba(234, 179, 8, 0.8)',  // yellow-500
-                'rgba(168, 85, 247, 0.8)', // purple-500
-                'rgba(236, 72, 153, 0.8)', // pink-500
+                '#dc2626', // Red 600
+                '#ef4444', // Red 500
+                '#f87171', // Red 400
+                '#94a3b8', // Slate 400
+                '#cbd5e1', // Slate 300
+                '#e2e8f0', // Slate 200
             ],
-            borderColor: 'transparent',
-            borderRadius: 8,
-            barThickness: 'flex',
-            maxBarThickness: 60,
+            borderColor: '#ffffff',
+            borderWidth: 2,
+            hoverOffset: 4
         }]
     }), [stats.roles_distribution]);
+
+    const doughnutOptions = {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: {
+                    usePointStyle: true,
+                    font: { family: "'Outfit', sans-serif", size: 12 },
+                    color: '#64748b',
+                    padding: 20
+                }
+            }
+        },
+        cutout: '75%', // Thinner ring for modern look
+    };
+
+    // MODERNIZED CHART: Gradient Line Chart for Activity
+    // MODERNIZED CHART: Gradient Line Chart for Activity
+    const trafficData = {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [
+            {
+                label: 'System Activity',
+                data: [12, 19, 15, 25, 22, 10, 8], // Replace with real data if available
+                fill: true,
+                backgroundColor: (context) => {
+                    const ctx = context.chart.ctx;
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                    gradient.addColorStop(0, "rgba(239, 68, 68, 0.4)");
+                    gradient.addColorStop(1, "rgba(239, 68, 68, 0)");
+                    return gradient;
+                },
+                borderColor: '#dc2626',
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#dc2626',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.4 // Smooth curve
+            }
+        ]
+    };
 
     // --- Mock Data for "Wow" Factor (Sensor & Maintenance) ---
     const sensorHealthData = {
@@ -404,19 +465,7 @@ const AdminDashboard = () => {
         ]
     };
 
-    const trafficData = {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [
-            {
-                label: 'Measurements Taken',
-                data: [12, 19, 15, 25, 22, 10, 8],
-                fill: true,
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                borderColor: '#ef4444',
-                tension: 0.4
-            }
-        ]
-    };
+
 
     const trafficOptions = {
         responsive: true,
@@ -520,7 +569,7 @@ const AdminDashboard = () => {
                         fontSize: '1rem'
                     }}
                 >
-                    Measurement History
+                    My Measurement History
                 </button>
                 <button
                     onClick={() => setActiveTab('maintenance')}
@@ -537,63 +586,188 @@ const AdminDashboard = () => {
                 >
                     Maintenance
                 </button>
+                <button
+                    onClick={() => setActiveTab('profile')}
+                    style={{
+                        padding: '1rem',
+                        border: 'none',
+                        background: 'none',
+                        borderBottom: activeTab === 'profile' ? '3px solid #dc2626' : '3px solid transparent',
+                        fontWeight: activeTab === 'profile' ? 'bold' : 'normal',
+                        color: activeTab === 'profile' ? '#dc2626' : '#64748b',
+                        cursor: 'pointer',
+                        fontSize: '1rem'
+                    }}
+                >
+                    <Settings style={{ fontSize: '1.1rem', marginRight: '4px', verticalAlign: 'middle' }} />
+                    Personal Info
+                </button>
             </div>
 
             {/* Main Content */}
             <main className="admin-content">
+                {/* Personal Info Tab */}
+                {activeTab === 'profile' && user && (
+                    <PersonalInfo
+                        userId={user.userId || user.user_id || user.id}
+                        onProfileUpdate={(updatedUser) => {
+                            setUser(prev => ({ ...prev, ...updatedUser }));
+                        }}
+                    />
+                )}
+
                 {activeTab === 'analytics' && (
                     <motion.div
-                        className="charts-section"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        className="analytics-dashboard"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         transition={{ duration: 0.5 }}
                     >
-                        {/* Summary Cards */}
-                        <div className="summary-cards">
-                            <div className="summary-card total-users highlight">
-                                <h3>Total Registered</h3>
-                                <div className="summary-value">{stats.total_users}</div>
-                                <div className="summary-label">Active Accounts</div>
-                            </div>
-                            <div className="summary-card system-health">
-                                <h3>System Status</h3>
-                                <div className="summary-value status-ok">ONLINE</div>
-                                <div className="summary-label">Database Connected</div>
-                            </div>
+                        {/* 1. Header Metrics Row */}
+                        <div className="metrics-grid">
+                            <motion.div className="metric-card main-metric" whileHover={{ y: -5 }}>
+                                <div className="metric-icon-bg"><Person /></div>
+                                <div className="metric-content">
+                                    <span className="metric-label">Total Users</span>
+                                    <span className="metric-value">{stats.total_users}</span>
+                                    <span className="metric-trend positive">↑ 12% vs last week</span>
+                                </div>
+                            </motion.div>
+
+                            <motion.div className="metric-card" whileHover={{ y: -5 }}>
+                                <div className="metric-content">
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                        <span className="metric-label">System Status</span>
+                                        <Print style={{ fontSize: '1.2rem', color: printerStatus.status === 'ready' ? '#16a34a' : '#dc2626' }} />
+                                    </div>
+                                    <span className="metric-value status-text">ONLINE</span>
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                                        <span style={{
+                                            display: 'inline-block',
+                                            padding: '2px 8px',
+                                            borderRadius: '12px',
+                                            backgroundColor: printerStatus.status === 'ready' || printerStatus.status === 'warning' ? '#dcfce7' : '#fee2e2',
+                                            color: printerStatus.status === 'ready' || printerStatus.status === 'warning' ? '#166534' : '#991b1b',
+                                            fontWeight: '600'
+                                        }}>
+                                            Printer: {printerStatus.message || 'Checking...'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="status-indicator-ring"></div>
+                            </motion.div>
+
+                            <motion.div className="metric-card" whileHover={{ y: -5 }}>
+                                <div className="metric-content">
+                                    <span className="metric-label">Pending Approvals</span>
+                                    <span className="metric-value">{usersList.filter(u => u.approval_status === "pending").length}</span>
+                                    <span className="metric-sub" style={{ color: '#dc2626' }}>Needs Attention</span>
+                                </div>
+                            </motion.div>
                         </div>
 
-                        {/* Charts Grid - IMPROVED LAYOUT */}
-                        <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
-                            {/* Chart 1: User Stats (Real) */}
-                            <div className="chart-card">
-                                <h3>User Demographics</h3>
-                                <div className="chart-container">
+                        {/* 2. Main Analytics Grid */}
+                        <div className="analytics-grid">
+
+                            {/* Distribution Chart */}
+                            <motion.div
+                                className="analytics-card distribution-card"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.2 }}
+                            >
+                                <div className="card-header">
+                                    <h3>User Distribution</h3>
+                                    <button className="more-btn">...</button>
+                                </div>
+                                <div className="chart-wrapper doughnut-wrapper">
                                     {loading ? (
-                                        <div className="loading-chart">Loading statistics...</div>
+                                        <div className="loading-spinner"></div>
                                     ) : (
-                                        <Bar data={chartData} options={chartOptions} />
+                                        <Doughnut data={roleDoughnutData} options={doughnutOptions} />
                                     )}
+                                    <div className="doughnut-center-text">
+                                        <span className="center-number">{stats.total_users}</span>
+                                        <span className="center-label">Users</span>
+                                    </div>
                                 </div>
-                                <p style={{ textAlign: 'center', fontSize: '0.9rem', color: '#64748b', marginTop: '10px' }}>Real-time user role distribution.</p>
-                            </div>
+                            </motion.div>
 
-                            {/* Chart 2: Sensor Health (Mocked/Impressive) */}
-                            <div className="chart-card">
-                                <h3>Sensor Health Index</h3>
-                                <div className="chart-container">
-                                    <Radar data={sensorHealthData} options={radarOptions} />
+                            {/* Activity Line Chart */}
+                            <motion.div
+                                className="analytics-card trends-card"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.3 }}
+                            >
+                                <div className="card-header">
+                                    <h3>Activity Trends</h3>
+                                    <span className="period-badge">Last 7 Days</span>
                                 </div>
-                                <p style={{ textAlign: 'center', fontSize: '0.9rem', color: '#64748b', marginTop: '10px' }}>Real-time sensor calibration & accuracy status.</p>
-                            </div>
+                                <div className="chart-wrapper line-wrapper">
+                                    <Line data={trafficData} options={{
+                                        ...chartOptions,
+                                        maintainAspectRatio: false,
+                                        plugins: { legend: { display: false } },
+                                        scales: {
+                                            y: { grid: { borderDash: [5, 5], color: '#f1f5f9' }, beginAtZero: true },
+                                            x: { grid: { display: false } }
+                                        }
+                                    }} />
+                                </div>
+                            </motion.div>
 
-                            {/* Chart 3: System Traffic (Mocked/Impressive) */}
-                            <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
-                                <h3>System Maintenance & Usage</h3>
-                                <div className="chart-container" style={{ height: '300px' }}>
-                                    <Line data={trafficData} options={trafficOptions} />
+                            {/* Sensor Health Radar */}
+                            <motion.div
+                                className="analytics-card health-card"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4 }}
+                            >
+                                <div className="card-header">
+                                    <h3>Sensor Calibration</h3>
                                 </div>
-                                <p style={{ textAlign: 'center', fontSize: '0.9rem', color: '#64748b', marginTop: '10px' }}>7-Day active measurement traffic.</p>
-                            </div>
+                                <div className="chart-wrapper radar-wrapper">
+                                    <Radar data={sensorHealthData} options={{ ...radarOptions, scales: { r: { ticks: { display: false, backdropColor: 'transparent' } } } }} />
+                                </div>
+                            </motion.div>
+
+                            {/* Smart Insights Panel */}
+                            <motion.div
+                                className="analytics-card insights-card"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5 }}
+                            >
+                                <div className="card-header">
+                                    <h3>AI Insights</h3>
+                                    <span className="beta-badge">BETA</span>
+                                </div>
+                                <div className="insights-list">
+                                    <div className="insight-item">
+                                        <div className="insight-icon red">⚠️</div>
+                                        <div className="insight-text">
+                                            <strong>High BP Alert</strong>
+                                            <p>15% increase in high blood pressure readings this week.</p>
+                                        </div>
+                                    </div>
+                                    <div className="insight-item">
+                                        <div className="insight-icon gray">📊</div>
+                                        <div className="insight-text">
+                                            <strong>Peak Usage</strong>
+                                            <p>Most measurements taken between 9:00 AM - 11:00 AM.</p>
+                                        </div>
+                                    </div>
+                                    <div className="insight-item">
+                                        <div className="insight-icon gray">👥</div>
+                                        <div className="insight-text">
+                                            <strong>New Registrations</strong>
+                                            <p>Student sign-ups are trending upwards.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+
                         </div>
                     </motion.div>
                 )}
@@ -700,80 +874,207 @@ const AdminDashboard = () => {
                                     </div>
 
                                     <button className="icon-btn" title="Export"><Download /></button>
+
+                                    {/* View Toggle Buttons */}
+                                    <div className="view-toggle" style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
+                                        <button
+                                            onClick={() => setViewMode('table')}
+                                            style={{
+                                                padding: '8px',
+                                                border: 'none',
+                                                background: viewMode === 'table' ? '#eff6ff' : 'white',
+                                                color: viewMode === 'table' ? '#2563eb' : '#64748b',
+                                                cursor: 'pointer'
+                                            }}
+                                            title="Table View"
+                                        >
+                                            <TableRows fontSize="small" />
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode('card')}
+                                            style={{
+                                                padding: '8px',
+                                                border: 'none',
+                                                background: viewMode === 'card' ? '#eff6ff' : 'white',
+                                                color: viewMode === 'card' ? '#2563eb' : '#64748b',
+                                                cursor: 'pointer',
+                                                borderLeft: '1px solid #e2e8f0'
+                                            }}
+                                            title="Card View"
+                                        >
+                                            <GridView fontSize="small" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="table-container-wrapper">
-                                <table className="users-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Role</th>
-                                            <th>School ID</th>
-                                            <th>Email</th>
-                                            <th>Registered Date</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading ? (
+                            {viewMode === 'table' ? (
+                                <div className="table-container-wrapper">
+                                    <table className="users-table">
+                                        <thead>
                                             <tr>
-                                                <td colSpan="6" className="text-center p-4">Loading user data...</td>
+                                                <th>Name</th>
+                                                <th>Role</th>
+                                                <th>School ID</th>
+                                                <th>Email</th>
+                                                <th>Registered Date</th>
+                                                <th>Status</th>
                                             </tr>
-                                        ) : filteredUsers.length > 0 ? (
-                                            filteredUsers.map((u, i) => (
-                                                <tr key={u.user_id}>
-                                                    <td>
-                                                        <div className="user-name-cell">
-                                                            <div className="user-avatar">{u.firstname[0]}{u.lastname[0]}</div>
-                                                            <div>
-                                                                <div className="fw-bold">{u.firstname} {u.lastname}</div>
-                                                                <div className="text-secondary small">ID: {u.user_id ? u.user_id.substring(0, 8) + '...' : 'N/A'}</div>
+                                        </thead>
+                                        <tbody>
+                                            {loading ? (
+                                                // Skeleton Loading Rows
+                                                Array(5).fill(0).map((_, idx) => (
+                                                    <tr key={`skeleton-${idx}`} className="skeleton-row">
+                                                        <td><div className="skeleton-box" style={{ width: '150px' }}></div></td>
+                                                        <td><div className="skeleton-box" style={{ width: '80px' }}></div></td>
+                                                        <td><div className="skeleton-box" style={{ width: '100px' }}></div></td>
+                                                        <td><div className="skeleton-box" style={{ width: '180px' }}></div></td>
+                                                        <td><div className="skeleton-box" style={{ width: '120px' }}></div></td>
+                                                        <td><div className="skeleton-box" style={{ width: '90px' }}></div></td>
+                                                    </tr>
+                                                ))
+                                            ) : filteredUsers.length > 0 ? (
+                                                filteredUsers.map((u, i) => (
+                                                    <tr key={u.user_id}>
+                                                        <td>
+                                                            <div className="user-name-cell">
+                                                                <div className="user-avatar">{u.firstname[0]}{u.lastname[0]}</div>
+                                                                <div>
+                                                                    <div className="fw-bold">{u.firstname} {u.lastname}</div>
+                                                                    <div className="text-secondary small">ID: {u.user_id ? u.user_id.substring(0, 8) + '...' : 'N/A'}</div>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span className={`role-badge role-${u.role.toLowerCase()}`}>
-                                                            {u.role}
-                                                        </span>
-                                                    </td>
-                                                    <td>{u.school_number || 'N/A'}</td>
-                                                    <td>{u.email}</td>
-                                                    <td>{u.created_at || 'N/A'}</td>
-                                                    <td>
-                                                        <select
-                                                            className={`role-select status-${u.approval_status?.toLowerCase() || 'pending'}`}
-                                                            value={u.approval_status || 'pending'}
-                                                            onChange={(e) => handleStatusUpdate(u.user_id, e.target.value)}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            style={{
-                                                                minWidth: '110px',
-                                                                padding: '6px 10px',
-                                                                borderRadius: '6px',
-                                                                fontWeight: '600',
-                                                                fontSize: '0.85rem',
-                                                                border: '1px solid #e2e8f0',
-                                                                background: u.approval_status === 'approved' ? '#dcfce7' :
-                                                                    u.approval_status === 'rejected' ? '#fee2e2' : '#fff7ed',
-                                                                color: u.approval_status === 'approved' ? '#166534' :
-                                                                    u.approval_status === 'rejected' ? '#991b1b' : '#c2410c'
-                                                            }}
-                                                        >
-                                                            <option value="pending">Pending</option>
-                                                            <option value="approved">Approved</option>
-                                                            <option value="rejected">Rejected</option>
-                                                        </select>
-                                                    </td>
+                                                        </td>
+                                                        <td>
+                                                            <span className={`role-badge role-${u.role.toLowerCase()}`}>
+                                                                {u.role}
+                                                            </span>
+                                                        </td>
+                                                        <td>{u.school_number || 'N/A'}</td>
+                                                        <td>{u.email}</td>
+                                                        <td>{u.created_at || 'N/A'}</td>
+                                                        <td>
+                                                            <select
+                                                                className={`role-select status-${u.approval_status?.toLowerCase() || 'pending'}`}
+                                                                value={u.approval_status || 'pending'}
+                                                                onChange={(e) => handleStatusUpdate(u.user_id, e.target.value)}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                style={{
+                                                                    minWidth: '110px',
+                                                                    padding: '6px 10px',
+                                                                    borderRadius: '6px',
+                                                                    fontWeight: '600',
+                                                                    fontSize: '0.85rem',
+                                                                    border: '1px solid #e2e8f0',
+                                                                    background: u.approval_status === 'approved' ? '#dcfce7' :
+                                                                        u.approval_status === 'rejected' ? '#fee2e2' : '#fff7ed',
+                                                                    color: u.approval_status === 'approved' ? '#166534' :
+                                                                        u.approval_status === 'rejected' ? '#991b1b' : '#c2410c'
+                                                                }}
+                                                            >
+                                                                <option value="pending">Pending</option>
+                                                                <option value="approved">Approved</option>
+                                                                <option value="rejected">Rejected</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="6" className="text-center p-4">No users found matching "{searchTerm}"</td>
                                                 </tr>
-                                            ))
-                                        ) : (
-                                            <tr>
-                                                <td colSpan="6" className="text-center p-4">No users found matching "{searchTerm}"</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                // CARD VIEW IMPLEMENTATION
+                                <div className="user-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', padding: '10px 0' }}>
+                                    {loading ? (
+                                        Array(6).fill(0).map((_, idx) => (
+                                            <div key={`card-skeleton-${idx}`} className="user-card-skeleton" style={{ padding: '20px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', height: '200px' }}>
+                                                <div className="skeleton-box" style={{ width: '40px', height: '40px', borderRadius: '50%', marginBottom: '15px' }}></div>
+                                                <div className="skeleton-box" style={{ width: '150px', marginBottom: '10px' }}></div>
+                                                <div className="skeleton-box" style={{ width: '100px', marginBottom: '20px' }}></div>
+                                                <div className="skeleton-box" style={{ width: '100%', height: '40px' }}></div>
+                                            </div>
+                                        ))
+                                    ) : filteredUsers.length > 0 ? (
+                                        filteredUsers.map((u) => (
+                                            <motion.div
+                                                key={u.user_id}
+                                                className="user-card-item"
+                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                                style={{
+                                                    background: 'white',
+                                                    borderRadius: '16px',
+                                                    padding: '1.5rem',
+                                                    border: '1px solid #f1f5f9',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    textAlign: 'center',
+                                                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                <div className="user-avatar" style={{
+                                                    width: '64px', height: '64px', fontSize: '1.5rem', marginBottom: '1rem',
+                                                    background: `linear-gradient(135deg, ${u.role === 'Student' ? '#3b82f6' : '#ef4444'}, ${u.role === 'Student' ? '#2563eb' : '#dc2626'})`,
+                                                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%'
+                                                }}>
+                                                    {u.firstname[0]}{u.lastname[0]}
+                                                </div>
+
+                                                <h4 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#1e293b' }}>{u.firstname} {u.lastname}</h4>
+                                                <span className={`role-badge role-${u.role.toLowerCase()}`} style={{ marginBottom: '15px' }}>{u.role}</span>
+
+                                                <div className="card-details" style={{ width: '100%', fontSize: '0.9rem', color: '#64748b', marginBottom: '15px', textAlign: 'left' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                                        <span>ID:</span> <strong>{u.school_number || 'N/A'}</strong>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span>Joined:</span> <span>{u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ marginTop: 'auto', width: '100%' }}>
+                                                    <select
+                                                        className={`role-select status-${u.approval_status?.toLowerCase() || 'pending'}`}
+                                                        value={u.approval_status || 'pending'}
+                                                        onChange={(e) => handleStatusUpdate(u.user_id, e.target.value)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '8px',
+                                                            borderRadius: '8px',
+                                                            fontWeight: '600',
+                                                            fontSize: '0.9rem',
+                                                            border: '1px solid #e2e8f0',
+                                                            background: u.approval_status === 'approved' ? '#dcfce7' :
+                                                                u.approval_status === 'rejected' ? '#fee2e2' : '#fff7ed',
+                                                            color: u.approval_status === 'approved' ? '#166534' :
+                                                                u.approval_status === 'rejected' ? '#991b1b' : '#c2410c',
+                                                            textAlign: 'center'
+                                                        }}
+                                                    >
+                                                        <option value="pending">Pending</option>
+                                                        <option value="approved">Approved</option>
+                                                        <option value="rejected">Rejected</option>
+                                                    </select>
+                                                </div>
+                                            </motion.div>
+                                        ))
+                                    ) : (
+                                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                                            No users found matching "{searchTerm}"
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </motion.div>
                     </>
                 )}
@@ -975,7 +1276,13 @@ const AdminDashboard = () => {
                                         {(() => {
                                             const displayedHistory = processHistory(myHistory);
                                             return loading ? (
-                                                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Loading history...</td></tr>
+                                                Array(5).fill(0).map((_, idx) => (
+                                                    <tr key={`history-skeleton-${idx}`} className="skeleton-row">
+                                                        {Array(11).fill(0).map((_, cellIdx) => (
+                                                            <td key={cellIdx}><div className="skeleton-box" style={{ width: cellIdx === 0 ? '120px' : '60px' }}></div></td>
+                                                        ))}
+                                                    </tr>
+                                                ))
                                             ) : displayedHistory.length === 0 ? (
                                                 <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No measurements found (Try changing filters).</td></tr>
                                             ) : (

@@ -77,6 +77,9 @@ def create_app():
     from app.routes.measurement_routes import measurement_bp
     app.register_blueprint(measurement_bp, url_prefix='/api/measurements')
 
+    from app.routes.user_routes import user_bp
+    app.register_blueprint(user_bp, url_prefix='/api/users')
+
     # --- PRIORITY 1: ARDUINO CONNECTION & AUTO-TARE ---
     from app.routes.sensor_routes import sensor_manager
     print("\n" + "="*60)

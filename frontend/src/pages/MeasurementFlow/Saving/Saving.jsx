@@ -131,7 +131,11 @@ export default function Saving() {
         {/* Header */}
         <div className="saving-header">
           <h1 className="saving-title">
-            {isSaved ? "Health Data Saved" : "Saving Your Data"}
+            {isSaved ? (
+              <>Health Data <span style={{ color: '#dc2626' }}>Saved</span></>
+            ) : (
+              <>Saving Your <span style={{ color: '#dc2626' }}>Data</span></>
+            )}
           </h1>
           <p className="saving-subtitle">
             {isSaved

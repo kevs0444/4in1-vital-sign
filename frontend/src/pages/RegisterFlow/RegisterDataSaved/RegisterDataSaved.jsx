@@ -158,7 +158,9 @@ export default function RegisterDataSaved() {
         userId: newUserId, // Randomly generated ID
         rfidTag: rfidCode,
         firstname: registrationData.personalInfo.firstName || '',
+        middlename: registrationData.personalInfo.middleName || '',
         lastname: registrationData.personalInfo.lastName || '',
+        suffix: registrationData.personalInfo.suffix || '',
         role: mapUserTypeToRole(registrationData.userType),
 
         // School info - Keep the actual school ID here
@@ -309,7 +311,10 @@ export default function RegisterDataSaved() {
                   {registrationData.personalInfo?.firstName?.charAt(0)}
                 </div>
                 <div className="id-details">
-                  <h3>{registrationData.personalInfo?.firstName} {registrationData.personalInfo?.lastName}</h3>
+                  <h3>
+                    {registrationData.personalInfo?.firstName} {registrationData.personalInfo?.middleName ? registrationData.personalInfo.middleName.charAt(0) + '. ' : ''}
+                    {registrationData.personalInfo?.lastName} {registrationData.personalInfo?.suffix}
+                  </h3>
                   <p className="id-number">ID: {registrationData.idNumber}</p>
                   <p className="id-uid">UID: {generatedUserId}</p>
                 </div>

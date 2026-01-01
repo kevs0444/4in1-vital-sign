@@ -385,45 +385,18 @@ export default function Max30102() {
   const completeMeasurement = async () => {
     console.log("🏁 Measurement completion triggered");
 
+    // 1. STOP TIMERS IMMEDIATELY
+    stopProgressTimer();
+    setIsMeasuring(false);
+    isMeasuringRef.current = false; // Update ref
+
+    // 2. CALCULATE RESULTS IMMEDIATELY (Move calculation to top)
     // USE REFS for readings (survives closures/re-renders)
     const hrReadings = heartRateReadingsRef.current;
     const spo2ReadingsData = spo2ReadingsRef.current;
     const rrReadings = respiratoryRateReadingsRef.current;
 
     console.log(`📊 Collected readings - HR: ${hrReadings.length}, SpO2: ${spo2ReadingsData.length}, RR: ${rrReadings.length}`);
-
-    stopProgressTimer();
-    setIsMeasuring(false);
-    isMeasuringRef.current = false; // Update ref
-    setMeasurementComplete(true);
-    measurementCompleteRef.current = true; // Update ref
-    setMeasurementStep(4);
-    setProgressPercent(100);
-    setProgressSeconds(totalMeasurementTime);
-    setCountdown(0);
-
-    // Check if we are already stopping to prevent duplicate calls
-    if (isStoppingRef.current) return;
-    isStoppingRef.current = true;
-
-    // STOP and SHUTDOWN the Arduino MAX30102 - tell backend we're done
-    try {
-      console.log("⏹️ Sending stop command to Arduino...");
-      await sensorAPI.stopMax30102();
-      console.log("✅ Arduino MAX30102 stopped successfully");
-
-      // Small delay before shutdown to ensure serial buffer is clear
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Also fully shutdown/power down the sensor
-      console.log("🔌 Powering down MAX30102 sensor...");
-      await sensorAPI.shutdownMax30102();
-      console.log("✅ MAX30102 sensor powered down");
-    } catch (error) {
-      console.error("Error stopping/shutting down MAX30102:", error);
-    } finally {
-      isStoppingRef.current = false;
-    }
 
     // Calculate averages from all collected readings (from refs)
     let avgHeartRate = "--";
@@ -459,71 +432,24 @@ export default function Max30102() {
       console.warn("⚠️ No valid respiratory rate readings collected");
     }
 
-    // Use averages if available, otherwise fallback to the last seen valid measurement on screen
-    // Use averages if available, otherwise fallback to the last seen valid measurement on screen
-    // CRITICAL: Prioritize the backend's final results if available (stored in poll loop)
-    const backendResults = finalMeasurementsRef.current;
+    // Determine final values
+    let finalHeartRate = "--";
+    let finalSpo2 = "--";
+    let finalRespiratoryRate = "--";
 
-    let finalHeartRate = avgHeartRate;
-    let finalSpo2 = avgSpo2;
-    let finalRespiratoryRate = avgRespiratoryRate;
+    if (avgHeartRate !== "--") finalHeartRate = avgHeartRate;
+    if (avgSpo2 !== "--") finalSpo2 = avgSpo2;
+    if (avgRespiratoryRate !== "--") finalRespiratoryRate = avgRespiratoryRate;
 
-    // 1. Try Backend Final Results (Most authoritative - calculated by Arduino)
-    if (backendResults.heartRate) {
-      finalHeartRate = backendResults.heartRate.toString();
-      console.log(`✅ Using Backend Final Heart Rate: ${finalHeartRate}`);
+    // Emergency Fallback: If absolutely NO valid data was collected
+    if (finalHeartRate === "--" && validHeartRateReadings.length === 0 && hrReadings.length > 0) {
+      finalHeartRate = hrReadings[hrReadings.length - 1].toString();
     }
-    // 2. Prioritize Last Valid Reading (Matches what user sees, prevents "jump")
-    else if (validHeartRateReadings.length > 0) {
-      finalHeartRate = validHeartRateReadings[validHeartRateReadings.length - 1].toString();
-      console.log(`✅ Using Last Valid Heart Rate matches visual: ${finalHeartRate}`);
-    }
-    // 3. Fallback to Average
-    else if (avgHeartRate !== "--") {
-      finalHeartRate = avgHeartRate;
-    }
-    // 4. Fallback to Last Seen Live State
-    else if (measurements.heartRate !== "--") {
-      finalHeartRate = measurements.heartRate;
-    } else {
-      finalHeartRate = "--";
+    if (finalSpo2 === "--" && validSpo2Readings.length === 0 && spo2ReadingsData.length > 0) {
+      finalSpo2 = spo2ReadingsData[spo2ReadingsData.length - 1].toString();
     }
 
-    if (backendResults.spo2) {
-      finalSpo2 = backendResults.spo2.toString();
-      console.log(`✅ Using Backend Final SpO2: ${finalSpo2}`);
-    } else if (validSpo2Readings.length > 0) {
-      finalSpo2 = validSpo2Readings[validSpo2Readings.length - 1].toString();
-    } else if (avgSpo2 !== "--") {
-      finalSpo2 = avgSpo2;
-    } else if (measurements.spo2 !== "--") {
-      finalSpo2 = measurements.spo2;
-    } else {
-      finalSpo2 = "--";
-    }
-
-    if (backendResults.respiratoryRate) {
-      finalRespiratoryRate = backendResults.respiratoryRate.toString();
-      console.log(`✅ Using Backend Final Respiratory Rate: ${finalRespiratoryRate}`);
-    } else if (validRespiratoryRateReadings.length > 0) {
-      finalRespiratoryRate = validRespiratoryRateReadings[validRespiratoryRateReadings.length - 1].toString();
-    } else if (avgRespiratoryRate !== "--") {
-      finalRespiratoryRate = avgRespiratoryRate;
-    } else if (measurements.respiratoryRate !== "--") {
-      finalRespiratoryRate = measurements.respiratoryRate;
-    } else {
-      finalRespiratoryRate = "--";
-    }
-
-    // Update with final results
-    setMeasurements({
-      heartRate: finalHeartRate,
-      spo2: finalSpo2,
-      respiratoryRate: finalRespiratoryRate
-    });
-
-    // CRITICAL: Store in ref for reliable access in handleContinue
-    // React state is async, so we need a ref to ensure values are available immediately
+    // 3. STORE FINAL RESULTS IN REFS (Critical for handleContinue)
     finalMeasurementsRef.current = {
       heartRate: finalHeartRate !== "--" ? parseInt(finalHeartRate) : null,
       spo2: finalSpo2 !== "--" ? parseInt(finalSpo2) : null,
@@ -531,33 +457,55 @@ export default function Max30102() {
     };
     console.log("📌 Stored final measurements in ref:", finalMeasurementsRef.current);
 
-    // Show appropriate status message - FORCE SUCCESS if we have any data
-    const hasAnyData = finalHeartRate !== "--" || finalSpo2 !== "--" || finalRespiratoryRate !== "--";
+    // 4. UPDATE UI STATE IMMEDIATELY (User sees results instantly)
+    setMeasurements({
+      heartRate: finalHeartRate,
+      spo2: finalSpo2,
+      respiratoryRate: finalRespiratoryRate
+    });
 
+    setMeasurementStep(4);
+    setProgressPercent(100);
+    setProgressSeconds(totalMeasurementTime);
+    setCountdown(0);
+
+    // Status Message
+    const hasAnyData = finalHeartRate !== "--" || finalSpo2 !== "--" || finalRespiratoryRate !== "--";
     if (hasAnyData) {
       setStatusMessage("✅ Measurement Complete! Results ready.");
-      console.log("✅ Measurement completed successfully (used average or last valid data)");
     } else {
-      // Emergency Fallback: If absolutely NO valid data was collected, check if we have ANY raw readings at all
-      const hrReadingsFallback = heartRateReadingsRef.current;
-      const spo2ReadingsFallback = spo2ReadingsRef.current;
-
-      if (hrReadingsFallback.length > 0) {
-        setMeasurements(prev => ({ ...prev, heartRate: hrReadingsFallback[hrReadingsFallback.length - 1] }));
-      }
-      if (spo2ReadingsFallback.length > 0) {
-        setMeasurements(prev => ({ ...prev, spo2: spo2ReadingsFallback[spo2ReadingsFallback.length - 1] }));
-      }
-
       setStatusMessage("✅ Measurement Complete.");
-      console.warn("⚠️ Measurement completed with limited data, forcing complete state per user request");
     }
 
-    stopAllTimers();
-    clearFingerRemovedAlert();
+    // 5. ENABLE BUTTON (Now that data is ready)
+    setMeasurementComplete(true);
+    measurementCompleteRef.current = true; // Update ref
 
-    // NOTE: Sensor is already stopped in completeMeasurement() via stopMax30102()
-    // No need to call shutdownMax30102() here - it causes serial buffer issues
+    // 6. STOP SENSOR IN BACKGROUND (Don't block UI)
+    // Check if we are already stopping to prevent duplicate calls
+    if (isStoppingRef.current) return;
+    isStoppingRef.current = true;
+
+    try {
+      console.log("⏹️ Sending stop command to Arduino (Background)...");
+      // Use no-await or catch to prevent blocking if this hangs
+      sensorAPI.stopMax30102().then(() => {
+        console.log("✅ Arduino MAX30102 stopped successfully");
+        // Optional: Shutdown power after stop
+        return sensorAPI.shutdownMax30102();
+      }).then(() => {
+        console.log("✅ MAX30102 sensor powered down");
+      }).catch(err => {
+        console.error("Background stop/shutdown error:", err);
+      }).finally(() => {
+        isStoppingRef.current = false;
+      });
+    } catch (error) {
+      console.error("Error triggering background stop:", error);
+      isStoppingRef.current = false;
+    }
+
+    clearFingerRemovedAlert();
   };
 
   const startMainPolling = () => {
@@ -741,8 +689,7 @@ export default function Max30102() {
 
   const getButtonText = () => {
     if (measurementComplete) {
-      const isLast = isLastStep('max30102', location.state?.checklist);
-      return isLast ? "Continue to Result" : "Continue to Next Step";
+      return "Continue";
     }
 
     if (isMeasuring) {
@@ -823,20 +770,15 @@ export default function Max30102() {
 
 
         {/* Progress bar for Step X of Y */}
+        {/* Progress bar for Step X of Y */}
         <div className="w-100 mb-4">
           <div className="measurement-progress-bar">
             <div className="measurement-progress-fill" style={{ width: `${getProgressInfo('max30102', location.state?.checklist).percentage}%` }}></div>
           </div>
           <div className="d-flex justify-content-between align-items-center mt-2 px-1">
-            <button
-              onClick={handleExit}
-              className="btn btn-light rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm"
-              style={{ width: '40px', height: '40px', border: '1px solid #e0e0e0' }}
-            >
-              <span style={{ fontSize: '1.2rem', color: '#666', lineHeight: 1 }}>←</span>
-            </button>
+            <button className="measurement-back-arrow" onClick={handleExit}>←</button>
             <span className="measurement-progress-step mb-0">
-              Step {getProgressInfo('max30102', location.state?.checklist).currentStep} of {getProgressInfo('max30102', location.state?.checklist).totalSteps} - Vital Signs
+              Step {getProgressInfo('max30102', location.state?.checklist).currentStep} of {getProgressInfo('max30102', location.state?.checklist).totalSteps} - Pulse Oximeter
             </span>
           </div>
         </div>

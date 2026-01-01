@@ -16,9 +16,10 @@ import {
     FitnessCenter,
     Thermostat,
     Favorite,
-    Speed
+    Speed,
+    Print // Added Print icon
 } from '@mui/icons-material';
-import { sensorAPI } from '../../../../utils/api';
+import { sensorAPI, printerAPI } from '../../../../utils/api'; // Added printerAPI
 import './Maintenance.css';
 
 const getDynamicApiUrl = () => {
@@ -37,7 +38,7 @@ const modes = {
 const Maintenance = () => {
     const navigate = useNavigate();
 
-    // Main Section State: 'sensors' or 'cameras'
+    // Main Section State: 'sensors', 'cameras', 'printer'
     const [activeSection, setActiveSection] = useState('sensors');
 
     // Sensor Sub-tabs: 'bmi', 'bodytemp', 'max30102'
@@ -88,6 +89,13 @@ const Maintenance = () => {
     });
 
 
+
+    // Printer State
+    const [printerStatus, setPrinterStatus] = useState({
+        status: 'unknown',
+        message: 'Click check to get status',
+        printer_name: ''
+    });
 
     // Polling interval ref
     const pollIntervalRef = useRef(null);
@@ -356,6 +364,18 @@ const Maintenance = () => {
         return `${API_BASE}/camera/video_feed?t=${Date.now()}`;
     };
 
+    const checkPrinterStatus = async () => {
+        setPrinterStatus(prev => ({ ...prev, message: 'Checking...' }));
+        const res = await printerAPI.getStatus();
+        setPrinterStatus(res);
+    };
+
+    const handleTestPrint = async () => {
+        alert("Test print functionality to be implemented needs a backend endpoint for raw text printing or use the existing receipt endpoint with dummy data.");
+        // For now, let's just check status again
+        checkPrinterStatus();
+    };
+
     // Render sensor card
     const renderSensorCard = (title, icon, value, unit, status, onStart) => (
         <div className={`sensor-card ${status}`}>
@@ -422,6 +442,12 @@ const Maintenance = () => {
                     onClick={() => setActiveSection('cameras')}
                 >
                     <CameraAlt /> AI Cameras
+                </button>
+                <button
+                    className={`section-tab ${activeSection === 'printer' ? 'active' : ''}`}
+                    onClick={() => setActiveSection('printer')}
+                >
+                    <Print /> Printer & Receipt
                 </button>
             </div>
 
@@ -784,6 +810,64 @@ const Maintenance = () => {
                     </div>
                 )
                 }
+
+
+                {/* ==================== PRINTER SECTION ==================== */}
+                {activeSection === 'printer' && (
+                    <div className="printer-section" style={{ padding: '2rem' }}>
+                        <div className="sensor-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                            <div className="sensor-card-header">
+                                <Print style={{ fontSize: '2rem', color: '#64748b' }} />
+                                <div>
+                                    <h3>Thermal Printer Status</h3>
+                                    <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{printerStatus.printer_name || 'Checking printer...'}</div>
+                                </div>
+                            </div>
+
+                            <div className="sensor-card-value" style={{ margin: '2rem 0' }}>
+                                <div style={{
+                                    fontSize: '1.5rem',
+                                    fontWeight: 'bold',
+                                    color: printerStatus.status === 'ready' ? '#16a34a' :
+                                        printerStatus.status === 'warning' ? '#ca8a04' : '#dc2626'
+                                }}>
+                                    {printerStatus.message}
+                                </div>
+                                <div style={{ fontSize: '0.9rem', marginTop: '0.5rem', color: '#64748b' }}>
+                                    Status Code: {printerStatus.status_code !== undefined ? printerStatus.status_code : 'N/A'}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                                <button
+                                    className="sensor-start-btn"
+                                    onClick={checkPrinterStatus}
+                                    style={{ width: 'auto', padding: '0.8rem 1.5rem' }}
+                                >
+                                    <Refresh /> Refresh Status
+                                </button>
+                                {/* 
+                                <button 
+                                    className="sensor-start-btn" 
+                                    onClick={handleTestPrint}
+                                    style={{ width: 'auto', padding: '0.8rem 1.5rem', background: '#3b82f6' }}
+                                >
+                                    <Print /> Print Test Receipt
+                                </button>
+                                */}
+                            </div>
+
+                            <div className="sensor-description" style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                                <h4>Common Status Codes:</h4>
+                                <ul style={{ listStyle: 'none', padding: 0, fontSize: '0.9rem', color: '#64748b' }}>
+                                    <li><strong>Ready:</strong> Printer is online and has paper.</li>
+                                    <li><strong>Paper Out:</strong> Roll is empty or cover is open.</li>
+                                    <li><strong>Offline:</strong> Printer is disconnected or powered off.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main >
         </div >
     );

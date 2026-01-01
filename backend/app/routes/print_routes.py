@@ -161,3 +161,76 @@ def print_receipt():
     except Exception as e:
         logging.error(f"Print failed: {e}")
         return jsonify({'error': str(e)}), 500
+
+@print_bp.route('/status', methods=['GET'])
+def check_printer_status():
+    try:
+        import win32print
+
+        printer_name = win32print.GetDefaultPrinter()
+        if not printer_name:
+            return jsonify({'status': 'error', 'message': 'No default printer found'}), 404
+
+        hPrinter = win32print.OpenPrinter(printer_name)
+        try:
+            # Level 2 gives us the status attributes
+            printer_info = win32print.GetPrinter(hPrinter, 2)
+            status_code = printer_info['Status']
+            
+            # Status Flags
+            PRINTER_STATUS_ERROR = 0x00000002
+            PRINTER_STATUS_PAPER_JAM = 0x00000008
+            PRINTER_STATUS_PAPER_OUT = 0x00000010
+            PRINTER_STATUS_PAPER_PROBLEM = 0x00000040
+            PRINTER_STATUS_OFFLINE = 0x00000080
+            PRINTER_STATUS_OUTPUT_BIN_FULL = 0x00000800
+            PRINTER_STATUS_NOT_AVAILABLE = 0x00001000
+            PRINTER_STATUS_DOOR_OPEN = 0x00400000
+            
+            status_messages = []
+            status = 'ready'
+            
+            if status_code & PRINTER_STATUS_ERROR:
+                status_messages.append("Error")
+                status = 'error'
+            if status_code & PRINTER_STATUS_PAPER_JAM:
+                status_messages.append("Paper Jam")
+                status = 'error'
+            if status_code & PRINTER_STATUS_PAPER_OUT:
+                status_messages.append("Paper Out")
+                status = 'warning'
+            if status_code & PRINTER_STATUS_PAPER_PROBLEM:
+                status_messages.append("Paper Problem")
+                status = 'error'
+            if status_code & PRINTER_STATUS_OFFLINE:
+                status_messages.append("Offline")
+                status = 'error'
+            if status_code & PRINTER_STATUS_OUTPUT_BIN_FULL:
+                status_messages.append("Bin Full")
+                status = 'warning'
+            if status_code & PRINTER_STATUS_NOT_AVAILABLE:
+                status_messages.append("Not Available")
+                status = 'error'
+            if status_code & PRINTER_STATUS_DOOR_OPEN:
+                status_messages.append("Door Open")
+                status = 'error'
+                
+            if not status_messages:
+                # Sometimes status is 0 meaning ready, or just small unrelated flags
+                message = "Ready"
+            else:
+                message = ", ".join(status_messages)
+                
+            return jsonify({
+                'status': status,
+                'message': message,
+                'printer_name': printer_name,
+                'status_code': status_code
+            })
+            
+        finally:
+            win32print.ClosePrinter(hPrinter)
+            
+    except Exception as e:
+        logging.error(f"Printer status check failed: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500

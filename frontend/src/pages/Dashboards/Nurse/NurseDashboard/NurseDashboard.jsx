@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Logout, Search, Visibility, LocalHospital } from '@mui/icons-material';
+import { Logout, Search, Visibility, LocalHospital, Settings, GridView, TableRows } from '@mui/icons-material';
 import './NurseDashboard.css';
 import { getAdminUsers, getMeasurementHistory } from '../../../../utils/api';
+import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 
 const NurseDashboard = () => {
     const navigate = useNavigate();
@@ -11,15 +12,17 @@ const NurseDashboard = () => {
     const [usersList, setUsersList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
 
     // Modal State
     const [selectedUser, setSelectedUser] = useState(null);
     const [userHistory, setUserHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [selectedMeasurement, setSelectedMeasurement] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null);
 
     // New State for Tabs & Personal History & Filters
-    const [activeTab, setActiveTab] = useState('patients'); // 'patients', 'personal'
+    const [activeTab, setActiveTab] = useState('patients'); // 'patients', 'personal', 'profile'
     const [myHistory, setMyHistory] = useState([]);
     const [filterType, setFilterType] = useState('all'); // 'all', 'today', 'week', 'month'
     const [sortOrder, setSortOrder] = useState('desc'); // 'desc', 'asc'
@@ -42,6 +45,9 @@ const NurseDashboard = () => {
             navigate('/login');
             return;
         }
+
+        // Store current user for profile tab
+        setCurrentUser(savedUser);
 
         // Fetch Data
         fetchUsers();
@@ -314,12 +320,36 @@ const NurseDashboard = () => {
                 >
                     My Measurement History
                 </button>
+                <button
+                    onClick={() => setActiveTab('profile')}
+                    style={{
+                        padding: '1rem',
+                        border: 'none',
+                        background: 'none',
+                        borderBottom: activeTab === 'profile' ? '3px solid #dc2626' : '3px solid transparent',
+                        fontWeight: activeTab === 'profile' ? 'bold' : 'normal',
+                        color: activeTab === 'profile' ? '#dc2626' : '#64748b',
+                        cursor: 'pointer',
+                        fontSize: '1rem'
+                    }}
+                >
+                    <Settings style={{ fontSize: '1.1rem', marginRight: '4px', verticalAlign: 'middle' }} />
+                    Personal Info
+                </button>
             </div>
 
             {/* Content */}
             <div className="dashboard-content">
 
-                {/* --- Patients Tab --- */}
+                {/* --- Personal Info Tab --- */}
+                {activeTab === 'profile' && currentUser && (
+                    <PersonalInfo
+                        userId={currentUser.userId || currentUser.user_id || currentUser.id}
+                        onProfileUpdate={(updatedUser) => {
+                            setCurrentUser(prev => ({ ...prev, ...updatedUser }));
+                        }}
+                    />
+                )}
                 {activeTab === 'patients' && (
                     <motion.div
                         className="table-section"
@@ -328,58 +358,197 @@ const NurseDashboard = () => {
                     >
                         <div className="table-header">
                             <h3>Assigned Patients / All Users</h3>
-                            <div className="search-bar">
-                                <Search className="search-icon" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by name, email, role..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                <div className="search-bar">
+                                    <Search className="search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, email, role..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                                {/* View Mode Toggle */}
+                                <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                    <button
+                                        onClick={() => setViewMode('table')}
+                                        style={{
+                                            padding: '8px 12px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: viewMode === 'table' ? '#dc2626' : 'transparent',
+                                            color: viewMode === 'table' ? 'white' : '#64748b',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        title="Table View"
+                                    >
+                                        <TableRows style={{ fontSize: '1.2rem' }} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('card')}
+                                        style={{
+                                            padding: '8px 12px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: viewMode === 'card' ? '#dc2626' : 'transparent',
+                                            color: viewMode === 'card' ? 'white' : '#64748b',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        title="Card View"
+                                    >
+                                        <GridView style={{ fontSize: '1.2rem' }} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="table-container-wrapper">
-                            <table className="users-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Role</th>
-                                        <th>School ID</th>
-                                        <th>Last Checkup</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading users...</td></tr>
-                                    ) : filteredUsers.length === 0 ? (
-                                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No users found.</td></tr>
-                                    ) : (
-                                        filteredUsers.map((u) => (
-                                            <tr key={u.user_id}>
-                                                <td>
-                                                    <div className="user-name-cell">
-                                                        <div className="user-avatar">{u.firstname[0]}{u.lastname[0]}</div>
-                                                        <div>
-                                                            <div className="fw-bold">{u.firstname} {u.lastname}</div>
-                                                            <div className="text-secondary small">{u.email}</div>
+
+                        {/* Table View */}
+                        {viewMode === 'table' && (
+                            <div className="table-container-wrapper">
+                                <table className="users-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Role</th>
+                                            <th>School ID</th>
+                                            <th>Last Checkup</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+                                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading users...</td></tr>
+                                        ) : filteredUsers.length === 0 ? (
+                                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No users found.</td></tr>
+                                        ) : (
+                                            filteredUsers.map((u) => (
+                                                <tr key={u.user_id}>
+                                                    <td>
+                                                        <div className="user-name-cell">
+                                                            <div className="user-avatar">{u.firstname[0]}{u.lastname[0]}</div>
+                                                            <div>
+                                                                <div className="fw-bold">{u.firstname} {u.lastname}</div>
+                                                                <div className="text-secondary small">{u.email}</div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td><span className={`role-badge role-${u.role.toLowerCase()}`}>{u.role}</span></td>
-                                                <td>{u.school_number || 'N/A'}</td>
-                                                <td>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</td>
-                                                <td>
-                                                    <button className="action-btn" onClick={() => viewUserHistory(u)}>
-                                                        <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View History
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                                    </td>
+                                                    <td><span className={`role-badge role-${u.role.toLowerCase()}`}>{u.role}</span></td>
+                                                    <td>{u.school_number || 'N/A'}</td>
+                                                    <td>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</td>
+                                                    <td>
+                                                        <button className="action-btn" onClick={() => viewUserHistory(u)}>
+                                                            <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View History
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* Card View */}
+                        {viewMode === 'card' && (
+                            <div className="user-cards-grid" style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                                gap: '1.5rem',
+                                padding: '1rem 0'
+                            }}>
+                                {loading ? (
+                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                        Loading users...
+                                    </div>
+                                ) : filteredUsers.length === 0 ? (
+                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                        No users found.
+                                    </div>
+                                ) : (
+                                    filteredUsers.map((u) => (
+                                        <motion.div
+                                            key={u.user_id}
+                                            className="user-card"
+                                            initial={{ opacity: 0, scale: 0.95 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            whileHover={{ y: -4, boxShadow: '0 12px 24px rgba(0,0,0,0.12)' }}
+                                            style={{
+                                                background: 'white',
+                                                borderRadius: '16px',
+                                                padding: '1.5rem',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                                border: '1px solid #e2e8f0',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                                                <div style={{
+                                                    width: '56px',
+                                                    height: '56px',
+                                                    borderRadius: '50%',
+                                                    background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+                                                    color: 'white',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '1.25rem'
+                                                }}>
+                                                    {u.firstname[0]}{u.lastname[0]}
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <h4 style={{ margin: 0, color: '#1e293b', fontSize: '1.1rem' }}>
+                                                        {u.firstname} {u.lastname}
+                                                    </h4>
+                                                    <span className={`role-badge role-${u.role.toLowerCase()}`} style={{ fontSize: '0.75rem', marginTop: '4px', display: 'inline-block' }}>
+                                                        {u.role}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.9rem', color: '#475569' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#94a3b8' }}>Email:</span>
+                                                    <span style={{ fontWeight: '500', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#94a3b8' }}>School ID:</span>
+                                                    <span style={{ fontWeight: '500' }}>{u.school_number || 'N/A'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: '#94a3b8' }}>Last Checkup:</span>
+                                                    <span style={{ fontWeight: '500' }}>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</span>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                className="action-btn"
+                                                onClick={() => viewUserHistory(u)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px',
+                                                    borderRadius: '8px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px'
+                                                }}
+                                            >
+                                                <Visibility style={{ fontSize: '1rem' }} /> View History
+                                            </button>
+                                        </motion.div>
+                                    ))
+                                )}
+                            </div>
+                        )}
                     </motion.div>
                 )}
 

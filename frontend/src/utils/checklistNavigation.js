@@ -59,7 +59,18 @@ export const getProgressInfo = (currentStepId, checklist) => {
     // If step not found (shouldn't happen in normal flow), default to 1
     const safeCurrentStep = currentStep > 0 ? currentStep : 1;
 
-    const percentage = Math.round((safeCurrentStep / totalSteps) * 100);
+    // Calculate percentage based on CURRENT step to show progress through the workflow
+    // Example: Step 1 of 2 -> 50%
+    // Example: Step 2 of 2 -> 100%
+    let percentage = 0;
+    if (totalSteps > 0) {
+        percentage = Math.round((safeCurrentStep / totalSteps) * 100);
+    } else {
+        percentage = 0;
+    }
+
+    // Ensure percentage is between 0 and 100
+    percentage = Math.max(0, Math.min(100, percentage));
 
     return {
         currentStep: safeCurrentStep,

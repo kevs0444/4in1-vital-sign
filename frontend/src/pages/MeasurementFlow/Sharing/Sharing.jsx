@@ -31,6 +31,8 @@ export default function Sharing() {
     message: ''
   });
 
+  const [showSkipModal, setShowSkipModal] = useState(false);
+
   useEffect(() => {
     if (location.state) {
       setUserData(location.state);
@@ -42,7 +44,13 @@ export default function Sharing() {
     }
   }, [location.state, navigate]);
 
-  const handleReturnHome = React.useCallback(() => {
+  const handleReturnHome = React.useCallback((force = false) => {
+    // Check if user skipped options (unless forced)
+    if (!force && !emailSent && !printSent) {
+      setShowSkipModal(true);
+      return;
+    }
+
     // Clear user data
     localStorage.removeItem('currentUser');
     localStorage.removeItem('userData');
@@ -51,7 +59,7 @@ export default function Sharing() {
 
     // Navigate to Standby (root)
     navigate("/", { replace: true, state: { reset: true } });
-  }, [navigate]);
+  }, [navigate, emailSent, printSent]);
 
   // Auto-redirect countdown
   useEffect(() => {
@@ -59,9 +67,14 @@ export default function Sharing() {
       const timer = setTimeout(() => setAutoRedirectTimer(prev => prev - 1), 1000);
       return () => clearTimeout(timer);
     } else {
-      handleReturnHome();
+      handleReturnHome(true);
     }
   }, [autoRedirectTimer, handleReturnHome]);
+
+  const confirmSkip = () => {
+    setShowSkipModal(false);
+    handleReturnHome(true);
+  };
 
   const closeModal = () => {
     setModalConfig({ ...modalConfig, show: false });
@@ -200,7 +213,7 @@ export default function Sharing() {
         <div className="receipt-user-info">
           <div className="receipt-row">
             <span>Name:</span>
-            <strong>{userData.firstName} {userData.lastName}</strong>
+            <strong>{userData.firstName} {userData.middleName ? userData.middleName + ' ' : ''}{userData.lastName} {userData.suffix || ''}</strong>
           </div>
           <div className="receipt-row">
             <span>ID:</span>
@@ -336,7 +349,7 @@ export default function Sharing() {
       >
         {/* Header */}
         <div className="sharing-header">
-          <h1 className="sharing-title">Measurement Complete</h1>
+          <h1 className="sharing-title">Measurement <span style={{ color: '#dc2626' }}>Complete</span></h1>
           <p className="sharing-subtitle">
             Your results have been recorded. <br />
             Returning to home in <span className="timer-badge">{autoRedirectTimer}s</span>
@@ -407,8 +420,8 @@ export default function Sharing() {
         {/* Finish Button */}
         <div className="sharing-footer-action">
           <button
-            className="finish-button"
-            onClick={handleReturnHome}
+            className="start-button"
+            onClick={() => handleReturnHome(false)}
           >
             Finish Session
           </button>
@@ -442,6 +455,59 @@ export default function Sharing() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Skip Confirmation Modal (Glassmorphism) */}
+      {showSkipModal && (
+        <div className="status-modal-overlay" onClick={() => setShowSkipModal(false)}>
+          <motion.div
+            className="status-modal-content warning"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '1px solid rgba(255, 255, 255, 0.5)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <div className="status-modal-icon">
+              <span>⚠️</span>
+            </div>
+            <h2 className="status-modal-title">No Option Selected</h2>
+            <p className="status-modal-message">
+              You haven't selected to email or print your results. Are you sure you want to finish without saving a copy?
+            </p>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '20px', width: '100%' }}>
+              <button
+                className="status-modal-button"
+                style={{
+                  background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
+                  color: '#1e293b',
+                  boxShadow: '0 6px 20px rgba(148, 163, 184, 0.4)',
+                  flex: 1
+                }}
+                onClick={() => setShowSkipModal(false)}
+              >
+                Go Back
+              </button>
+              <button
+                className="status-modal-button"
+                style={{
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: 'white',
+                  boxShadow: '0 6px 20px rgba(239, 68, 68, 0.5)',
+                  flex: 1
+                }}
+                onClick={confirmSkip}
+              >
+                Finish Anyway
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

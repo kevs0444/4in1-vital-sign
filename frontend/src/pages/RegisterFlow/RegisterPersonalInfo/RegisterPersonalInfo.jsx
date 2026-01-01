@@ -23,7 +23,9 @@ export default function RegisterPersonalInfo() {
   const [currentStep, setCurrentStep] = useState(location.state?.step || 0); // 0: Name, 1: Age, 2: Sex
   const [formData, setFormData] = useState({
     firstName: location.state?.personalInfo?.firstName || "",
+    middleName: location.state?.personalInfo?.middleName || "",
     lastName: location.state?.personalInfo?.lastName || "",
+    suffix: location.state?.personalInfo?.suffix || "",
     age: location.state?.personalInfo?.age ? location.state.personalInfo.age.toString() : "",
     sex: location.state?.personalInfo?.sex || "",
     birthMonth: location.state?.personalInfo?.birthMonth || null,
@@ -38,6 +40,7 @@ export default function RegisterPersonalInfo() {
   const [errorMessage, setErrorMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState({ firstName: false, lastName: false });
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showSuffixDropdown, setShowSuffixDropdown] = useState(false); // New state for dropdown
   const [showAgeWarningModal, setShowAgeWarningModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateModalTitle, setDuplicateModalTitle] = useState("Already Registered");
@@ -71,6 +74,7 @@ export default function RegisterPersonalInfo() {
   };
 
   const firstNameInputRef = useRef(null);
+  const middleNameInputRef = useRef(null);
   const lastNameInputRef = useRef(null);
   const monthScrollRef = useRef(null);
   const dayScrollRef = useRef(null);
@@ -306,7 +310,9 @@ export default function RegisterPersonalInfo() {
           },
           body: JSON.stringify({
             firstname: formData.firstName.trim(),
+            middlename: formData.middleName.trim(),
             lastname: formData.lastName.trim(),
+            suffix: formData.suffix,
             age: parseInt(formData.age, 10),
             sex: formData.sex,
             birthMonth: formData.birthMonth,
@@ -340,7 +346,9 @@ export default function RegisterPersonalInfo() {
           ...location.state,
           personalInfo: {
             firstName: formData.firstName.trim(),
+            middleName: formData.middleName.trim(),
             lastName: formData.lastName.trim(),
+            suffix: formData.suffix,
             age: parseInt(formData.age, 10),
             sex: formData.sex,
             birthMonth: formData.birthMonth,
@@ -411,6 +419,9 @@ export default function RegisterPersonalInfo() {
       if (activeInput === "first") {
         newVal = formData.firstName.slice(0, -1);
         setFormData(prev => ({ ...prev, firstName: newVal }));
+      } else if (activeInput === "middle") {
+        newVal = formData.middleName.slice(0, -1);
+        setFormData(prev => ({ ...prev, middleName: newVal }));
       } else {
         newVal = formData.lastName.slice(0, -1);
         setFormData(prev => ({ ...prev, lastName: newVal }));
@@ -420,6 +431,8 @@ export default function RegisterPersonalInfo() {
     } else if (key === "Space") {
       if (activeInput === "first") {
         setFormData(prev => ({ ...prev, firstName: prev.firstName + " " }));
+      } else if (activeInput === "middle") {
+        setFormData(prev => ({ ...prev, middleName: prev.middleName + " " }));
       } else {
         setFormData(prev => ({ ...prev, lastName: prev.lastName + " " }));
       }
@@ -428,6 +441,8 @@ export default function RegisterPersonalInfo() {
       if (activeInput === "first") {
         setFormData(prev => ({ ...prev, firstName: applyFormatting(prev.firstName, key) }));
         if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: false }));
+      } else if (activeInput === "middle") {
+        setFormData(prev => ({ ...prev, middleName: applyFormatting(prev.middleName, key) }));
       } else {
         setFormData(prev => ({ ...prev, lastName: applyFormatting(prev.lastName, key) }));
         if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: false }));
@@ -575,84 +590,125 @@ export default function RegisterPersonalInfo() {
             {currentStep === 0 && (
               <div className="form-phase active">
                 <div className="form-groups">
-                  <div className="form-group">
-                    <label htmlFor="firstName" className="form-label">
-                      First Name
-                    </label>
-                    <input
-                      ref={firstNameInputRef}
-                      id="firstName"
-                      type="text"
-                      className={`form-input ${activeInput === 'first' ? 'active' : ''} ${fieldErrors.firstName ? 'error' : ''}`}
-                      placeholder="Juan"
-                      value={getDisplayValue(formData.firstName, 'first')}
-                      onChange={(e) => {
-                        let val = e.target.value.replace(/\|/g, '');
-                        // Smart Backspace for Remote
-                        if (!isLocalDevice() && activeInput === 'first' && showCursor) {
-                          if (val === formData.firstName && e.target.value.length < (formData.firstName.length + 1)) {
-                            val = val.slice(0, -1);
+
+
+                  <div className="form-group-row">
+                    {/* First Name */}
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label htmlFor="firstName" className="form-label">
+                        First Name
+                      </label>
+                      <input
+                        ref={firstNameInputRef}
+                        id="firstName"
+                        type="text"
+                        className={`form-input ${activeInput === 'first' ? 'active' : ''} ${fieldErrors.firstName ? 'error' : ''}`}
+                        placeholder="Juan"
+                        value={getDisplayValue(formData.firstName, 'first')}
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/\|/g, '');
+                          if (!isLocalDevice() && activeInput === 'first' && showCursor) {
+                            if (val === formData.firstName && e.target.value.length < (formData.firstName.length + 1)) {
+                              val = val.slice(0, -1);
+                            }
                           }
-                        }
-                        setFormData(prev => ({ ...prev, firstName: val }));
-                        // Clear error if valid
-                        if (val.trim().length > 0 && fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: false }));
-                      }}
-                      onFocus={(e) => {
-                        if (isLocalDevice()) {
-                          e.preventDefault();
-                          e.target.blur();
-                        }
-                        setActiveInput("first");
-                        // Smart Shift: Activate if empty or ends in space
-                        const val = formData.firstName;
-                        setIsShift(val.length === 0 || val.slice(-1) === ' ');
-                        if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: false }));
-                      }}
-                      readOnly={isLocalDevice()}
-                      inputMode={isLocalDevice() ? "none" : "text"}
-                      autoComplete="off"
-                    />
+                          setFormData(prev => ({ ...prev, firstName: val }));
+                          if (val.trim().length > 0 && fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: false }));
+                        }}
+                        onFocus={(e) => {
+                          if (isLocalDevice()) { e.preventDefault(); e.target.blur(); }
+                          setActiveInput("first");
+                          const val = formData.firstName;
+                          setIsShift(val.length === 0 || val.slice(-1) === ' ');
+                        }}
+                        readOnly={isLocalDevice()}
+                        inputMode={isLocalDevice() ? "none" : "text"}
+                        autoComplete="off"
+                      />
+                    </div>
+
+                    {/* Middle Name */}
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label htmlFor="middleName" className="form-label">
+                        Middle Name
+                      </label>
+                      <input
+                        ref={middleNameInputRef}
+                        id="middleName"
+                        type="text"
+                        className={`form-input ${activeInput === 'middle' ? 'active' : ''}`}
+                        placeholder="Santos"
+                        value={getDisplayValue(formData.middleName, 'middle')}
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/\|/g, '');
+                          if (!isLocalDevice() && activeInput === 'middle' && showCursor) {
+                            if (val === formData.middleName && e.target.value.length < (formData.middleName.length + 1)) {
+                              val = val.slice(0, -1);
+                            }
+                          }
+                          setFormData(prev => ({ ...prev, middleName: val }));
+                        }}
+                        onFocus={(e) => {
+                          if (isLocalDevice()) { e.preventDefault(); e.target.blur(); }
+                          setActiveInput("middle");
+                          const val = formData.middleName;
+                          setIsShift(val.length === 0 || val.slice(-1) === ' ');
+                        }}
+                        readOnly={isLocalDevice()}
+                        inputMode={isLocalDevice() ? "none" : "text"}
+                        autoComplete="off"
+                      />
+                    </div>
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor="lastName" className="form-label">
-                      Last Name
-                    </label>
-                    <input
-                      ref={lastNameInputRef}
-                      id="lastName"
-                      type="text"
-                      className={`form-input ${activeInput === 'last' ? 'active' : ''} ${fieldErrors.lastName ? 'error' : ''}`}
-                      placeholder="Dela Cruz"
-                      value={getDisplayValue(formData.lastName, 'last')}
-                      onChange={(e) => {
-                        let val = e.target.value.replace(/\|/g, '');
-                        // Smart Backspace for Remote
-                        if (!isLocalDevice() && activeInput === 'last' && showCursor) {
-                          if (val === formData.lastName && e.target.value.length < (formData.lastName.length + 1)) {
-                            val = val.slice(0, -1);
+                  <div className="form-group-row">
+                    {/* Last Name */}
+                    <div className="form-group" style={{ flex: 2 }}>
+                      <label htmlFor="lastName" className="form-label">
+                        Last Name
+                      </label>
+                      <input
+                        ref={lastNameInputRef}
+                        id="lastName"
+                        type="text"
+                        className={`form-input ${activeInput === 'last' ? 'active' : ''} ${fieldErrors.lastName ? 'error' : ''}`}
+                        placeholder="Dela Cruz"
+                        value={getDisplayValue(formData.lastName, 'last')}
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/\|/g, '');
+                          if (!isLocalDevice() && activeInput === 'last' && showCursor) {
+                            if (val === formData.lastName && e.target.value.length < (formData.lastName.length + 1)) {
+                              val = val.slice(0, -1);
+                            }
                           }
-                        }
-                        setFormData(prev => ({ ...prev, lastName: val }));
-                        // Clear error if valid
-                        if (val.trim().length > 0 && fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: false }));
-                      }}
-                      onFocus={(e) => {
-                        if (isLocalDevice()) {
-                          e.preventDefault();
-                          e.target.blur();
-                        }
-                        setActiveInput("last");
-                        // Smart Shift: Activate if empty or ends in space
-                        const val = formData.lastName;
-                        setIsShift(val.length === 0 || val.slice(-1) === ' ');
-                        if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: false }));
-                      }}
-                      readOnly={isLocalDevice()}
-                      inputMode={isLocalDevice() ? "none" : "text"}
-                      autoComplete="off"
-                    />
+                          setFormData(prev => ({ ...prev, lastName: val }));
+                          if (val.trim().length > 0 && fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: false }));
+                        }}
+                        onFocus={(e) => {
+                          if (isLocalDevice()) { e.preventDefault(); e.target.blur(); }
+                          setActiveInput("last");
+                          const val = formData.lastName;
+                          setIsShift(val.length === 0 || val.slice(-1) === ' ');
+                        }}
+                        readOnly={isLocalDevice()}
+                        inputMode={isLocalDevice() ? "none" : "text"}
+                        autoComplete="off"
+                      />
+                    </div>
+
+                    {/* Suffix Selector - Opens Modal */}
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label htmlFor="suffix" className="form-label">
+                        Suffix
+                      </label>
+                      <div
+                        className={`form-input dropdown-trigger ${!formData.suffix ? 'placeholder' : ''}`}
+                        onClick={() => setShowSuffixDropdown(true)}
+                      >
+                        {formData.suffix || "None"}
+                        <span style={{ float: 'right', fontSize: '0.8rem' }}>▼</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -968,6 +1024,46 @@ export default function RegisterPersonalInfo() {
                 Go to Login
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Suffix Selector Modal Popup */}
+      {showSuffixDropdown && (
+        <div className="suffix-modal-overlay" onClick={() => setShowSuffixDropdown(false)}>
+          <motion.div
+            className="suffix-modal"
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="suffix-modal-header">
+              <h2 className="suffix-modal-title">Select Suffix</h2>
+              <p className="suffix-modal-subtitle">Choose your name suffix (optional)</p>
+            </div>
+            <div className="suffix-modal-options">
+              {["", "Jr.", "Sr.", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "MD", "PhD", "DDS", "DVM", "JD", "Esq.", "CPA", "RN", "PE"].map((opt) => (
+                <div
+                  key={opt || "none"}
+                  className={`suffix-modal-option ${formData.suffix === opt ? 'selected' : ''}`}
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, suffix: opt }));
+                    setShowSuffixDropdown(false);
+                  }}
+                >
+                  {opt || "None"}
+                  {formData.suffix === opt && <span className="suffix-check">✓</span>}
+                </div>
+              ))}
+            </div>
+            <button
+              className="suffix-modal-close"
+              onClick={() => setShowSuffixDropdown(false)}
+            >
+              Cancel
+            </button>
           </motion.div>
         </div>
       )}

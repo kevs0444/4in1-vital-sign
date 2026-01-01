@@ -418,6 +418,17 @@
   box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
 }
 
+/* Warning Variation */
+.status-modal-content.warning .status-modal-icon {
+  background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+  border-color: #fde047;
+  box-shadow: 0 8px 25px rgba(234, 179, 8, 0.25);
+}
+
+.status-modal-content.warning .status-modal-title {
+  color: #1f2937;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .sharing-content {

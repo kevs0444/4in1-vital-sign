@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Visibility, VisibilityOff, ArrowBack } from '@mui/icons-material';
-import { loginWithCredentials, storeUserData } from '../../../utils/api';
+import { Visibility, VisibilityOff, ArrowBack, Sensors } from '@mui/icons-material';
+import { loginWithCredentials, storeUserData, loginWithRFID } from '../../../utils/api';
 import logo from '../../../assets/images/juan.png';
 
 const LoginRemote = () => {
@@ -12,10 +12,54 @@ const LoginRemote = () => {
     const [error, setError] = useState('');
     const [errorTitle, setErrorTitle] = useState('Login Failed');
     const [showErrorModal, setShowErrorModal] = useState(false);
+    const [rfidStatus, setRfidStatus] = useState('ready');
+
+    // RFID Refs
+    const rfidDataRef = useRef('');
+    const rfidTimeoutRef = useRef(null);
 
     // Refs for accessing input values directly
     const schoolNumberInputRef = useRef(null);
     const passwordInputRef = useRef(null);
+
+    const handleLoginSuccess = (user) => {
+        console.log('✅ Login successful:', user);
+
+        storeUserData(user);
+
+        // Also store in localStorage for dashboard access
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('userData', JSON.stringify(user));
+        localStorage.setItem('isAuthenticated', 'true');
+
+        const userDataForState = {
+            firstName: user.firstName || user.firstname || "",
+            lastName: user.lastName || user.lastname || "",
+            age: user.age || "",
+            sex: user.sex || "",
+            schoolNumber: user.schoolNumber || user.school_number || "",
+            role: user.role || "",
+            user_id: user.user_id || user.userId || user.id || "",
+            email: user.email || ""
+        };
+
+        // Navigate based on role to Dashboard (Remote users don't measure)
+        const role = (user.role || user.userType || user.type || "").toLowerCase();
+        let targetPath = '/student/dashboard';
+
+        if (role === 'admin' || role === 'superadmin') targetPath = '/admin/dashboard';
+        else if (role === 'doctor') targetPath = '/doctor/dashboard';
+        else if (role === 'nurse') targetPath = '/nurse/dashboard';
+        else if (role.includes('student')) targetPath = '/student/dashboard';
+        else if (role.includes('employee') || role.includes('faculty') || role.includes('staff')) targetPath = '/employee/dashboard';
+        else targetPath = '/student/dashboard';
+
+        console.log(`🔀 Redirecting Remote User (${role}) to: ${targetPath}`);
+
+        navigate(targetPath, {
+            state: { user: userDataForState }
+        });
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -26,8 +70,24 @@ const LoginRemote = () => {
             const schoolNumber = schoolNumberInputRef.current?.value || '';
             const password = passwordInputRef.current?.value || '';
 
-            if (!schoolNumber.trim() || !password.trim()) {
-                setError('Please enter your School Number/Email and password');
+            if (!schoolNumber.trim()) {
+                setError('Please enter your School Number/Email');
+                setShowErrorModal(true);
+                setIsLoading(false);
+                return;
+            }
+
+            // Fallback: If password is empty but schoolNumber looks like RFID (long number), try RFID login
+            // This handles cases where user scans into the input field
+            const numbersOnly = schoolNumber.replace(/\D/g, '');
+            if (!password.trim() && numbersOnly.length >= 5 && schoolNumber === numbersOnly) {
+                console.log('🔄 Detected potential RFID in username field:', numbersOnly);
+                await processRfidScan(numbersOnly);
+                return;
+            }
+
+            if (!password.trim()) {
+                setError('Please enter your password');
                 setShowErrorModal(true);
                 setIsLoading(false);
                 return;
@@ -36,81 +96,113 @@ const LoginRemote = () => {
             console.log('📤 Sending remote login credentials...');
             const response = await loginWithCredentials(schoolNumber, password);
 
-            console.log('📥 Login response received:', response);
-
             if (response.success) {
-                console.log('✅ Manual login successful:', response);
-                const user = response.user;
-
-                console.log('👤 User data:', user);
-
-                storeUserData(user);
-
-                // Also store in localStorage for dashboard access
-                // Use 'user' key to match what AdminDashboard expects
-                localStorage.setItem('user', JSON.stringify(user));
-                localStorage.setItem('userData', JSON.stringify(user)); // Keep for backward compatibility
-                localStorage.setItem('isAuthenticated', 'true');
-
-                const userDataForState = {
-                    firstName: user.firstName || user.firstname || "",
-                    lastName: user.lastName || user.lastname || "",
-                    age: user.age || "",
-                    sex: user.sex || "",
-                    schoolNumber: user.schoolNumber || user.school_number || "",
-                    role: user.role || "",
-                    user_id: user.user_id || user.userId || user.id || "",
-                    email: user.email || ""
-                };
-
-                console.log('📦 User data for state:', userDataForState);
-
-                // Navigate based on role to Dashboard (Remote users don't measure)
-                const role = (user.role || user.userType || user.type || "").toLowerCase();
-                let targetPath = '/student/dashboard'; // Safer default
-
-                if (role === 'admin' || role === 'superadmin') targetPath = '/admin/dashboard';
-                else if (role === 'doctor') targetPath = '/doctor/dashboard';
-                else if (role === 'nurse') targetPath = '/nurse/dashboard';
-                else if (role.includes('student')) targetPath = '/student/dashboard';
-                else if (role.includes('employee') || role.includes('faculty') || role.includes('staff')) targetPath = '/employee/dashboard';
-                else targetPath = '/student/dashboard';
-
-                console.log(`🔀 Redirecting Remote User (${role}) to: ${targetPath}`);
-
-                // Navigate with user wrapped in state.user for AdminDashboard compatibility
-                navigate(targetPath, {
-                    state: { user: userDataForState }
-                });
+                handleLoginSuccess(response.user);
             } else {
-                // Intelligent Error Title based on status or message
-                if (response.status === 'rejected' || (response.message && response.message.toLowerCase().includes('rejected'))) {
-                    setErrorTitle('Account Rejected');
-                } else if (response.status === 'pending' || (response.message && (response.message.toLowerCase().includes('pending') || response.message.toLowerCase().includes('approval')))) {
-                    setErrorTitle('Approval Pending');
-                } else {
-                    setErrorTitle('Login Failed');
-                }
-                setError(response.message || 'Invalid credentials');
-                setShowErrorModal(true);
-                setIsLoading(false);
+                handleLoginError(response);
             }
         } catch (err) {
-            console.error('❌ Login error:', err);
-            const errorMessage = err.message || 'Login failed. Please try again.';
-            // Intelligent Error Title for Catch Block
-            if (errorMessage.toLowerCase().includes('rejected')) {
-                setErrorTitle('Account Rejected');
-            } else if (errorMessage.toLowerCase().includes('pending') || errorMessage.toLowerCase().includes('approval')) {
-                setErrorTitle('Approval Pending');
-            } else {
-                setErrorTitle('Login Failed');
-            }
-            setError(errorMessage);
-            setShowErrorModal(true);
-            setIsLoading(false);
+            handleLoginException(err);
         }
     };
+
+    const handleLoginError = (response) => {
+        if (response.status === 'rejected' || (response.message && response.message.toLowerCase().includes('rejected'))) {
+            setErrorTitle('Account Rejected');
+        } else if (response.status === 'pending' || (response.message && (response.message.toLowerCase().includes('pending') || response.message.toLowerCase().includes('approval')))) {
+            setErrorTitle('Approval Pending');
+        } else {
+            setErrorTitle('Login Failed');
+        }
+        setError(response.message || 'Invalid credentials');
+        setShowErrorModal(true);
+        setIsLoading(false);
+        setRfidStatus('error');
+    };
+
+    const handleLoginException = (err) => {
+        console.error('❌ Login error:', err);
+        const errorMessage = err.message || 'Login failed. Please try again.';
+        if (errorMessage.toLowerCase().includes('rejected')) {
+            setErrorTitle('Account Rejected');
+        } else if (errorMessage.toLowerCase().includes('pending') || errorMessage.toLowerCase().includes('approval')) {
+            setErrorTitle('Approval Pending');
+        } else {
+            setErrorTitle('Login Failed');
+        }
+        setError(errorMessage);
+        setShowErrorModal(true);
+        setIsLoading(false);
+        setRfidStatus('error');
+    };
+
+    // RFID Handling
+    const processRfidScan = async (scannedId) => {
+        console.log('🎫 Processing RFID Scan:', scannedId);
+        setIsLoading(true);
+        setRfidStatus('scanning');
+        setError('');
+
+        try {
+            const response = await loginWithRFID(scannedId);
+
+            if (response.success) {
+                setRfidStatus('success');
+                handleLoginSuccess(response.user);
+            } else {
+                handleLoginError(response);
+            }
+        } catch (err) {
+            handleLoginException(err);
+        }
+    };
+
+    // Global Keydown Listener for RFID
+    React.useEffect(() => {
+        const handleGlobalKeyDown = (e) => {
+            // Ignore if typing in an input field (unless we strictly want to capture everything)
+            // Safety: Don't interfere with user typing credentials
+            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+            if (isLoading) return;
+
+            // RFID scanners typically send numbers/letters followed by Enter
+            if (e.key === 'Enter') {
+                if (rfidDataRef.current.length >= 5) {
+                    console.log('🔑 Enter key pressed, processing RFID data:', rfidDataRef.current);
+                    // Extract numbers
+                    const numbersOnly = rfidDataRef.current.replace(/\D/g, '');
+                    if (numbersOnly.length >= 5) {
+                        processRfidScan(numbersOnly);
+                    }
+                    rfidDataRef.current = '';
+                    e.preventDefault();
+                }
+            } else if (e.key.length === 1) {
+                rfidDataRef.current += e.key;
+
+                // Auto-detect timeout
+                if (rfidDataRef.current.length >= 8) {
+                    if (rfidTimeoutRef.current) clearTimeout(rfidTimeoutRef.current);
+                    rfidTimeoutRef.current = setTimeout(() => {
+                        if (rfidDataRef.current.length >= 8) {
+                            const numbersOnly = rfidDataRef.current.replace(/\D/g, '');
+                            if (numbersOnly.length >= 5) {
+                                processRfidScan(numbersOnly);
+                            }
+                            rfidDataRef.current = '';
+                        }
+                    }, 100);
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleGlobalKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleGlobalKeyDown);
+            if (rfidTimeoutRef.current) clearTimeout(rfidTimeoutRef.current);
+        };
+    }, [isLoading]);
 
     return (
         <div style={{
@@ -216,6 +308,21 @@ const LoginRemote = () => {
                     }}>
                         Sign in to access your health records
                     </p>
+                </div>
+
+                {/* RFID Status Indicator */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '20px',
+                    gap: '8px',
+                    color: rfidStatus === 'scanning' ? '#3b82f6' : '#64748b',
+                    fontSize: '0.9rem',
+                    fontWeight: '600'
+                }}>
+                    <Sensors style={{ fontSize: '1.2rem', animation: rfidStatus === 'scanning' ? 'pulse 1s infinite' : 'none' }} />
+                    {rfidStatus === 'scanning' ? 'Reading Card...' : 'RFID Scanner Active'}
                 </div>
 
                 {/* Form Section */}
@@ -469,6 +576,17 @@ const LoginRemote = () => {
                     </motion.div>
                 </div>
             )}
+
+            {/* Styles for pulse animation */}
+            <style>
+                {`
+                @keyframes pulse {
+                    0% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.7; transform: scale(1.1); }
+                    100% { opacity: 1; transform: scale(1); }
+                }
+                `}
+            </style>
         </div>
     );
 };

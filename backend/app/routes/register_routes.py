@@ -119,10 +119,10 @@ def register_user():
         # Insert new user
         insert_query = text("""
             INSERT INTO users (
-                user_id, rfid_tag, firstname, lastname, role, school_number, 
+                user_id, rfid_tag, firstname, middlename, lastname, suffix, role, school_number, 
                 birthday, age, sex, email, password, approval_status, created_at
             ) VALUES (
-                :user_id, :rfid_tag, :firstname, :lastname, :role, :school_number,
+                :user_id, :rfid_tag, :firstname, :middlename, :lastname, :suffix, :role, :school_number,
                 :birthday, :age, :sex, :email, :password, :approval_status, :created_at
             )
         """)
@@ -131,14 +131,16 @@ def register_user():
             'user_id': data['userId'],
             'rfid_tag': data.get('rfidTag') if data.get('rfidTag') else None,
             'firstname': data['firstname'],
+            'middlename': data.get('middlename'), # New field
             'lastname': data['lastname'],
+            'suffix': data.get('suffix'), # New field
             'role': data['role'],
             'school_number': data.get('school_number', data['userId']),
             'birthday': data.get('birthday', None),
             'age': data['age'],
             'sex': data['sex'],
             'email': data['email'],
-            'password': hashed_password, # Use hashed password
+            'password': hashed_password,
             'approval_status': approval_status,
             'created_at': data.get('created_at', None)
         })
@@ -154,7 +156,9 @@ def register_user():
                 'user_id': data['userId'],
                 'rfid_tag': data.get('rfidTag'),
                 'firstname': data['firstname'],
+                'middlename': data.get('middlename'),
                 'lastname': data['lastname'],
+                'suffix': data.get('suffix'),
                 'role': data['role'],
                 'school_number': data.get('school_number', data['userId']),
                 'approval_status': approval_status,

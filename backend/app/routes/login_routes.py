@@ -55,7 +55,7 @@ def handle_rfid_login(rfid_tag):
         
         # Try exact match first
         query = text("""
-            SELECT user_id, rfid_tag, firstname, lastname, role, school_number, 
+            SELECT user_id, rfid_tag, firstname, middlename, lastname, suffix, role, school_number, 
                    email, age, sex, created_at, approval_status
             FROM users 
             WHERE rfid_tag = :rfid_tag
@@ -94,7 +94,7 @@ def handle_rfid_login(rfid_tag):
             }), 404
             
         # Check Approval Status
-        approval_status = user[10]
+        approval_status = user[12]
         if approval_status and approval_status != 'approved':
              print(f"❌ User approval status is {approval_status}")
              if approval_status == 'rejected':
@@ -115,14 +115,16 @@ def handle_rfid_login(rfid_tag):
             'user_id': user[0],
             'rfid_tag': user[1],
             'firstname': user[2],
-            'lastname': user[3],
-            'role': user[4],
-            'school_number': user[5],
-            'email': user[6],
-            'age': user[7],
-            'sex': user[8],
-            'created_at': user[9],
-            'approval_status': user[10]
+            'middlename': user[3],
+            'lastname': user[4],
+            'suffix': user[5],
+            'role': user[6],
+            'school_number': user[7],
+            'email': user[8],
+            'age': user[9],
+            'sex': user[10],
+            'created_at': user[11],
+            'approval_status': user[12]
         }
         
         print(f"✅ RFID login successful for user: {user_dict['firstname']} {user_dict['lastname']}")
@@ -150,7 +152,7 @@ def handle_manual_login(school_number, password):
         
         # Query user by school_number OR email
         query = text("""
-            SELECT user_id, rfid_tag, firstname, lastname, role, school_number, 
+            SELECT user_id, rfid_tag, firstname, middlename, lastname, suffix, role, school_number, 
                    email, age, sex, created_at, approval_status, password
             FROM users 
             WHERE school_number = :identifier OR email = :identifier
@@ -169,7 +171,7 @@ def handle_manual_login(school_number, password):
             }), 401
             
         # Verify password
-        stored_password = user[11] # Password is the 12th column (index 11)
+        stored_password = user[13] # Password is the 14th column (index 13)
         
         is_valid = False
         if stored_password:
@@ -193,7 +195,7 @@ def handle_manual_login(school_number, password):
             }), 401
             
         # Check Approval Status
-        approval_status = user[10]
+        approval_status = user[12]
         if approval_status and approval_status != 'approved':
              print(f"❌ User approval status is {approval_status}")
              if approval_status == 'rejected':
@@ -214,14 +216,16 @@ def handle_manual_login(school_number, password):
             'user_id': user[0],
             'rfid_tag': user[1],
             'firstname': user[2],
-            'lastname': user[3],
-            'role': user[4],
-            'school_number': user[5],
-            'email': user[6],
-            'age': user[7],
-            'sex': user[8],
-            'created_at': user[9],
-            'approval_status': user[10]
+            'middlename': user[3],
+            'lastname': user[4],
+            'suffix': user[5],
+            'role': user[6],
+            'school_number': user[7],
+            'email': user[8],
+            'age': user[9],
+            'sex': user[10],
+            'created_at': user[11],
+            'approval_status': user[12]
         }
         
         print(f"✅ Manual login successful for user: {user_dict['firstname']} {user_dict['lastname']}")

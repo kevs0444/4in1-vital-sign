@@ -20,7 +20,9 @@ class User(Base):
     user_id = Column(String(20), primary_key=True)
     rfid_tag = Column(String(100), unique=True, nullable=True)  # Unique RFID per user
     firstname = Column(String(100), nullable=False)
+    middlename = Column(String(100), nullable=True) # Added Middle Name
     lastname = Column(String(100), nullable=False)
+    suffix = Column(String(20), nullable=True) # Added Suffix
     role = Column(Enum(RoleEnum), nullable=False)
     school_number = Column(String(20), unique=True, nullable=True)  # Unique school number
     birthday = Column(Date, nullable=True)

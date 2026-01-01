@@ -612,7 +612,8 @@ export default function Result() {
                 </div>
                 <div>
                   <h3 className="h5 fw-bold mb-1">
-                    {userData.firstName ?? '--'} {userData.lastName ?? ''}
+                    {userData.firstName ?? '--'} {userData.middleName ? userData.middleName + ' ' : ''}
+                    {userData.lastName ?? ''} {userData.suffix ?? ''}
                   </h3>
                   <div className="text-muted small">
                     <span className="me-3">{userData.age ?? '--'} years old</span>

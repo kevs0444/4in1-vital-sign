@@ -357,7 +357,9 @@ export const getSchoolNumber = () => {
 // Get user full name
 export const getUserFullName = () => {
   const user = getCurrentUser();
-  return user ? `${user.firstName} ${user.lastName}` : null;
+  if (!user) return null;
+  const parts = [user.firstName, user.middleName, user.lastName, user.suffix].filter(Boolean);
+  return parts.join(' ');
 };
 
 // Get user first name
@@ -409,15 +411,18 @@ export const registerUser = async (userData) => {
     const response = await fetchWithTimeout(`${API_URL}/register/register`, {
       method: 'POST',
       body: JSON.stringify({
-        first_name: userData.firstName,
-        last_name: userData.lastName,
+        firstname: userData.firstName,
+        middlename: userData.middleName,
+        lastname: userData.lastName,
+        suffix: userData.suffix,
         age: userData.age,
         sex: userData.sex,
         school_number: userData.schoolNumber,
         role: userData.role,
         email: userData.email,
         password: userData.password,
-        rfid_number: userData.rfidNumber
+        rfidTag: userData.rfid_code || userData.rfidTag,
+        userId: userData.userId || userData.user_id
       }),
     }, TIMEOUTS.MEDIUM);
 
@@ -525,6 +530,20 @@ export const deleteUserAccount = async (userId) => {
     }, TIMEOUTS.MEDIUM);
   } catch (error) {
     console.error('Delete user account API error:', error);
+    throw error;
+  }
+};
+
+// Change user password
+export const changeUserPassword = async (userId, passwordData) => {
+  try {
+    console.log(`🔐 Changing password for user: ${userId}`);
+    return await fetchWithTimeout(`${API_URL}/users/${userId}/password`, {
+      method: 'PUT',
+      body: JSON.stringify(passwordData),
+    }, TIMEOUTS.MEDIUM);
+  } catch (error) {
+    console.error('Change password API error:', error);
     throw error;
   }
 };
@@ -1117,13 +1136,29 @@ export const cameraAPI = {
 
   analyzeBP: async () => {
     try {
-      console.log('🧠 Analying BP Image with Hybrid AI...');
+      console.log('🧠 Analyzing BP Image with Hybrid AI...');
       // Updated endpoint to use dedicated BP Camera route
       // Long timeout (2 min) to allow offline PaddleOCR models to load on first run
       return await fetchWithTimeout(`${API_URL}/bp-camera/analyze-bp-camera`, { method: 'POST' }, 120000);
     } catch (error) {
       console.error('Error analyzing BP:', error);
       return { success: false, message: error.message };
+    }
+  }
+};
+
+export const printerAPI = {
+  getStatus: async () => {
+    try {
+      console.log('🖨️ Getting printer status...');
+      return await fetchWithTimeout(`${API_URL}/print/status`, {}, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error getting printer status:', error);
+      return {
+        status: 'error',
+        message: 'Printer check failed',
+        details: error.message
+      };
     }
   }
 };

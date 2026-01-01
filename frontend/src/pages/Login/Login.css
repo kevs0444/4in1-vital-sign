@@ -39,9 +39,10 @@
   touch-action: manipulation;
 }
 
-/* TOP SECTION - ID CARD FORMAT (15%) */
+/* TOP SECTION - ID CARD FORMAT (10%) */
 .login-card-section {
-  flex: 0 0 15%;
+  flex: 0 0 10%;
+  /* Reduced from 15% */
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   padding: 0.7rem 1.2rem;
   display: flex;
@@ -218,9 +219,10 @@
   }
 }
 
-/* MIDDLE SECTION - MANUAL LOGIN (55%) */
+/* MIDDLE SECTION - MANUAL LOGIN (60%) */
 .login-manual-section {
-  flex: 0 0 55%;
+  flex: 0 0 60%;
+  /* Increased from 55% */
   padding: 1.4rem 1.5rem;
   display: flex;
   flex-direction: column;
@@ -309,6 +311,31 @@
   -ms-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Placeholder Styling - Consistent across ALL inputs */
+.form-input::placeholder {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #9ca3af;
+  opacity: 1;
+}
+
+.form-input::-webkit-input-placeholder {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #9ca3af;
+  opacity: 1;
+}
+
+.form-input:-moz-placeholder {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #9ca3af;
+  opacity: 1;
 }
 
 .form-input:focus {
