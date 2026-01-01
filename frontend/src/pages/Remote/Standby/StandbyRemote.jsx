@@ -80,7 +80,7 @@ const StandbyRemote = () => {
                         margin: '0 0 12px 0',
                         letterSpacing: '-1px'
                     }}>
-                        VitalSign
+                        4 in <span style={{ color: '#ef4444' }}>Juan</span> Vital Kiosk
                     </h1>
                     <p style={{
                         fontSize: '1.1rem',

@@ -33,8 +33,9 @@ class BPSensorController:
         self.camera_index = 0
         
         # Image Adjustments
-        self.zoom_factor = 1.3
+        self.zoom_factor = 1.5
         self.square_crop = True
+        self.rotation = 180
         
         # BP Detection State
         self.bp_yolo = None
@@ -70,6 +71,9 @@ class BPSensorController:
             self.last_smooth_bp = 0
             self.trend_state = "Stable ⏸️"
             self.stable_frames_count = 0
+            # Reset zoom to default to ensure consistancy across pages
+            self.zoom_factor = 1.5
+            self.rotation = 180
             
             # Robust Camera Opening
             indices_to_try = [self.camera_index]
@@ -144,10 +148,20 @@ class BPSensorController:
             return buffer.tobytes()
     
     def _apply_zoom(self, frame):
-        """Apply zoom and square crop."""
+        """Apply rotation, zoom, and square crop."""
+        
+        # 1. Rotation
+        if self.rotation != 0:
+            if self.rotation == 90:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            elif self.rotation == 180:
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
+            elif self.rotation == 270:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
         h, w = frame.shape[:2]
         
-        # Square crop first
+        # 2. Square crop
         if self.square_crop:
             size = min(h, w)
             x1 = (w - size) // 2
@@ -155,7 +169,7 @@ class BPSensorController:
             frame = frame[y1:y1+size, x1:x1+size]
             h, w = frame.shape[:2]
         
-        # Zoom
+        # 3. Zoom
         if self.zoom_factor != 1.0 and self.zoom_factor > 1.0:
             new_w = int(w / self.zoom_factor)
             new_h = int(h / self.zoom_factor)
@@ -344,6 +358,26 @@ class BPSensorController:
             logger.info(f"🩸 BP Detector: {current_val}")
             self.last_debug_bp = current_val
 
+
+    def set_settings(self, settings):
+        """Update camera settings (zoom, rotation, square_crop)."""
+        if 'zoom' in settings:
+            try:
+                self.zoom_factor = float(settings['zoom'])
+                logger.info(f"[BP] Zoom set to {self.zoom_factor}x")
+            except ValueError:
+                pass
+        
+        if 'square_crop' in settings:
+            self.square_crop = bool(settings['square_crop'])
+            logger.info(f"[BP] Square Crop set to {self.square_crop}")
+            
+        if 'rotation' in settings:
+            try:
+                self.rotation = int(settings['rotation'])
+                logger.info(f"[BP] Rotation set to {self.rotation}°")
+            except ValueError:
+                pass
 
 # Singleton instance
 bp_sensor = BPSensorController()

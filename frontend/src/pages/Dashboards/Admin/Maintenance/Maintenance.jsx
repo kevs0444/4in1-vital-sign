@@ -28,6 +28,12 @@ const getDynamicApiUrl = () => {
 
 const API_BASE = getDynamicApiUrl();
 
+const modes = {
+    feet: ["platform", "barefeet", "socks", "footwear"],
+    body: ["null", "bag", "cap", "id", "watch"],
+    bp: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "error"]
+};
+
 const Maintenance = () => {
     const navigate = useNavigate();
 
@@ -81,11 +87,7 @@ const Maintenance = () => {
         camera_index: 0
     });
 
-    const modes = {
-        feet: ["platform", "barefeet", "socks", "footwear"],
-        body: ["null", "bag", "cap", "id", "watch"],
-        bp: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "error"]
-    };
+
 
     // Polling interval ref
     const pollIntervalRef = useRef(null);
@@ -243,6 +245,12 @@ const Maintenance = () => {
             if (mode === 'bp') {
                 await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
                 await fetch(`${API_BASE}/bp/start`, { method: 'POST' });
+                // Apply current settings (Zoom, etc) immediately to override default 1.3
+                await fetch(`${API_BASE}/bp/set_settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
             } else {
                 await fetch(`${API_BASE}/bp/stop`, { method: 'POST' });
                 await fetch(`${API_BASE}/camera/start`, { method: 'POST' });
@@ -306,7 +314,11 @@ const Maintenance = () => {
 
     const updateSettingsOnBackend = async (newSettings) => {
         try {
-            await fetch(`${API_BASE}/camera/set_settings`, {
+            const endpoint = activeCameraTab === 'bp'
+                ? `${API_BASE}/bp/set_settings`
+                : `${API_BASE}/camera/set_settings`;
+
+            await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newSettings)
@@ -666,6 +678,18 @@ const Maintenance = () => {
                                     </select>
                                 </div>
 
+                                {/* Square Crop Toggle */}
+                                <div className="control-item" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                                    <input
+                                        type="checkbox"
+                                        id="square_crop"
+                                        checked={settings.square_crop}
+                                        onChange={(e) => handleSettingChange('square_crop', e.target.checked)}
+                                        style={{ width: '20px', height: '20px' }}
+                                    />
+                                    <label htmlFor="square_crop" style={{ margin: 0 }}>Square Crop Mode</label>
+                                </div>
+
                                 {/* Zoom */}
                                 <div className="control-item">
                                     <label>Zoom: {settings.zoom.toFixed(1)}x</label>
@@ -758,9 +782,10 @@ const Maintenance = () => {
                             )}
                         </div>
                     </div>
-                )}
-            </main>
-        </div>
+                )
+                }
+            </main >
+        </div >
     );
 };
 

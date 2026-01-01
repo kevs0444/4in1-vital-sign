@@ -44,3 +44,11 @@ def bp_video_feed():
                 time.sleep(0.1)
     
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@bp_routes.route('/set_settings', methods=['POST'])
+def set_bp_settings():
+    """Update BP camera settings."""
+    from flask import request
+    data = request.json
+    bp_sensor.set_settings(data)
+    return jsonify({"success": True, "message": "Settings updated"})
