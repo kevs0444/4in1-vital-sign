@@ -8,6 +8,7 @@ import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
 import { Assessment } from '@mui/icons-material';
+import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -126,6 +127,33 @@ const EmployeeDashboard = () => {
         return filterHistoryByTimePeriod(history, timePeriod, customDateRange);
     }, [history, timePeriod, customDateRange]);
 
+    const fetchData = React.useCallback(async (userId) => {
+        try {
+            setLoading(true);
+
+            if (userId) {
+                const response = await getMeasurementHistory(userId);
+                if (response.success) {
+                    setHistory(response.history || []);
+                }
+            }
+
+            // Fetch Population Data for comparison
+            try {
+                const popResponse = await getPopulationAnalytics();
+                if (popResponse.success) {
+                    setPopAverages(popResponse.analytics.averages);
+                }
+            } catch (pe) {
+                console.log("Population stats unavailable");
+            }
+        } catch (error) {
+            console.error("Failed to fetch history:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         // Authenticate
         const savedUser = location.state?.user || JSON.parse(localStorage.getItem('userData'));
@@ -137,37 +165,34 @@ const EmployeeDashboard = () => {
         // Store current user for profile tab
         setCurrentUser(savedUser);
 
-        // Fetch History
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const userId = savedUser.userId || savedUser.user_id || savedUser.id;
+        // Fetch Data
+        const userId = savedUser.userId || savedUser.user_id || savedUser.id;
+        if (userId) {
+            fetchData(userId);
+        }
+    }, [navigate, location, fetchData]);
 
-                if (userId) {
-                    const response = await getMeasurementHistory(userId);
-                    if (response.success) {
-                        setHistory(response.history || []);
-                    }
-                }
-
-                // Fetch Population Data for comparison
-                try {
-                    const popResponse = await getPopulationAnalytics();
-                    if (popResponse.success) {
-                        setPopAverages(popResponse.analytics.averages);
-                    }
-                } catch (pe) {
-                    console.log("Population stats unavailable");
-                }
-            } catch (error) {
-                console.error("Failed to fetch history:", error);
-            } finally {
-                setLoading(false);
+    // Real-time WebSocket updates - instant push notifications
+    const refetchAllData = React.useCallback(async () => {
+        if (currentUser) {
+            const userId = currentUser.userId || currentUser.user_id || currentUser.id;
+            if (userId) {
+                await fetchData(userId);
             }
-        };
+        }
+    }, [currentUser, fetchData]);
 
-        fetchData();
-    }, [navigate, location]);
+    const { isConnected, lastUpdated } = useRealtimeUpdates({
+        role: 'Employee',
+        userId: currentUser?.userId || currentUser?.user_id || currentUser?.id,
+        refetchData: refetchAllData,
+        onNewMeasurement: (data) => {
+            const myId = currentUser?.userId || currentUser?.user_id || currentUser?.id;
+            if (data.user_id === myId) {
+                console.log('📊 My new measurement received:', data);
+            }
+        }
+    });
 
     const toggleMetric = (value) => {
         if (value === 'all') {
@@ -292,6 +317,9 @@ const EmployeeDashboard = () => {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             onLogout={handleLogout}
+            lastUpdated={lastUpdated}
+            onRefresh={refetchAllData}
+            isConnected={isConnected}
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
 

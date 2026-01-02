@@ -38,15 +38,16 @@ from app.utils.db import engine, text
 #     # Don't exit, let the app try to start anyway
 #     # exit(1)
 
-app = create_app()
+app, socketio = create_app()
 
 if __name__ == '__main__':
     print("\n" + "="*50)
     print("🚀 STARTING HEALTH MONITORING SYSTEM BACKEND")
     print("="*50)
     print("📍 API available at: http://127.0.0.1:5000")
-    print("📋 Waiting for frontend connection...")
+    print("🔌 WebSocket available at: ws://127.0.0.1:5000")
+    print("📋 Real-time updates ENABLED")
     print("="*50 + "\n")
     
-    # Disable reloader to prevent double execution and confusion
-    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
+    # Use socketio.run() instead of app.run() for WebSocket support
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000, use_reloader=False, allow_unsafe_werkzeug=True)

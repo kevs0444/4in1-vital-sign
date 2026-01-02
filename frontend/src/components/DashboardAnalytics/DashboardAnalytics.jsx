@@ -78,7 +78,7 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
                     onClick={() => setShowDropdown(!showDropdown)}
                     style={{
                         padding: '10px 16px',
-                        borderRadius: '12px',
+                        borderRadius: '8px',
                         border: '1px solid #e2e8f0',
                         background: 'white',
                         color: '#1e293b',
@@ -88,7 +88,7 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        minWidth: '180px',
+                        minWidth: '160px',
                         justifyContent: 'space-between',
                         boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                     }}
@@ -112,9 +112,9 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
                             background: 'white',
                             border: '1px solid #e2e8f0',
                             borderRadius: '12px',
-                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
-                            width: '220px',
-                            padding: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+                            width: '200px',
+                            padding: '6px',
                             marginTop: '8px'
                         }}
                     >

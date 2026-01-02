@@ -149,6 +149,24 @@ def register_user():
 
         print(f"✅ User registered successfully: {data['userId']}")
 
+        # ============================================
+        # REAL-TIME: Broadcast to admin dashboards
+        # ============================================
+        try:
+            from app.websocket_events import broadcast_new_user
+            broadcast_new_user({
+                'user_id': data['userId'],
+                'firstname': data['firstname'],
+                'lastname': data['lastname'],
+                'role': data['role'],
+                'email': data['email'],
+                'school_number': data.get('school_number', data['userId']),
+                'approval_status': approval_status,
+                'created_at': data.get('created_at', None)
+            })
+        except Exception as ws_error:
+            print(f"⚠️ WebSocket broadcast failed (non-critical): {ws_error}")
+
         return jsonify({
             'success': True,
             'message': 'User registered successfully',

@@ -45,12 +45,16 @@ const PopulationAnalytics = () => {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
+    const [selectedRole, setSelectedRole] = useState('Full Institution');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     useEffect(() => {
         const fetchAnalytics = async () => {
             try {
                 setLoading(true);
-                const response = await getPopulationAnalytics();
+                // Convert UI label to API value
+                const roleParam = selectedRole === 'Full Institution' ? 'all' : selectedRole;
+                const response = await getPopulationAnalytics(roleParam);
                 if (response.success) {
                     setData(response.analytics);
                 } else {
@@ -64,7 +68,7 @@ const PopulationAnalytics = () => {
         };
 
         fetchAnalytics();
-    }, []);
+    }, [selectedRole]);
 
     const chartOptions = {
         responsive: true,
@@ -152,7 +156,7 @@ const PopulationAnalytics = () => {
     if (loading) return (
         <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
             <div className="loading-spinner" style={{ margin: '0 auto 20px' }}></div>
-            <p>Gathering health insights...</p>
+            <p>Gathering health insights for {selectedRole}...</p>
         </div>
     );
 
@@ -164,6 +168,8 @@ const PopulationAnalytics = () => {
         </div>
     );
 
+    const roles = ['Full Institution', 'Student', 'Employee', 'Doctor', 'Nurse'];
+
     return (
         <div className="population-analytics" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -171,9 +177,77 @@ const PopulationAnalytics = () => {
                     <h2 style={{ fontSize: '1.8rem', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>Population Health Analytics</h2>
                     <p style={{ color: '#64748b', fontWeight: '500' }}>Aggregated insights from {data?.averages.total} measurements</p>
                 </div>
-                <div style={{ background: '#f8fafc', padding: '10px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', fontWeight: '600', textTransform: 'uppercase' }}>Scope</span>
-                    <span style={{ fontSize: '1rem', color: '#1e293b', fontWeight: '700' }}>Full Institution</span>
+
+                <div style={{ position: 'relative' }}>
+                    <button
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        style={{
+                            background: '#f8fafc',
+                            padding: '10px 20px',
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            minWidth: '180px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}
+                    >
+                        <div>
+                            <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', fontWeight: '600', textTransform: 'uppercase' }}>Scope</span>
+                            <span style={{ fontSize: '1rem', color: '#1e293b', fontWeight: '700' }}>{selectedRole}</span>
+                        </div>
+                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>▼</span>
+                    </button>
+
+                    {isDropdownOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            style={{
+                                position: 'absolute',
+                                top: '100%',
+                                right: 0,
+                                transform: 'none',
+                                background: 'white',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '12px',
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                                width: '200px',
+                                padding: '8px',
+                                marginTop: '8px',
+                                zIndex: 100
+                            }}
+                        >
+                            {roles.map(role => (
+                                <div
+                                    key={role}
+                                    onClick={() => {
+                                        setSelectedRole(role);
+                                        setIsDropdownOpen(false);
+                                    }}
+                                    style={{
+                                        padding: '10px 12px',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        background: selectedRole === role ? '#fef2f2' : 'transparent',
+                                        color: selectedRole === role ? '#dc2626' : '#1e293b',
+                                        fontWeight: selectedRole === role ? '600' : '400',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (selectedRole !== role) e.currentTarget.style.background = '#f8fafc';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (selectedRole !== role) e.currentTarget.style.background = 'transparent';
+                                    }}
+                                >
+                                    {role}
+                                </div>
+                            ))}
+                        </motion.div>
+                    )}
                 </div>
             </header>
 

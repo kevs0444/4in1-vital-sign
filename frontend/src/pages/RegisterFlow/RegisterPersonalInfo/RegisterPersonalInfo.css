@@ -1228,6 +1228,12 @@
   height: auto;
 }
 
+.register-personal-content.name-step-mode .form-input::placeholder {
+  font-size: 2rem;
+  color: #999;
+  opacity: 1;
+}
+
 .register-personal-content.name-step-mode .form-label {
   font-size: 1.4rem;
   margin-bottom: 8px;

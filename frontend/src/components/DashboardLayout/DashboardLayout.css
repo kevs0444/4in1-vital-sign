@@ -389,3 +389,29 @@
         display: block;
     }
 }
+
+/* --- REAL-TIME PULSE ANIMATION --- */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(0.9);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.realtime-status {
+    transition: background-color 0.3s ease;
+}
+
+.realtime-status:hover {
+    background: rgba(16, 185, 129, 0.15) !important;
+}

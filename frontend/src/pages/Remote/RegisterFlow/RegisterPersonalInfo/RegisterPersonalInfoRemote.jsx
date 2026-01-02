@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowBack, Warning } from '@mui/icons-material';
@@ -7,17 +7,20 @@ import { ArrowBack, Warning } from '@mui/icons-material';
 import maleIcon from "../../../../assets/icons/male-icon.png";
 import femaleIcon from "../../../../assets/icons/female-icon.png";
 
-// Dynamic API URL Helper
-const getDynamicApiUrl = () => {
-    if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
-    return `${window.location.protocol}//${window.location.hostname}:5000/api`;
-};
-const API_BASE = getDynamicApiUrl();
+// Local URL helper removed to prevent port 5000 errors on remote
+// All API calls now use relative '/api' path to work with Proxy and Tailscale Funnel
 
 const RegisterPersonalInfoRemote = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const userRole = location.state?.userType || "rtu-students";
+    const userRole = location.state?.userType;
+
+    // Guard: Redirect if skipping steps
+    useEffect(() => {
+        if (!userRole) {
+            navigate('/register/welcome', { replace: true });
+        }
+    }, [userRole, navigate]);
 
     // State
     const [step, setStep] = useState(1); // 1: Name, 2: Birthday, 3: Sex
@@ -37,6 +40,7 @@ const RegisterPersonalInfoRemote = () => {
     // Modals
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const [showExitModal, setShowExitModal] = useState(false);
+    const [showAgeWarningModal, setShowAgeWarningModal] = useState(false);
 
     const handleNext = async () => {
         setError("");
@@ -55,7 +59,7 @@ const RegisterPersonalInfoRemote = () => {
             const year = parseInt(formData.birthYear);
             const month = parseInt(formData.birthMonth);
             const day = parseInt(formData.birthDay);
-            if (year < 1920 || year > new Date().getFullYear()) {
+            if (year < 1900 || year > new Date().getFullYear()) {
                 setError("Please enter a valid year.");
                 return;
             }
@@ -63,10 +67,28 @@ const RegisterPersonalInfoRemote = () => {
                 setError("Please enter a valid month (1-12).");
                 return;
             }
-            if (day < 1 || day > 31) {
-                setError("Please enter a valid day (1-31).");
+            // Age Calculation and Limit Check
+            const today = new Date();
+            const birthDate = new Date(year, month - 1, day);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            if (age < 12) {
+                setError("For medical accuracy, this system is restricted to users 12 years and older.");
                 return;
             }
+            if (age >= 12 && age <= 15) {
+                setShowAgeWarningModal(true);
+                return;
+            }
+            if (age > 99) {
+                setError("Please enter a valid age.");
+                return;
+            }
+
             setStep(3);
         } else if (step === 3) {
             if (!formData.sex) {
@@ -86,7 +108,7 @@ const RegisterPersonalInfoRemote = () => {
                     age--;
                 }
 
-                const checkResponse = await fetch(`${API_BASE}/register/check-personal-info`, {
+                const checkResponse = await fetch(`/api/register/check-personal-info`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -114,7 +136,10 @@ const RegisterPersonalInfoRemote = () => {
                 navigate('/register/tapid', {
                     state: {
                         userType: userRole,
-                        personalInfo: formData
+                        personalInfo: {
+                            ...formData,
+                            age: age // Include calculated age
+                        }
                     }
                 });
 
@@ -271,7 +296,33 @@ const RegisterPersonalInfoRemote = () => {
                         <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>
                             When were you born?
                         </h2>
-                        <p style={{ color: '#64748b', marginBottom: '32px' }}>We use this to calculate your age.</p>
+                        {/* Status / Age Display */}
+                        <div style={{ marginBottom: '32px' }}>
+                            <p style={{ color: '#64748b', margin: 0 }}>We use this to calculate your age.</p>
+                            {formData.birthYear && formData.birthMonth && formData.birthDay && (
+                                <div style={{
+                                    marginTop: '12px',
+                                    display: 'inline-block',
+                                    padding: '6px 16px',
+                                    background: '#f1f5f9',
+                                    borderRadius: '20px',
+                                    color: '#334155',
+                                    fontWeight: '600',
+                                    fontSize: '0.9rem'
+                                }}>
+                                    Age: {(() => {
+                                        const today = new Date();
+                                        const birthDate = new Date(formData.birthYear, formData.birthMonth - 1, formData.birthDay);
+                                        let age_now = today.getFullYear() - birthDate.getFullYear();
+                                        const m = today.getMonth() - birthDate.getMonth();
+                                        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                                            age_now--;
+                                        }
+                                        return age_now;
+                                    })()}
+                                </div>
+                            )}
+                        </div>
 
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <div style={{ flex: 2 }}>
@@ -289,23 +340,29 @@ const RegisterPersonalInfoRemote = () => {
                             </div>
                             <div style={{ flex: 1 }}>
                                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '8px' }}>Day</label>
-                                <input
-                                    type="number"
-                                    placeholder="Day"
+                                <select
                                     value={formData.birthDay}
                                     onChange={(e) => setFormData({ ...formData, birthDay: e.target.value })}
-                                    style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1rem' }}
-                                />
+                                    style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '2px solid #e2e8f0', background: 'white', fontSize: '1rem' }}
+                                >
+                                    <option value="">Day</option>
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                        <option key={d} value={d}>{d}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div style={{ flex: 1 }}>
                                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#334155', marginBottom: '8px' }}>Year</label>
-                                <input
-                                    type="number"
-                                    placeholder="Year"
+                                <select
                                     value={formData.birthYear}
                                     onChange={(e) => setFormData({ ...formData, birthYear: e.target.value })}
-                                    style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1rem' }}
-                                />
+                                    style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '2px solid #e2e8f0', background: 'white', fontSize: '1rem' }}
+                                >
+                                    <option value="">Year</option>
+                                    {Array.from({ length: 125 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                     </motion.div>
@@ -393,7 +450,7 @@ const RegisterPersonalInfoRemote = () => {
                             transition: 'transform 0.2s'
                         }}
                     >
-                        {step === 3 ? (isChecking ? "Checking..." : "Complete Registration") : "Continue"}
+                        {step === 3 ? (isChecking ? "Checking..." : "Next") : "Continue"}
                     </button>
                 </div>
             </div>
@@ -554,6 +611,94 @@ const RegisterPersonalInfoRemote = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Age Warning Modal (12-15 years old) */}
+            {showAgeWarningModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.5)',
+                    zIndex: 51, // Higher than others
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '24px'
+                }} onClick={() => setShowAgeWarningModal(false)}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        style={{
+                            background: 'white',
+                            borderRadius: '24px',
+                            padding: '32px 24px',
+                            width: '100%',
+                            maxWidth: '400px',
+                            boxShadow: '0 20px 30px rgba(0,0,0,0.2)',
+                            textAlign: 'center'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{
+                            width: '64px',
+                            height: '64px',
+                            background: '#fff7ed', // Orange-50
+                            color: '#ea580c', // Orange-600
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 16px'
+                        }}>
+                            <span style={{ fontSize: '32px' }}>ℹ️</span>
+                        </div>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>
+                            Medical Supervision
+                        </h3>
+                        <p style={{ color: '#64748b', marginBottom: '24px', lineHeight: '1.5' }}>
+                            For users aged <strong>12 to 15</strong>, please ask for assistance from medical staff to ensure accurate sensor readings (e.g., blood pressure cuff fitting).
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button
+                                onClick={() => setShowAgeWarningModal(false)}
+                                style={{
+                                    flex: 1,
+                                    padding: '14px',
+                                    background: '#f1f5f9',
+                                    color: '#334155',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowAgeWarningModal(false);
+                                    setStep(3); // Proceed to next step
+                                }}
+                                style={{
+                                    flex: 1,
+                                    padding: '14px',
+                                    background: '#ea580c', // Orange
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    fontWeight: '700',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                I Understand
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 };

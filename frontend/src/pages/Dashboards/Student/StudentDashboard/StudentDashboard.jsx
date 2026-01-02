@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Logout, Person, Visibility, Settings, History, Check, Close, ErrorOutline, WarningAmber } from '@mui/icons-material';
+import { Visibility, Settings, History, Check, Close, ErrorOutline, WarningAmber } from '@mui/icons-material';
 import './StudentDashboard.css';
 import { getMeasurementHistory, getPopulationAnalytics } from '../../../../utils/api';
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
 import { Assessment } from '@mui/icons-material';
+import { useRealtimeUpdates } from '../../../../hooks/useRealtimeData';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -111,49 +112,72 @@ const StudentDashboard = () => {
     const [toast, setToast] = useState(null);
     const [popAverages, setPopAverages] = useState(null);
 
+    const fetchData = React.useCallback(async (userId) => {
+        try {
+            setLoading(true);
+
+            if (userId) {
+                const response = await getMeasurementHistory(userId);
+                if (response.success) {
+                    setHistory(response.history || []);
+                }
+            }
+
+            // Fetch Population Data for comparison
+            try {
+                const popResponse = await getPopulationAnalytics();
+                if (popResponse.success) {
+                    setPopAverages(popResponse.analytics.averages);
+                }
+            } catch (pe) {
+                console.log("Population stats unavailable");
+            }
+        } catch (error) {
+            console.error("Failed to fetch history:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+
+
+    // Authenticate & Fetch Data
     useEffect(() => {
-        // Authenticate
         const savedUser = location.state?.user || JSON.parse(localStorage.getItem('userData'));
         if (!savedUser) {
-            navigate('/login');
+            navigate('/login', { replace: true });
             return;
         }
-
-        // Store current user for profile tab
         setCurrentUser(savedUser);
 
-        // Fetch History
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                // Try to get user ID from savedUser object (might be userId or user_id or id)
-                const userId = savedUser.userId || savedUser.user_id || savedUser.id;
+        const userId = savedUser.userId || savedUser.user_id || savedUser.id;
+        if (userId) fetchData(userId);
+    }, [navigate, location, fetchData]);
 
-                if (userId) {
-                    const response = await getMeasurementHistory(userId);
-                    if (response.success) {
-                        setHistory(response.history || []);
-                    }
-                }
 
-                // Fetch Population Data for comparison
-                try {
-                    const popResponse = await getPopulationAnalytics();
-                    if (popResponse.success) {
-                        setPopAverages(popResponse.analytics.averages);
-                    }
-                } catch (pe) {
-                    console.log("Population stats unavailable");
-                }
-            } catch (error) {
-                console.error("Failed to fetch history:", error);
-            } finally {
-                setLoading(false);
+
+    // Real-time WebSocket updates - instant push notifications
+    const refetchAllData = React.useCallback(async () => {
+        if (currentUser) {
+            const userId = currentUser.userId || currentUser.user_id || currentUser.id;
+            if (userId) {
+                await fetchData(userId);
             }
-        };
+        }
+    }, [currentUser, fetchData]);
 
-        fetchData();
-    }, [navigate, location]);
+    const { isConnected, lastUpdated } = useRealtimeUpdates({
+        role: 'Student',
+        userId: currentUser?.userId || currentUser?.user_id || currentUser?.id,
+        refetchData: refetchAllData,
+        onNewMeasurement: (data) => {
+            // Only refetch if this measurement belongs to the current user
+            const myId = currentUser?.userId || currentUser?.user_id || currentUser?.id;
+            if (data.user_id === myId) {
+                console.log('📊 My new measurement received:', data);
+            }
+        }
+    });
 
     // Time Period Filter State (shared between analytics and table)
     const [timePeriod, setTimePeriod] = useState('weekly'); // daily, weekly, monthly, annually, custom
@@ -266,7 +290,7 @@ const StudentDashboard = () => {
     const handleLogout = () => {
         localStorage.removeItem('userData');
         localStorage.removeItem('isAuthenticated');
-        navigate('/login');
+        navigate('/login', { replace: true });
     };
 
     const formatDate = (isoString) => {
@@ -295,6 +319,9 @@ const StudentDashboard = () => {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             onLogout={handleLogout}
+            lastUpdated={lastUpdated}
+            onRefresh={refetchAllData}
+            isConnected={isConnected}
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
 
@@ -657,6 +684,7 @@ const StudentDashboard = () => {
                     </motion.div>
                 </div>
             )}
+
         </DashboardLayout>
     );
 };

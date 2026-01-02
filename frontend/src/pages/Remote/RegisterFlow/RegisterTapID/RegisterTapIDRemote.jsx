@@ -1,195 +1,288 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowBack, Visibility, VisibilityOff, Sensors, CheckCircle, Error, Warning } from '@mui/icons-material';
+import { ArrowBack, Visibility, VisibilityOff, Warning } from '@mui/icons-material';
 
-// We import the centralized API function (4 levels up -> src/utils/api)
+// Import centralized API function
 import { registerUser } from '../../../../utils/api';
+import { validateEmail } from '../../../../utils/validators';
 
 const RegisterTapIDRemote = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const userRole = location.state?.userType || "rtu-students"; // Consistent with RegisterRole params
+
+    // Guard: Check for previous step data
+    useEffect(() => {
+        if (!location.state?.personalInfo) {
+            navigate('/register/welcome', { replace: true });
+        }
+    }, [location, navigate]);
+    const userRole = location.state?.userType || "rtu-students";
     const personalInfo = location.state?.personalInfo || {};
 
+    const [currentStep, setCurrentStep] = useState(0); // 0: ID, 1: Contact
     const [isLoading, setIsLoading] = useState(false);
+
+    // Form Data
     const [formData, setFormData] = useState({
-        schoolId: "",
+        idNumber: "",
         email: "",
         password: "",
         confirmPassword: ""
     });
+
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
 
-    // Duplicate Modal State
+    // Modals
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const [duplicateMessage, setDuplicateMessage] = useState("");
-
-    // RFID State
-    const [rfidCode, setRfidCode] = useState(null);
-    const [rfidStatus, setRfidStatus] = useState('ready'); // ready, scanning, success, error
-    const [rfidMessage, setRfidMessage] = useState('');
-
-    const rfidDataRef = useRef('');
-    const rfidTimeoutRef = useRef(null);
-
-    // Dynamic API URL Helper
-    const getDynamicApiUrl = () => {
-        if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
-        return `${window.location.protocol}//${window.location.hostname}:5000/api`;
-    };
-    const API_BASE = getDynamicApiUrl();
+    const [duplicateTitle, setDuplicateTitle] = useState("Already Registered"); // New Title State
 
     const emailDomains = ["gmail.com", "yahoo.com", "outlook.com", "rtu.edu.ph", "icloud.com"];
+
+    // Role Settings
+    const getRoleSettings = (type) => {
+        switch (type) {
+            case 'nurse':
+            case 'doctor':
+                return {
+                    label: "License Number",
+                    placeholder: "e.g., 1234-5678",
+                    hint: "Numbers and hyphens only"
+                };
+            case 'rtu-employees':
+                return {
+                    label: "Employee Number",
+                    placeholder: "e.g., 2023-001",
+                    hint: "Numbers and hyphens only"
+                };
+            case 'rtu-students':
+            default:
+                return {
+                    label: "Student Number",
+                    placeholder: "e.g., 2022-200901",
+                    hint: "Numbers and hyphens only"
+                };
+        }
+    };
+    const roleSettings = getRoleSettings(userRole);
 
     const handleDomainSelect = (domain) => {
         const [username] = formData.email.split('@');
         setFormData(prev => ({ ...prev, email: `${username}@${domain}` }));
     };
 
-    // Process RFID Scan
-    const processRfidScan = async (scannedData) => {
-        console.log('🎫 RFID Scanned:', scannedData);
-        setRfidStatus('scanning');
-        setRfidMessage('Verifying ID Card...');
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError("");
+    };
 
+    // Step 0 Validation: ID Number Check
+    const validateStep0 = async () => {
+        if (!formData.idNumber.trim()) {
+            setError(`Please enter your ${roleSettings.label}.`);
+            return false;
+        }
+        // Basic format check
+        if (!/^[0-9-]+$/.test(formData.idNumber)) {
+            setError("Only numbers and hyphens are allowed.");
+            return false;
+        }
+
+        setIsLoading(true);
         try {
-            // Check if RFID exists
-            const checkResponse = await fetch(`${API_BASE}/login/check-rfid/${encodeURIComponent(scannedData)}`);
+            // Check for duplicate school number
+            // Use relative path /api to ensure it works via Proxy/Funnel
+            const checkResponse = await fetch(`/api/register/check-school-number/${encodeURIComponent(formData.idNumber)}`);
             const checkResult = await checkResponse.json();
 
             if (checkResult.exists) {
-                setRfidStatus('error');
-                setRfidMessage('Card already registered to another user.');
-                setDuplicateMessage("This ID Card (RFID) is already registered to another user.");
+                setDuplicateTitle(roleSettings.label + " Already Registered");
+                setDuplicateMessage("This ID number is identified with an existing user. Please contact support if this is an error.");
                 setShowDuplicateModal(true);
-                setRfidCode(null);
-            } else {
-                setRfidStatus('success');
-                setRfidMessage('ID Card Linked Successfully!');
-                setRfidCode(scannedData);
+                setIsLoading(false);
+                return false;
             }
+            setIsLoading(false);
+            return true;
         } catch (err) {
-            console.warn('Could not verify RFID uniqueness:', err);
-            // Proceed anyway? Or fail? Better to fail safely or warn.
-            // If network fails, we usually can't register anyway.
-            setRfidStatus('error');
-            setRfidMessage('Error verifying card. Try again.');
+            console.error("ID Check Error:", err);
+            // Proceed with warning if check fails? Better to allow proceeding incase of network glitch, 
+            // the final register call will catch duplicates too.
+            // But let's return true to let them try.
+            setIsLoading(false);
+            return true;
         }
     };
 
-    // Global Keydown Listener
-    React.useEffect(() => {
-        const handleGlobalKeyDown = (e) => {
-            // Ignore if typing in an input field
-            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-            if (isLoading) return;
+    // Step 2 Validation: Contact Info
+    const validateStep1 = async () => {
+        const emailValidation = validateEmail(formData.email);
+        if (!emailValidation.isValid) {
+            setError(emailValidation.error);
+            return false;
+        }
+        if (!formData.password || formData.password.length < 6) {
+            setError("Password must be at least 6 characters.");
+            return false;
+        }
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match.");
+            return false;
+        }
 
-            // RFID scanners typically send numbers/letters followed by Enter
-            if (e.key === 'Enter') {
-                if (rfidDataRef.current.length >= 5) {
-                    processRfidScan(rfidDataRef.current);
-                    rfidDataRef.current = '';
-                    e.preventDefault();
-                }
-            } else if (e.key.length === 1) {
-                rfidDataRef.current += e.key;
+        setIsLoading(true);
+        try {
+            // Check for duplicate email
+            const checkResponse = await fetch(`/api/register/check-email/${encodeURIComponent(formData.email)}`);
+            const checkResult = await checkResponse.json();
 
-                // Auto-detect timeout
-                if (rfidDataRef.current.length >= 8) {
-                    if (rfidTimeoutRef.current) clearTimeout(rfidTimeoutRef.current);
-                    rfidTimeoutRef.current = setTimeout(() => {
-                        if (rfidDataRef.current.length >= 8) {
-                            processRfidScan(rfidDataRef.current);
-                            rfidDataRef.current = '';
-                        }
-                    }, 100);
-                }
+            if (checkResult.exists) {
+                setDuplicateTitle("Email Already Registered");
+                setDuplicateMessage("This email address is already in use. Please login or use a different email.");
+                setShowDuplicateModal(true);
+                setIsLoading(false);
+                return false;
             }
-        };
-
-        document.addEventListener('keydown', handleGlobalKeyDown);
-        return () => {
-            document.removeEventListener('keydown', handleGlobalKeyDown);
-            if (rfidTimeoutRef.current) clearTimeout(rfidTimeoutRef.current);
-        };
-    }, [isLoading]);
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-        setError(""); // Clear error on edit
+            setIsLoading(false);
+            return true;
+        } catch (err) {
+            console.error("Email Check Error:", err);
+            setIsLoading(false);
+            return true;
+        }
     };
 
-    const handleRegister = async (e) => {
-        e.preventDefault();
+    const rfidDataRef = useRef('');
+    const rfidTimeoutRef = useRef(null);
+
+    // Track state for event listener
+    const stateRef = useRef({
+        currentStep,
+        isScanning: false // No visual scanning state in remote, but logic remains
+    });
+
+    useEffect(() => {
+        stateRef.current = { currentStep, isScanning: isLoading };
+    }, [currentStep, isLoading]);
+
+    const handleGlobalKeyDown = useCallback((e) => {
+        const currentState = stateRef.current;
+
+        // Only listen in Step 2
+        if (currentState.currentStep !== 2 || currentState.isScanning) return;
+
+        // RFID scanners send 'Enter' after code
+        if (e.key === 'Enter') {
+            if (rfidDataRef.current.length >= 5) {
+                processRfidScan(rfidDataRef.current);
+                rfidDataRef.current = '';
+                e.preventDefault();
+            }
+        } else if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
+            rfidDataRef.current += e.key;
+
+            // Auto-detect fast typing (scanner behavior)
+            if (rfidDataRef.current.length >= 8) {
+                clearTimeout(rfidTimeoutRef.current);
+                rfidTimeoutRef.current = setTimeout(() => {
+                    if (rfidDataRef.current.length >= 8) {
+                        processRfidScan(rfidDataRef.current);
+                        rfidDataRef.current = '';
+                    }
+                }, 50);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (currentStep === 2) {
+            document.addEventListener('keydown', handleGlobalKeyDown);
+            return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+        }
+    }, [currentStep, handleGlobalKeyDown]);
+
+    const processRfidScan = async (scannedCode) => {
+        console.log("🔔 Smart RFID Detected:", scannedCode);
+        setIsLoading(true);
+
+        try {
+            // Check for duplicate RFID
+            const checkResponse = await fetch(`/api/register/check-rfid/${encodeURIComponent(scannedCode)}`);
+            const checkResult = await checkResponse.json();
+
+            if (checkResult.exists) {
+                setDuplicateTitle("Card Already Registered");
+                setDuplicateMessage("This RFID card is already associated with another user.");
+                setShowDuplicateModal(true);
+                setIsLoading(false);
+            } else {
+                // Success! Use this code
+                submitRegistration(scannedCode);
+            }
+        } catch (err) {
+            console.error("RFID Check Error:", err);
+            // If check fails, maybe let them proceed? Or fail safe?
+            // Fail safe prevents bad data.
+            setError("Could not verify card. Please try again or skip.");
+            setIsLoading(false);
+        }
+    };
+
+    const handleNext = async () => {
+        if (currentStep === 0) {
+            const isValid = await validateStep0();
+            if (isValid) setCurrentStep(1);
+        } else if (currentStep === 1) {
+            const isValid = await validateStep1();
+            if (isValid) setCurrentStep(2);
+        }
+    };
+
+    const submitRegistration = async (rfidCode = null) => {
         setIsLoading(true);
         setError("");
 
-        if (!formData.schoolId || !formData.email || !formData.password || !formData.confirmPassword) {
-            setError("All fields are required.");
-            setIsLoading(false);
-            return;
-        }
-
-        if (formData.password !== formData.confirmPassword) {
-            setError("Passwords do not match.");
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            // Generate User ID
-            const generateUserId = () => {
-                const timestamp = Date.now().toString(36).toUpperCase().slice(-4);
-                const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
-                return `USR-${timestamp}-${randomPart}`;
-            };
+            // Prepare Data for RegisterDataSaved Page to handle
+            // Normalize userType for backend
+            let normalizedUserType = userRole;
+            if (userRole === 'rtu-employees') normalizedUserType = 'employee';
+            if (userRole === 'rtu-students') normalizedUserType = 'student';
 
-            // Prepare payload matching backend expectations
-            const payload = {
-                userId: generateUserId(),
-                firstName: personalInfo.firstName,
-                middleName: personalInfo.middleName, // Add middle name
-                lastName: personalInfo.lastName,
-                suffix: personalInfo.suffix, // Add suffix
-                birthDate: `${personalInfo.birthYear}-${String(personalInfo.birthMonth).padStart(2, '0')}-${String(personalInfo.birthDay).padStart(2, '0')}`,
-                sex: personalInfo.sex,
-                role: userRole,
+            // Ensure rfidCode is explicitly null if event or other obj passed
+            const finalRfid = (typeof rfidCode === 'string') ? rfidCode : null;
 
-                schoolNumber: formData.schoolId, // Backend likely expects 'schoolNumber' or 'id_number'
-                email: formData.email,
+            const completeRegistrationData = {
+                userType: normalizedUserType,
+                personalInfo: personalInfo,
+                idNumber: formData.idNumber, // Passed as 'idNumber'
                 password: formData.password,
-
-                // Pass captured RFID code (or null if none)
-                rfid_code: rfidCode
+                email: formData.email,
+                rfidCode: finalRfid,
+                registrationDate: new Date().toISOString()
             };
 
-            const response = await registerUser(payload);
-
-            if (response.success) {
-                navigate('/register/saved');
-            } else {
-                // Check if error is related to duplication
-                if (response.message && (
-                    response.message.toLowerCase().includes('email') ||
-                    response.message.toLowerCase().includes('school') ||
-                    response.message.toLowerCase().includes('id') ||
-                    response.message.toLowerCase().includes('rfid') ||
-                    response.message.toLowerCase().includes('already registered')
-                )) {
-                    setDuplicateMessage(response.message);
-                    setShowDuplicateModal(true);
-                } else {
-                    setError(response.message || "Registration failed. Please try again.");
-                }
-            }
+            // Navigate to Saved Page (which calls API)
+            navigate("/register/saved", {
+                state: completeRegistrationData
+            });
 
         } catch (err) {
-            console.error("Registration error:", err);
-            setError(err.message || "Network error. Please try again.");
-        } finally {
+            console.error("Registration prep error:", err);
+            setError("An error occurred. Please try again.");
             setIsLoading(false);
+        }
+    };
+
+    const handleBack = () => {
+        if (currentStep > 0) {
+            setCurrentStep(currentStep - 1);
+            setError("");
+        } else {
+            // Go back to Personal Info
+            navigate(-1);
         }
     };
 
@@ -199,7 +292,8 @@ const RegisterTapIDRemote = () => {
             width: '100%',
             background: '#f8fafc',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            overflowY: 'auto' // Make scrollable
         }}>
             {/* Top Bar */}
             <div style={{
@@ -213,7 +307,7 @@ const RegisterTapIDRemote = () => {
                 zIndex: 10
             }}>
                 <button
-                    onClick={() => navigate(-1)} // Go back
+                    onClick={handleBack}
                     style={{
                         background: 'none',
                         border: 'none',
@@ -225,241 +319,258 @@ const RegisterTapIDRemote = () => {
                 >
                     <ArrowBack />
                 </button>
-                <h1 style={{
-                    fontSize: '1.1rem',
-                    fontWeight: '700',
-                    color: '#1e293b',
-                    margin: '0 0 0 16px'
-                }}>
-                    Account Setup
-                </h1>
-            </div>
-
-            {/* Form Content */}
-            <div style={{
-                flex: 1,
-                padding: '24px'
-            }}>
-                <p style={{
-                    fontSize: '0.95rem',
-                    color: '#64748b',
-                    marginBottom: '24px'
-                }}>
-                    Final step! Set up your secure login credentials.
-                </p>
-
-                {/* RFID Linking Section */}
-                <div style={{
-                    marginBottom: '24px',
-                    padding: '16px',
-                    borderRadius: '16px',
-                    background: rfidStatus === 'success' ? '#f0fdf4' : rfidStatus === 'error' ? '#fef2f2' : '#f1f5f9',
-                    border: `2px dashed ${rfidStatus === 'success' ? '#22c55e' : rfidStatus === 'error' ? '#ef4444' : '#cbd5e1'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px'
-                }}>
+                <div style={{ marginLeft: '16px', flex: 1, display: 'flex', alignItems: 'center' }}>
+                    {/* 3-Step Progress Bar - Dynamic Width */}
                     <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        background: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: rfidStatus === 'success' ? '#16a34a' : rfidStatus === 'error' ? '#dc2626' : '#64748b'
+                        height: '6px',
+                        background: '#e2e8f0',
+                        borderRadius: '3px',
+                        width: '100%',
+                        maxWidth: '200px', // Wider on desktop
+                        minWidth: '100px', // Min width for mobile
+                        overflow: 'hidden',
+                        marginRight: '12px'
                     }}>
-                        {rfidStatus === 'success' ? <CheckCircle /> : rfidStatus === 'error' ? <Error /> : <Sensors />}
-                    </div>
-                    <div>
-                        <p style={{ margin: 0, fontWeight: '600', fontSize: '0.95rem', color: '#334155' }}>
-                            {rfidStatus === 'success' ? 'ID Card Linked' : rfidStatus === 'error' ? 'Scan Failed' : 'Link ID Card (Optional)'}
-                        </p>
-                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-                            {rfidStatus === 'success' ? rfidMessage : rfidStatus === 'error' ? rfidMessage : 'Tap card on scanner to link to account'}
-                        </p>
+                        <div style={{
+                            height: '100%',
+                            background: 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
+                            borderRadius: '3px',
+                            width: `${((currentStep + 1) / 3) * 100}%`,
+                            transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }} />
                     </div>
                 </div>
+                <div style={{
+                    fontSize: '0.85rem',
+                    color: '#64748b',
+                    fontWeight: '600',
+                    background: '#f1f5f9',
+                    padding: '4px 12px',
+                    borderRadius: '12px'
+                }}>
+                    Step {currentStep + 1} of 3
+                </div>
+            </div>
 
-                <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Content Area - Flex Grow & Scrollable */}
+            <div style={{
+                flex: 1,
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                maxWidth: '600px', // Constrain width on large screens
+                width: '100%',
+                margin: '0 auto', // Center
+                overflowY: 'visible' // Let parent handle scroll or just flow
+            }}>
 
-                    {/* Error Alert */}
-                    {error && (
-                        <div style={{
-                            padding: '12px',
-                            background: '#fee2e2',
-                            borderRadius: '12px',
-                            color: '#dc2626',
-                            fontSize: '0.9rem',
-                            fontWeight: '600',
-                            border: '1px solid #fecaca'
-                        }}>
-                            {error}
-                        </div>
-                    )}
+                {/* Step 0: ID Number */}
+                {currentStep === 0 && (
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>
+                            Enter {roleSettings.label}
+                        </h2>
+                        <p style={{ color: '#64748b', marginBottom: '32px' }}>This will be your official identification.</p>
 
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>
-                            {userRole.includes('doctor') || userRole.includes('nurse') ? 'License Number' : 'School ID Number'}
-                        </label>
-                        <input
-                            type="text"
-                            name="schoolId"
-                            value={formData.schoolId}
-                            onChange={handleChange}
-                            placeholder={userRole.includes('doctor') ? 'Enter License No.' : 'e.g. 2023-00123'}
-                            style={{
-                                width: '100%',
-                                padding: '16px',
-                                fontSize: '1rem',
-                                border: '2px solid #e2e8f0',
-                                borderRadius: '16px',
-                                outline: 'none',
-                                transition: 'border-color 0.2s',
-                                background: 'white'
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = '#ef4444'}
-                            onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                        />
-                    </div>
-
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>
-                            Email Address
-                        </label>
-                        <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            placeholder="juan@example.com"
-                            style={{
-                                width: '100%',
-                                padding: '16px',
-                                fontSize: '1rem',
-                                border: '2px solid #e2e8f0',
-                                borderRadius: '16px',
-                                outline: 'none',
-                                transition: 'border-color 0.2s',
-                                background: 'white'
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = '#ef4444'}
-                            onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                        />
-                        {/* Email Domain Suggestions */}
-                        {formData.email.includes('@') && !formData.email.includes('.', formData.email.indexOf('@') + 2) && (
-                            <div style={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                gap: '8px',
-                                marginTop: '12px'
-                            }}>
-                                {emailDomains.map((domain) => (
-                                    <button
-                                        key={domain}
-                                        type="button"
-                                        onClick={() => handleDomainSelect(domain)}
-                                        style={{
-                                            padding: '8px 12px',
-                                            background: '#f1f5f9',
-                                            border: '1px solid #cbd5e1',
-                                            borderRadius: '20px',
-                                            fontSize: '0.85rem',
-                                            color: '#334155',
-                                            cursor: 'pointer',
-                                            fontWeight: '600',
-                                            transition: 'all 0.2s'
-                                        }}
-                                        onMouseOver={(e) => {
-                                            e.target.style.background = '#e2e8f0';
-                                            e.target.style.borderColor = '#94a3b8';
-                                        }}
-                                        onMouseOut={(e) => {
-                                            e.target.style.background = '#f1f5f9';
-                                            e.target.style.borderColor = '#cbd5e1';
-                                        }}
-                                    >
-                                        @{domain}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>
-                            Password
-                        </label>
-                        <div style={{ position: 'relative' }}>
+                        <div style={{ marginBottom: '24px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>
+                                {roleSettings.label}
+                            </label>
                             <input
-                                type={showPassword ? "text" : "password"}
-                                name="password"
-                                value={formData.password}
+                                type="text"
+                                name="idNumber"
+                                value={formData.idNumber}
                                 onChange={handleChange}
-                                placeholder="Create a password"
+                                placeholder={roleSettings.placeholder}
                                 style={{
                                     width: '100%',
                                     padding: '16px',
-                                    paddingRight: '50px',
-                                    fontSize: '1rem',
+                                    fontSize: '1.1rem',
                                     border: '2px solid #e2e8f0',
                                     borderRadius: '16px',
                                     outline: 'none',
-                                    transition: 'border-color 0.2s',
                                     background: 'white'
                                 }}
                                 onFocus={(e) => e.target.style.borderColor = '#ef4444'}
                                 onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                style={{
-                                    position: 'absolute',
-                                    right: '12px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    border: 'none',
-                                    background: 'none',
-                                    color: '#94a3b8',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                            </button>
+                            <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '8px' }}>
+                                {roleSettings.hint}
+                            </p>
+
+                            {/* NO SKIP BUTTON HERE - Match Kiosk Logic */}
                         </div>
-                    </div>
+                    </motion.div>
+                )}
 
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>
-                            Confirm Password
-                        </label>
-                        <input
-                            type="password"
-                            name="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            placeholder="Repeat password"
-                            style={{
-                                width: '100%',
-                                padding: '16px',
-                                fontSize: '1rem',
-                                border: '2px solid #e2e8f0',
-                                borderRadius: '16px',
-                                outline: 'none',
-                                transition: 'border-color 0.2s',
-                                background: 'white'
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = '#ef4444'}
-                            onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                        />
-                    </div>
+                {/* Step 1: Contact Info */}
+                {currentStep === 1 && (
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>
+                            Secure your account
+                        </h2>
+                        <p style={{ color: '#64748b', marginBottom: '24px' }}>Set up your email and password.</p>
 
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>
+                                    Email Address
+                                </label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    placeholder="juan@example.com"
+                                    style={{
+                                        width: '100%',
+                                        padding: '16px',
+                                        fontSize: '1rem',
+                                        border: '2px solid #e2e8f0',
+                                        borderRadius: '16px',
+                                        outline: 'none',
+                                        background: 'white'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#ef4444'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                                />
+                                {formData.email.includes('@') && !formData.email.includes('.', formData.email.indexOf('@') + 2) && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                                        {emailDomains.map((domain) => (
+                                            <button
+                                                key={domain}
+                                                type="button"
+                                                onClick={() => handleDomainSelect(domain)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: '#f1f5f9',
+                                                    border: '1px solid #cbd5e1',
+                                                    borderRadius: '20px',
+                                                    fontSize: '0.85rem',
+                                                    color: '#334155',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                @{domain}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>
+                                    Password
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        placeholder="Create a password"
+                                        style={{
+                                            width: '100%',
+                                            padding: '16px',
+                                            paddingRight: '50px',
+                                            fontSize: '1rem',
+                                            border: '2px solid #e2e8f0',
+                                            borderRadius: '16px',
+                                            outline: 'none',
+                                            background: 'white'
+                                        }}
+                                        onFocus={(e) => e.target.style.borderColor = '#ef4444'}
+                                        onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        style={{
+                                            position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                                            border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer'
+                                        }}
+                                    >
+                                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>
+                                    Confirm Password
+                                </label>
+                                <input
+                                    type="password"
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    placeholder="Repeat password"
+                                    style={{
+                                        width: '100%',
+                                        padding: '16px',
+                                        fontSize: '1rem',
+                                        border: '2px solid #e2e8f0',
+                                        borderRadius: '16px',
+                                        outline: 'none',
+                                        background: 'white'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#ef4444'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                                />
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Step 2: Register ID ('Smart' - Allows Tap) */}
+                {currentStep === 2 && (
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>
+                            Register your ID
+                        </h2>
+                        <p style={{ color: '#64748b', marginBottom: '32px' }}>Link your physical ID card.</p>
+
+                        <div style={{
+                            background: '#f1f5f9',
+                            padding: '30px 20px',
+                            borderRadius: '20px',
+                            textAlign: 'center',
+                            border: '2px dashed #cbd5e1'
+                        }}>
+                            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📱</div>
+                            <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
+                                Tap to Register
+                            </h3>
+                            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                                If you have a USB reader, tap your card now.
+                                <br />Otherwise, you can skip this step.
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+
+                {error && (
+                    <div style={{
+                        marginTop: '24px',
+                        padding: '12px',
+                        background: '#fee2e2',
+                        borderRadius: '12px',
+                        color: '#dc2626',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                        textAlign: 'center'
+                    }}>
+                        {error}
+                    </div>
+                )}
+
+                <div style={{ marginTop: 'auto', paddingTop: '32px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                    {/* Primary Button */}
                     <button
-                        type="submit"
+                        onClick={() => currentStep === 2 ? submitRegistration(null) : handleNext()}
                         disabled={isLoading}
                         style={{
-                            marginTop: '20px',
                             width: '100%',
                             padding: '18px',
                             background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
@@ -473,74 +584,71 @@ const RegisterTapIDRemote = () => {
                             boxShadow: '0 8px 20px -6px rgba(220, 38, 38, 0.4)'
                         }}
                     >
-                        {isLoading ? "Creating Account..." : "Create Account"}
+                        {isLoading ? "Processing..." : (currentStep === 2 ? "Finish Registration" : "Next")}
                     </button>
-                </form>
+
+                    {/* Secondary Button - Only for Step 2 */}
+                    {currentStep === 2 && (
+                        <button
+                            onClick={() => submitRegistration(null)}
+                            disabled={isLoading}
+                            style={{
+                                width: '100%',
+                                padding: '16px',
+                                background: 'transparent',
+                                color: '#64748b',
+                                border: 'none',
+                                borderRadius: '16px',
+                                fontSize: '1rem',
+                                fontWeight: '600',
+                                cursor: isLoading ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            I don't have an ID card
+                        </button>
+                    )}
+                </div>
+
             </div>
 
             {/* Duplicate / Error Modal */}
             <AnimatePresence>
                 {showDuplicateModal && (
                     <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'rgba(0,0,0,0.5)',
-                        zIndex: 50,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '24px'
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.5)', zIndex: 50,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px'
                     }} onClick={() => setShowDuplicateModal(false)}>
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             style={{
-                                background: 'white',
-                                borderRadius: '24px',
-                                padding: '32px 24px',
-                                width: '100%',
-                                maxWidth: '400px',
-                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                                textAlign: 'center'
+                                background: 'white', borderRadius: '24px', padding: '32px 24px',
+                                width: '100%', maxWidth: '400px',
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'center'
                             }}
                             onClick={e => e.stopPropagation()}
                         >
                             <div style={{
-                                width: '64px',
-                                height: '64px',
-                                background: '#fef2f2',
-                                color: '#ef4444',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
+                                width: '64px', height: '64px', background: '#fef2f2', color: '#ef4444',
+                                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 margin: '0 auto 16px'
                             }}>
                                 <Warning style={{ fontSize: '32px' }} />
                             </div>
                             <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>
-                                Registration Issue
+                                {duplicateTitle}
                             </h3>
                             <p style={{ color: '#64748b', marginBottom: '24px', lineHeight: '1.5' }}>
-                                {duplicateMessage || "This information is already registered in our system."}
+                                {duplicateMessage}
                             </p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <button
                                     onClick={() => navigate('/login')}
                                     style={{
-                                        width: '100%',
-                                        padding: '16px',
-                                        background: '#ef4444',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '16px',
-                                        fontSize: '1rem',
-                                        fontWeight: '700',
-                                        cursor: 'pointer'
+                                        width: '100%', padding: '16px', background: '#ef4444', color: 'white',
+                                        border: 'none', borderRadius: '16px', fontSize: '1rem', fontWeight: '700', cursor: 'pointer'
                                     }}
                                 >
                                     Log In Instead
@@ -548,24 +656,19 @@ const RegisterTapIDRemote = () => {
                                 <button
                                     onClick={() => setShowDuplicateModal(false)}
                                     style={{
-                                        width: '100%',
-                                        padding: '16px',
-                                        background: 'transparent',
-                                        color: '#64748b',
-                                        border: 'none',
-                                        fontSize: '1rem',
-                                        fontWeight: '600',
-                                        cursor: 'pointer'
+                                        width: '100%', padding: '16px', background: 'transparent', color: '#64748b',
+                                        border: 'none', fontSize: '1rem', fontWeight: '600', cursor: 'pointer'
                                     }}
                                 >
-                                    Close & Edit Info
+                                    Close & Edit
                                 </button>
                             </div>
                         </motion.div>
                     </div>
                 )}
             </AnimatePresence>
-        </div >
+
+        </div>
     );
 };
 

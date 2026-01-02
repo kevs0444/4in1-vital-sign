@@ -9,6 +9,7 @@ import DashboardLayout from '../../../../components/DashboardLayout/DashboardLay
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
 import PopulationAnalytics from '../../../../components/PopulationAnalytics/PopulationAnalytics';
 import { Assessment } from '@mui/icons-material';
+import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -206,6 +207,23 @@ const NurseDashboard = () => {
         }
     }, [navigate, location, fetchUsers, fetchMyHistory]);
 
+    // Real-time WebSocket updates - instant push notifications
+    const refetchAllData = React.useCallback(async () => {
+        await fetchUsers();
+        if (currentUser) {
+            await fetchMyHistory(currentUser.userId || currentUser.user_id || currentUser.id);
+        }
+    }, [currentUser, fetchUsers, fetchMyHistory]);
+
+    const { isConnected, lastUpdated } = useRealtimeUpdates({
+        role: 'Nurse',
+        userId: currentUser?.userId || currentUser?.user_id || currentUser?.id,
+        refetchData: refetchAllData,
+        onNewMeasurement: (data) => {
+            console.log('📊 New measurement received:', data);
+        }
+    });
+
     const handleLogout = () => {
         localStorage.removeItem('userData');
         localStorage.removeItem('isAuthenticated');
@@ -398,6 +416,9 @@ const NurseDashboard = () => {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             onLogout={handleLogout}
+            lastUpdated={lastUpdated}
+            onRefresh={refetchAllData}
+            isConnected={isConnected}
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
             {/* --- Personal Info Tab --- */}

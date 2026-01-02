@@ -7,6 +7,7 @@ import "./RegisterTapID.css";
 import "./TapIDCardStyles.css";
 import tapIdImage from "../../../assets/icons/tap-id-icon.png";
 import { isLocalDevice } from '../../../utils/network';
+import { validateEmail, validateIDNumber, validatePassword } from '../../../utils/validators';
 
 const getDynamicApiUrl = () => {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
@@ -440,8 +441,9 @@ export default function RegisterTapID() {
 
       setCurrentStep(1);
     } else if (currentStep === 1) {
-      if (!validateEmail(formData.email)) {
-        setErrorMessage("Please enter a valid email address");
+      const emailValidation = validateEmail(formData.email);
+      if (!emailValidation.isValid) {
+        setErrorMessage(emailValidation.error);
         return;
       }
       if (!validatePassword(formData.password)) {
@@ -508,20 +510,7 @@ export default function RegisterTapID() {
     completeIDRegistration(null);
   };
 
-  const validateIDNumber = (idNumber) => {
-    // Allow only numbers and hyphens, minimum 1 character
-    const idRegex = /^[0-9-]+$/;
-    return idRegex.test(idNumber) && idNumber.trim().length >= 1;
-  };
 
-  const validatePassword = (password) => {
-    return password.length >= 6 && password.length <= 10;
-  };
-
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
 
   const handleInputChange = (field, value) => {
     // Strip cursor char if present
@@ -641,7 +630,7 @@ export default function RegisterTapID() {
       case 0:
         return validateIDNumber(formData.idNumber);
       case 1:
-        return validateEmail(formData.email) && validatePassword(formData.password);
+        return validateEmail(formData.email).isValid && validatePassword(formData.password);
       case 2:
         return true;
       default:

@@ -6,6 +6,8 @@
 
 # ----- Core Flask & Database -----
 flask
+flask-socketio
+flask-cors
 python-dotenv
 sqlalchemy
 pymysql
@@ -26,7 +28,5 @@ scikit-learn
 xgboost
 joblib
 
-# ----- Gemini Cloud AI (BP Camera Reading) -----
-google-generativeai
 
 

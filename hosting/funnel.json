@@ -1,0 +1,20 @@
+{
+    "version": "1",
+    "TCP": {
+        "443": {
+            "HTTPS": true
+        }
+    },
+    "Web": {
+        "4-in-juan-vital-signs.tail7d165c.ts.net:443": {
+            "Handlers": {
+                "/api": {
+                    "Proxy": "http://127.0.0.1:5000"
+                },
+                "/": {
+                    "Proxy": "http://127.0.0.1:3000"
+                }
+            }
+        }
+    }
+}

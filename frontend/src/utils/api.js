@@ -1,9 +1,8 @@
 // frontend/src/utils/api.js - COMPLETE UPDATED VERSION WITH MISSING SENSOR FUNCTIONS
 const getDynamicApiUrl = () => {
-  if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
-  // Dynamically assume backend is on port 5000 of the same host
-  // This allows localhost access on Kiosk AND network IP access on other devices
-  return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+  // Force relative path to ensure we always use the Proxy (Local) or Funnel (Remote)
+  // This avoids issues where REACT_APP_API_URL might be misconfigured
+  return '/api';
 };
 
 const API_URL = getDynamicApiUrl();
@@ -587,10 +586,11 @@ export const getAllMeasurements = async () => {
 };
 
 // Get population analytics (aggregate data for Nurse, Doctor, Admin)
-export const getPopulationAnalytics = async () => {
+export const getPopulationAnalytics = async (role = 'all') => {
   try {
-    console.log('📊 Getting population analytics...');
-    return await fetchWithTimeout(`${API_URL}/measurements/analytics/population`, {}, TIMEOUTS.SHORT);
+    console.log(`📊 Getting population analytics for role: ${role}...`);
+    const query = role && role !== 'all' ? `?role=${role}` : '';
+    return await fetchWithTimeout(`${API_URL}/measurements/analytics/population${query}`, {}, TIMEOUTS.SHORT);
   } catch (error) {
     console.error('Error getting population analytics:', error);
     throw error;

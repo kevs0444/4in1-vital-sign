@@ -275,10 +275,17 @@ export default function RegisterPersonalInfo() {
         return;
       }
       const ageNumber = parseInt(formData.age, 10);
-      if (ageNumber <= 15) {
+
+      // Tiered Safety Logic
+      if (ageNumber < 12) {
+        setErrorMessage("For medical accuracy, this system is restricted to users 12 years and older.");
+        return;
+      }
+      if (ageNumber >= 12 && ageNumber <= 15) {
         setShowAgeWarningModal(true);
         return;
       }
+
       if (ageNumber > 99) {
         setErrorMessage("Please enter a valid age up to 99");
         return;
@@ -943,19 +950,15 @@ export default function RegisterPersonalInfo() {
         className="exit-modal"
       >
         <Modal.Header closeButton style={{ borderBottom: 'none', padding: '20px 25px 10px' }}>
-          <Modal.Title style={{ fontWeight: '700', color: '#dc2626' }}>Age Restriction</Modal.Title>
+          <Modal.Title style={{ fontWeight: '700', color: '#ea580c' }}>Medical Supervision</Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ padding: '10px 25px 20px', fontSize: '1.2rem', color: '#333' }}>
-          <p>For users <strong>15 years old and below</strong>, please ask for guidance from our medical personnel before proceeding.</p>
+          <p>For users aged <strong>12 to 15</strong>, please ask for assistance from medical staff to ensure accurate sensor readings (e.g., blood pressure cuff fitting).</p>
         </Modal.Body>
         <Modal.Footer style={{ borderTop: 'none', padding: '0 25px 25px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
           <Button
             variant="secondary"
-            onClick={() => {
-              setShowAgeWarningModal(false);
-              // Reset all birthday fields to default
-              setFormData(prev => ({ ...prev, birthMonth: null, birthDay: null, birthYear: null, age: "" }));
-            }}
+            onClick={() => setShowAgeWarningModal(false)}
             style={{
               backgroundColor: '#f1f3f5',
               border: 'none',
@@ -967,22 +970,26 @@ export default function RegisterPersonalInfo() {
               flex: 1
             }}
           >
-            Retry
+            Cancel
           </Button>
           <Button
-            variant="danger"
-            onClick={() => navigate('/login')}
+            variant="primary" // Changed to primary/orange typically
+            onClick={() => {
+              setShowAgeWarningModal(false);
+              setCurrentStep(2); // Proceed to Sex selection
+            }}
             style={{
-              backgroundColor: '#dc2626',
+              backgroundColor: '#ea580c',
               border: 'none',
               fontWeight: '600',
               padding: '12px 20px',
               borderRadius: '12px',
               fontSize: '1rem',
-              flex: 1
+              flex: 1,
+              color: 'white'
             }}
           >
-            Understood
+            I Understand
           </Button>
         </Modal.Footer>
       </Modal>

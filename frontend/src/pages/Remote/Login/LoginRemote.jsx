@@ -46,7 +46,7 @@ const LoginRemote = () => {
         else if (role === 'nurse') targetPath = '/nurse/dashboard';
         else if (role.includes('employee') || role.includes('faculty') || role.includes('staff')) targetPath = '/employee/dashboard';
 
-        navigate(targetPath, { state: { user: userDataForState } });
+        navigate(targetPath, { state: { user: userDataForState }, replace: true });
     };
 
     const handleLogin = async (e) => {
@@ -118,6 +118,29 @@ const LoginRemote = () => {
     };
 
     useEffect(() => {
+        // Auto-Redirect if authenticated
+        const storedData = localStorage.getItem('userData');
+        const isAuth = localStorage.getItem('isAuthenticated') === 'true';
+
+        if (storedData && isAuth) {
+            try {
+                const user = JSON.parse(storedData);
+                const role = (user.role || "").toLowerCase();
+                let targetPath = '/student/dashboard';
+
+                if (role.includes('admin')) targetPath = '/admin/dashboard';
+                else if (role === 'doctor') targetPath = '/doctor/dashboard';
+                else if (role === 'nurse') targetPath = '/nurse/dashboard';
+                else if (role.includes('employee')) targetPath = '/employee/dashboard';
+
+                navigate(targetPath, { replace: true });
+                return;
+            } catch (e) {
+                localStorage.removeItem('userData');
+                localStorage.removeItem('isAuthenticated');
+            }
+        }
+
         const handleGlobalKeyDown = (e) => {
             if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
             if (isLoading) return;
@@ -147,7 +170,7 @@ const LoginRemote = () => {
             document.removeEventListener('keydown', handleGlobalKeyDown);
             if (rfidTimeoutRef.current) clearTimeout(rfidTimeoutRef.current);
         };
-    }, [isLoading]);
+    }, [isLoading, navigate]);
 
     return (
         <div className="login-remote-main-container">

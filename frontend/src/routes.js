@@ -1,6 +1,7 @@
 // src/routes.js (OPTIMIZED WITH LAZY LOADING)
 import React, { Suspense } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 
 // 🩺 Measurement Flow (Kiosk Only - Regular Imports)
 import AILoading from "./pages/MeasurementFlow/AILoading/AILoading";
@@ -39,6 +40,7 @@ import Standby from "./pages/Standby/Standby";
 import NotFound from "./pages/NotFound/NotFound";
 import { isLocalDevice } from "./utils/network";
 import { AnimatePresence } from "framer-motion";
+import RemoteTransition from "./pages/Remote/RemoteTransition/RemoteTransition";
 
 // ===========================================================
 // 📱 REMOTE PAGES - LAZY LOADED (Code Splitting for Ngrok)
@@ -53,7 +55,7 @@ const RegisterPersonalInfoRemote = React.lazy(() => import("./pages/Remote/Regis
 const RegisterTapIDRemote = React.lazy(() => import("./pages/Remote/RegisterFlow/RegisterTapID/RegisterTapIDRemote"));
 const RegisterDataSavedRemote = React.lazy(() => import("./pages/Remote/RegisterFlow/RegisterDataSaved/RegisterDataSavedRemote"));
 
-const RemoteTransition = React.lazy(() => import("./pages/Remote/RemoteTransition/RemoteTransition"));
+
 
 // Loading fallback for lazy-loaded components
 const LazyLoadingFallback = () => (
@@ -87,11 +89,11 @@ const LazyLoadingFallback = () => (
 function AppRoutes() {
   const location = useLocation();
 
-  // Helper to wrap generic remote components with Suspense for lazy loading
-  const Remote = (Component) => (
+  // Helper component to wrap remote components with Suspense for lazy loading
+  const RemoteWrapper = ({ children }) => (
     <Suspense fallback={<LazyLoadingFallback />}>
       <RemoteTransition>
-        {Component}
+        {children}
       </RemoteTransition>
     </Suspense>
   );
@@ -100,11 +102,11 @@ function AppRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         {/* 🏠 Default route - Auto-detects Kiosk vs Remote */}
-        <Route path="/" element={isLocalDevice() ? <Standby /> : Remote(<StandbyRemote />)} />
+        <Route path="/" element={isLocalDevice() ? <Standby /> : <RemoteWrapper><StandbyRemote /></RemoteWrapper>} />
 
         {/* 🔐 Login */}
-        <Route path="/login" element={isLocalDevice() ? <LoginPage /> : Remote(<LoginRemote />)} />
-        <Route path="/forgot-password" element={isLocalDevice() ? <ForgotPassword /> : Remote(<ForgotPasswordRemote />)} />
+        <Route path="/login" element={isLocalDevice() ? <LoginPage /> : <RemoteWrapper><LoginRemote /></RemoteWrapper>} />
+        <Route path="/forgot-password" element={isLocalDevice() ? <ForgotPassword /> : <RemoteWrapper><ForgotPasswordRemote /></RemoteWrapper>} />
 
         {/* 🩺 Measurement Flow - Kiosk Only */}
         <Route path="/measure/welcome" element={isLocalDevice() ? <MeasurementWelcome /> : <Navigate to="/" />} />
@@ -120,20 +122,50 @@ function AppRoutes() {
         <Route path="/measure/sharing" element={isLocalDevice() ? <Sharing /> : <Navigate to="/" />} />
 
         {/* 🧾 Register Flow */}
-        <Route path="/register/welcome" element={isLocalDevice() ? <RegisterWelcome /> : Remote(<RegisterWelcomeRemote />)} />
-        <Route path="/register/role" element={isLocalDevice() ? <RegisterRole /> : Remote(<RegisterRoleRemote />)} />
-        <Route path="/register/tapid" element={isLocalDevice() ? <RegisterTapID /> : Remote(<RegisterTapIDRemote />)} />
-        <Route path="/register/personal-info" element={isLocalDevice() ? <RegisterPersonalInfo /> : Remote(<RegisterPersonalInfoRemote />)} />
-        <Route path="/register/saved" element={isLocalDevice() ? <RegisterDataSaved /> : Remote(<RegisterDataSavedRemote />)} />
+        <Route path="/register/welcome" element={isLocalDevice() ? <RegisterWelcome /> : <RemoteWrapper><RegisterWelcomeRemote /></RemoteWrapper>} />
+        <Route path="/register/role" element={isLocalDevice() ? <RegisterRole /> : <RemoteWrapper><RegisterRoleRemote /></RemoteWrapper>} />
+        <Route path="/register/tapid" element={isLocalDevice() ? <RegisterTapID /> : <RemoteWrapper><RegisterTapIDRemote /></RemoteWrapper>} />
+        <Route path="/register/personal-info" element={isLocalDevice() ? <RegisterPersonalInfo /> : <RemoteWrapper><RegisterPersonalInfoRemote /></RemoteWrapper>} />
+        <Route path="/register/saved" element={isLocalDevice() ? <RegisterDataSaved /> : <RemoteWrapper><RegisterDataSavedRemote /></RemoteWrapper>} />
 
         {/* 🧭 Dashboards */}
         <Route path="/dashboard" element={<Navigate to="/student/dashboard" replace />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
-        <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
-        <Route path="/nurse/dashboard" element={<NurseDashboard />} />
-        <Route path="/student/dashboard" element={<StudentDashboard />} />
-        <Route path="/admin/maintenance" element={<Maintenance />} />
+
+        <Route path="/admin/dashboard" element={
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/doctor/dashboard" element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <DoctorDashboard />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/employee/dashboard" element={
+          <ProtectedRoute allowedRoles={['employee', 'faculty', 'staff']}>
+            <EmployeeDashboard />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/nurse/dashboard" element={
+          <ProtectedRoute allowedRoles={['nurse']}>
+            <NurseDashboard />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/student/dashboard" element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <StudentDashboard />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/admin/maintenance" element={
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
+            <Maintenance />
+          </ProtectedRoute>
+        } />
 
         {/* 🚫 404 */}
         <Route path="*" element={<NotFound />} />

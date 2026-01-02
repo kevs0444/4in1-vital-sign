@@ -5,6 +5,9 @@ import logging
 import sys
 import os
 
+# Global socketio instance for export
+socketio = None
+
 def create_app():
     # Define correct path to frontend build: backend/app/../../frontend/build
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -48,42 +51,60 @@ def create_app():
     from app.routes.register_routes import register_bp
     from app.routes.login_routes import login_bp
     
+    # Register blueprints with Dual Paths (API prefix + Root overlay)
+    
     app.register_blueprint(main_bp, url_prefix='/api')
+    app.register_blueprint(main_bp, url_prefix='/', name='main_alias') # Unique name required
+
     app.register_blueprint(sensor_bp, url_prefix='/api/sensor')
+    app.register_blueprint(sensor_bp, url_prefix='/sensor', name='sensor_alias')
+
     app.register_blueprint(register_bp, url_prefix='/api/register')
+    app.register_blueprint(register_bp, url_prefix='/register', name='register_alias')
+
     app.register_blueprint(login_bp, url_prefix='/api/login')
+    app.register_blueprint(login_bp, url_prefix='/login', name='login_alias')
     
     from app.routes.forgot_password_routes import forgot_password_bp
     app.register_blueprint(forgot_password_bp, url_prefix='/api/auth')
+    app.register_blueprint(forgot_password_bp, url_prefix='/auth', name='auth_alias')
     
     from app.routes.camera_routes import camera_bp
     app.register_blueprint(camera_bp, url_prefix='/api/camera')
+    app.register_blueprint(camera_bp, url_prefix='/camera', name='camera_alias')
 
     from app.routes.print_routes import print_bp
     app.register_blueprint(print_bp, url_prefix='/api/print')
+    app.register_blueprint(print_bp, url_prefix='/print', name='print_alias')
 
     from app.routes.admin_routes import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
-    app.register_blueprint(admin_bp, url_prefix='/admin', name='admin_legacy') # Fallback alias
+    app.register_blueprint(admin_bp, url_prefix='/admin', name='admin_alias') 
 
     from app.routes.share_routes import share_bp
     app.register_blueprint(share_bp, url_prefix='/api/share')
+    app.register_blueprint(share_bp, url_prefix='/share', name='share_alias')
 
     from app.routes.juan_ai_routes import juan_ai_bp
     app.register_blueprint(juan_ai_bp, url_prefix='/api/juan-ai')
+    app.register_blueprint(juan_ai_bp, url_prefix='/juan-ai', name='juan_ai_alias')
     
     from app.routes.bp_ai_camera import bp_ai_camera_bp
     app.register_blueprint(bp_ai_camera_bp, url_prefix='/api/bp-camera')
+    app.register_blueprint(bp_ai_camera_bp, url_prefix='/bp-camera', name='bp_camera_alias')
 
     # NEW: Dedicated BP Sensor Controller Routes
     from app.routes.bp_routes import bp_routes
     app.register_blueprint(bp_routes)  # Already has url_prefix='/api/bp'
+    # app.register_blueprint(bp_routes, url_prefix='/bp', name='bp_alias')
 
     from app.routes.measurement_routes import measurement_bp
     app.register_blueprint(measurement_bp, url_prefix='/api/measurements')
+    app.register_blueprint(measurement_bp, url_prefix='/measurements', name='measurements_alias')
 
     from app.routes.user_routes import user_bp
     app.register_blueprint(user_bp, url_prefix='/api/users')
+    app.register_blueprint(user_bp, url_prefix='/users', name='users_alias')
 
     # --- PRIORITY 1: ARDUINO CONNECTION & AUTO-TARE ---
     from app.routes.sensor_routes import sensor_manager
@@ -134,12 +155,23 @@ def create_app():
             else:
                  return "Frontend build not found. Please run 'npm run build' in frontend directory.", 404
 
+    # ==================== WEBSOCKET SETUP ====================
+    print("\n" + "="*60)
+    print("🔌 PRIORITY 4: WEBSOCKET (REAL-TIME) SETUP")
+    print("="*60)
+    from app.websocket_events import init_socketio
+    global socketio
+    socketio = init_socketio(app)
+    print("✅ WebSocket server ready for real-time updates")
+    print("="*60 + "\n")
+
     print("="*60)
     print("🚀 BACKEND SERVER is READY and RUNNING")
     print(f"📂 Serving Frontend from: {app.static_folder}")
     print("="*60)
     print("📍 API available at: http://127.0.0.1:5000")
+    print("🔌 WebSocket available at: ws://127.0.0.1:5000")
     print("="*60 + "\n")
     sys.stdout.flush()
     
-    return app
+    return app, socketio

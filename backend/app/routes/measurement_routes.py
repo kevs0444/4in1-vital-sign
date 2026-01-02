@@ -90,6 +90,29 @@ def save_measurement():
 
         db.commit()
 
+        # ============================================
+        # REAL-TIME: Broadcast to connected dashboards
+        # ============================================
+        try:
+            from app.websocket_events import broadcast_new_measurement
+            broadcast_new_measurement({
+                'id': new_measurement.id,
+                'user_id': new_measurement.user_id,
+                'temperature': new_measurement.temperature,
+                'systolic': new_measurement.systolic,
+                'diastolic': new_measurement.diastolic,
+                'heart_rate': new_measurement.heart_rate,
+                'spo2': new_measurement.spo2,
+                'respiratory_rate': new_measurement.respiratory_rate,
+                'weight': new_measurement.weight,
+                'height': new_measurement.height,
+                'bmi': new_measurement.bmi,
+                'risk_category': new_measurement.risk_category,
+                'created_at': new_measurement.created_at.isoformat() if new_measurement.created_at else None
+            }, user_id=new_measurement.user_id)
+        except Exception as ws_error:
+            print(f"⚠️ WebSocket broadcast failed (non-critical): {ws_error}")
+
         return jsonify({
             'success': True, 
             'message': 'Measurement saved successfully',
@@ -179,14 +202,24 @@ def get_user_history(user_id):
 @measurement_bp.route('/analytics/population', methods=['GET'])
 def get_population_analytics():
     """
-    Returns aggregate analytics for all measurements.
+    Returns aggregate analytics for all measurements, optionally filtered by user role.
+    Query param: ?role=Student (or Employee, etc.)
     """
     try:
         db: Session = next(get_db())
         from sqlalchemy import func
+        from app.models.user_model import User  # Import User for joining
         
+        role = request.args.get('role')
+        
+        # Helper to apply filters
+        def apply_filter(query):
+            if role and role.lower() not in ['all', 'full institution']:
+                return query.join(User, Measurement.user_id == User.user_id).filter(User.role == role)
+            return query
+
         # 1. Overall Averages
-        stats = db.query(
+        stats_query = db.query(
             func.avg(Measurement.heart_rate).label('avg_hr'),
             func.avg(Measurement.systolic).label('avg_sys'),
             func.avg(Measurement.diastolic).label('avg_dia'),
@@ -194,25 +227,29 @@ def get_population_analytics():
             func.avg(Measurement.temperature).label('avg_temp'),
             func.avg(Measurement.bmi).label('avg_bmi'),
             func.count(Measurement.id).label('total_measurements')
-        ).first()
+        )
+        stats = apply_filter(stats_query).first()
 
         # 2. Risk Distribution
-        risk_dist = db.query(
+        risk_query = db.query(
             Measurement.risk_category, 
             func.count(Measurement.id)
-        ).group_by(Measurement.risk_category).all()
+        )
+        risk_dist = apply_filter(risk_query).group_by(Measurement.risk_category).all()
         risk_data = {cat: count for cat, count in risk_dist if cat}
 
         # 3. Daily Trends (Last 7 days)
         seven_days_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
-        trends = db.query(
+        trends_query = db.query(
             func.date(Measurement.created_at).label('date'),
             func.avg(Measurement.heart_rate).label('avg_hr'),
             func.avg(Measurement.systolic).label('avg_sys'),
             func.avg(Measurement.diastolic).label('avg_dia')
-        ).filter(Measurement.created_at >= seven_days_ago)\
-         .group_by(func.date(Measurement.created_at))\
-         .order_by(func.date(Measurement.created_at)).all()
+        ).filter(Measurement.created_at >= seven_days_ago)
+        
+        trends = apply_filter(trends_query)\
+            .group_by(func.date(Measurement.created_at))\
+            .order_by(func.date(Measurement.created_at)).all()
 
         trend_data = []
         for t in trends:

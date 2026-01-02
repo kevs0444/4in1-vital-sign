@@ -38,6 +38,7 @@ import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance comp
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
 import PopulationAnalytics from '../../../../components/PopulationAnalytics/PopulationAnalytics';
+import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -340,6 +341,28 @@ const AdminDashboard = () => {
         return () => clearInterval(printerInterval);
     }, [navigate, location]);
 
+    // Real-time WebSocket updates - instant push notifications
+    const refetchAllData = React.useCallback(async () => {
+        await fetchDashboardData();
+        if (user) {
+            await fetchMyHistory(user.userId || user.user_id || user.id);
+        }
+    }, [user]);
+
+    const { isConnected, lastUpdated, connectionStatus } = useRealtimeUpdates({
+        role: 'Admin',
+        userId: user?.userId || user?.user_id || user?.id,
+        refetchData: refetchAllData,
+        onNewMeasurement: (data) => {
+            console.log('📊 New measurement received:', data);
+            // Data will be refetched automatically
+        },
+        onNewUser: (data) => {
+            console.log('👤 New user registered:', data);
+            // Data will be refetched automatically
+        }
+    });
+
     useEffect(() => {
         filterUsers();
     }, [searchTerm, roleFilter, timeFilteredUsers, statusFilter, filterUsers]);
@@ -518,7 +541,7 @@ const AdminDashboard = () => {
     // Define Tabs
     const tabs = [
         { id: 'dashboard', label: 'Overview', icon: <GridView /> },
-        { id: 'analytics', label: 'Health Trends', icon: <Analytics /> },
+        { id: 'analytics', label: 'Population Analytics', icon: <Analytics /> },
         { id: 'users', label: 'Users', icon: <People /> },
         { id: 'history', label: 'History', icon: <History /> },
         { id: 'maintenance', label: 'System', icon: <Build /> },
@@ -534,6 +557,9 @@ const AdminDashboard = () => {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             onLogout={handleLogout}
+            lastUpdated={lastUpdated}
+            onRefresh={refetchAllData}
+            isConnected={isConnected}
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
             {/* Personal Info Tab */}
@@ -720,17 +746,7 @@ const AdminDashboard = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.5, delay: 0.2 }}
                     >
-                        {/* Time Period Filter for Users List */}
-                        <div style={{ marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter by Registration Date</h3>
-                            <TimePeriodFilter
-                                timePeriod={usersTimePeriod}
-                                setTimePeriod={setUsersTimePeriod}
-                                customDateRange={usersCustomDateRange}
-                                setCustomDateRange={setUsersCustomDateRange}
-                                variant="dropdown"
-                            />
-                        </div>
+
 
                         <div className="table-header">
                             <h3>Registered Users Database ({filteredUsers.length} records)</h3>
@@ -875,6 +891,17 @@ const AdminDashboard = () => {
                                 </div>
 
                                 <button className="icon-btn" title="Export"><Download /></button>
+
+                                {/* Time Period Filter */}
+                                <div style={{ height: '100%' }}>
+                                    <TimePeriodFilter
+                                        timePeriod={usersTimePeriod}
+                                        setTimePeriod={setUsersTimePeriod}
+                                        customDateRange={usersCustomDateRange}
+                                        setCustomDateRange={setUsersCustomDateRange}
+                                        variant="dropdown"
+                                    />
+                                </div>
 
                                 {/* View Toggle Buttons */}
                                 <div className="view-toggle" style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
