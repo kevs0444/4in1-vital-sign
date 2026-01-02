@@ -70,10 +70,24 @@ const DashboardLayout = ({
     // Helper to get user initials (handles different property naming conventions)
     const getUserInitials = () => {
         if (!user) return '?';
-        const firstName = user.firstName || user.firstname || user.first_name || user.name?.split(' ')[0] || '';
-        const lastName = user.lastName || user.lastname || user.last_name || user.name?.split(' ')[1] || '';
-        const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`;
-        return initials.toUpperCase() || '?';
+        const firstName = user.firstName || user.firstname || user.first_name || '';
+        const lastName = user.lastName || user.lastname || user.last_name || '';
+        const fullName = user.name || user.fullName || '';
+
+        if (firstName || lastName) {
+            return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || '?';
+        }
+
+        if (fullName) {
+            const parts = fullName.split(' ');
+            if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+            return parts[0][0].toUpperCase();
+        }
+
+        if (user.email) return user.email[0].toUpperCase();
+        if (user.schoolNumber || user.school_number) return 'U';
+
+        return '?';
     };
 
     // Helper to get full name
@@ -82,12 +96,14 @@ const DashboardLayout = ({
         const firstName = user.firstName || user.firstname || user.first_name || '';
         const lastName = user.lastName || user.lastname || user.last_name || '';
         if (firstName || lastName) return `${firstName} ${lastName}`.trim();
-        return user.name || 'User';
+        if (user.name || user.fullName) return user.name || user.fullName;
+        if (user.email) return user.email.split('@')[0];
+        if (user.schoolNumber || user.school_number) return `User ${user.schoolNumber || user.school_number}`;
+        return 'User';
     };
 
     // Connection status colors
     const statusColor = isConnected ? '#10b981' : '#f59e0b';
-    const statusBg = isConnected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)';
     const statusText = isConnected ? 'Live' : 'Connecting...';
 
     return (
@@ -211,7 +227,7 @@ const DashboardLayout = ({
                         </div>
                     </div>
                     <div className="user-avatar" style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}>
-                        {user?.firstname?.[0]}{user?.lastname?.[0]}
+                        {getUserInitials()}
                     </div>
                 </header>
 

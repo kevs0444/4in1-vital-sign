@@ -1,5 +1,5 @@
 # app/__init__.py
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request
 from flask_cors import CORS
 import logging
 import sys
@@ -139,6 +139,13 @@ def create_app():
     print("-"*40 + "\n")
 
     # ==================== FRONTEND SERVING ====================
+    
+    @app.before_request
+    def ws_ignorer():
+        """Silence React HMR WebSocket errors"""
+        if request.path == '/ws':
+            return "", 200
+
     # Serve React App for any non-API routes
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')

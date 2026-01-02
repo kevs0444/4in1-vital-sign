@@ -8,9 +8,18 @@ import { io } from 'socket.io-client';
 
 // WebSocket server URL - connects to the backend
 const getSocketUrl = () => {
-    // We now use window.location.origin for both local and remote.
-    // The setupProxy.js handles forwarding /socket.io requests to the backend (port 5000)
-    // with WebSocket support enabled. This ensures it works through Tailscale/Ngrok tunnels.
+    const hostname = window.location.hostname;
+
+    // 1. Localhost (Kiosk/Mini PC)
+    // Connect DIRECTLY to the backend port to avoid any proxy/tunnel overhead
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:5000';
+    }
+
+    // 2. Remote (Tailscale/Ngrok/Tunneled)
+    // Connect to the CURRENT URL (Origin)
+    // The setupProxy.js will handle forwarding this to port 5000
+    // This maintains the HTTPS/WSS connection required by tunnels
     return window.location.origin;
 };
 
@@ -28,16 +37,25 @@ const initializeSocket = () => {
     }
 
     const socketUrl = getSocketUrl();
-    console.log('🔌 Initializing WebSocket connection to:', socketUrl);
+    // Dynamically detect security based on current page protocol
+    // http://localhost -> secure: false
+    // https://remote-url -> secure: true
+    const isSecure = window.location.protocol === 'https:';
+
+    console.log('🔌 Initializing WebSocket connection to:', socketUrl, `(Secure: ${isSecure})`);
 
     globalSocket = io(socketUrl, {
-        transports: ['websocket', 'polling'],
+        path: '/socket.io',
+        transports: ['polling', 'websocket'],
+        secure: isSecure,
+        rejectUnauthorized: false,
         reconnection: true,
         reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
         timeout: 20000,
-        autoConnect: true
+        autoConnect: true,
+        rememberUpgrade: true
     });
 
     globalSocket.on('connect', () => {
