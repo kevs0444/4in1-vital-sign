@@ -158,7 +158,7 @@ const NurseDashboard = () => {
     const timeFilteredPatients = useMemo(() => {
         if (!usersList || usersList.length === 0) return [];
         return filterHistoryByTimePeriod(
-            usersList.map(u => ({ ...u, created_at: u.created_at || u.registered_at })),
+            usersList.map(u => ({ ...u, created_at: u.last_checkup || u.created_at || u.registered_at })),
             patientsTimePeriod,
             patientsCustomDateRange
         );
@@ -254,12 +254,18 @@ const NurseDashboard = () => {
         });
     };
 
-    const filteredUsers = timeFilteredPatients.filter(u =>
-        u.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.role?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredUsers = timeFilteredPatients
+        .filter(u =>
+            u.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.role?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => {
+            const dateA = a.last_checkup ? new Date(a.last_checkup).getTime() : 0;
+            const dateB = b.last_checkup ? new Date(b.last_checkup).getTime() : 0;
+            return dateB - dateA;
+        });
 
     const toggleMetric = (value) => {
         if (value === 'all') {
@@ -446,18 +452,6 @@ const NurseDashboard = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                 >
-                    {/* Time Period Filter for Patients */}
-                    <div style={{ marginBottom: '20px' }}>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter by Registration Date</h3>
-                        <TimePeriodFilter
-                            timePeriod={patientsTimePeriod}
-                            setTimePeriod={setPatientsTimePeriod}
-                            customDateRange={patientsCustomDateRange}
-                            setCustomDateRange={setPatientsCustomDateRange}
-                            variant="dropdown"
-                        />
-                    </div>
-
                     <div className="table-header">
                         <h3>Assigned Patients / All Users ({timeFilteredPatients.length} records)</h3>
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -470,6 +464,15 @@ const NurseDashboard = () => {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
+
+                            {/* Time Period Filter */}
+                            <TimePeriodFilter
+                                timePeriod={patientsTimePeriod}
+                                setTimePeriod={setPatientsTimePeriod}
+                                customDateRange={patientsCustomDateRange}
+                                setCustomDateRange={setPatientsCustomDateRange}
+                                variant="dropdown"
+                            />
                             {/* View Mode Toggle */}
                             <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
                                 <button
@@ -520,7 +523,7 @@ const NurseDashboard = () => {
                                     <tr>
                                         <th>Name</th>
                                         <th>Role</th>
-                                        <th>School ID</th>
+                                        <th>Email</th>
                                         <th>Last Checkup</th>
                                         <th>Action</th>
                                     </tr>
@@ -531,19 +534,19 @@ const NurseDashboard = () => {
                                     ) : filteredUsers.length === 0 ? (
                                         <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No users found.</td></tr>
                                     ) : (
-                                        filteredUsers.map((u) => (
-                                            <tr key={u.user_id}>
+                                        filteredUsers.map((u, index) => (
+                                            <tr key={u.user_id} style={{ background: index === 0 && u.last_checkup ? '#fff1f2' : 'transparent', transition: 'background 0.2s' }}>
                                                 <td>
                                                     <div className="user-name-cell">
                                                         <div className="user-avatar">{u.firstname[0]}{u.lastname[0]}</div>
                                                         <div>
                                                             <div className="fw-bold">{u.firstname} {u.lastname}</div>
-                                                            <div className="text-secondary small">{u.email}</div>
+                                                            <div className="text-secondary small">ID: {u.school_number || 'N/A'}</div>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td><span className={`role-badge role-${u.role.toLowerCase()}`}>{u.role}</span></td>
-                                                <td>{u.school_number || 'N/A'}</td>
+                                                <td>{u.email}</td>
                                                 <td>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</td>
                                                 <td>
                                                     <button className="action-btn" onClick={() => viewUserHistory(u)}>
@@ -564,7 +567,7 @@ const NurseDashboard = () => {
                             display: 'grid',
                             gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                             gap: '1.5rem',
-                            padding: '1rem 0'
+                            padding: '10px'
                         }}>
                             {loading ? (
                                 <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
@@ -891,19 +894,59 @@ const NurseDashboard = () => {
                 </>
             )}
 
-            {/* User History Modal (Patient View) */}
             {selectedUser && (
-                <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
+                <div className="modal-overlay" onClick={() => setSelectedUser(null)} style={{ background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <motion.div
                         className="modal-content"
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
                         onClick={(e) => e.stopPropagation()}
-                        style={{ maxWidth: '800px', width: '90%' }}
+                        style={{
+                            maxWidth: '900px',
+                            width: '95%',
+                            maxHeight: '85vh',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            background: 'rgba(255, 255, 255, 0.95)',
+                            backdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(255, 255, 255, 0.5)',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                            borderRadius: '24px',
+                            padding: '24px'
+                        }}
                     >
-                        <div className="modal-header">
-                            <h2>History: {selectedUser.firstname} {selectedUser.lastname}</h2>
-                            <button className="close-btn" onClick={() => setSelectedUser(null)}>&times;</button>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <div style={{
+                                    width: '48px', height: '48px', borderRadius: '50%',
+                                    background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+                                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '1.25rem', fontWeight: 'bold',
+                                    boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.3)'
+                                }}>
+                                    {selectedUser.firstname[0]}{selectedUser.lastname[0]}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        History Analysis
+                                    </div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', lineHeight: 1.2 }}>
+                                        {selectedUser.firstname} {selectedUser.lastname}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedUser(null)}
+                                style={{
+                                    width: '36px', height: '36px', borderRadius: '50%', border: 'none',
+                                    background: '#f1f5f9', color: '#64748b', fontSize: '1.5rem',
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.2s'
+                                }}
+                                className="hover-scale"
+                            >
+                                &times;
+                            </button>
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>

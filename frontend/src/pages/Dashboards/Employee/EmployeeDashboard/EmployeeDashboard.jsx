@@ -351,18 +351,6 @@ const EmployeeDashboard = () => {
             {activeTab === 'history' && (
                 <>
 
-                    {/* Time Period Filter for Table */}
-                    <div style={{ marginBottom: '20px' }}>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter Records</h3>
-                        <TimePeriodFilter
-                            timePeriod={timePeriod}
-                            setTimePeriod={setTimePeriod}
-                            customDateRange={customDateRange}
-                            setCustomDateRange={setCustomDateRange}
-                            variant="dropdown"
-                        />
-                    </div>
-
                     <motion.div
                         className="summary-cards"
                         initial={{ opacity: 0, y: 20 }}
@@ -393,7 +381,14 @@ const EmployeeDashboard = () => {
                     >
                         <div className="table-header">
                             <h3>Measurement History ({processHistory(timeFilteredHistory).length} records)</h3>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <TimePeriodFilter
+                                    timePeriod={timePeriod}
+                                    setTimePeriod={setTimePeriod}
+                                    customDateRange={customDateRange}
+                                    setCustomDateRange={setCustomDateRange}
+                                    variant="dropdown"
+                                />
                                 <select
                                     value={sortOrder}
                                     onChange={(e) => setSortOrder(e.target.value)}

@@ -10,7 +10,7 @@ import {
     GridView,
     TableRows,
     Settings,
-    Analytics,
+
     People,
     History,
     Build,
@@ -37,7 +37,7 @@ import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory, 
 import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance component
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
-import PopulationAnalytics from '../../../../components/PopulationAnalytics/PopulationAnalytics';
+
 import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
 
 // StatusToast Component (Local Definition)
@@ -541,7 +541,7 @@ const AdminDashboard = () => {
     // Define Tabs
     const tabs = [
         { id: 'dashboard', label: 'Overview', icon: <GridView /> },
-        { id: 'analytics', label: 'Population Analytics', icon: <Analytics /> },
+
         { id: 'users', label: 'Users', icon: <People /> },
         { id: 'history', label: 'History', icon: <History /> },
         { id: 'maintenance', label: 'System', icon: <Build /> },
@@ -731,11 +731,7 @@ const AdminDashboard = () => {
             )}
 
             {/* --- Health Trends Tab --- */}
-            {activeTab === 'analytics' && (
-                <div style={{ padding: '20px 0 40px 0' }}>
-                    <PopulationAnalytics />
-                </div>
-            )}
+
 
             {activeTab === 'users' && (
                 <>
@@ -890,7 +886,25 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                <button className="icon-btn" title="Export"><Download /></button>
+                                <button
+                                    className="icon-btn"
+                                    title="Export"
+                                    style={{
+                                        padding: '8px',
+                                        height: '100%',
+                                        borderRadius: '6px',
+                                        border: '1px solid #cbd5e1',
+                                        background: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#64748b',
+                                        minWidth: '40px'
+                                    }}
+                                >
+                                    <Download />
+                                </button>
 
                                 {/* Time Period Filter */}
                                 <div style={{ height: '100%' }}>
@@ -1018,7 +1032,7 @@ const AdminDashboard = () => {
                             </div>
                         ) : (
                             // CARD VIEW IMPLEMENTATION
-                            <div className="user-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', padding: '10px 0' }}>
+                            <div className="user-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', padding: '10px' }}>
                                 {loading ? (
                                     Array(6).fill(0).map((_, idx) => (
                                         <div key={`card-skeleton-${idx}`} className="user-card-skeleton" style={{ padding: '20px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', height: '200px' }}>

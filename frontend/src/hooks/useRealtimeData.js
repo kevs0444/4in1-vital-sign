@@ -17,10 +17,9 @@ const getSocketUrl = () => {
     }
 
     // 2. Remote (Tailscale/Ngrok/Tunneled)
-    // Connect to the CURRENT URL (Origin)
-    // The setupProxy.js will handle forwarding this to port 5000
-    // This maintains the HTTPS/WSS connection required by tunnels
-    return window.location.origin;
+    // Return undefined to let Socket.IO connect to the current window.location.origin
+    // This automatically handles HTTPS/WSS and relative paths correctly
+    return undefined;
 };
 
 // Global socket instance (singleton pattern)
