@@ -175,3 +175,71 @@ def get_user_history(user_id):
     except Exception as e:
         print(f"❌ Error fetching history: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@measurement_bp.route('/analytics/population', methods=['GET'])
+def get_population_analytics():
+    """
+    Returns aggregate analytics for all measurements.
+    """
+    try:
+        db: Session = next(get_db())
+        from sqlalchemy import func
+        
+        # 1. Overall Averages
+        stats = db.query(
+            func.avg(Measurement.heart_rate).label('avg_hr'),
+            func.avg(Measurement.systolic).label('avg_sys'),
+            func.avg(Measurement.diastolic).label('avg_dia'),
+            func.avg(Measurement.spo2).label('avg_spo2'),
+            func.avg(Measurement.temperature).label('avg_temp'),
+            func.avg(Measurement.bmi).label('avg_bmi'),
+            func.count(Measurement.id).label('total_measurements')
+        ).first()
+
+        # 2. Risk Distribution
+        risk_dist = db.query(
+            Measurement.risk_category, 
+            func.count(Measurement.id)
+        ).group_by(Measurement.risk_category).all()
+        risk_data = {cat: count for cat, count in risk_dist if cat}
+
+        # 3. Daily Trends (Last 7 days)
+        seven_days_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+        trends = db.query(
+            func.date(Measurement.created_at).label('date'),
+            func.avg(Measurement.heart_rate).label('avg_hr'),
+            func.avg(Measurement.systolic).label('avg_sys'),
+            func.avg(Measurement.diastolic).label('avg_dia')
+        ).filter(Measurement.created_at >= seven_days_ago)\
+         .group_by(func.date(Measurement.created_at))\
+         .order_by(func.date(Measurement.created_at)).all()
+
+        trend_data = []
+        for t in trends:
+            trend_data.append({
+                'date': str(t.date),
+                'avg_hr': round(float(t.avg_hr or 0), 1),
+                'avg_sys': round(float(t.avg_sys or 0), 1),
+                'avg_dia': round(float(t.avg_dia or 0), 1)
+            })
+
+        return jsonify({
+            'success': True,
+            'analytics': {
+                'averages': {
+                    'heart_rate': round(float(stats.avg_hr or 0), 1),
+                    'systolic': round(float(stats.avg_sys or 0), 1),
+                    'diastolic': round(float(stats.avg_dia or 0), 1),
+                    'spo2': round(float(stats.avg_spo2 or 0), 1),
+                    'temperature': round(float(stats.avg_temp or 0), 1),
+                    'bmi': round(float(stats.avg_bmi or 0), 1),
+                    'total': stats.total_measurements
+                },
+                'risk_distribution': risk_data,
+                'trends': trend_data
+            }
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error fetching population analytics: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500

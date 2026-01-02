@@ -3,10 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Logout, Person, Visibility, Settings, History, Check, Close, ErrorOutline, WarningAmber } from '@mui/icons-material';
 import './StudentDashboard.css';
-import { getMeasurementHistory } from '../../../../utils/api';
+import { getMeasurementHistory, getPopulationAnalytics } from '../../../../utils/api';
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
+import { Assessment } from '@mui/icons-material';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -106,8 +107,9 @@ const StudentDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [selectedMeasurement, setSelectedMeasurement] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
-    const [activeTab, setActiveTab] = useState('history'); // 'history', 'profile'
+    const [activeTab, setActiveTab] = useState('history'); // 'history', 'analytics', 'profile'
     const [toast, setToast] = useState(null);
+    const [popAverages, setPopAverages] = useState(null);
 
     useEffect(() => {
         // Authenticate
@@ -132,6 +134,16 @@ const StudentDashboard = () => {
                     if (response.success) {
                         setHistory(response.history || []);
                     }
+                }
+
+                // Fetch Population Data for comparison
+                try {
+                    const popResponse = await getPopulationAnalytics();
+                    if (popResponse.success) {
+                        setPopAverages(popResponse.analytics.averages);
+                    }
+                } catch (pe) {
+                    console.log("Population stats unavailable");
                 }
             } catch (error) {
                 console.error("Failed to fetch history:", error);
@@ -268,6 +280,7 @@ const StudentDashboard = () => {
     // Define Tabs
     const tabs = [
         { id: 'history', label: 'Measurement History', icon: <History /> },
+        { id: 'analytics', label: 'Health Analytics', icon: <Assessment /> },
         { id: 'profile', label: 'Personal Info', icon: <Settings /> }
     ];
 
@@ -296,18 +309,22 @@ const StudentDashboard = () => {
                 />
             )}
 
+            {/* Health Analytics Tab */}
+            {activeTab === 'analytics' && currentUser && (
+                <div style={{ padding: '0 0 40px 0' }}>
+                    <DashboardAnalytics
+                        user={currentUser}
+                        history={history}
+                        timePeriod={timePeriod}
+                        customDateRange={customDateRange}
+                        populationAverages={popAverages}
+                    />
+                </div>
+            )}
+
             {/* History Tab */}
             {activeTab === 'history' && (
                 <>
-                    {/* Analytics Section with shared time period */}
-                    <div style={{ marginBottom: '30px' }}>
-                        <DashboardAnalytics
-                            user={currentUser}
-                            history={history}
-                            timePeriod={timePeriod}
-                            customDateRange={customDateRange}
-                        />
-                    </div>
 
                     {/* Time Period Filter for Table */}
                     <div style={{ marginBottom: '20px' }}>
@@ -317,6 +334,7 @@ const StudentDashboard = () => {
                             setTimePeriod={setTimePeriod}
                             customDateRange={customDateRange}
                             setCustomDateRange={setCustomDateRange}
+                            variant="dropdown"
                         />
                     </div>
 

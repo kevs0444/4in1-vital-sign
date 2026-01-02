@@ -37,6 +37,7 @@ import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory, 
 import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance component
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
+import PopulationAnalytics from '../../../../components/PopulationAnalytics/PopulationAnalytics';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -145,7 +146,7 @@ const AdminDashboard = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [toast, setToast] = useState(null);
-    const [activeTab, setActiveTab] = useState('analytics');
+    const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'analytics', 'users', 'history', 'maintenance', 'profile'
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
@@ -189,7 +190,8 @@ const AdminDashboard = () => {
 
     // User Management Filters
     const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-    const [selectedStatus, setSelectedStatus] = useState('All');
+    const [statusFilter, setStatusFilter] = useState(['All']);
+    const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
     // Filter history by time period
     const timeFilteredHistory = useMemo(() => {
@@ -311,12 +313,12 @@ const AdminDashboard = () => {
             result = result.filter(u => roleFilter.includes(u.role));
         }
 
-        if (selectedStatus !== 'All') {
-            result = result.filter(u => u.approval_status === selectedStatus);
+        if (!statusFilter.includes('All')) {
+            result = result.filter(u => statusFilter.includes(u.approval_status || 'pending'));
         }
 
         setFilteredUsers(result);
-    }, [timeFilteredUsers, searchTerm, roleFilter, selectedStatus]);
+    }, [timeFilteredUsers, searchTerm, roleFilter, statusFilter]);
 
     useEffect(() => {
         // Check location state first (passed from navigation), then localStorage
@@ -340,7 +342,7 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         filterUsers();
-    }, [searchTerm, roleFilter, timeFilteredUsers, selectedStatus, filterUsers]);
+    }, [searchTerm, roleFilter, timeFilteredUsers, statusFilter, filterUsers]);
 
     const handleLogout = () => {
         localStorage.removeItem('userData');
@@ -368,22 +370,38 @@ const AdminDashboard = () => {
         }
     };
 
+    const toggleStatus = (status) => {
+        if (status === 'All') {
+            setStatusFilter(['All']);
+            return;
+        }
+
+        let newFilters = statusFilter.filter(f => f !== 'All');
+        if (newFilters.includes(status)) {
+            newFilters = newFilters.filter(f => f !== status);
+        } else {
+            newFilters.push(status);
+        }
+
+        if (newFilters.length === 0) newFilters = ['All'];
+        setStatusFilter(newFilters);
+    };
+
     const toggleRole = (role) => {
         if (role === 'All') {
             setRoleFilter(['All']);
-        } else {
-            let newRoles = [...roleFilter];
-            if (newRoles.includes('All')) newRoles = [];
-
-            if (newRoles.includes(role)) {
-                newRoles = newRoles.filter(r => r !== role);
-            } else {
-                newRoles.push(role);
-            }
-
-            if (newRoles.length === 0) newRoles = ['All'];
-            setRoleFilter(newRoles);
+            return;
         }
+
+        let newFilters = roleFilter.filter(f => f !== 'All');
+        if (newFilters.includes(role)) {
+            newFilters = newFilters.filter(f => f !== role);
+        } else {
+            newFilters.push(role);
+        }
+
+        if (newFilters.length === 0) newFilters = ['All'];
+        setRoleFilter(newFilters);
     };
 
     // --- Chart Data Preparation ---
@@ -391,7 +409,7 @@ const AdminDashboard = () => {
         labels: Object.keys(stats.roles_distribution || {}),
         datasets: [{
             data: Object.values(stats.roles_distribution || {}),
-            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+            backgroundColor: ['#dc2626', '#ef4444', '#f87171', '#94a3b8', '#64748b'],
             borderWidth: 0
         }]
     };
@@ -403,18 +421,18 @@ const AdminDashboard = () => {
             {
                 label: 'Active Users',
                 data: stats.users_trend?.length ? stats.users_trend : [12, 19, 3, 5, 2, 3, 15],
-                borderColor: '#3b82f6',
+                borderColor: '#dc2626',
                 tension: 0.4,
                 fill: true,
-                backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                backgroundColor: 'rgba(220, 38, 38, 0.1)'
             },
             {
                 label: 'Measurements',
                 data: stats.measurements_trend?.length ? stats.measurements_trend : [5, 12, 15, 8, 10, 14, 9],
-                borderColor: '#10b981',
+                borderColor: '#64748b',
                 tension: 0.4,
                 fill: true,
-                backgroundColor: 'rgba(16, 185, 129, 0.1)'
+                backgroundColor: 'rgba(100, 116, 139, 0.1)'
             }
         ]
     };
@@ -424,8 +442,8 @@ const AdminDashboard = () => {
         datasets: [{
             label: 'System Health',
             data: [95, 88, 92, 96, 99],
-            backgroundColor: 'rgba(59, 130, 246, 0.2)',
-            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(220, 38, 38, 0.2)',
+            borderColor: '#dc2626',
             borderWidth: 2,
         }]
     };
@@ -499,11 +517,12 @@ const AdminDashboard = () => {
 
     // Define Tabs
     const tabs = [
-        { id: 'analytics', label: 'Analytics', icon: <Analytics /> },
-        { id: 'users', label: 'User Management', icon: <People /> },
-        { id: 'history', label: 'My Measurement History', icon: <History /> },
-        { id: 'maintenance', label: 'Maintenance', icon: <Build /> },
-        { id: 'profile', label: 'Personal Info', icon: <Settings /> }
+        { id: 'dashboard', label: 'Overview', icon: <GridView /> },
+        { id: 'analytics', label: 'Health Trends', icon: <Analytics /> },
+        { id: 'users', label: 'Users', icon: <People /> },
+        { id: 'history', label: 'History', icon: <History /> },
+        { id: 'maintenance', label: 'System', icon: <Build /> },
+        { id: 'profile', label: 'Settings', icon: <Settings /> }
     ];
 
     return (
@@ -528,7 +547,7 @@ const AdminDashboard = () => {
                 />
             )}
 
-            {activeTab === 'analytics' && (
+            {activeTab === 'dashboard' && (
                 <motion.div
                     className="analytics-dashboard"
                     initial={{ opacity: 0 }}
@@ -550,9 +569,9 @@ const AdminDashboard = () => {
                             <div className="metric-content">
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                                     <span className="metric-label">System Status</span>
-                                    <Print style={{ fontSize: '1.2rem', color: printerStatus.status === 'ready' ? '#16a34a' : '#dc2626' }} />
+                                    <Print style={{ fontSize: '1.2rem', color: printerStatus.status === 'ready' ? '#64748b' : '#dc2626' }} />
                                 </div>
-                                <span className="metric-value status-text" style={{ color: printerStatus.status === 'ready' ? '#1e293b' : printerStatus.status === 'warning' ? '#f59e0b' : '#ef4444' }}>
+                                <span className="metric-value status-text" style={{ color: printerStatus.status === 'ready' ? '#1e293b' : printerStatus.status === 'warning' ? '#dc2626' : '#7f1d1d' }}>
                                     {printerStatus.status === 'ready' ? 'ONLINE' : printerStatus.status === 'warning' ? 'WARNING' : 'OFFLINE'}
                                 </span>
                                 <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
@@ -560,8 +579,8 @@ const AdminDashboard = () => {
                                         display: 'inline-block',
                                         padding: '2px 8px',
                                         borderRadius: '12px',
-                                        backgroundColor: printerStatus.status === 'ready' ? '#dcfce7' : printerStatus.status === 'warning' ? '#fef3c7' : '#fee2e2',
-                                        color: printerStatus.status === 'ready' ? '#166534' : printerStatus.status === 'warning' ? '#b45309' : '#991b1b',
+                                        backgroundColor: printerStatus.status === 'ready' ? '#f1f5f9' : printerStatus.status === 'warning' ? '#fee2e2' : '#fee2e2',
+                                        color: printerStatus.status === 'ready' ? '#475569' : printerStatus.status === 'warning' ? '#b91c1c' : '#991b1b',
                                         fontWeight: '600'
                                     }}>
                                         {printerStatus.message || 'Checking...'}
@@ -592,7 +611,6 @@ const AdminDashboard = () => {
                         >
                             <div className="card-header">
                                 <h3>User Distribution</h3>
-                                <button className="more-btn">...</button>
                             </div>
                             <div className="chart-wrapper doughnut-wrapper">
                                 {loading ? (
@@ -686,6 +704,13 @@ const AdminDashboard = () => {
                 </motion.div>
             )}
 
+            {/* --- Health Trends Tab --- */}
+            {activeTab === 'analytics' && (
+                <div style={{ padding: '20px 0 40px 0' }}>
+                    <PopulationAnalytics />
+                </div>
+            )}
+
             {activeTab === 'users' && (
                 <>
                     {/* Users Table Section */}
@@ -703,6 +728,7 @@ const AdminDashboard = () => {
                                 setTimePeriod={setUsersTimePeriod}
                                 customDateRange={usersCustomDateRange}
                                 setCustomDateRange={setUsersCustomDateRange}
+                                variant="dropdown"
                             />
                         </div>
 
@@ -786,16 +812,66 @@ const AdminDashboard = () => {
                                             </div>
                                         )}
                                     </div>
-                                    <select
-                                        className="role-select"
-                                        value={selectedStatus}
-                                        onChange={(e) => setSelectedStatus(e.target.value)}
-                                    >
-                                        <option value="All">All Status</option>
-                                        <option value="approved">Approved</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="rejected">Rejected</option>
-                                    </select>
+                                    <div style={{ position: 'relative' }}>
+                                        <button
+                                            className="role-select"
+                                            onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                                            style={{
+                                                padding: '8px 12px',
+                                                borderRadius: '6px',
+                                                border: '1px solid #cbd5e1',
+                                                background: 'white',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                minWidth: '150px',
+                                                justifyContent: 'space-between',
+                                                height: '100%'
+                                            }}
+                                        >
+                                            <span>
+                                                {statusFilter.includes('All') ? 'All Status' :
+                                                    statusFilter.length > 0 ? `${statusFilter.length} Status Selected` : 'Select Status'}
+                                            </span>
+                                            <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                        </button>
+                                        {isStatusDropdownOpen && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                left: 0,
+                                                zIndex: 100,
+                                                background: 'white',
+                                                border: '1px solid #e2e8f0',
+                                                borderRadius: '6px',
+                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                                width: '200px',
+                                                padding: '8px',
+                                                marginTop: '4px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '4px'
+                                            }}>
+                                                {[
+                                                    { id: 'All', label: 'All Status' },
+                                                    { id: 'approved', label: 'Approved' },
+                                                    { id: 'pending', label: 'Pending' },
+                                                    { id: 'rejected', label: 'Rejected' }
+                                                ].map(status => (
+                                                    <label key={status.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={statusFilter.includes(status.id)}
+                                                            onChange={() => toggleStatus(status.id)}
+                                                            style={{ cursor: 'pointer' }}
+                                                        />
+                                                        {status.label}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <button className="icon-btn" title="Export"><Download /></button>

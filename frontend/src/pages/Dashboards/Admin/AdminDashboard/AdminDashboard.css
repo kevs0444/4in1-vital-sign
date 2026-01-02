@@ -623,8 +623,7 @@
 }
 
 .metric-value.status-text {
-    color: #16a34a;
-    /* Green for OK */
+    color: #475569;
 }
 
 .metric-trend {
@@ -634,7 +633,7 @@
 }
 
 .metric-trend.positive {
-    color: #16a34a;
+    color: #dc2626;
 }
 
 .metric-sub {

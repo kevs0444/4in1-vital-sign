@@ -40,10 +40,20 @@ ChartJS.register(
 );
 
 // Shared Time Period Filter Component - can be used anywhere
-export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, setCustomDateRange, showCustom = true }) => {
+export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, setCustomDateRange, showCustom = true, variant = 'pills' }) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
     const [tempStartDate, setTempStartDate] = useState(customDateRange?.start || '');
     const [tempEndDate, setTempEndDate] = useState(customDateRange?.end || '');
+
+    const periods = [
+        { id: 'daily', label: 'Daily' },
+        { id: 'weekly', label: 'Weekly' },
+        { id: 'monthly', label: 'Monthly' },
+        { id: 'annually', label: 'Annually' }
+    ];
+
+    const currentLabel = periods.find(p => p.id === timePeriod)?.label || (timePeriod === 'custom' ? 'Custom Range' : 'Select Period');
 
     const applyCustomDate = () => {
         if (tempStartDate && tempEndDate) {
@@ -61,14 +71,226 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
         setTempEndDate('');
     };
 
+    if (variant === 'dropdown') {
+        return (
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+                <button
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    style={{
+                        padding: '10px 16px',
+                        borderRadius: '12px',
+                        border: '1px solid #e2e8f0',
+                        background: 'white',
+                        color: '#1e293b',
+                        fontWeight: '600',
+                        fontSize: '0.9rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        minWidth: '180px',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <DateRange style={{ fontSize: '1.1rem', color: '#dc2626' }} />
+                        <span>{currentLabel}</span>
+                    </div>
+                    <span style={{ fontSize: '0.7rem', color: '#64748b', transform: showDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+                </button>
+
+                {showDropdown && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            zIndex: 1000,
+                            background: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                            width: '220px',
+                            padding: '8px',
+                            marginTop: '8px'
+                        }}
+                    >
+                        {periods.map(period => (
+                            <div
+                                key={period.id}
+                                onClick={() => {
+                                    setTimePeriod(period.id);
+                                    setCustomDateRange(null);
+                                    setShowDropdown(false);
+                                }}
+                                style={{
+                                    padding: '10px 12px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.9rem',
+                                    color: timePeriod === period.id ? '#dc2626' : '#475569',
+                                    background: timePeriod === period.id ? '#fff1f2' : 'transparent',
+                                    fontWeight: timePeriod === period.id ? '700' : '500',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    transition: 'all 0.1s'
+                                }}
+                            >
+                                <div style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '4px',
+                                    border: `2px solid ${timePeriod === period.id ? '#dc2626' : '#cbd5e1'}`,
+                                    background: timePeriod === period.id ? '#dc2626' : 'transparent',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    {timePeriod === period.id && <Close style={{ fontSize: '12px', color: 'white' }} />}
+                                </div>
+                                {period.label}
+                            </div>
+                        ))}
+
+                        {showCustom && (
+                            <>
+                                <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
+                                <div
+                                    onClick={() => {
+                                        setShowDatePicker(true);
+                                        setShowDropdown(false);
+                                    }}
+                                    style={{
+                                        padding: '10px 12px',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem',
+                                        color: timePeriod === 'custom' ? '#dc2626' : '#475569',
+                                        background: timePeriod === 'custom' ? '#fff1f2' : 'transparent',
+                                        fontWeight: timePeriod === 'custom' ? '700' : '500',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px'
+                                    }}
+                                >
+                                    <DateRange style={{ fontSize: '1.2rem' }} />
+                                    Custom Range
+                                </div>
+                            </>
+                        )}
+                    </motion.div>
+                )}
+
+                {showDatePicker && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: '12px',
+                            background: 'white',
+                            borderRadius: '16px',
+                            boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+                            padding: '24px',
+                            zIndex: 1100,
+                            minWidth: '320px',
+                            border: '1px solid #fee2e2'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <span style={{ fontWeight: '800', color: '#1e293b', fontSize: '1.1rem' }}>Custom Date Range</span>
+                            <button onClick={() => setShowDatePicker(false)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', color: '#64748b', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Close fontSize="small" />
+                            </button>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Start Date</label>
+                                <input
+                                    type="date"
+                                    value={tempStartDate}
+                                    onChange={(e) => setTempStartDate(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        border: '1px solid #e2e8f0',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        fontFamily: 'inherit'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>End Date</label>
+                                <input
+                                    type="date"
+                                    value={tempEndDate}
+                                    onChange={(e) => setTempEndDate(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        border: '1px solid #e2e8f0',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        fontFamily: 'inherit'
+                                    }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                                <button
+                                    onClick={applyCustomDate}
+                                    disabled={!tempStartDate || !tempEndDate}
+                                    style={{
+                                        flex: 2,
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        border: 'none',
+                                        background: tempStartDate && tempEndDate ? '#dc2626' : '#e2e8f0',
+                                        color: 'white',
+                                        fontWeight: '700',
+                                        cursor: tempStartDate && tempEndDate ? 'pointer' : 'not-allowed',
+                                        boxShadow: tempStartDate && tempEndDate ? '0 4px 12px rgba(220, 38, 38, 0.2)' : 'none'
+                                    }}
+                                >
+                                    Apply Range
+                                </button>
+                                {timePeriod === 'custom' && (
+                                    <button
+                                        onClick={clearCustomDate}
+                                        style={{
+                                            flex: 1,
+                                            padding: '12px',
+                                            borderRadius: '10px',
+                                            border: '1px solid #e2e8f0',
+                                            background: '#f8fafc',
+                                            color: '#64748b',
+                                            fontWeight: '600',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {[
-                { id: 'daily', label: 'Daily' },
-                { id: 'weekly', label: 'Weekly' },
-                { id: 'monthly', label: 'Monthly' },
-                { id: 'annually', label: 'Annually' }
-            ].map(period => (
+            {periods.map(period => (
                 <button
                     key={period.id}
                     onClick={() => {
@@ -252,7 +474,7 @@ export const filterHistoryByTimePeriod = (history, timePeriod, customDateRange) 
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 };
 
-const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, customDateRange: externalCustomDateRange }) => {
+const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, customDateRange: externalCustomDateRange, populationAverages }) => {
     // Use external state if provided, otherwise use internal state
     const [internalTimePeriod, setInternalTimePeriod] = useState('weekly');
     const [internalCustomDateRange, setInternalCustomDateRange] = useState(null);
@@ -402,10 +624,68 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 )}
             </div>
 
+            {/* Premium Summary Bar */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                    background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                    borderRadius: '24px',
+                    padding: '24px 32px',
+                    color: 'white',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{
+                        width: '72px',
+                        height: '72px',
+                        borderRadius: '20px',
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        border: '2px solid #ef4444',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#ef4444',
+                        boxShadow: '0 0 15px rgba(239, 68, 68, 0.3)'
+                    }}>
+                        <Favorite style={{ fontSize: '32px' }} />
+                    </div>
+                    <div>
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0 }}>Health Analytics Dashboard</h2>
+                        <p style={{ margin: '4px 0 0 0', color: 'rgba(255,255,255,0.6)', fontWeight: '500', fontSize: '0.9rem' }}>
+                            {filteredHistory.length} measurements analyzed in this period
+                        </p>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '24px' }}>
+                    <div style={{ textAlign: 'right' }}>
+                        <span style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase' }}>Current Risk</span>
+                        <span style={{
+                            fontSize: '1.2rem',
+                            fontWeight: '800',
+                            color: filteredHistory.length > 0 ? (filteredHistory[filteredHistory.length - 1].risk_category?.toLowerCase().includes('low') ? '#10b981' : '#ef4444') : '#94a3b8'
+                        }}>
+                            {filteredHistory.length > 0 ? (filteredHistory[filteredHistory.length - 1].risk_category || 'NORMAL') : '--'}
+                        </span>
+                    </div>
+                    <div style={{ width: '1px', height: '40px', background: 'rgba(255,255,255,0.1)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                        <span style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase' }}>Wellness Score</span>
+                        <span style={{ fontSize: '1.2rem', fontWeight: '800', color: '#fff' }}>94/100</span>
+                    </div>
+                </div>
+            </motion.div>
+
             <div className="analytics-grid" style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '20px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gap: '1.5rem',
                 alignItems: 'start'
             }}>
 
@@ -488,6 +768,18 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                             <span style={{ fontSize: '1.8rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.heartRate.avg || 'N/A'}</span>
                             {analyticsData?.heartRate.avg && <span style={{ fontSize: '0.9rem', color: '#64748b' }}>bpm</span>}
                         </div>
+                        {populationAverages?.heart_rate && analyticsData?.heartRate.avg && (
+                            <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: '600' }}>
+                                <span style={{ color: '#64748b' }}>School Avg: </span>
+                                <span style={{ color: '#1e293b' }}>{populationAverages.heart_rate} bpm</span>
+                                <span style={{
+                                    marginLeft: '8px',
+                                    color: analyticsData.heartRate.avg > populationAverages.heart_rate ? '#dc2626' : '#94a3b8'
+                                }}>
+                                    ({analyticsData.heartRate.avg > populationAverages.heart_rate ? '+' : ''}{analyticsData.heartRate.avg - populationAverages.heart_rate})
+                                </span>
+                            </div>
+                        )}
                     </div>
                     <div style={{ height: '70px' }}>
                         {analyticsData?.heartRate.data?.some(d => d > 0) ? (
@@ -557,6 +849,11 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                             </div>
                         </div>
                     </div>
+                    {populationAverages?.systolic && analyticsData?.bloodPressure.avgSystolic && (
+                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: '600', marginBottom: '12px' }}>
+                            School Avg: {populationAverages.systolic}/{populationAverages.diastolic} mmHg
+                        </div>
+                    )}
                     <div style={{ height: '70px' }}>
                         {analyticsData?.bloodPressure.systolicData?.some(d => d > 0) ? (
                             <Bar
@@ -611,7 +908,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                         <div style={{
                             width: `${Math.min((analyticsData?.spo2.avg || 0), 100)}%`,
                             height: '100%',
-                            background: analyticsData?.spo2.avg >= 95 ? '#10b981' : analyticsData?.spo2.avg >= 90 ? '#f59e0b' : '#dc2626',
+                            background: analyticsData?.spo2.avg >= 95 ? '#ef4444' : analyticsData?.spo2.avg >= 90 ? '#94a3b8' : '#7f1d1d',
                             borderRadius: '4px',
                             transition: 'width 0.5s'
                         }}></div>
@@ -713,7 +1010,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                     <p style={{
                         fontSize: '0.8rem',
                         color: analyticsData?.bmi.avg
-                            ? (analyticsData.bmi.avg < 18.5 ? '#f59e0b' : analyticsData.bmi.avg < 25 ? '#10b981' : analyticsData.bmi.avg < 30 ? '#f59e0b' : '#dc2626')
+                            ? (analyticsData.bmi.avg < 18.5 ? '#94a3b8' : analyticsData.bmi.avg < 25 ? '#ef4444' : analyticsData.bmi.avg < 30 ? '#dc2626' : '#991b1b')
                             : '#64748b',
                         fontWeight: '600',
                         margin: 0

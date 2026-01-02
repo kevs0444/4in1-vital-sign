@@ -7,6 +7,8 @@ import { getAdminUsers, getMeasurementHistory } from '../../../../utils/api';
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
+import PopulationAnalytics from '../../../../components/PopulationAnalytics/PopulationAnalytics';
+import { Assessment } from '@mui/icons-material';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -113,7 +115,7 @@ const DoctorDashboard = () => {
     const [currentUser, setCurrentUser] = useState(null);
 
     // New State for Tabs & Personal History & Filters
-    const [activeTab, setActiveTab] = useState('patients'); // 'patients', 'personal', 'profile'
+    const [activeTab, setActiveTab] = useState('patients'); // 'patients', 'analytics', 'personal', 'profile'
     const [myHistory, setMyHistory] = useState([]);
 
     // Time Period Filter State (shared for My Measurement History tab)
@@ -381,6 +383,7 @@ const DoctorDashboard = () => {
     // Define Tabs
     const tabs = [
         { id: 'patients', label: 'Patients Overview', icon: <LocalHospital /> },
+        { id: 'analytics', label: 'Population Analytics', icon: <Assessment /> },
         { id: 'personal', label: 'My Measurement History', icon: <History /> },
         { id: 'profile', label: 'Personal Info', icon: <Settings /> }
     ];
@@ -409,6 +412,13 @@ const DoctorDashboard = () => {
                 />
             )}
 
+            {/* --- Analytics Tab --- */}
+            {activeTab === 'analytics' && (
+                <div style={{ padding: '0 0 40px 0' }}>
+                    <PopulationAnalytics />
+                </div>
+            )}
+
             {/* --- Patients Tab --- */}
             {activeTab === 'patients' && (
                 <motion.div
@@ -424,6 +434,7 @@ const DoctorDashboard = () => {
                             setTimePeriod={setPatientsTimePeriod}
                             customDateRange={patientsCustomDateRange}
                             setCustomDateRange={setPatientsCustomDateRange}
+                            variant="dropdown"
                         />
                     </div>
 
@@ -641,6 +652,7 @@ const DoctorDashboard = () => {
                             setTimePeriod={setTimePeriod}
                             customDateRange={customDateRange}
                             setCustomDateRange={setCustomDateRange}
+                            variant="dropdown"
                         />
                     </div>
 
@@ -860,6 +872,7 @@ const DoctorDashboard = () => {
                                 setTimePeriod={setModalTimePeriod}
                                 customDateRange={modalCustomDateRange}
                                 setCustomDateRange={setModalCustomDateRange}
+                                variant="dropdown"
                             />
 
                             <div style={{ position: 'relative' }}>

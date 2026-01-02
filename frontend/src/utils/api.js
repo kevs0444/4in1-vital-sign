@@ -586,11 +586,22 @@ export const getAllMeasurements = async () => {
   }
 };
 
-// Delete measurement
-export const deleteMeasurement = async (measurementId) => {
+// Get population analytics (aggregate data for Nurse, Doctor, Admin)
+export const getPopulationAnalytics = async () => {
   try {
-    console.log(`🗑️ Deleting measurement: ${measurementId}`);
-    return await fetchWithTimeout(`${API_URL}/measurements/${measurementId}`, {
+    console.log('📊 Getting population analytics...');
+    return await fetchWithTimeout(`${API_URL}/measurements/analytics/population`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Error getting population analytics:', error);
+    throw error;
+  }
+};
+
+// Delete measurement
+export const deleteMeasurement = async (measurement_id) => {
+  try {
+    console.log(`🗑️ Deleting measurement: ${measurement_id}`);
+    return await fetchWithTimeout(`${API_URL}/measurements/${measurement_id}`, {
       method: 'DELETE',
     }, TIMEOUTS.MEDIUM);
   } catch (error) {
