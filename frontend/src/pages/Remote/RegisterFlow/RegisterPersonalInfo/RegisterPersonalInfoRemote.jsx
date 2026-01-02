@@ -192,7 +192,6 @@ const RegisterPersonalInfoRemote = () => {
             <div style={{
                 flex: 1,
                 padding: '24px',
-                overflowY: 'auto',
                 display: 'flex',
                 flexDirection: 'column'
             }}>

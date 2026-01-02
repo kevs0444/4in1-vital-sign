@@ -238,8 +238,7 @@ const RegisterTapIDRemote = () => {
             {/* Form Content */}
             <div style={{
                 flex: 1,
-                padding: '24px',
-                overflowY: 'auto'
+                padding: '24px'
             }}>
                 <p style={{
                     fontSize: '0.95rem',

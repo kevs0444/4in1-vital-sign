@@ -1,11 +1,16 @@
 # app/__init__.py
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 import logging
 import sys
+import os
 
 def create_app():
-    app = Flask(__name__)
+    # Define correct path to frontend build: backend/app/../../frontend/build
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    frontend_build_dir = os.path.join(base_dir, '../../frontend/build')
+    
+    app = Flask(__name__, static_folder=frontend_build_dir, static_url_path='/')
     CORS(app)  # Enable CORS for all routes
     
     # Force configure root logger
@@ -103,10 +108,7 @@ def create_app():
     print("🗄️ PRIORITY 2: DATABASE TABLES")
     print("-"*40)
     from app.utils.db import engine, Base
-    from app.models.user_model import User
-    from app.models.measurement_model import Measurement
-    from app.models.recommendation_model import Recommendation
-    
+    from app.models import User, Measurement, Recommendation, VerificationCode
     try:
         # checkfirst=True means it won't error if tables already exist
         Base.metadata.create_all(bind=engine, checkfirst=True)
@@ -115,8 +117,26 @@ def create_app():
         print(f"⚠️ Database table check failed (non-critical): {e}")
     print("-"*40 + "\n")
 
+    # ==================== FRONTEND SERVING ====================
+    # Serve React App for any non-API routes
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve(path):
+        if path.startswith('api'):
+            return jsonify({'error': 'Not Found'}), 404
+            
+        if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+            return send_from_directory(app.static_folder, path)
+        else:
+            # Fallback to index.html for SPA routing
+            if os.path.exists(os.path.join(app.static_folder, 'index.html')):
+                 return send_from_directory(app.static_folder, 'index.html')
+            else:
+                 return "Frontend build not found. Please run 'npm run build' in frontend directory.", 404
+
     print("="*60)
     print("🚀 BACKEND SERVER is READY and RUNNING")
+    print(f"📂 Serving Frontend from: {app.static_folder}")
     print("="*60)
     print("📍 API available at: http://127.0.0.1:5000")
     print("="*60 + "\n")

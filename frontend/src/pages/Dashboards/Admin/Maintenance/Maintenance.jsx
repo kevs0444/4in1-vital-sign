@@ -1,15 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ArrowBack,
     CameraAlt,
     Refresh,
-    Add,
-    Remove,
-    RotateRight,
-    Brightness6,
-    Contrast,
     Settings,
     FlipCameraIos,
     PlayArrow,
@@ -17,9 +10,9 @@ import {
     Thermostat,
     Favorite,
     Speed,
-    Print // Added Print icon
+    Print
 } from '@mui/icons-material';
-import { sensorAPI, printerAPI } from '../../../../utils/api'; // Added printerAPI
+import { sensorAPI, printerAPI } from '../../../../utils/api';
 import './Maintenance.css';
 
 const getDynamicApiUrl = () => {
@@ -36,22 +29,16 @@ const modes = {
 };
 
 const Maintenance = () => {
-    const navigate = useNavigate();
-
     // Main Section State: 'sensors', 'cameras', 'printer'
     const [activeSection, setActiveSection] = useState('sensors');
-
     // Sensor Sub-tabs: 'bmi', 'bodytemp', 'max30102'
     const [activeSensorTab, setActiveSensorTab] = useState('bmi');
-
     // Camera Sub-tabs: 'bp', 'feet', 'body'
     const [activeCameraTab, setActiveCameraTab] = useState('bp');
 
     // Backend Status
     const [backendStatus, setBackendStatus] = useState('Disconnected');
     const [complianceStatus, setComplianceStatus] = useState('Waiting...');
-    // eslint-disable-next-line no-unused-vars
-    const [isCompliant, setIsCompliant] = useState(false);
     const [fps, setFps] = useState(0);
 
     // Sensor States
@@ -75,7 +62,6 @@ const Maintenance = () => {
     // Camera States  
     const [captureCount, setCaptureCount] = useState(0);
     const [showCaptureFlash, setShowCaptureFlash] = useState(false);
-    const [bpReading, setBpReading] = useState(null);
     const [selectedClass, setSelectedClass] = useState('');
 
     // Camera Settings
@@ -88,8 +74,6 @@ const Maintenance = () => {
         camera_index: 0
     });
 
-
-
     // Printer State
     const [printerStatus, setPrinterStatus] = useState({
         status: 'unknown',
@@ -97,13 +81,99 @@ const Maintenance = () => {
         printer_name: ''
     });
 
-    // Polling interval ref
     const pollIntervalRef = useRef(null);
 
-    // Initialize on mount
+    const checkBackendStatus = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/sensor/status`);
+            setBackendStatus(res.ok ? 'Connected' : 'Disconnected');
+        } catch { setBackendStatus('Disconnected'); }
+    };
+
+    const pollSensorStatus = React.useCallback(async () => {
+        try {
+            const weightRes = await sensorAPI.getWeightStatus();
+            if (weightRes.weight) {
+                setSensorData(prev => ({ ...prev, weight: weightRes.weight }));
+                setSensorStatus(prev => ({ ...prev, weight: 'active' }));
+            }
+            const heightRes = await sensorAPI.getHeightStatus();
+            if (heightRes.height) {
+                setSensorData(prev => ({ ...prev, height: heightRes.height }));
+                setSensorStatus(prev => ({ ...prev, height: 'active' }));
+            }
+            if (sensorData.weight && sensorData.height) {
+                const heightM = sensorData.height / 100;
+                const bmi = (sensorData.weight / (heightM * heightM)).toFixed(1);
+                setSensorData(prev => ({ ...prev, bmi }));
+            }
+            const tempRes = await sensorAPI.getTemperatureStatus();
+            if (tempRes.temperature || tempRes.live_temperature) {
+                setSensorData(prev => ({ ...prev, temperature: tempRes.temperature || tempRes.live_temperature }));
+                setSensorStatus(prev => ({ ...prev, temperature: 'active' }));
+            }
+            const maxRes = await sensorAPI.getMax30102Status();
+            setSensorData(prev => ({
+                ...prev,
+                heartRate: Math.round(maxRes.heart_rate || maxRes.final_results?.heart_rate) || null,
+                spo2: Math.round(maxRes.spo2 || maxRes.final_results?.spo2) || null,
+                respiratoryRate: Math.round(maxRes.respiratory_rate || maxRes.final_results?.respiratory_rate) || null,
+                fingerDetected: maxRes.finger_detected
+            }));
+            if (maxRes.measurement_active || maxRes.finger_detected) setSensorStatus(prev => ({ ...prev, max30102: 'active' }));
+            setBackendStatus('Connected');
+        } catch { }
+    }, [sensorData.weight, sensorData.height]);
+
+    const pollCameraStatus = React.useCallback(async () => {
+        try {
+            const endpoint = activeCameraTab === 'bp' ? `${API_BASE}/bp/status` : `${API_BASE}/camera/status`;
+            const res = await fetch(endpoint);
+            const data = await res.json();
+            if (activeCameraTab === 'bp') {
+                setComplianceStatus(data.is_running ? `BP: ${data.systolic}/${data.diastolic} (${data.trend})` : 'BP Camera Off');
+            } else {
+                setComplianceStatus(data.message || 'Waiting...');
+                if (data.fps !== undefined) setFps(data.fps);
+            }
+            setBackendStatus('Connected');
+        } catch { setBackendStatus('Disconnected'); }
+    }, [activeCameraTab]);
+
+    const startCamera = React.useCallback(async (mode) => {
+        try {
+            if (mode === 'bp') {
+                await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
+                await fetch(`${API_BASE}/bp/start`, { method: 'POST' });
+                await fetch(`${API_BASE}/bp/set_settings`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+            } else {
+                await fetch(`${API_BASE}/bp/stop`, { method: 'POST' });
+                await fetch(`${API_BASE}/camera/start`, { method: 'POST' });
+                await fetch(`${API_BASE}/camera/set_mode`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode })
+                });
+            }
+        } catch (err) { }
+    }, [settings]);
+
+    const handleCapture = React.useCallback(async () => {
+        try {
+            setShowCaptureFlash(true);
+            setTimeout(() => setShowCaptureFlash(false), 150);
+            await fetch(`${API_BASE}/camera/capture`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ class_name: selectedClass })
+            });
+            setCaptureCount(prev => prev + 1);
+        } catch (err) { }
+    }, [selectedClass]);
+
     useEffect(() => {
         checkBackendStatus();
-
         const handleKeyDown = (e) => {
             if (e.code === 'Space' && activeSection === 'cameras') {
                 e.preventDefault();
@@ -111,765 +181,206 @@ const Maintenance = () => {
             }
         };
         window.addEventListener('keydown', handleKeyDown);
-
-        // Cleanup on unmount
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            // Stop all cameras
             fetch(`${API_BASE}/camera/stop`, { method: 'POST' }).catch(() => { });
             fetch(`${API_BASE}/bp/stop`, { method: 'POST' }).catch(() => { });
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [activeSection, handleCapture]);
 
-    // Polling based on active section and tab
     useEffect(() => {
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-
         if (activeSection === 'sensors') {
             pollIntervalRef.current = setInterval(pollSensorStatus, 1000);
-            // Stop cameras when in sensor mode
             fetch(`${API_BASE}/camera/stop`, { method: 'POST' }).catch(() => { });
             fetch(`${API_BASE}/bp/stop`, { method: 'POST' }).catch(() => { });
         } else if (activeSection === 'cameras') {
             pollIntervalRef.current = setInterval(pollCameraStatus, 1000);
             startCamera(activeCameraTab);
         }
-
         return () => {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeSection, activeCameraTab]);
+    }, [activeSection, activeCameraTab, pollSensorStatus, pollCameraStatus, startCamera]);
 
-    // Update selected class when camera tab changes
     useEffect(() => {
         if (activeSection === 'cameras') {
             setSelectedClass(modes[activeCameraTab][0]);
         }
     }, [activeCameraTab, activeSection]);
 
-    const checkBackendStatus = async () => {
-        try {
-            const res = await fetch(`${API_BASE}/sensor/status`);
-            if (res.ok) {
-                setBackendStatus('Connected');
-            } else {
-                setBackendStatus('Disconnected');
-            }
-        } catch {
-            setBackendStatus('Disconnected');
-        }
-    };
-
-    const pollSensorStatus = async () => {
-        try {
-            // Check weight status
-            const weightRes = await sensorAPI.getWeightStatus();
-            if (weightRes.weight) {
-                setSensorData(prev => ({ ...prev, weight: weightRes.weight }));
-                setSensorStatus(prev => ({ ...prev, weight: 'active' }));
-            }
-
-            // Check height status
-            const heightRes = await sensorAPI.getHeightStatus();
-            if (heightRes.height) {
-                setSensorData(prev => ({ ...prev, height: heightRes.height }));
-                setSensorStatus(prev => ({ ...prev, height: 'active' }));
-            }
-
-            // Calculate BMI if both available
-            if (sensorData.weight && sensorData.height) {
-                const heightM = sensorData.height / 100;
-                const bmi = (sensorData.weight / (heightM * heightM)).toFixed(1);
-                setSensorData(prev => ({ ...prev, bmi }));
-            }
-
-            // Check temperature status
-            const tempRes = await sensorAPI.getTemperatureStatus();
-            if (tempRes.temperature || tempRes.live_temperature) {
-                setSensorData(prev => ({
-                    ...prev,
-                    temperature: tempRes.temperature || tempRes.live_temperature
-                }));
-                setSensorStatus(prev => ({ ...prev, temperature: 'active' }));
-            }
-
-            // Check MAX30102 status
-            const max30102Res = await sensorAPI.getMax30102Status();
-            const hr = max30102Res.heart_rate || max30102Res.final_results?.heart_rate;
-            const sp = max30102Res.spo2 || max30102Res.final_results?.spo2;
-            const rr = max30102Res.respiratory_rate || max30102Res.final_results?.respiratory_rate;
-            setSensorData(prev => ({
-                ...prev,
-                heartRate: hr ? Math.round(hr) : null,
-                spo2: sp ? Math.round(sp) : null,
-                respiratoryRate: rr ? Math.round(rr) : null,
-                fingerDetected: max30102Res.finger_detected
-            }));
-            if (max30102Res.measurement_active || max30102Res.finger_detected) {
-                setSensorStatus(prev => ({ ...prev, max30102: 'active' }));
-            }
-
-            setBackendStatus('Connected');
-        } catch {
-            // Silently fail polling
-        }
-    };
-
-    const pollCameraStatus = async () => {
-        try {
-            const endpoint = activeCameraTab === 'bp'
-                ? `${API_BASE}/bp/status`
-                : `${API_BASE}/camera/status`;
-            const res = await fetch(endpoint);
-            const data = await res.json();
-
-            if (activeCameraTab === 'bp') {
-                if (data.is_running) {
-                    setComplianceStatus(`BP: ${data.systolic}/${data.diastolic} (${data.trend})`);
-                    setIsCompliant(true);
-                    if (data.systolic !== '--' && data.diastolic !== '--') {
-                        setBpReading({ systolic: data.systolic, diastolic: data.diastolic });
-                    }
-                } else {
-                    setComplianceStatus('BP Camera Off');
-                    setIsCompliant(false);
-                }
-            } else {
-                setComplianceStatus(data.message || 'Waiting...');
-                setIsCompliant(data.is_compliant || false);
-                if (data.fps !== undefined) setFps(data.fps);
-            }
-            setBackendStatus('Connected');
-        } catch {
-            setBackendStatus('Disconnected');
-        }
-    };
-
-    const startCamera = async (mode) => {
-        try {
-            if (mode === 'bp') {
-                await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
-                await fetch(`${API_BASE}/bp/start`, { method: 'POST' });
-                // Apply current settings (Zoom, etc) immediately to override default 1.3
-                await fetch(`${API_BASE}/bp/set_settings`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(settings)
-                });
-            } else {
-                await fetch(`${API_BASE}/bp/stop`, { method: 'POST' });
-                await fetch(`${API_BASE}/camera/start`, { method: 'POST' });
-                await fetch(`${API_BASE}/camera/set_mode`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode })
-                });
-            }
-        } catch (err) { console.error(err); }
-    };
-
-    const handleCapture = async () => {
-        try {
-            setShowCaptureFlash(true);
-            setTimeout(() => setShowCaptureFlash(false), 150);
-
-            const currentClass = document.querySelector('.class-btn.active')?.dataset.class || 'unknown';
-
-            const res = await fetch(`${API_BASE}/camera/capture`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ class_name: currentClass })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-                setCaptureCount(prev => prev + 1);
-            }
-        } catch (err) { console.error(err); }
-    };
-
-    // Sensor control functions
-    const startWeightMeasurement = async () => {
-        setSensorStatus(prev => ({ ...prev, weight: 'measuring' }));
-        await sensorAPI.prepareWeight();
-        await sensorAPI.startWeight();
-    };
-
-    const startHeightMeasurement = async () => {
-        setSensorStatus(prev => ({ ...prev, height: 'measuring' }));
-        await sensorAPI.prepareHeight();
-        await sensorAPI.startHeight();
-    };
-
-    const startTemperatureMeasurement = async () => {
-        setSensorStatus(prev => ({ ...prev, temperature: 'measuring' }));
-        await sensorAPI.prepareTemperature();
-        await sensorAPI.startTemperature();
-    };
-
-    const startMax30102Measurement = async () => {
-        setSensorStatus(prev => ({ ...prev, max30102: 'measuring' }));
-        await sensorAPI.prepareMax30102();
-        await sensorAPI.startMax30102();
-    };
-
-    const handleCameraTabChange = (tab) => {
-        setActiveCameraTab(tab);
-        startCamera(tab);
-    };
-
-    const updateSettingsOnBackend = async (newSettings) => {
-        try {
-            const endpoint = activeCameraTab === 'bp'
-                ? `${API_BASE}/bp/set_settings`
-                : `${API_BASE}/camera/set_settings`;
-
-            await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newSettings)
-            });
-        } catch (err) { console.error(err); }
-    };
-
     const handleSettingChange = (name, value) => {
-        const newSettings = { ...settings, [name]: value };
-        setSettings(newSettings);
-        updateSettingsOnBackend(newSettings);
-    };
-
-    const handleCameraIndexChange = async (index) => {
-        const idx = parseInt(index);
-        setSettings(prev => ({ ...prev, camera_index: idx }));
-        try {
-            await fetch(`${API_BASE}/camera/set_camera`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ index: idx })
-            });
-        } catch (err) { console.error(err); }
+        const n = { ...settings, [name]: value };
+        setSettings(n);
+        const ep = activeCameraTab === 'bp' ? `${API_BASE}/bp/set_settings` : `${API_BASE}/camera/set_settings`;
+        fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(n) });
     };
 
     const handleToggleCamera = () => {
-        const newIndex = settings.camera_index === 0 ? 1 : 0;
-        handleCameraIndexChange(newIndex);
+        const n = settings.camera_index === 0 ? 1 : 0;
+        setSettings(prev => ({ ...prev, camera_index: n }));
+        fetch(`${API_BASE}/camera/set_camera`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index: n }) });
     };
 
-    const getVideoFeedUrl = () => {
-        if (activeCameraTab === 'bp') {
-            return `${API_BASE}/bp/video_feed?t=${Date.now()}`;
-        }
-        return `${API_BASE}/camera/video_feed?t=${Date.now()}`;
-    };
-
-    const checkPrinterStatus = async () => {
-        setPrinterStatus(prev => ({ ...prev, message: 'Checking...' }));
-        const res = await printerAPI.getStatus();
-        setPrinterStatus(res);
-    };
-
-    const handleTestPrint = async () => {
-        alert("Test print functionality to be implemented needs a backend endpoint for raw text printing or use the existing receipt endpoint with dummy data.");
-        // For now, let's just check status again
-        checkPrinterStatus();
-    };
-
-    // Render sensor card
     const renderSensorCard = (title, icon, value, unit, status, onStart) => (
         <div className={`sensor-card ${status}`}>
-            <div className="sensor-card-header">
-                {icon}
-                <h3>{title}</h3>
-            </div>
-            <div className="sensor-card-value">
-                <span className="value">{value ?? '--'}</span>
-                <span className="unit">{unit}</span>
-            </div>
-            <div className="sensor-card-status">
-                <span className={`status-badge ${status}`}>
-                    {status === 'idle' ? '⏸️ Idle' : status === 'measuring' ? '🔄 Measuring...' : '✅ Active'}
-                </span>
-            </div>
-            <button
-                className="sensor-start-btn"
-                onClick={onStart}
-                disabled={status === 'measuring'}
-            >
-                <PlayArrow /> {status === 'measuring' ? 'Measuring...' : 'Start'}
-            </button>
+            <div className="sensor-card-header">{icon}<h3>{title}</h3></div>
+            <div className="sensor-card-value"><span className="value">{value ?? '--'}</span><span className="unit">{unit}</span></div>
+            <div className="sensor-card-status"><span className={`status-badge ${status}`}>
+                {status === 'idle' ? '⏸️ Idle' : status === 'measuring' ? '🔄 Testing...' : '✅ Online'}
+            </span></div>
+            <button className="sensor-start-btn" onClick={onStart} disabled={status === 'measuring'}><PlayArrow /> {status === 'measuring' ? 'Wait...' : 'Trigger Test'}</button>
         </div>
     );
 
     return (
         <div className="maintenance-container">
-            <AnimatePresence>
-                {showCaptureFlash && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 0.5 }}
-                        exit={{ opacity: 0 }}
-                        className="capture-flash"
-                    />
-                )}
-            </AnimatePresence>
+            <AnimatePresence>{showCaptureFlash && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} exit={{ opacity: 0 }} className="capture-flash" />}</AnimatePresence>
 
-            <header className="maintenance-header">
-                <button className="back-button" onClick={() => navigate('/admin/dashboard')}>
-                    <ArrowBack /> Dashboard
-                </button>
+            <header className="maintenance-sub-header">
                 <div className="header-center">
-                    <h1>🔧 System Maintenance & Testing</h1>
-                    <p className="path-display">Test and calibrate all sensors and AI models</p>
+                    <h2>🔧 System Diagnostics & Calibration</h2>
                 </div>
                 <div className="header-status">
-                    <span className={`status-dot ${backendStatus === 'Connected' ? 'online' : 'offline'}`}></span>
-                    {backendStatus}
+                    <span className={`status-dot ${backendStatus === 'Connected' ? 'online' : 'offline'}`} />
+                    Backend: {backendStatus}
                 </div>
             </header>
 
-            {/* Main Section Tabs */}
             <div className="main-section-tabs">
-                <button
-                    className={`section-tab ${activeSection === 'sensors' ? 'active' : ''}`}
-                    onClick={() => setActiveSection('sensors')}
-                >
-                    <FitnessCenter /> Physical Sensors
-                </button>
-                <button
-                    className={`section-tab ${activeSection === 'cameras' ? 'active' : ''}`}
-                    onClick={() => setActiveSection('cameras')}
-                >
-                    <CameraAlt /> AI Cameras
-                </button>
-                <button
-                    className={`section-tab ${activeSection === 'printer' ? 'active' : ''}`}
-                    onClick={() => setActiveSection('printer')}
-                >
-                    <Print /> Printer & Receipt
-                </button>
+                <button className={`section-tab ${activeSection === 'sensors' ? 'active' : ''}`} onClick={() => setActiveSection('sensors')}><FitnessCenter /> Physical Sensors</button>
+                <button className={`section-tab ${activeSection === 'cameras' ? 'active' : ''}`} onClick={() => setActiveSection('cameras')}><CameraAlt /> AI Vision Models</button>
+                <button className={`section-tab ${activeSection === 'printer' ? 'active' : ''}`} onClick={() => setActiveSection('printer')}><Print /> System Printer</button>
             </div>
 
             <main className="maintenance-main">
-                {/* ==================== SENSORS SECTION ==================== */}
                 {activeSection === 'sensors' && (
                     <div className="sensors-section">
-                        {/* Sensor Sub-tabs */}
                         <div className="sensor-tabs">
-                            <button
-                                className={`sensor-tab ${activeSensorTab === 'bmi' ? 'active' : ''}`}
-                                onClick={() => setActiveSensorTab('bmi')}
-                            >
-                                <FitnessCenter /> BMI (Weight + Height)
-                            </button>
-                            <button
-                                className={`sensor-tab ${activeSensorTab === 'bodytemp' ? 'active' : ''}`}
-                                onClick={() => setActiveSensorTab('bodytemp')}
-                            >
-                                <Thermostat /> Body Temperature
-                            </button>
-                            <button
-                                className={`sensor-tab ${activeSensorTab === 'max30102' ? 'active' : ''}`}
-                                onClick={() => setActiveSensorTab('max30102')}
-                            >
-                                <Favorite /> Pulse Oximeter (MAX30102)
-                            </button>
+                            <button className={`sensor-tab ${activeSensorTab === 'bmi' ? 'active' : ''}`} onClick={() => setActiveSensorTab('bmi')}>BMI Hardware</button>
+                            <button className={`sensor-tab ${activeSensorTab === 'bodytemp' ? 'active' : ''}`} onClick={() => setActiveSensorTab('bodytemp')}>IR Temperature</button>
+                            <button className={`sensor-tab ${activeSensorTab === 'max30102' ? 'active' : ''}`} onClick={() => setActiveSensorTab('max30102')}>Pulse Oximeter</button>
                         </div>
-
-                        {/* BMI Tab Content */}
-                        {activeSensorTab === 'bmi' && (
-                            <div className="sensor-content">
-                                <h2>⚖️ BMI Measurement (Weight + Height)</h2>
-                                <p className="sensor-description">
-                                    Test the weight scale and height sensor. The BMI is auto-calculated when both measurements are available.
-                                </p>
-                                <div className="sensor-cards-grid">
-                                    {renderSensorCard(
-                                        'Weight',
-                                        <FitnessCenter />,
-                                        sensorData.weight,
-                                        'kg',
-                                        sensorStatus.weight,
-                                        startWeightMeasurement
-                                    )}
-                                    {renderSensorCard(
-                                        'Height',
-                                        <Speed />,
-                                        sensorData.height,
-                                        'cm',
-                                        sensorStatus.height,
-                                        startHeightMeasurement
-                                    )}
-                                    <div className="sensor-card bmi-result">
-                                        <div className="sensor-card-header">
-                                            <FitnessCenter />
-                                            <h3>BMI (Calculated)</h3>
-                                        </div>
-                                        <div className="sensor-card-value">
-                                            <span className="value">{sensorData.bmi ?? '--'}</span>
-                                            <span className="unit">kg/m²</span>
-                                        </div>
-                                        <div className="sensor-card-status">
-                                            <span className="status-badge info">
-                                                {sensorData.bmi ? (
-                                                    sensorData.bmi < 18.5 ? '⚠️ Underweight' :
-                                                        sensorData.bmi < 25 ? '✅ Normal' :
-                                                            sensorData.bmi < 30 ? '⚠️ Overweight' : '🔴 Obese'
-                                                ) : 'Waiting for data...'}
-                                            </span>
+                        <div className="sensor-content">
+                            {activeSensorTab === 'bmi' && (
+                                <>
+                                    <h2>⚖️ BMI Hardware Calibration</h2>
+                                    <p className="sensor-description">Trigger and verify real-time data from weight loadcells and ultrasonic height sensors.</p>
+                                    <div className="sensor-cards-grid">
+                                        {renderSensorCard('Weight', <FitnessCenter />, sensorData.weight, 'kg', sensorStatus.weight, sensorAPI.startWeight)}
+                                        {renderSensorCard('Height', <Speed />, sensorData.height, 'cm', sensorStatus.height, sensorAPI.startHeight)}
+                                        <div className="sensor-card bmi-result">
+                                            <div className="sensor-card-header"><FitnessCenter /><h3>Computed BMI</h3></div>
+                                            <div className="sensor-card-value"><span className="value">{sensorData.bmi ?? '--'}</span><span className="unit">kg/m²</span></div>
+                                            <div className="sensor-card-status"><span className="status-badge active">{sensorData.bmi ? 'Auto-Calculated' : 'Waiting...'}</span></div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Body Temperature Tab Content */}
-                        {activeSensorTab === 'bodytemp' && (
-                            <div className="sensor-content">
-                                <h2>🌡️ Body Temperature Measurement</h2>
-                                <p className="sensor-description">
-                                    Test the infrared body temperature sensor. Normal range is 36.0°C - 37.5°C.
-                                </p>
-                                <div className="sensor-cards-grid single">
-                                    {renderSensorCard(
-                                        'Body Temperature',
-                                        <Thermostat />,
-                                        sensorData.temperature,
-                                        '°C',
-                                        sensorStatus.temperature,
-                                        startTemperatureMeasurement
-                                    )}
-                                </div>
-                                <div className="temperature-ranges">
-                                    <h4>Temperature Ranges:</h4>
-                                    <div className="range-item low">🔵 Low: &lt; 36.0°C</div>
-                                    <div className="range-item normal">🟢 Normal: 36.0 - 37.2°C</div>
-                                    <div className="range-item elevated">🟡 Slight Fever: 37.3 - 38.0°C</div>
-                                    <div className="range-item high">🔴 Fever: &gt; 38.0°C</div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* MAX30102 Tab Content */}
-                        {activeSensorTab === 'max30102' && (
-                            <div className="sensor-content">
-                                <h2>❤️ Pulse Oximeter (MAX30102)</h2>
-                                <p className="sensor-description">
-                                    Test the pulse oximeter sensor for heart rate, SpO2, and respiratory rate.
-                                    Place your finger on the sensor for accurate readings.
-                                </p>
-                                <div className="finger-status">
-                                    <span className={`finger-indicator ${sensorData.fingerDetected ? 'detected' : 'not-detected'}`}>
-                                        👆 {sensorData.fingerDetected ? 'Finger Detected' : 'No Finger Detected'}
-                                    </span>
-                                </div>
-                                <div className="sensor-cards-grid">
-                                    <div className="sensor-card">
-                                        <div className="sensor-card-header">
-                                            <Favorite style={{ color: '#e74c3c' }} />
-                                            <h3>Heart Rate</h3>
+                                </>
+                            )}
+                            {activeSensorTab === 'bodytemp' && (
+                                <>
+                                    <h2>🌡️ IR Body Temperature Sensor</h2>
+                                    <p className="sensor-description">Test the MLX90614 non-contact temperature sensor module accuracy.</p>
+                                    <div className="sensor-cards-grid">
+                                        {renderSensorCard('Body Temp', <Thermostat />, sensorData.temperature, '°C', sensorStatus.temperature, sensorAPI.startTemperature)}
+                                    </div>
+                                </>
+                            )}
+                            {activeSensorTab === 'max30102' && (
+                                <>
+                                    <h2>❤️ MAX30102 Pulse Oximetry</h2>
+                                    <p className="sensor-description">Real-time check for the Finger-detected heart rate and SpO2 sensor.</p>
+                                    <div className="sensor-cards-grid">
+                                        <div className="sensor-card">
+                                            <div className="sensor-card-header"><Favorite /><h3>Heart Rate</h3></div>
+                                            <div className="sensor-card-value"><span className="value">{sensorData.heartRate ?? '--'}</span><span className="unit">BPM</span></div>
                                         </div>
-                                        <div className="sensor-card-value">
-                                            <span className="value">{sensorData.heartRate ?? '--'}</span>
-                                            <span className="unit">BPM</span>
+                                        <div className="sensor-card">
+                                            <div className="sensor-card-header"><Speed /><h3>SpO2 Oxygen</h3></div>
+                                            <div className="sensor-card-value"><span className="value">{sensorData.spo2 ?? '--'}</span><span className="unit">%</span></div>
+                                        </div>
+                                        <div className="sensor-card">
+                                            <div className="sensor-card-header"><Speed /><h3>Resp. Rate</h3></div>
+                                            <div className="sensor-card-value"><span className="value">{sensorData.respiratoryRate ?? '--'}</span><span className="unit">/min</span></div>
                                         </div>
                                     </div>
-                                    <div className="sensor-card">
-                                        <div className="sensor-card-header">
-                                            <Speed style={{ color: '#3498db' }} />
-                                            <h3>SpO2</h3>
-                                        </div>
-                                        <div className="sensor-card-value">
-                                            <span className="value">{sensorData.spo2 ?? '--'}</span>
-                                            <span className="unit">%</span>
-                                        </div>
-                                    </div>
-                                    <div className="sensor-card">
-                                        <div className="sensor-card-header">
-                                            <Speed style={{ color: '#2ecc71' }} />
-                                            <h3>Respiratory Rate</h3>
-                                        </div>
-                                        <div className="sensor-card-value">
-                                            <span className="value">{sensorData.respiratoryRate ?? '--'}</span>
-                                            <span className="unit">/min</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button
-                                    className="sensor-start-btn large"
-                                    onClick={startMax30102Measurement}
-                                    disabled={sensorStatus.max30102 === 'measuring'}
-                                >
-                                    <PlayArrow /> {sensorStatus.max30102 === 'measuring' ? 'Measuring... (30s)' : 'Start Measurement'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ==================== CAMERAS SECTION ==================== */}
-                {activeSection === 'cameras' && (
-                    <div className="cameras-section">
-                        <div className="left-panel">
-                            {/* Camera Sub-tabs */}
-                            <div className="tabs-container">
-                                <button
-                                    className={`tab-btn ${activeCameraTab === 'bp' ? 'active' : ''}`}
-                                    onClick={() => handleCameraTabChange('bp')}
-                                >
-                                    🩸 Blood Pressure
-                                </button>
-                                <button
-                                    className={`tab-btn ${activeCameraTab === 'feet' ? 'active' : ''}`}
-                                    onClick={() => handleCameraTabChange('feet')}
-                                >
-                                    👟 Weight Compliance
-                                </button>
-                                <button
-                                    className={`tab-btn ${activeCameraTab === 'body' ? 'active' : ''}`}
-                                    onClick={() => handleCameraTabChange('body')}
-                                >
-                                    👤 Wearables
-                                </button>
-                            </div>
-
-                            {/* Camera Viewport */}
-                            <div className="camera-viewport">
-                                <img
-                                    src={getVideoFeedUrl()}
-                                    alt="Feed"
-                                    className="main-feed"
-                                />
-                                <button className="viewport-overlay switch-cam-btn" onClick={handleToggleCamera} title="Switch Camera">
-                                    <FlipCameraIos />
-                                </button>
-                                <div className="viewport-overlay top">
-                                    <div
-                                        className="ai-badge"
-                                        style={activeCameraTab === 'bp' ? { background: 'linear-gradient(135deg, #e74c3c, #c0392b)' } : {}}
-                                    >
-                                        {activeCameraTab === 'bp' ? '🩸 BP LIVE: ' : 'AI LIVE: '}
-                                        {complianceStatus}
-                                    </div>
-                                    <div className="fps-badge">FPS: {fps}</div>
-                                </div>
-                                <div className="viewport-overlay bottom">
-                                    <div className="capture-info">
-                                        {`Session: ${captureCount} images captured`}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Class Selector for Data Collection */}
-                            <div className="class-selector">
-                                <h3>Select Category to Capture:</h3>
-                                <div className="class-buttons">
-                                    {modes[activeCameraTab].map(cls => (
-                                        <button
-                                            key={cls}
-                                            data-class={cls}
-                                            className={`class-btn ${selectedClass === cls ? 'active' : ''}`}
-                                            onClick={() => setSelectedClass(cls)}
-                                        >
-                                            {cls}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Capture Button */}
-                            <button className="capture-btn" onClick={handleCapture}>
-                                <CameraAlt /> Capture (Space)
-                            </button>
-                        </div>
-
-                        {/* Right Panel - Camera Settings & BP Reading */}
-                        <div className="right-panel">
-                            {/* Camera Settings */}
-                            <div className="control-section">
-                                <h3><Settings /> Camera Settings</h3>
-
-                                {/* Camera Source */}
-                                <div className="control-item">
-                                    <label>Camera Source</label>
-                                    <select
-                                        className="styled-select"
-                                        value={settings.camera_index}
-                                        onChange={(e) => handleCameraIndexChange(e.target.value)}
-                                    >
-                                        <option value={0}>Camera 0</option>
-                                        <option value={1}>Camera 1</option>
-                                        <option value={2}>Camera 2</option>
-                                    </select>
-                                </div>
-
-                                {/* Square Crop Toggle */}
-                                <div className="control-item" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                                    <input
-                                        type="checkbox"
-                                        id="square_crop"
-                                        checked={settings.square_crop}
-                                        onChange={(e) => handleSettingChange('square_crop', e.target.checked)}
-                                        style={{ width: '20px', height: '20px' }}
-                                    />
-                                    <label htmlFor="square_crop" style={{ margin: 0 }}>Square Crop Mode</label>
-                                </div>
-
-                                {/* Zoom */}
-                                <div className="control-item">
-                                    <label>Zoom: {settings.zoom.toFixed(1)}x</label>
-                                    <div className="slider-row">
-                                        <button onClick={() => handleSettingChange('zoom', Math.max(1.0, settings.zoom - 0.1))}>
-                                            <Remove fontSize="small" />
-                                        </button>
-                                        <input
-                                            type="range"
-                                            min="1"
-                                            max="3"
-                                            step="0.1"
-                                            value={settings.zoom}
-                                            onChange={(e) => handleSettingChange('zoom', parseFloat(e.target.value))}
-                                        />
-                                        <button onClick={() => handleSettingChange('zoom', Math.min(3.0, settings.zoom + 0.1))}>
-                                            <Add fontSize="small" />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Brightness */}
-                                <div className="control-item">
-                                    <label><Brightness6 fontSize="small" /> Brightness: {settings.brightness.toFixed(1)}</label>
-                                    <input
-                                        type="range"
-                                        min="0.5"
-                                        max="2.0"
-                                        step="0.1"
-                                        value={settings.brightness}
-                                        onChange={(e) => handleSettingChange('brightness', parseFloat(e.target.value))}
-                                    />
-                                </div>
-
-                                {/* Contrast */}
-                                <div className="control-item">
-                                    <label><Contrast fontSize="small" /> Contrast: {settings.contrast.toFixed(1)}</label>
-                                    <input
-                                        type="range"
-                                        min="0.5"
-                                        max="2.0"
-                                        step="0.1"
-                                        value={settings.contrast}
-                                        onChange={(e) => handleSettingChange('contrast', parseFloat(e.target.value))}
-                                    />
-                                </div>
-
-                                {/* Rotation */}
-                                <div className="control-item">
-                                    <label><RotateRight fontSize="small" /> Rotation</label>
-                                    <div className="rotate-buttons">
-                                        {[0, 90, 180, 270].map(deg => (
-                                            <button
-                                                key={deg}
-                                                className={settings.rotation === deg ? 'active' : ''}
-                                                onClick={() => handleSettingChange('rotation', deg)}
-                                            >
-                                                {deg}°
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Restart Camera */}
-                                <button className="restart-btn" onClick={() => startCamera(activeCameraTab)}>
-                                    <Refresh /> Restart Camera
-                                </button>
-                            </div>
-
-                            {/* BP Reading Display (for BP tab) */}
-                            {activeCameraTab === 'bp' && bpReading && (
-                                <div className="bp-results-section">
-                                    <h3>🩸 Current BP Reading</h3>
-                                    <div className="bp-current-reading">
-                                        <div className="bp-values">
-                                            <div className="bp-value">
-                                                <span className="bp-label">Systolic</span>
-                                                <span className="bp-number">{bpReading.systolic}</span>
-                                                <span className="bp-unit">mmHg</span>
-                                            </div>
-                                            <div className="bp-divider">/</div>
-                                            <div className="bp-value">
-                                                <span className="bp-label">Diastolic</span>
-                                                <span className="bp-number">{bpReading.diastolic}</span>
-                                                <span className="bp-unit">mmHg</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    <button className="sensor-start-btn" onClick={sensorAPI.startMax30102} style={{ height: '3rem' }}><PlayArrow /> Start Pulse Test</button>
+                                </>
                             )}
                         </div>
                     </div>
-                )
-                }
+                )}
 
-
-                {/* ==================== PRINTER SECTION ==================== */}
-                {activeSection === 'printer' && (
-                    <div className="printer-section" style={{ padding: '2rem' }}>
-                        <div className="sensor-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
-                            <div className="sensor-card-header">
-                                <Print style={{ fontSize: '2rem', color: '#64748b' }} />
-                                <div>
-                                    <h3>Thermal Printer Status</h3>
-                                    <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{printerStatus.printer_name || 'Checking printer...'}</div>
+                {activeSection === 'cameras' && (
+                    <div className="cameras-section">
+                        <div className="camera-col">
+                            <div className="sensor-tabs" style={{ marginBottom: '1.5rem' }}>
+                                <button className={`sensor-tab ${activeCameraTab === 'bp' ? 'active' : ''}`} onClick={() => startCamera('bp') & setActiveCameraTab('bp')}>BP Camera</button>
+                                <button className={`sensor-tab ${activeCameraTab === 'feet' ? 'active' : ''}`} onClick={() => startCamera('feet') & setActiveCameraTab('feet')}>Feet Detector</button>
+                                <button className={`sensor-tab ${activeCameraTab === 'body' ? 'active' : ''}`} onClick={() => startCamera('body') & setActiveCameraTab('body')}>Wearables</button>
+                            </div>
+                            <div className="camera-viewport-container">
+                                <img src={`${API_BASE}/${activeCameraTab === 'bp' ? 'bp' : 'camera'}/video_feed?t=${Date.now()}`} alt="Feed" className="main-feed" />
+                                <div className="viewport-overlay-premium">
+                                    <div className="overlay-top">
+                                        <div className="ai-status-badge"><div className="pulse-red" /> {complianceStatus}</div>
+                                        <div className="fps-badge">FPS: {fps}</div>
+                                    </div>
+                                    <div className="overlay-bottom">
+                                        <div className="session-stats">Collected: {captureCount} Samples</div>
+                                    </div>
                                 </div>
+                                <button className="switch-cam-btn-premium" onClick={handleToggleCamera}><FlipCameraIos /></button>
                             </div>
 
-                            <div className="sensor-card-value" style={{ margin: '2rem 0' }}>
-                                <div style={{
-                                    fontSize: '1.5rem',
-                                    fontWeight: 'bold',
-                                    color: printerStatus.status === 'ready' ? '#16a34a' :
-                                        printerStatus.status === 'warning' ? '#ca8a04' : '#dc2626'
-                                }}>
-                                    {printerStatus.message}
+                            <div className="capture-actions">
+                                <div className="sensor-tabs" style={{ width: '100%', flexWrap: 'wrap' }}>
+                                    {modes[activeCameraTab].map(cls => (
+                                        <button key={cls} className={`sensor-tab ${selectedClass === cls ? 'active' : ''}`} onClick={() => setSelectedClass(cls)}>{cls}</button>
+                                    ))}
                                 </div>
-                                <div style={{ fontSize: '0.9rem', marginTop: '0.5rem', color: '#64748b' }}>
-                                    Status Code: {printerStatus.status_code !== undefined ? printerStatus.status_code : 'N/A'}
+                                <button className="capture-btn-premium" onClick={handleCapture}><CameraAlt /> CAPTURE SAMPLE <span className="kb-hint">(Space)</span></button>
+                            </div>
+                        </div>
+
+                        <div className="camera-settings-panel">
+                            <div className="settings-group">
+                                <h3><Settings /> Image Calibration</h3>
+                                <div className="setting-item">
+                                    <label>Digital Zoom <span>{settings.zoom.toFixed(1)}x</span></label>
+                                    <input type="range" min="1" max="3" step="0.1" value={settings.zoom} onChange={(e) => handleSettingChange('zoom', parseFloat(e.target.value))} />
                                 </div>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                                <button
-                                    className="sensor-start-btn"
-                                    onClick={checkPrinterStatus}
-                                    style={{ width: 'auto', padding: '0.8rem 1.5rem' }}
-                                >
-                                    <Refresh /> Refresh Status
-                                </button>
-                                {/* 
-                                <button 
-                                    className="sensor-start-btn" 
-                                    onClick={handleTestPrint}
-                                    style={{ width: 'auto', padding: '0.8rem 1.5rem', background: '#3b82f6' }}
-                                >
-                                    <Print /> Print Test Receipt
-                                </button>
-                                */}
-                            </div>
-
-                            <div className="sensor-description" style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                                <h4>Common Status Codes:</h4>
-                                <ul style={{ listStyle: 'none', padding: 0, fontSize: '0.9rem', color: '#64748b' }}>
-                                    <li><strong>Ready:</strong> Printer is online and has paper.</li>
-                                    <li><strong>Paper Out:</strong> Roll is empty or cover is open.</li>
-                                    <li><strong>Offline:</strong> Printer is disconnected or powered off.</li>
-                                </ul>
+                                <div className="setting-item">
+                                    <label>Brightness <span>{settings.brightness.toFixed(1)}</span></label>
+                                    <input type="range" min="0.5" max="2.0" step="0.1" value={settings.brightness} onChange={(e) => handleSettingChange('brightness', parseFloat(e.target.value))} />
+                                </div>
+                                <div className="setting-item">
+                                    <label>Contrast <span>{settings.contrast.toFixed(1)}</span></label>
+                                    <input type="range" min="0.5" max="2.0" step="0.1" value={settings.contrast} onChange={(e) => handleSettingChange('contrast', parseFloat(e.target.value))} />
+                                </div>
+                                <button className="sensor-start-btn" onClick={() => startCamera(activeCameraTab)}><Refresh /> Hard Reset Cam</button>
                             </div>
                         </div>
                     </div>
                 )}
-            </main >
-        </div >
+
+                {activeSection === 'printer' && (
+                    <div className="printer-content">
+                        <div className="printer-icon-large"><Print /></div>
+                        <h2>Thermal Receipt Printer Diagnostics</h2>
+                        <div className="printer-status-box">
+                            <span className="p-name">{printerStatus.printer_name || 'Generic Thermal Printer'}</span>
+                            <span className="p-msg">{printerStatus.message}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button className="sensor-start-btn" onClick={async () => setPrinterStatus(await printerAPI.getStatus())} style={{ width: '200px' }}><Refresh /> Check Link</button>
+                            <button className="sensor-start-btn" style={{ width: '200px', background: '#dc2626' }}><Print /> Print Test Slip</button>
+                        </div>
+                    </div>
+                )}
+            </main>
+        </div>
     );
 };
 

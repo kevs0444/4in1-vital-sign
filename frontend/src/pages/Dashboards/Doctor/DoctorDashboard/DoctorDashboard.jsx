@@ -1,11 +1,100 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Logout, Search, Visibility, LocalHospital, Settings, GridView, TableRows } from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Logout, Search, Visibility, LocalHospital, Settings, GridView, TableRows, History, Person, Check, Close, ErrorOutline, WarningAmber } from '@mui/icons-material';
 import './DoctorDashboard.css';
 import { getAdminUsers, getMeasurementHistory } from '../../../../utils/api';
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
+import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
+import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
 
+// StatusToast Component (Local Definition)
+const StatusToast = ({ toast, onClose }) => {
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => {
+                onClose();
+            }, 5000); // Auto close after 5 seconds
+            return () => clearTimeout(timer);
+        }
+    }, [toast, onClose]);
+
+    if (!toast) return null;
+
+    return (
+        <div className="status-toast-overlay" style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 2000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+        }}>
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={toast.id || 'toast'}
+                    initial={{ opacity: 0, x: 50, scale: 0.95 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    className={`status-toast ${toast.type}`}
+                    style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        minWidth: '320px',
+                        maxWidth: '400px',
+                        borderLeft: `6px solid ${toast.type === 'success' ? '#10b981' :
+                            toast.type === 'error' ? '#ef4444' :
+                                '#f59e0b'
+                            }`
+                    }}
+                >
+                    <div className={`toast-icon-wrapper ${toast.type}`} style={{
+                        color: toast.type === 'success' ? '#10b981' :
+                            toast.type === 'error' ? '#ef4444' :
+                                '#f59e0b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginTop: '2px'
+                    }}>
+                        {toast.type === 'success' && <Check />}
+                        {toast.type === 'error' && <ErrorOutline />}
+                        {toast.type === 'warning' && <WarningAmber />}
+                    </div>
+
+                    <div className="toast-content" style={{ flex: 1 }}>
+                        <span className="toast-title" style={{ display: 'block', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                            {toast.title}
+                        </span>
+                        <span className="toast-message" style={{ display: 'block', color: '#64748b', fontSize: '0.9rem', lineHeight: '1.4' }}>
+                            {toast.message}
+                        </span>
+                    </div>
+
+                    <button className="toast-close" onClick={onClose} style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <Close fontSize="small" />
+                    </button>
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    );
+};
 
 const DoctorDashboard = () => {
     const navigate = useNavigate();
@@ -14,8 +103,8 @@ const DoctorDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
+    const [toast, setToast] = useState(null);
 
-    // Modal State
     // Modal State
     const [selectedUser, setSelectedUser] = useState(null);
     const [userHistory, setUserHistory] = useState([]);
@@ -26,7 +115,15 @@ const DoctorDashboard = () => {
     // New State for Tabs & Personal History & Filters
     const [activeTab, setActiveTab] = useState('patients'); // 'patients', 'personal', 'profile'
     const [myHistory, setMyHistory] = useState([]);
-    const [filterType, setFilterType] = useState('all'); // 'all', 'today', 'week', 'month'
+
+    // Time Period Filter State (shared for My Measurement History tab)
+    const [timePeriod, setTimePeriod] = useState('weekly'); // daily, weekly, monthly, annually, custom
+    const [customDateRange, setCustomDateRange] = useState(null);
+
+    // Time Period Filter State for Patients Overview
+    const [patientsTimePeriod, setPatientsTimePeriod] = useState('weekly');
+    const [patientsCustomDateRange, setPatientsCustomDateRange] = useState(null);
+
     const [sortOrder, setSortOrder] = useState('desc'); // 'desc', 'asc'
     const [metricFilter, setMetricFilter] = useState(['all']); // Array for multi-select
     const [isMetricDropdownOpen, setIsMetricDropdownOpen] = useState(false);
@@ -39,6 +136,55 @@ const DoctorDashboard = () => {
     const [isRiskDropdownOpen, setIsRiskDropdownOpen] = useState(false);
     const [modalRiskFilter, setModalRiskFilter] = useState(['all']);
     const [isModalRiskDropdownOpen, setIsModalRiskDropdownOpen] = useState(false);
+
+    // Modal specific time period
+    const [modalTimePeriod, setModalTimePeriod] = useState('all');
+    const [modalCustomDateRange, setModalCustomDateRange] = useState(null);
+
+    // Filter history by time period first
+    const timeFilteredHistory = useMemo(() => {
+        return filterHistoryByTimePeriod(myHistory, timePeriod, customDateRange);
+    }, [myHistory, timePeriod, customDateRange]);
+
+    // Filter modal user history by time period
+    const timeFilteredUserHistory = useMemo(() => {
+        return filterHistoryByTimePeriod(userHistory, modalTimePeriod, modalCustomDateRange);
+    }, [userHistory, modalTimePeriod, modalCustomDateRange]);
+
+    // Filter patients by registration date
+    const timeFilteredPatients = useMemo(() => {
+        if (!usersList || usersList.length === 0) return [];
+        return filterHistoryByTimePeriod(
+            usersList.map(u => ({ ...u, created_at: u.created_at || u.registered_at })),
+            patientsTimePeriod,
+            patientsCustomDateRange
+        );
+    }, [usersList, patientsTimePeriod, patientsCustomDateRange]);
+
+    const fetchMyHistory = React.useCallback(async (userId) => {
+        try {
+            const response = await getMeasurementHistory(userId);
+            if (response.success) {
+                setMyHistory(response.history || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch my history:", error);
+        }
+    }, []);
+
+    const fetchUsers = React.useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await getAdminUsers();
+            if (response.success) {
+                setUsersList(response.users || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch users:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         // Authenticate
@@ -56,32 +202,7 @@ const DoctorDashboard = () => {
         if (savedUser && (savedUser.userId || savedUser.user_id || savedUser.id)) {
             fetchMyHistory(savedUser.userId || savedUser.user_id || savedUser.id);
         }
-    }, [navigate, location]);
-
-    const fetchMyHistory = async (userId) => {
-        try {
-            const response = await getMeasurementHistory(userId);
-            if (response.success) {
-                setMyHistory(response.history || []);
-            }
-        } catch (error) {
-            console.error("Failed to fetch my history:", error);
-        }
-    };
-
-    const fetchUsers = async () => {
-        try {
-            setLoading(true);
-            const response = await getAdminUsers();
-            if (response.success) {
-                setUsersList(response.users || []);
-            }
-        } catch (error) {
-            console.error("Failed to fetch users:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [navigate, location, fetchUsers, fetchMyHistory]);
 
     const handleLogout = () => {
         localStorage.removeItem('userData');
@@ -114,7 +235,7 @@ const DoctorDashboard = () => {
         });
     };
 
-    const filteredUsers = usersList.filter(u =>
+    const filteredUsers = timeFilteredPatients.filter(u =>
         u.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -205,24 +326,10 @@ const DoctorDashboard = () => {
         setModalRiskFilter(newFilters);
     };
 
-    // Filtering & Sorting Helper
+    // Filtering & Sorting Helper (now uses pre-filtered timeFilteredHistory)
     const processHistory = (data, activeMetricFilter = metricFilter, activeRiskFilter = riskFilter) => {
         if (!data) return [];
         let processed = [...data];
-
-        // Filter
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-        if (filterType === 'today') {
-            processed = processed.filter(item => new Date(item.created_at) >= startOfToday);
-        } else if (filterType === 'week') {
-            processed = processed.filter(item => new Date(item.created_at) >= weekAgo);
-        } else if (filterType === 'month') {
-            processed = processed.filter(item => new Date(item.created_at) >= monthAgo);
-        }
 
         // Metric Filter
         if (!activeMetricFilter.includes('all')) {
@@ -268,334 +375,283 @@ const DoctorDashboard = () => {
         return '#64748b';
     };
 
-    const displayedMyHistory = processHistory(myHistory, metricFilter, riskFilter);
-    const displayedUserHistory = processHistory(userHistory, modalMetricFilter, modalRiskFilter);
+    const displayedMyHistory = processHistory(timeFilteredHistory, metricFilter, riskFilter);
+    const displayedUserHistory = processHistory(timeFilteredUserHistory, modalMetricFilter, modalRiskFilter);
 
+    // Define Tabs
+    const tabs = [
+        { id: 'patients', label: 'Patients Overview', icon: <LocalHospital /> },
+        { id: 'personal', label: 'My Measurement History', icon: <History /> },
+        { id: 'profile', label: 'Personal Info', icon: <Settings /> }
+    ];
+
+    if (!currentUser) return null;
 
     return (
-        <div className="dashboard-container">
-            {/* Header */}
-            <header className="dashboard-header">
-                <div className="header-brand">
-                    <div className="header-brand-icon">
-                        <LocalHospital />
+        <DashboardLayout
+            title="Medical Portal"
+            subtitle="Doctor Dashboard"
+            user={currentUser}
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onLogout={handleLogout}
+        >
+            <StatusToast toast={toast} onClose={() => setToast(null)} />
+            {/* --- Personal Info Tab --- */}
+            {activeTab === 'profile' && currentUser && (
+                <PersonalInfo
+                    userId={currentUser.userId || currentUser.user_id || currentUser.id}
+                    onProfileUpdate={(updatedUser) => {
+                        setCurrentUser(prev => ({ ...prev, ...updatedUser }));
+                    }}
+                    onShowToast={(type, title, message) => setToast({ type, title, message, id: Date.now() })}
+                />
+            )}
+
+            {/* --- Patients Tab --- */}
+            {activeTab === 'patients' && (
+                <motion.div
+                    className="table-section"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                >
+                    {/* Time Period Filter for Patients */}
+                    <div style={{ marginBottom: '20px' }}>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter by Registration Date</h3>
+                        <TimePeriodFilter
+                            timePeriod={patientsTimePeriod}
+                            setTimePeriod={setPatientsTimePeriod}
+                            customDateRange={patientsCustomDateRange}
+                            setCustomDateRange={setPatientsCustomDateRange}
+                        />
                     </div>
-                    <div className="header-title">
-                        <h1>Medical Portal</h1>
-                        <p className="header-subtitle">Doctor Dashboard</p>
-                    </div>
-                </div>
-                <div className="header-actions">
-                    <button className="logout-button" onClick={handleLogout}>
-                        <Logout /> <span>Logout</span>
-                    </button>
-                </div>
-            </header>
 
-            {/* Tab Navigation */}
-            <div className="dashboard-tabs" style={{ padding: '0 2rem', display: 'flex', gap: '1rem', borderBottom: '1px solid #e2e8f0', background: 'white', marginBottom: '1rem' }}>
-                <button
-                    onClick={() => setActiveTab('patients')}
-                    style={{
-                        padding: '1rem',
-                        border: 'none',
-                        background: 'none',
-                        borderBottom: activeTab === 'patients' ? '3px solid #dc2626' : '3px solid transparent',
-                        fontWeight: activeTab === 'patients' ? 'bold' : 'normal',
-                        color: activeTab === 'patients' ? '#dc2626' : '#64748b',
-                        cursor: 'pointer',
-                        fontSize: '1rem'
-                    }}
-                >
-                    Patients Overview
-                </button>
-                <button
-                    onClick={() => setActiveTab('personal')}
-                    style={{
-                        padding: '1rem',
-                        border: 'none',
-                        background: 'none',
-                        borderBottom: activeTab === 'personal' ? '3px solid #dc2626' : '3px solid transparent',
-                        fontWeight: activeTab === 'personal' ? 'bold' : 'normal',
-                        color: activeTab === 'personal' ? '#dc2626' : '#64748b',
-                        cursor: 'pointer',
-                        fontSize: '1rem'
-                    }}
-                >
-                    My Measurement History
-                </button>
-                <button
-                    onClick={() => setActiveTab('profile')}
-                    style={{
-                        padding: '1rem',
-                        border: 'none',
-                        background: 'none',
-                        borderBottom: activeTab === 'profile' ? '3px solid #dc2626' : '3px solid transparent',
-                        fontWeight: activeTab === 'profile' ? 'bold' : 'normal',
-                        color: activeTab === 'profile' ? '#dc2626' : '#64748b',
-                        cursor: 'pointer',
-                        fontSize: '1rem'
-                    }}
-                >
-                    <Settings style={{ fontSize: '1.1rem', marginRight: '4px', verticalAlign: 'middle' }} />
-                    Personal Info
-                </button>
-            </div>
-
-            {/* Content */}
-            <div className="dashboard-content">
-
-                {/* --- Personal Info Tab --- */}
-                {activeTab === 'profile' && currentUser && (
-                    <PersonalInfo
-                        userId={currentUser.userId || currentUser.user_id || currentUser.id}
-                        onProfileUpdate={(updatedUser) => {
-                            setCurrentUser(prev => ({ ...prev, ...updatedUser }));
-                        }}
-                    />
-                )}
-
-                {/* --- Patients Tab --- */}
-                {activeTab === 'patients' && (
-                    <motion.div
-                        className="table-section"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <div className="table-header">
-                            <h3>Assigned Patients / All Users</h3>
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                <div className="search-bar">
-                                    <Search className="search-icon" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search by name, email, role..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                                {/* View Mode Toggle */}
-                                <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
-                                    <button
-                                        onClick={() => setViewMode('table')}
-                                        style={{
-                                            padding: '8px 12px',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            background: viewMode === 'table' ? '#dc2626' : 'transparent',
-                                            color: viewMode === 'table' ? 'white' : '#64748b',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                        title="Table View"
-                                    >
-                                        <TableRows style={{ fontSize: '1.2rem' }} />
-                                    </button>
-                                    <button
-                                        onClick={() => setViewMode('card')}
-                                        style={{
-                                            padding: '8px 12px',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            background: viewMode === 'card' ? '#dc2626' : 'transparent',
-                                            color: viewMode === 'card' ? 'white' : '#64748b',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                        title="Card View"
-                                    >
-                                        <GridView style={{ fontSize: '1.2rem' }} />
-                                    </button>
-                                </div>
+                    <div className="table-header">
+                        <h3>Assigned Patients / All Users ({timeFilteredPatients.length} records)</h3>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <div className="search-bar">
+                                <Search className="search-icon" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name, email, role..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            {/* View Mode Toggle */}
+                            <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                <button
+                                    onClick={() => setViewMode('table')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        background: viewMode === 'table' ? '#dc2626' : 'transparent',
+                                        color: viewMode === 'table' ? 'white' : '#64748b',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    title="Table View"
+                                >
+                                    <TableRows style={{ fontSize: '1.2rem' }} />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('card')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        background: viewMode === 'card' ? '#dc2626' : 'transparent',
+                                        color: viewMode === 'card' ? 'white' : '#64748b',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    title="Card View"
+                                >
+                                    <GridView style={{ fontSize: '1.2rem' }} />
+                                </button>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Table View */}
-                        {viewMode === 'table' && (
-                            <div className="table-container-wrapper">
-                                <table className="users-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Role</th>
-                                            <th>School ID</th>
-                                            <th>Last Checkup</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading ? (
-                                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading users...</td></tr>
-                                        ) : filteredUsers.length === 0 ? (
-                                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No users found.</td></tr>
-                                        ) : (
-                                            filteredUsers.map((u) => (
-                                                <tr key={u.user_id}>
-                                                    <td>
-                                                        <div className="user-name-cell">
-                                                            <div className="user-avatar">{u.firstname[0]}{u.lastname[0]}</div>
-                                                            <div>
-                                                                <div className="fw-bold">{u.firstname} {u.lastname}</div>
-                                                                <div className="text-secondary small">{u.email}</div>
-                                                            </div>
+                    {/* Table View */}
+                    {viewMode === 'table' && (
+                        <div className="table-container-wrapper">
+                            <table className="users-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Role</th>
+                                        <th>School ID</th>
+                                        <th>Last Checkup</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {loading ? (
+                                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading users...</td></tr>
+                                    ) : filteredUsers.length === 0 ? (
+                                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No users found.</td></tr>
+                                    ) : (
+                                        filteredUsers.map((u) => (
+                                            <tr key={u.user_id}>
+                                                <td>
+                                                    <div className="user-name-cell">
+                                                        <div className="user-avatar">{u.firstname[0]}{u.lastname[0]}</div>
+                                                        <div>
+                                                            <div className="fw-bold">{u.firstname} {u.lastname}</div>
+                                                            <div className="text-secondary small">{u.email}</div>
                                                         </div>
-                                                    </td>
-                                                    <td><span className={`role-badge role-${u.role.toLowerCase()}`}>{u.role}</span></td>
-                                                    <td>{u.school_number || 'N/A'}</td>
-                                                    <td>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</td>
-                                                    <td>
-                                                        <button className="action-btn" onClick={() => viewUserHistory(u)}>
-                                                            <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View History
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                                                    </div>
+                                                </td>
+                                                <td><span className={`role-badge role-${u.role.toLowerCase()}`}>{u.role}</span></td>
+                                                <td>{u.school_number || 'N/A'}</td>
+                                                <td>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</td>
+                                                <td>
+                                                    <button className="action-btn" onClick={() => viewUserHistory(u)}>
+                                                        <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View History
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
-                        {/* Card View */}
-                        {viewMode === 'card' && (
-                            <div className="user-cards-grid" style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                                gap: '1.5rem',
-                                padding: '1rem 0'
-                            }}>
-                                {loading ? (
-                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                        Loading users...
-                                    </div>
-                                ) : filteredUsers.length === 0 ? (
-                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                        No users found.
-                                    </div>
-                                ) : (
-                                    filteredUsers.map((u) => (
-                                        <motion.div
-                                            key={u.user_id}
-                                            className="user-card"
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            whileHover={{ y: -4, boxShadow: '0 12px 24px rgba(0,0,0,0.12)' }}
+                    {/* Card View */}
+                    {viewMode === 'card' && (
+                        <div className="user-cards-grid" style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                            gap: '1.5rem',
+                            padding: '1rem 0'
+                        }}>
+                            {loading ? (
+                                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                    Loading users...
+                                </div>
+                            ) : filteredUsers.length === 0 ? (
+                                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                    No users found.
+                                </div>
+                            ) : (
+                                filteredUsers.map((u) => (
+                                    <motion.div
+                                        key={u.user_id}
+                                        className="user-card"
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        whileHover={{ y: -4, boxShadow: '0 12px 24px rgba(0,0,0,0.12)' }}
+                                        style={{
+                                            background: 'white',
+                                            borderRadius: '16px',
+                                            padding: '1.5rem',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                            border: '1px solid #e2e8f0',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                                            <div style={{
+                                                width: '56px',
+                                                height: '56px',
+                                                borderRadius: '50%',
+                                                background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+                                                color: 'white',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontWeight: 'bold',
+                                                fontSize: '1.25rem'
+                                            }}>
+                                                {u.firstname[0]}{u.lastname[0]}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <h4 style={{ margin: 0, color: '#1e293b', fontSize: '1.1rem' }}>
+                                                    {u.firstname} {u.lastname}
+                                                </h4>
+                                                <span className={`role-badge role-${u.role.toLowerCase()}`} style={{ fontSize: '0.75rem', marginTop: '4px', display: 'inline-block' }}>
+                                                    {u.role}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.9rem', color: '#475569' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#94a3b8' }}>Email:</span>
+                                                <span style={{ fontWeight: '500', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#94a3b8' }}>School ID:</span>
+                                                <span style={{ fontWeight: '500' }}>{u.school_number || 'N/A'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#94a3b8' }}>Last Checkup:</span>
+                                                <span style={{ fontWeight: '500' }}>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            className="action-btn"
+                                            onClick={() => viewUserHistory(u)}
                                             style={{
-                                                background: 'white',
-                                                borderRadius: '16px',
-                                                padding: '1.5rem',
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                                                border: '1px solid #e2e8f0',
-                                                transition: 'all 0.2s ease'
+                                                width: '100%',
+                                                padding: '10px',
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '6px'
                                             }}
                                         >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                                                <div style={{
-                                                    width: '56px',
-                                                    height: '56px',
-                                                    borderRadius: '50%',
-                                                    background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-                                                    color: 'white',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '1.25rem'
-                                                }}>
-                                                    {u.firstname[0]}{u.lastname[0]}
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <h4 style={{ margin: 0, color: '#1e293b', fontSize: '1.1rem' }}>
-                                                        {u.firstname} {u.lastname}
-                                                    </h4>
-                                                    <span className={`role-badge role-${u.role.toLowerCase()}`} style={{ fontSize: '0.75rem', marginTop: '4px', display: 'inline-block' }}>
-                                                        {u.role}
-                                                    </span>
-                                                </div>
-                                            </div>
+                                            <Visibility style={{ fontSize: '1rem' }} /> View History
+                                        </button>
+                                    </motion.div>
+                                ))
+                            )}
+                        </div>
+                    )}
+                </motion.div>
+            )}
 
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.9rem', color: '#475569' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#94a3b8' }}>Email:</span>
-                                                    <span style={{ fontWeight: '500', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#94a3b8' }}>School ID:</span>
-                                                    <span style={{ fontWeight: '500' }}>{u.school_number || 'N/A'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#94a3b8' }}>Last Checkup:</span>
-                                                    <span style={{ fontWeight: '500' }}>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</span>
-                                                </div>
-                                            </div>
+            {/* --- Personal History Tab --- */}
+            {activeTab === 'personal' && (
+                <>
+                    <DashboardAnalytics
+                        user={currentUser}
+                        history={myHistory}
+                        timePeriod={timePeriod}
+                        customDateRange={customDateRange}
+                    />
 
-                                            <button
-                                                className="action-btn"
-                                                onClick={() => viewUserHistory(u)}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '10px',
-                                                    borderRadius: '8px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '6px'
-                                                }}
-                                            >
-                                                <Visibility style={{ fontSize: '1rem' }} /> View History
-                                            </button>
-                                        </motion.div>
-                                    ))
-                                )}
-                            </div>
-                        )}
-                    </motion.div>
-                )}
+                    {/* Time Period Filter for Table */}
+                    <div style={{ marginTop: '30px', marginBottom: '20px' }}>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter Records</h3>
+                        <TimePeriodFilter
+                            timePeriod={timePeriod}
+                            setTimePeriod={setTimePeriod}
+                            customDateRange={customDateRange}
+                            setCustomDateRange={setCustomDateRange}
+                        />
+                    </div>
 
-                {/* --- Personal History Tab --- */}
-                {activeTab === 'personal' && (
                     <motion.div
                         className="table-section"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
-                        {/* Summary Cards for Personal History */}
-                        <div className="summary-cards" style={{ marginBottom: '2rem' }}>
-                            <div className="summary-card highlight">
-                                <h3>Total Checkups</h3>
-                                <div className="summary-value">{myHistory.length}</div>
-                                <div className="summary-label">Measurements Taken</div>
-                            </div>
-                            <div className="summary-card">
-                                <h3>Latest Status</h3>
-                                <div className="summary-value" style={{ fontSize: '1.5rem', color: myHistory.length > 0 ? getRiskColor(myHistory[0].risk_category) : '#64748b' }}>
-                                    {myHistory.length > 0 ? (myHistory[0].risk_category || 'N/A') : 'No Data'}
-                                </div>
-                                <div className="summary-label">
-                                    {myHistory.length > 0 ? formatDate(myHistory[0].created_at) : '-'}
-                                </div>
-                            </div>
-                        </div>
-
                         <div className="table-header">
-                            <h3>My Measurement History</h3>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <select
-                                    value={filterType}
-                                    onChange={(e) => setFilterType(e.target.value)}
-                                    style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                                >
-                                    <option value="all">All Time</option>
-                                    <option value="today">Today</option>
-                                    <option value="week">Past Week</option>
-                                    <option value="month">Past Month</option>
-                                </select>
+                            <h3>My Measurement History ({processHistory(timeFilteredHistory).length} records)</h3>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                 <div style={{ position: 'relative' }}>
                                     <button
                                         onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
@@ -781,9 +837,8 @@ const DoctorDashboard = () => {
                             </table>
                         </div>
                     </motion.div>
-                )}
-
-            </div>
+                </>
+            )}
 
             {selectedUser && (
                 <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
@@ -799,17 +854,13 @@ const DoctorDashboard = () => {
                             <button className="close-btn" onClick={() => setSelectedUser(null)}>&times;</button>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                            <select
-                                value={filterType}
-                                onChange={(e) => setFilterType(e.target.value)}
-                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                            >
-                                <option value="all">All Time</option>
-                                <option value="today">Today</option>
-                                <option value="week">Past Week</option>
-                                <option value="month">Past Month</option>
-                            </select>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <TimePeriodFilter
+                                timePeriod={modalTimePeriod}
+                                setTimePeriod={setModalTimePeriod}
+                                customDateRange={modalCustomDateRange}
+                                setCustomDateRange={setModalCustomDateRange}
+                            />
 
                             <div style={{ position: 'relative' }}>
                                 <button
@@ -1096,10 +1147,8 @@ const DoctorDashboard = () => {
                     </div>
                 )
             }
-        </div >
+        </DashboardLayout>
     );
 };
 
 export default DoctorDashboard;
-
-

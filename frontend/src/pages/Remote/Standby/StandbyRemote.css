@@ -1,0 +1,598 @@
+/* frontend/src/pages/Remote/Standby/StandbyRemote.css */
+
+/* Ensure scroll on body/html when this page is active */
+html:has(.standby-container),
+body:has(.standby-container) {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: auto !important;
+    min-height: 100vh;
+}
+
+.standby-container {
+    display: block;
+    min-height: 100vh;
+    height: auto;
+    /* Allow content to exceed viewport */
+    width: 100%;
+    background: #ffffff;
+    overflow-x: hidden;
+    overflow-y: visible;
+    /* Let parent handle scroll */
+    font-family: var(--font-primary);
+    position: relative;
+}
+
+/* =========================================
+   Navbar
+   ========================================= */
+.landing-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 5%;
+    /* Responsive padding */
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 50;
+}
+
+.nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: #1e293b;
+}
+
+.nav-logo img {
+    height: 40px;
+    width: auto;
+}
+
+.nav-cta {
+    padding: 12px 24px;
+    background: #dc2626;
+    color: white;
+    border-radius: 50px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.nav-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+/* =========================================
+   Hero Section
+   ========================================= */
+.hero-section {
+    display: flex;
+    flex-direction: column-reverse;
+    /* Text below image on mobile usually, but we want text top on mobile? Standard is col-reverse for text-bottom image-top, but let's do standard block flow */
+    align-items: center;
+    padding: 2rem 5% 5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+    gap: 3rem;
+    overflow: hidden;
+    /* Prevent blob overflow */
+}
+
+.hero-text {
+    flex: 1;
+    text-align: center;
+    /* Center on mobile */
+    z-index: 10;
+}
+
+.hero-headline {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #1e293b;
+    margin-bottom: 1.5rem;
+}
+
+.hero-headline span {
+    color: #dc2626;
+    /* Medico Blue becomes Red */
+}
+
+.hero-subtext {
+    font-size: 1.1rem;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-hero-primary {
+    padding: 16px 32px;
+    background: #dc2626;
+    color: white;
+    font-weight: 700;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+    box-shadow: 0 10px 20px -5px rgba(220, 38, 38, 0.4);
+}
+
+.btn-hero-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px -5px rgba(220, 38, 38, 0.5);
+}
+
+.btn-hero-outline {
+    padding: 16px 32px;
+    background: transparent;
+    color: #dc2626;
+    font-weight: 700;
+    border-radius: 50px;
+    border: 2px solid #dc2626;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.btn-hero-outline:hover {
+    background: #fef2f2;
+}
+
+/* Hero Image Container matching reference style */
+.hero-image-container {
+    flex: 1;
+    width: 100%;
+    max-width: 500px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.hero-blob-bg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120%;
+    height: 120%;
+    background: #dc2626;
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    /* Organic blob shape */
+    z-index: 0;
+    opacity: 0.1;
+    /* Subtle red bg */
+}
+
+/* For the solid color card behind image style in reference #2 */
+.hero-image-card {
+    position: relative;
+    z-index: 5;
+    background: #dc2626;
+    /* Medico Blue -> Red */
+    border-radius: 30px 30px 100px 30px;
+    /* Asymmetric corners */
+    padding: 0;
+    overflow: hidden;
+    box-shadow: 0 20px 50px -10px rgba(220, 38, 38, 0.3);
+    width: 100%;
+}
+
+.hero-card-inner {
+    padding: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    background: white;
+}
+
+.hero-logo-img {
+    max-height: 200px;
+    /* Smaller on mobile */
+    width: auto;
+    display: block;
+    object-fit: contain;
+}
+
+/* =========================================
+   Services Section (Red Background)
+   ========================================= */
+.services-section {
+    background: #dc2626;
+    /* The solid color block from reference */
+    padding: 5rem 5%;
+    border-radius: 0 100px 0 100px;
+    /* Stylized corners */
+    margin: 2rem 0;
+    color: white;
+}
+
+.services-header {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.services-header h2 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.services-header p {
+    color: #fecaca;
+    /* Light red text */
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* White cards on Red background */
+.service-card {
+    background: white;
+    /* Glassmorphic or solid white based on ref. Let's do White card for contrast on Red. */
+    border-radius: 20px;
+    padding: 2rem;
+    color: #1e293b;
+    transition: transform 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.service-card:hover {
+    transform: translateY(-5px);
+}
+
+.service-icon-box {
+    width: 60px;
+    height: 60px;
+    background: #fef2f2;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #dc2626;
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.service-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.service-card p {
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+}
+
+.service-arrow {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-arrow-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #dc2626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.service-card:hover .btn-arrow-circle {
+    background: #dc2626;
+    color: white;
+}
+
+
+/* =========================================
+   About Section
+   ========================================= */
+.about-section {
+    padding: 5rem 5%;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    align-items: center;
+}
+
+.about-image-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.about-visual-card {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border-radius: 30px 30px 30px 100px;
+    height: 300px;
+    /* Mobile height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.about-visual-bg-pattern {
+    opacity: 0.1;
+    width: 80%;
+    height: auto;
+    filter: grayscale(100%);
+}
+
+.about-visual-text {
+    position: absolute;
+    font-weight: 900;
+    font-size: 6rem;
+    color: rgba(220, 38, 38, 0.1);
+}
+
+.about-content h2 {
+    font-size: 2rem;
+    color: #1e293b;
+    margin-bottom: 1.5rem;
+    font-weight: 800;
+}
+
+.about-content p {
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.about-features {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.about-feature-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.about-feature-icon {
+    min-width: 50px;
+    height: 50px;
+    background: #fee2e2;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #dc2626;
+}
+
+
+/* =========================================
+   CTA Banner
+   ========================================= */
+.cta-banner {
+    margin: 4rem 5%;
+    background: #dc2626;
+    border-radius: 30px;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative circles */
+.cta-banner::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    left: -50px;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.cta-banner::after {
+    content: '';
+    position: absolute;
+    bottom: -50px;
+    right: -50px;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.cta-banner h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 5;
+}
+
+.cta-banner p {
+    color: #fecaca;
+    margin-bottom: 2rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    z-index: 5;
+}
+
+.btn-cta-white {
+    background: white;
+    color: #dc2626;
+    padding: 16px 36px;
+    border-radius: 50px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.2s;
+    position: relative;
+    z-index: 5;
+}
+
+.btn-cta-white:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* =========================================
+   Footer
+   ========================================= */
+.landing-footer-main {
+    background: #dc2626;
+    color: white;
+    padding: 4rem 5% 2rem;
+    border-top-left-radius: 80px;
+    /* Asymmetric stylistic choice */
+}
+
+.footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    margin-bottom: 3rem;
+}
+
+.footer-brand h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.footer-brand p {
+    color: #fecaca;
+    line-height: 1.6;
+    max-width: 300px;
+}
+
+.footer-links h4 {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    font-weight: 700;
+}
+
+.footer-links ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.footer-links a {
+    color: #fecaca;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.footer-links a:hover {
+    color: white;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fecaca;
+    font-size: 0.9rem;
+}
+
+/* =========================================
+   Responsive Media Queries
+   ========================================= */
+@media (min-width: 768px) {
+    .hero-section {
+        flex-direction: row;
+        /* Side by side on desktop */
+        text-align: left;
+    }
+
+    .hero-text {
+        text-align: left;
+    }
+
+    .hero-card-inner {
+        padding: 60px;
+        /* More padding on desktop */
+    }
+
+    .hero-logo-img {
+        max-height: 300px;
+    }
+
+    .hero-headline {
+        font-size: 3.5rem;
+    }
+
+    .hero-subtext {
+        margin-left: 0;
+    }
+
+    .hero-buttons {
+        justify-content: flex-start;
+    }
+
+    .about-section {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .about-visual-card {
+        height: 400px;
+        /* Larger on desktop */
+    }
+
+    .about-visual-text {
+        font-size: 10rem;
+    }
+
+    .cta-banner h2 {
+        font-size: 2.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .hero-headline {
+        font-size: 4rem;
+    }
+}

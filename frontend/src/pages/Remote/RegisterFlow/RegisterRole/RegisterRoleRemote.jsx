@@ -107,7 +107,6 @@ const RegisterRoleRemote = () => {
             {/* Scrollable Content */}
             <div style={{
                 flex: 1,
-                overflowY: 'auto',
                 padding: '24px',
                 display: 'flex',
                 flexDirection: 'column',

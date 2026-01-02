@@ -21,7 +21,7 @@ import {
 import { getUserProfile, updateUserProfile, changeUserPassword } from '../../utils/api';
 import './PersonalInfo.css';
 
-const PersonalInfo = ({ userId, onProfileUpdate }) => {
+const PersonalInfo = ({ userId, onProfileUpdate, onShowToast }) => {
     // Profile State
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -100,7 +100,11 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
             if (response.success) {
                 setProfile({ ...profile, ...response.user });
                 setIsEditing(false);
-                setMessage({ text: 'Profile updated successfully!', type: 'success' });
+                if (onShowToast) {
+                    onShowToast('success', 'Profile Saved', 'Your profile information has been updated successfully.');
+                } else {
+                    setMessage({ text: 'Profile updated successfully!', type: 'success' });
+                }
 
                 // Update localStorage with new data
                 const userData = JSON.parse(localStorage.getItem('userData') || '{}');
@@ -127,11 +131,37 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
         }
     };
 
+    // Password Strength Calculation
+    const calculatePasswordStrength = (password) => {
+        if (!password) return { score: 0, label: "", color: "#e2e8f0" };
+
+        let score = 0;
+        if (password.length >= 6) score += 1;
+        if (password.length >= 8) score += 1;
+        if (/[A-Z]/.test(password)) score += 1;
+        if (/[0-9]/.test(password)) score += 1;
+        if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+        if (password.length > 0 && password.length < 6) return { score: 0, label: "Too Short (Min 6)", color: "#ef4444" };
+        if (score <= 2) return { score: 1, label: "Weak", color: "#ef4444" };
+        if (score <= 4) return { score: 2, label: "Medium", color: "#f59e0b" };
+        return { score: 3, label: "Strong", color: "#22c55e" };
+    };
+
+    const passwordStrength = calculatePasswordStrength(passwordData.new_password);
+    const passwordsMatch = passwordData.new_password && passwordData.confirm_password && passwordData.new_password === passwordData.confirm_password;
+    const isConfirmTouched = passwordData.confirm_password.length > 0;
+
+    // Derived errors check (cleared on typing)
+    const [fieldErrors, setFieldErrors] = useState({ current: '', new: '', confirm: '' });
+
     const handlePasswordInputChange = (field, value) => {
         setPasswordData(prev => ({
             ...prev,
             [field]: value
         }));
+        // Clear specific field error on change
+        setFieldErrors(prev => ({ ...prev, [field]: '' }));
     };
 
     const togglePasswordVisibility = (field) => {
@@ -142,30 +172,53 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
     };
 
     const handleChangePassword = async () => {
+        // Reset previous errors
+        setPasswordMessage({ text: '', type: '' });
+        setFieldErrors({ current: '', new: '', confirm: '' });
+
         try {
             // Validation
-            if (!passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password) {
-                setPasswordMessage({ text: 'All fields are required', type: 'error' });
-                return;
+            let hasError = false;
+            const newErrors = { current: '', new: '', confirm: '' };
+
+            if (!passwordData.current_password) {
+                newErrors.current = 'Current password is required';
+                hasError = true;
+            }
+            if (!passwordData.new_password) {
+                newErrors.new = 'New password is required';
+                hasError = true;
+            }
+            if (!passwordData.confirm_password) {
+                newErrors.confirm = 'Please confirm your new password';
+                hasError = true;
             }
 
-            if (passwordData.new_password !== passwordData.confirm_password) {
-                setPasswordMessage({ text: 'New passwords do not match', type: 'error' });
-                return;
+            if (!hasError && passwordData.new_password !== passwordData.confirm_password) {
+                newErrors.confirm = 'Passwords do not match';
+                hasError = true;
             }
 
-            if (passwordData.new_password.length < 6) {
-                setPasswordMessage({ text: 'Password must be at least 6 characters', type: 'error' });
+            if (!hasError && passwordData.new_password.length < 6) {
+                newErrors.new = 'Password must be at least 6 characters';
+                hasError = true;
+            }
+
+            if (hasError) {
+                setFieldErrors(newErrors);
                 return;
             }
 
             setPasswordLoading(true);
-            setPasswordMessage({ text: '', type: '' });
 
             const response = await changeUserPassword(userId, passwordData);
 
             if (response.success) {
-                setPasswordMessage({ text: 'Password changed successfully!', type: 'success' });
+                if (onShowToast) {
+                    onShowToast('success', 'Password Changed', 'Your password has been updated securely.');
+                } else {
+                    setPasswordMessage({ text: 'Password changed successfully!', type: 'success' });
+                }
                 setPasswordData({
                     current_password: '',
                     new_password: '',
@@ -176,7 +229,13 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                     setPasswordMessage({ text: '', type: '' });
                 }, 2000);
             } else {
-                setPasswordMessage({ text: response.message || 'Failed to change password', type: 'error' });
+                // Handle server errors - try to map to fields if possible
+                const msg = response.message || 'Failed to change password';
+                if (msg.toLowerCase().includes('current') || msg.toLowerCase().includes('old')) {
+                    setFieldErrors(prev => ({ ...prev, current: msg }));
+                } else {
+                    setPasswordMessage({ text: msg, type: 'error' });
+                }
             }
         } catch (error) {
             console.error('Error changing password:', error);
@@ -219,7 +278,7 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                 <div className="section-header">
                     <div className="section-title">
                         <Person className="section-icon" />
-                        <h3>Personal Information</h3>
+                        <h3>Account Settings</h3>
                     </div>
                     <button
                         className={`edit-toggle-btn ${isEditing ? 'editing' : ''}`}
@@ -448,6 +507,7 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                                     value={passwordData.current_password}
                                     onChange={(e) => handlePasswordInputChange('current_password', e.target.value)}
                                     placeholder="Enter current password"
+                                    className={fieldErrors.current ? 'input-error' : ''}
                                 />
                                 <button
                                     type="button"
@@ -457,6 +517,12 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                                     {showPasswords.current ? <VisibilityOff /> : <Visibility />}
                                 </button>
                             </div>
+                            {fieldErrors.current && (
+                                <div className="field-feedback error">
+                                    <ErrorIcon style={{ fontSize: '0.9rem' }} />
+                                    {fieldErrors.current}
+                                </div>
+                            )}
                         </div>
 
                         <div className="password-field">
@@ -467,6 +533,7 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                                     value={passwordData.new_password}
                                     onChange={(e) => handlePasswordInputChange('new_password', e.target.value)}
                                     placeholder="Enter new password (min. 6 characters)"
+                                    className={fieldErrors.new ? 'input-error' : ''}
                                 />
                                 <button
                                     type="button"
@@ -476,6 +543,36 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                                     {showPasswords.new ? <VisibilityOff /> : <Visibility />}
                                 </button>
                             </div>
+
+                            {/* Strength Meter */}
+                            {passwordData.new_password && (
+                                <div className="password-strength-meter">
+                                    <div className="strength-bars">
+                                        {[1, 2, 3].map((level) => (
+                                            <div
+                                                key={level}
+                                                className="strength-bar"
+                                                style={{
+                                                    backgroundColor: passwordStrength.score >= level ? passwordStrength.color : '#e2e8f0'
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                    <div
+                                        className="strength-text"
+                                        style={{ color: passwordStrength.color }}
+                                    >
+                                        {passwordStrength.label}
+                                    </div>
+                                </div>
+                            )}
+
+                            {fieldErrors.new && (
+                                <div className="field-feedback error">
+                                    <ErrorIcon style={{ fontSize: '0.9rem' }} />
+                                    {fieldErrors.new}
+                                </div>
+                            )}
                         </div>
 
                         <div className="password-field">
@@ -486,6 +583,7 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                                     value={passwordData.confirm_password}
                                     onChange={(e) => handlePasswordInputChange('confirm_password', e.target.value)}
                                     placeholder="Confirm new password"
+                                    className={fieldErrors.confirm ? 'input-error' : ''}
                                 />
                                 <button
                                     type="button"
@@ -495,6 +593,30 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                                     {showPasswords.confirm ? <VisibilityOff /> : <Visibility />}
                                 </button>
                             </div>
+
+                            {/* Match Feedback */}
+                            {isConfirmTouched && (
+                                <div className={`field-feedback ${passwordsMatch ? 'success' : 'error'}`}>
+                                    {passwordsMatch ? (
+                                        <>
+                                            <CheckCircle style={{ fontSize: '0.9rem' }} />
+                                            Passwords match
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ErrorIcon style={{ fontSize: '0.9rem' }} />
+                                            Passwords do not match
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            {fieldErrors.confirm && !isConfirmTouched && (
+                                <div className="field-feedback error">
+                                    <ErrorIcon style={{ fontSize: '0.9rem' }} />
+                                    {fieldErrors.confirm}
+                                </div>
+                            )}
                         </div>
 
                         <div className="password-actions">
@@ -508,6 +630,7 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                                         confirm_password: ''
                                     });
                                     setPasswordMessage({ text: '', type: '' });
+                                    setFieldErrors({ current: '', new: '', confirm: '' });
                                 }}
                             >
                                 Cancel
@@ -539,7 +662,6 @@ const PersonalInfo = ({ userId, onProfileUpdate }) => {
                     </p>
                 )}
             </div>
-
             {/* Account Info Section */}
             <div className="personal-info-section account-section">
                 <div className="section-header">

@@ -130,6 +130,7 @@ export default function Sharing() {
           title: 'Email Sent!',
           message: 'Your health report has been successfully sent to your registered email address.'
         });
+        speak("Email sent");
       } else {
         const errorData = await response.json();
         setModalConfig({
@@ -176,6 +177,7 @@ export default function Sharing() {
           title: 'Printing...',
           message: 'Receipt sent to printer successfully.'
         });
+        speak("Receipt has been printed");
       } else {
         throw new Error(result.error || 'Printing failed');
       }

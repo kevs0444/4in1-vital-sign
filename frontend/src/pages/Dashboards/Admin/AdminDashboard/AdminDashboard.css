@@ -2,7 +2,7 @@
 .admin-container {
     min-height: 100vh;
     background-color: #f8f9fa;
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--font-primary);
     display: flex;
     flex-direction: column;
 }
@@ -96,13 +96,13 @@
     transform: translateY(-1px);
 }
 
-/* Main Content Area */
+/* Main Content Area - simplified as DashboardLayout handles this */
 .admin-content {
     flex: 1;
-    padding: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
 /* Charts Section */
@@ -556,12 +556,13 @@
         width: 100%;
     }
 }
+
 /* --- Modern Analytics Dashboard Styles --- */
 .analytics-dashboard {
-    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    width: 100%;
 }
 
 /* Metrics Grid */
@@ -622,7 +623,8 @@
 }
 
 .metric-value.status-text {
-    color: #16a34a; /* Green for OK */
+    color: #16a34a;
+    /* Green for OK */
 }
 
 .metric-trend {
@@ -651,16 +653,32 @@
 }
 
 @keyframes pulse-ring {
-    0% { box-shadow: 0 0 0 0px rgba(34, 197, 94, 0.4); }
-    100% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+    0% {
+        box-shadow: 0 0 0 0px rgba(34, 197, 94, 0.4);
+    }
+
+    100% {
+        box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+    }
 }
 
 /* Analytics Grid Layout */
 .analytics-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 columns for flexible layout */
-    grid-template-rows: auto auto;
+    grid-template-columns: repeat(4, 1fr);
     gap: 1.5rem;
+}
+
+@media (max-width: 1400px) {
+    .analytics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .analytics-card {
@@ -717,22 +735,42 @@
 /* Specific Card Layouts */
 .distribution-card {
     grid-column: span 1;
-    min-height: 350px;
+    min-height: 400px;
 }
 
 .trends-card {
     grid-column: span 3;
-    min-height: 350px;
+    min-height: 400px;
 }
 
 .health-card {
     grid-column: span 2;
-    min-height: 300px;
+    min-height: 350px;
 }
 
 .insights-card {
     grid-column: span 2;
-    min-height: 300px;
+    min-height: 350px;
+}
+
+@media (max-width: 1400px) {
+
+    .distribution-card,
+    .trends-card,
+    .health-card,
+    .insights-card {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .distribution-card,
+    .trends-card,
+    .health-card,
+    .insights-card {
+        grid-column: span 1;
+    }
 }
 
 /* Chart Wrappers */
@@ -740,7 +778,8 @@
     flex: 1;
     position: relative;
     width: 100%;
-    min-height: 0; /* Important for Chart.js in flex container */
+    min-height: 0;
+    /* Important for Chart.js in flex container */
 }
 
 .doughnut-wrapper {
@@ -754,14 +793,16 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%); /* Centered */
+    transform: translate(-50%, -50%);
+    /* Centered */
     text-align: center;
     pointer-events: none;
 }
 
 .center-number {
     display: block;
-    font-size: 2rem; /* Big number */
+    font-size: 2rem;
+    /* Big number */
     font-weight: 800;
     color: #1e293b;
     line-height: 1;
@@ -792,7 +833,8 @@
 }
 
 .insight-item:first-child {
-    border-left-color: #ef4444; /* Red for high importance */
+    border-left-color: #ef4444;
+    /* Red for high importance */
     background: #fef2f2;
 }
 
@@ -819,12 +861,14 @@
 }
 
 .skeleton-box {
-    height: 1.5rem; /* Matches text height roughly */
+    height: 1.5rem;
+    /* Matches text height roughly */
     background: #e2e8f0;
     border-radius: 6px;
     position: relative;
     overflow: hidden;
-    width: 100%; /* Default width */
+    width: 100%;
+    /* Default width */
 }
 
 .skeleton-box::after {
@@ -835,13 +879,11 @@
     bottom: 0;
     left: 0;
     transform: translateX(-100%);
-    background-image: linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0) 0,
-        rgba(255, 255, 255, 0.5) 20%,
-        rgba(255, 255, 255, 0.8) 60%,
-        rgba(255, 255, 255, 0)
-    );
+    background-image: linear-gradient(90deg,
+            rgba(255, 255, 255, 0) 0,
+            rgba(255, 255, 255, 0.5) 20%,
+            rgba(255, 255, 255, 0.8) 60%,
+            rgba(255, 255, 255, 0));
     animation: shimmer 2s infinite;
 }
 
@@ -856,9 +898,11 @@
     .analytics-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+
     .trends-card {
         grid-column: span 2;
     }
+
     .distribution-card {
         grid-column: span 2;
     }
@@ -868,9 +912,15 @@
     .analytics-grid {
         grid-template-columns: 1fr;
     }
-    .analytics-card, .trends-card, .health-card, .distribution-card, .insights-card {
+
+    .analytics-card,
+    .trends-card,
+    .health-card,
+    .distribution-card,
+    .insights-card {
         grid-column: span 1;
     }
+
     .metrics-grid {
         grid-template-columns: 1fr;
     }
@@ -889,7 +939,11 @@
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+    0% {
+        transform: rotate(0deg);
+    }
 
+    100% {
+        transform: rotate(360deg);
+    }
+}

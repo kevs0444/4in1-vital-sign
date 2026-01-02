@@ -1,10 +1,103 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Logout, Person, Visibility, Settings } from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Logout, Person, Visibility, Settings, History, Check, Close, ErrorOutline, WarningAmber } from '@mui/icons-material';
 import './StudentDashboard.css';
 import { getMeasurementHistory } from '../../../../utils/api';
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
+import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
+import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
+
+// StatusToast Component (Local Definition)
+const StatusToast = ({ toast, onClose }) => {
+    // toast object should contain: { id (optional), type: 'success'|'error'|'warning', title, message }
+
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => {
+                onClose();
+            }, 5000); // Auto close after 5 seconds
+            return () => clearTimeout(timer);
+        }
+    }, [toast, onClose]);
+
+    if (!toast) return null;
+
+    return (
+        <div className="status-toast-overlay" style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 2000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+        }}>
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={toast.id || 'toast'}
+                    initial={{ opacity: 0, x: 50, scale: 0.95 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    className={`status-toast ${toast.type}`}
+                    style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        minWidth: '320px',
+                        maxWidth: '400px',
+                        borderLeft: `6px solid ${toast.type === 'success' ? '#10b981' :
+                            toast.type === 'error' ? '#ef4444' :
+                                '#f59e0b'
+                            }`
+                    }}
+                >
+                    <div className={`toast-icon-wrapper ${toast.type}`} style={{
+                        color: toast.type === 'success' ? '#10b981' :
+                            toast.type === 'error' ? '#ef4444' :
+                                '#f59e0b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginTop: '2px'
+                    }}>
+                        {toast.type === 'success' && <Check />}
+                        {toast.type === 'error' && <ErrorOutline />}
+                        {toast.type === 'warning' && <WarningAmber />}
+                    </div>
+
+                    <div className="toast-content" style={{ flex: 1 }}>
+                        <span className="toast-title" style={{ display: 'block', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                            {toast.title}
+                        </span>
+                        <span className="toast-message" style={{ display: 'block', color: '#64748b', fontSize: '0.9rem', lineHeight: '1.4' }}>
+                            {toast.message}
+                        </span>
+                    </div>
+
+                    <button className="toast-close" onClick={onClose} style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <Close fontSize="small" />
+                    </button>
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    );
+};
+
 
 const StudentDashboard = () => {
     const navigate = useNavigate();
@@ -14,6 +107,7 @@ const StudentDashboard = () => {
     const [selectedMeasurement, setSelectedMeasurement] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [activeTab, setActiveTab] = useState('history'); // 'history', 'profile'
+    const [toast, setToast] = useState(null);
 
     useEffect(() => {
         // Authenticate
@@ -49,13 +143,21 @@ const StudentDashboard = () => {
         fetchData();
     }, [navigate, location]);
 
-    // Filtering & Sorting State
-    const [filterType, setFilterType] = useState('all'); // 'all', 'today', 'week', 'month'
+    // Time Period Filter State (shared between analytics and table)
+    const [timePeriod, setTimePeriod] = useState('weekly'); // daily, weekly, monthly, annually, custom
+    const [customDateRange, setCustomDateRange] = useState(null);
+
+    // Other Filtering & Sorting State
     const [sortOrder, setSortOrder] = useState('desc'); // 'desc', 'asc'
     const [metricFilter, setMetricFilter] = useState(['all']); // Array for multi-select
     const [isMetricDropdownOpen, setIsMetricDropdownOpen] = useState(false);
     const [riskFilter, setRiskFilter] = useState(['all']); // Array for multi-select
     const [isRiskDropdownOpen, setIsRiskDropdownOpen] = useState(false);
+
+    // Filter history by time period first
+    const timeFilteredHistory = useMemo(() => {
+        return filterHistoryByTimePeriod(history, timePeriod, customDateRange);
+    }, [history, timePeriod, customDateRange]);
 
     const toggleMetric = (value) => {
         if (value === 'all') {
@@ -99,24 +201,10 @@ const StudentDashboard = () => {
         setRiskFilter(newFilters);
     };
 
-    // Filtering & Sorting Helper
+    // Filtering & Sorting Helper (now uses pre-filtered timeFilteredHistory)
     const processHistory = (data) => {
         if (!data) return [];
         let processed = [...data];
-
-        // Filter
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-        if (filterType === 'today') {
-            processed = processed.filter(item => new Date(item.created_at) >= startOfToday);
-        } else if (filterType === 'week') {
-            processed = processed.filter(item => new Date(item.created_at) >= weekAgo);
-        } else if (filterType === 'month') {
-            processed = processed.filter(item => new Date(item.created_at) >= monthAgo);
-        }
 
         // Metric Filter
         if (!metricFilter.includes('all')) {
@@ -177,320 +265,285 @@ const StudentDashboard = () => {
         });
     };
 
-    // Helper to get recommendation text (mocked if not in API history response yet)
-    // Assuming backend might not return full recommendations in listing, but let's assume it does or we mock it.
-    // The history endpoint logic in backend (Step 737) returns:
-    // id, created_at, temperature, systolic, diastolic, heart_rate, spo2, weight, bmi, risk_category
-    // It DOES NOT return recommendation text.
-    // So "View Recommendation" might need to fetch individual measurement or we rely on Risk Category for now.
-    // I will show Risk Category details.
+    // Define Tabs
+    const tabs = [
+        { id: 'history', label: 'Measurement History', icon: <History /> },
+        { id: 'profile', label: 'Personal Info', icon: <Settings /> }
+    ];
+
+    if (!currentUser) return null;
 
     return (
-        <div className="dashboard-container">
-            {/* Header */}
-            <header className="dashboard-header">
-                <div className="header-brand">
-                    <div className="header-brand-icon">
-                        <Person />
-                    </div>
-                    <div className="header-title">
-                        <h1>My Health Portal</h1>
-                        <p className="header-subtitle">Student Dashboard</p>
-                    </div>
-                </div>
-                <div className="header-actions">
-                    <button className="logout-button" onClick={handleLogout}>
-                        <Logout /> <span>Logout</span>
-                    </button>
-                </div>
-            </header>
+        <DashboardLayout
+            title="My Health Portal"
+            subtitle="Student Dashboard"
+            user={currentUser}
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onLogout={handleLogout}
+        >
+            <StatusToast toast={toast} onClose={() => setToast(null)} />
 
-            {/* Tab Navigation */}
-            <div className="dashboard-tabs" style={{ padding: '0 2rem', display: 'flex', gap: '1rem', borderBottom: '1px solid #e2e8f0', background: 'white', marginBottom: '1rem' }}>
-                <button
-                    onClick={() => setActiveTab('history')}
-                    style={{
-                        padding: '1rem',
-                        border: 'none',
-                        background: 'none',
-                        borderBottom: activeTab === 'history' ? '3px solid #dc2626' : '3px solid transparent',
-                        fontWeight: activeTab === 'history' ? 'bold' : 'normal',
-                        color: activeTab === 'history' ? '#dc2626' : '#64748b',
-                        cursor: 'pointer',
-                        fontSize: '1rem'
+            {/* Personal Info Tab */}
+            {activeTab === 'profile' && currentUser && (
+                <PersonalInfo
+                    userId={currentUser.userId || currentUser.user_id || currentUser.id}
+                    onProfileUpdate={(updatedUser) => {
+                        setCurrentUser(prev => ({ ...prev, ...updatedUser }));
                     }}
-                >
-                    Measurement History
-                </button>
-                <button
-                    onClick={() => setActiveTab('profile')}
-                    style={{
-                        padding: '1rem',
-                        border: 'none',
-                        background: 'none',
-                        borderBottom: activeTab === 'profile' ? '3px solid #dc2626' : '3px solid transparent',
-                        fontWeight: activeTab === 'profile' ? 'bold' : 'normal',
-                        color: activeTab === 'profile' ? '#dc2626' : '#64748b',
-                        cursor: 'pointer',
-                        fontSize: '1rem'
-                    }}
-                >
-                    <Settings style={{ fontSize: '1.1rem', marginRight: '4px', verticalAlign: 'middle' }} />
-                    Personal Info
-                </button>
-            </div>
+                    onShowToast={(type, title, message) => setToast({ type, title, message, id: Date.now() })}
+                />
+            )}
 
-            {/* Content */}
-            <div className="dashboard-content">
-                {/* Personal Info Tab */}
-                {activeTab === 'profile' && currentUser && (
-                    <PersonalInfo
-                        userId={currentUser.userId || currentUser.user_id || currentUser.id}
-                        onProfileUpdate={(updatedUser) => {
-                            setCurrentUser(prev => ({ ...prev, ...updatedUser }));
-                        }}
-                    />
-                )}
+            {/* History Tab */}
+            {activeTab === 'history' && (
+                <>
+                    {/* Analytics Section with shared time period */}
+                    <div style={{ marginBottom: '30px' }}>
+                        <DashboardAnalytics
+                            user={currentUser}
+                            history={history}
+                            timePeriod={timePeriod}
+                            customDateRange={customDateRange}
+                        />
+                    </div>
 
-                {/* History Tab */}
-                {activeTab === 'history' && (
-                    <>
-                        <motion.div
-                            className="summary-cards"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                        >
-                            <div className="summary-card highlight">
-                                <h3>Total Checkups</h3>
-                                <div className="summary-value">{history.length}</div>
-                                <div className="summary-label">Measurements Taken</div>
+                    {/* Time Period Filter for Table */}
+                    <div style={{ marginBottom: '20px' }}>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter Records</h3>
+                        <TimePeriodFilter
+                            timePeriod={timePeriod}
+                            setTimePeriod={setTimePeriod}
+                            customDateRange={customDateRange}
+                            setCustomDateRange={setCustomDateRange}
+                        />
+                    </div>
+
+                    <motion.div
+                        className="summary-cards"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        style={{ display: 'none' }} // Hiding old cards but keeping code for safety/reference if needed for now
+                    >
+                        <div className="summary-card highlight">
+                            <h3>Total Checkups</h3>
+                            <div className="summary-value">{history.length}</div>
+                            <div className="summary-label">Measurements Taken</div>
+                        </div>
+                        <div className="summary-card">
+                            <h3>Latest Status</h3>
+                            <div className="summary-value" style={{ fontSize: '1.5rem', color: history.length > 0 ? getRiskColor(history[0].risk_category) : '#64748b' }}>
+                                {history.length > 0 ? (history[0].risk_category || 'N/A') : 'No Data'}
                             </div>
-                            <div className="summary-card">
-                                <h3>Latest Status</h3>
-                                <div className="summary-value" style={{ fontSize: '1.5rem', color: history.length > 0 ? getRiskColor(history[0].risk_category) : '#64748b' }}>
-                                    {history.length > 0 ? (history[0].risk_category || 'N/A') : 'No Data'}
-                                </div>
-                                <div className="summary-label">
-                                    {history.length > 0 ? formatDate(history[0].created_at) : '-'}
-                                </div>
+                            <div className="summary-label">
+                                {history.length > 0 ? formatDate(history[0].created_at) : '-'}
                             </div>
-                        </motion.div>
+                        </div>
+                    </motion.div>
 
-                        <motion.div
-                            className="table-section"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                        >
-                            <div className="table-header">
-                                <h3>Measurement History</h3>
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <select
-                                        value={filterType}
-                                        onChange={(e) => setFilterType(e.target.value)}
-                                        style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                    <motion.div
+                        className="table-section"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <div className="table-header">
+                            <h3>Measurement History ({processHistory(timeFilteredHistory).length} records)</h3>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <select
+                                    value={sortOrder}
+                                    onChange={(e) => setSortOrder(e.target.value)}
+                                    style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                >
+                                    <option value="desc">Newest First</option>
+                                    <option value="asc">Oldest First</option>
+                                </select>
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #cbd5e1',
+                                            background: 'white',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            minWidth: '150px',
+                                            justifyContent: 'space-between'
+                                        }}
                                     >
-                                        <option value="all">All Time</option>
-                                        <option value="today">Today</option>
-                                        <option value="week">Past Week</option>
-                                        <option value="month">Past Month</option>
-                                    </select>
-                                    <select
-                                        value={sortOrder}
-                                        onChange={(e) => setSortOrder(e.target.value)}
-                                        style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        <span>
+                                            {metricFilter.includes('all') ? 'All Metrics' :
+                                                metricFilter.length > 0 ? `${metricFilter.length} Selected` : 'Select Metrics'}
+                                        </span>
+                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                    </button>
+                                    {isMetricDropdownOpen && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            zIndex: 100,
+                                            background: 'white',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '6px',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            width: '200px',
+                                            padding: '8px',
+                                            marginTop: '4px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px'
+                                        }}>
+                                            {[
+                                                { value: 'all', label: 'All Metrics' },
+                                                { value: 'bp', label: 'Blood Pressure' },
+                                                { value: 'hr', label: 'Heart Rate' },
+                                                { value: 'rr', label: 'Respiratory Rate' },
+                                                { value: 'spo2', label: 'SpO2' },
+                                                { value: 'temp', label: 'Temp' },
+                                                { value: 'weight', label: 'Weight' },
+                                                { value: 'height', label: 'Height' },
+                                                { value: 'bmi', label: 'BMI' }
+                                            ].map(opt => (
+                                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={metricFilter.includes(opt.value)}
+                                                        onChange={() => toggleMetric(opt.value)}
+                                                        style={{ cursor: 'pointer' }}
+                                                    />
+                                                    {opt.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        onClick={() => setIsRiskDropdownOpen(!isRiskDropdownOpen)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #cbd5e1',
+                                            background: 'white',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            minWidth: '150px',
+                                            justifyContent: 'space-between'
+                                        }}
                                     >
-                                        <option value="desc">Newest First</option>
-                                        <option value="asc">Oldest First</option>
-                                    </select>
-                                    <div style={{ position: 'relative' }}>
-                                        <button
-                                            onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
-                                            style={{
-                                                padding: '8px 12px',
-                                                borderRadius: '6px',
-                                                border: '1px solid #cbd5e1',
-                                                background: 'white',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '5px',
-                                                minWidth: '150px',
-                                                justifyContent: 'space-between'
-                                            }}
-                                        >
-                                            <span>
-                                                {metricFilter.includes('all') ? 'All Metrics' :
-                                                    metricFilter.length > 0 ? `${metricFilter.length} Selected` : 'Select Metrics'}
-                                            </span>
-                                            <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                        </button>
-                                        {isMetricDropdownOpen && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '100%',
-                                                left: 0,
-                                                zIndex: 100,
-                                                background: 'white',
-                                                border: '1px solid #e2e8f0',
-                                                borderRadius: '6px',
-                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                                width: '200px',
-                                                padding: '8px',
-                                                marginTop: '4px',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '4px'
-                                            }}>
-                                                {[
-                                                    { value: 'all', label: 'All Metrics' },
-                                                    { value: 'bp', label: 'Blood Pressure' },
-                                                    { value: 'hr', label: 'Heart Rate' },
-                                                    { value: 'rr', label: 'Respiratory Rate' },
-                                                    { value: 'spo2', label: 'SpO2' },
-                                                    { value: 'temp', label: 'Temp' },
-                                                    { value: 'weight', label: 'Weight' },
-                                                    { value: 'height', label: 'Height' },
-                                                    { value: 'bmi', label: 'BMI' }
-                                                ].map(opt => (
-                                                    <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={metricFilter.includes(opt.value)}
-                                                            onChange={() => toggleMetric(opt.value)}
-                                                            style={{ cursor: 'pointer' }}
-                                                        />
-                                                        {opt.label}
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div style={{ position: 'relative' }}>
-                                        <button
-                                            onClick={() => setIsRiskDropdownOpen(!isRiskDropdownOpen)}
-                                            style={{
-                                                padding: '8px 12px',
-                                                borderRadius: '6px',
-                                                border: '1px solid #cbd5e1',
-                                                background: 'white',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '5px',
-                                                minWidth: '150px',
-                                                justifyContent: 'space-between'
-                                            }}
-                                        >
-                                            <span>
-                                                {riskFilter.includes('all') ? 'All Risks' :
-                                                    riskFilter.length > 0 ? `${riskFilter.length} Selected` : 'Select Risks'}
-                                            </span>
-                                            <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                        </button>
-                                        {isRiskDropdownOpen && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '100%',
-                                                left: 0,
-                                                zIndex: 100,
-                                                background: 'white',
-                                                border: '1px solid #e2e8f0',
-                                                borderRadius: '6px',
-                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                                width: '200px',
-                                                padding: '8px',
-                                                marginTop: '4px',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '4px'
-                                            }}>
-                                                {[
-                                                    { value: 'all', label: 'All Risks' },
-                                                    { value: 'low', label: 'Low Risk' },
-                                                    { value: 'moderate', label: 'Moderate Risk' },
-                                                    { value: 'high', label: 'High Risk' },
-                                                    { value: 'critical', label: 'Critical Risk' }
-                                                ].map(opt => (
-                                                    <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={riskFilter.includes(opt.value)}
-                                                            onChange={() => toggleRisk(opt.value)}
-                                                            style={{ cursor: 'pointer' }}
-                                                        />
-                                                        {opt.label}
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                        <span>
+                                            {riskFilter.includes('all') ? 'All Risks' :
+                                                riskFilter.length > 0 ? `${riskFilter.length} Selected` : 'Select Risks'}
+                                        </span>
+                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                    </button>
+                                    {isRiskDropdownOpen && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            zIndex: 100,
+                                            background: 'white',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '6px',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            width: '200px',
+                                            padding: '8px',
+                                            marginTop: '4px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px'
+                                        }}>
+                                            {[
+                                                { value: 'all', label: 'All Risks' },
+                                                { value: 'low', label: 'Low Risk' },
+                                                { value: 'moderate', label: 'Moderate Risk' },
+                                                { value: 'high', label: 'High Risk' },
+                                                { value: 'critical', label: 'Critical Risk' }
+                                            ].map(opt => (
+                                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={riskFilter.includes(opt.value)}
+                                                        onChange={() => toggleRisk(opt.value)}
+                                                        style={{ cursor: 'pointer' }}
+                                                    />
+                                                    {opt.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                            <div className="table-container-wrapper">
-                                <table className="history-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP (mmHg)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR (bpm)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR (bpm)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2 (%)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp (°C)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
-                                            <th>Risk Status</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(() => {
-                                            const processedHistory = processHistory(history);
-                                            return loading ? (
-                                                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Loading history...</td></tr>
-                                            ) : processedHistory.length === 0 ? (
-                                                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No measurements found. Visit a Kiosk to get started!</td></tr>
-                                            ) : (
-                                                processedHistory.map((m) => (
-                                                    <tr key={m.id}>
-                                                        <td>{formatDate(m.created_at)}</td>
-                                                        {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{m.heart_rate ? m.heart_rate : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{m.respiratory_rate ? m.respiratory_rate : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{m.spo2 ? `${m.spo2}%` : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{m.temperature ? `${m.temperature}°C` : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{m.weight ? m.weight : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{m.height ? m.height : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : 'Not Measured'}</td>}
-                                                        <td>
-                                                            <span className="risk-badge" style={{
-                                                                color: getRiskColor(m.risk_category),
-                                                                fontWeight: 'bold',
-                                                                textTransform: 'capitalize'
-                                                            }}>
-                                                                {m.risk_category || 'Unknown'}
-                                                            </span>
-                                                        </td>
-                                                        <td>
-                                                            <button
-                                                                className="action-btn"
-                                                                onClick={() => setSelectedMeasurement(m)}
-                                                            >
-                                                                <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            );
-                                        })()}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </div>
+                        </div>
+                        <div className="table-container-wrapper">
+                            <table className="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP (mmHg)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR (bpm)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR (bpm)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2 (%)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp (°C)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
+                                        <th>Risk Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(() => {
+                                        const processedHistory = processHistory(timeFilteredHistory);
+                                        return loading ? (
+                                            <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Loading history...</td></tr>
+                                        ) : processedHistory.length === 0 ? (
+                                            <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No measurements found. Visit a Kiosk to get started!</td></tr>
+                                        ) : (
+                                            processedHistory.map((m) => (
+                                                <tr key={m.id}>
+                                                    <td>{formatDate(m.created_at)}</td>
+                                                    {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{m.heart_rate ? m.heart_rate : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{m.respiratory_rate ? m.respiratory_rate : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{m.spo2 ? `${m.spo2}%` : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{m.temperature ? `${m.temperature}°C` : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{m.weight ? m.weight : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{m.height ? m.height : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : 'Not Measured'}</td>}
+                                                    <td>
+                                                        <span className={`risk-badge ${m.risk_category?.toLowerCase().includes('normal') ? 'risk-normal' :
+                                                            m.risk_category?.toLowerCase().includes('high') ? 'risk-high' : 'risk-elevated'
+                                                            }`}>
+                                                            {m.risk_category || 'Unknown'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <button
+                                                            className="action-btn"
+                                                            onClick={() => setSelectedMeasurement(m)}
+                                                        >
+                                                            <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        );
+                                    })()}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                </>
+            )}
 
             {/* Recommendation Modal */}
             {selectedMeasurement && (
@@ -586,9 +639,8 @@ const StudentDashboard = () => {
                     </motion.div>
                 </div>
             )}
-        </div>
+        </DashboardLayout>
     );
 };
 
 export default StudentDashboard;
-

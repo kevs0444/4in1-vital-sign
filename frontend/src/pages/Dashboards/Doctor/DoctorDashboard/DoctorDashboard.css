@@ -1,8 +1,6 @@
 /* DoctorDashboard.css - Green Theme */
 .dashboard-container {
-    min-height: 100vh;
-    background-color: #f8f9fa;
-    font-family: 'Outfit', sans-serif;
+    width: 100%;
     display: flex;
     flex-direction: column;
 }
@@ -82,10 +80,10 @@
 /* Main Content */
 .dashboard-content {
     flex: 1;
-    padding: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
 .section-title {
