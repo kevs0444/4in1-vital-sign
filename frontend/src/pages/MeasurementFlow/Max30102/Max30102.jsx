@@ -249,6 +249,8 @@ export default function Max30102() {
 
         console.log("Finger check:", {
           newFingerDetected,
+          fingerStatus: data.finger_status, // NEW: Backend-provided finger status
+          irValue: data.ir_value, // IR value for debugging
           previousFingerState: previousFingerStateRef.current,
           isMeasuring,
           measurementComplete

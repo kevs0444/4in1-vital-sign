@@ -333,19 +333,81 @@ class SensorManager:
             except ValueError:
                 pass
 
-        elif data == "FINGER_DETECTED":
+        # Handle Arduino finger detection messages (multiple formats)
+        elif data == "FINGER_DETECTED" or "Finger Detected" in data or data == "MAX30102_FINGER_STATUS:DETECTED":
             self.live_data['max30102']['finger_detected'] = True
             self.live_data['max30102']['measurement_started'] = True
             self._max30102_measurement_active = True
             logger.info("✅ Finger detected - Automatic measurement starting")
 
-        elif data == "FINGER_REMOVED":
+        elif data == "FINGER_REMOVED" or "Finger removed" in data or data == "MAX30102_FINGER_STATUS:NOT_DETECTED":
             self.live_data['max30102']['finger_detected'] = False
             self.live_data['max30102']['measurement_started'] = False
             self._max30102_measurement_active = False
             logger.info("⚠️ Finger removed - Measurement stopped")
+        
+        # Handle MAX30102_STATE messages for additional state tracking
+        elif data.startswith("MAX30102_STATE:"):
+            state = data.split(":")[1] if ":" in data else ""
+            if state in ["FINGER_DETECTED", "MEASURING"]:
+                self.live_data['max30102']['finger_detected'] = True
+                self.live_data['max30102']['measurement_started'] = True
+                self._max30102_measurement_active = True
+                logger.info(f"✅ MAX30102 State: {state}")
+            elif state in ["WAITING_FOR_FINGER", "FINGER_REMOVED_DURING_MEASUREMENT", "MEASUREMENT_STOPPED_FINGER_REMOVED"]:
+                self.live_data['max30102']['finger_detected'] = False
+                self.live_data['max30102']['measurement_started'] = False
+                self._max30102_measurement_active = False
+                logger.info(f"⚠️ MAX30102 State: {state}")
+            else:
+                logger.info(f"📍 MAX30102 State: {state}")
+        
+        # Handle waiting for signal message (sensor is trying but no valid data yet)
+        elif data == "MAX30102_WAITING_FOR_VALID_SIGNAL":
+            # Don't change state, just log - sensor is working but needs more samples
+            logger.debug("🔄 MAX30102 waiting for valid signal...")
+
+        # NEW: Handle Emoji-based MAX30102 output
+        elif "❤️ HR:" in data and "💨 RR:" in data:
+            try:
+                # FAILSAFE: If we are receiving data, the finger IS detected and we ARE measuring.
+                # This handles cases where we missed the "Finger Detected" event string (e.g. backend restart).
+                if not self.live_data['max30102']['finger_detected']:
+                    self.live_data['max30102']['finger_detected'] = True
+                    self.live_data['max30102']['measurement_started'] = True
+                    self.live_data['max30102']['sensor_prepared'] = True
+                    self.max30102_sensor_ready = True
+                    self._max30102_measurement_active = True
+                    logger.info("✅ Implicitly detected finger via data stream")
+
+                # Regex to extract values
+                hr_match = re.search(r'❤️ HR:\s*(\d+)', data)
+                rr_match = re.search(r'💨 RR:\s*([\d.]+)', data)
+                spo2_match = re.search(r'🩸 SpO2:\s*(\d+)', data)
+
+                if hr_match:
+                    hr = int(hr_match.group(1))
+                    self.live_data['max30102']['heart_rate'] = hr
+                    self.measurements['heart_rate'] = hr # Store measurement
+                    logger.info(f"💓 Live Heart Rate: {hr} BPM")
+
+                if rr_match:
+                    rr = float(rr_match.group(1))
+                    self.live_data['max30102']['respiratory_rate'] = rr
+                    self.measurements['respiratory_rate'] = rr # Store measurement
+                    logger.info(f"🌬️ Live Respiratory Rate: {rr} breaths/min")
+
+                if spo2_match:
+                    spo2 = int(spo2_match.group(1))
+                    self.live_data['max30102']['spo2'] = spo2
+                    self.measurements['spo2'] = spo2 # Store measurement
+                    logger.info(f"🩸 Live SpO2: {spo2}%")
+                    
+            except (ValueError, IndexError) as e:
+                logger.error(f"Error parsing MAX30102 emoji data: {e}")
 
         elif data.startswith("MAX30102_LIVE_DATA:"):
+            # KEEPING BACKWARD COMPATIBILITY JUST IN CASE
             try:
                 parts = data.split(":")[1].split(",")
                 data_dict = {}
@@ -745,19 +807,31 @@ class SensorManager:
 
     def get_max30102_status(self):
         """Get MAX30102 sensor status"""
+        # Determine a human-readable finger status
+        finger_detected = self.live_data['max30102']['finger_detected']
+        measurement_started = self.live_data['max30102']['measurement_started']
+        
+        if finger_detected and measurement_started:
+            finger_status = "DETECTED_MEASURING"
+        elif finger_detected:
+            finger_status = "DETECTED"
+        else:
+            finger_status = "NOT_DETECTED"
+        
         status = {
             "status": self.live_data['max30102']['status'],
             "measurement_active": self._max30102_measurement_active,
             "heart_rate": self.live_data['max30102']['heart_rate'],
             "spo2": self.live_data['max30102']['spo2'],
             "respiratory_rate": self.live_data['max30102']['respiratory_rate'],
-            "finger_detected": self.live_data['max30102']['finger_detected'],
+            "finger_detected": finger_detected,
+            "finger_status": finger_status,  # NEW: Human-readable finger status
             "progress": self.live_data['max30102']['progress'],
             "elapsed": self.live_data['max30102']['elapsed'],
             "total_time": self.live_data['max30102']['total'],
             "ir_value": self.live_data['max30102']['ir_value'],
             "sensor_prepared": self.live_data['max30102']['sensor_prepared'],
-            "measurement_started": self.live_data['max30102']['measurement_started'],
+            "measurement_started": measurement_started,
             "final_result_shown": self.live_data['max30102']['final_result_shown'],
             "final_results": {
                 "heart_rate": self.measurements['heart_rate'],

@@ -38,7 +38,7 @@ def disconnect_sensors():
 @sensor_bp.route('/status', methods=['GET'])
 def get_sensor_status():
     """Returns comprehensive sensor status."""
-    return jsonify(sensor_manager.get_status())
+    return jsonify(sensor_manager.get_system_status())
 
 @sensor_bp.route('/system_status', methods=['GET'])
 def get_system_status():

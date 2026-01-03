@@ -96,7 +96,7 @@ def create_app():
     # NEW: Dedicated BP Sensor Controller Routes
     from app.routes.bp_routes import bp_routes
     app.register_blueprint(bp_routes)  # Already has url_prefix='/api/bp'
-    # app.register_blueprint(bp_routes, url_prefix='/bp', name='bp_alias')
+    app.register_blueprint(bp_routes, url_prefix='/bp', name='bp_alias')
 
     from app.routes.measurement_routes import measurement_bp
     app.register_blueprint(measurement_bp, url_prefix='/api/measurements')

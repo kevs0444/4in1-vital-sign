@@ -5,8 +5,9 @@ import { Visibility, VisibilityOff, ArrowBack, CheckCircle } from '@mui/icons-ma
 import logo from '../../../assets/images/juan.png';
 
 const getDynamicApiUrl = () => {
-    if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
-    return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+    // Return relative path to route through proxy (dev) or same-origin (production)
+    // This handles local kiosk, remote Access (VPN), and Funnel (HTTPS) correctly
+    return '/api';
 };
 
 const API_BASE_URL = getDynamicApiUrl();

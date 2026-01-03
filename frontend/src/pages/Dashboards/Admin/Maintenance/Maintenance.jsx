@@ -10,14 +10,17 @@ import {
     Thermostat,
     Favorite,
     Speed,
-    Print
+    Print,
+    Fullscreen,
+    FullscreenExit
 } from '@mui/icons-material';
 import { sensorAPI, printerAPI } from '../../../../utils/api';
 import './Maintenance.css';
 
 const getDynamicApiUrl = () => {
-    if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
-    return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+    // Return relative path to route through proxy (dev) or same-origin (production)
+    // This handles local kiosk, remote Access (VPN), and Funnel (HTTPS) correctly
+    return '/api';
 };
 
 const API_BASE = getDynamicApiUrl();
@@ -71,8 +74,11 @@ const Maintenance = () => {
         contrast: 1.0,
         rotation: 0,
         square_crop: true,
-        camera_index: 0
+        camera_index: 0,
+        viewport_size: 100
     });
+
+    const [isFullScreen, setIsFullScreen] = useState(false);
 
     // Printer State
     const [printerStatus, setPrinterStatus] = useState({
@@ -179,6 +185,7 @@ const Maintenance = () => {
                 e.preventDefault();
                 handleCapture();
             }
+            if (e.code === 'Escape') setIsFullScreen(false);
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => {
@@ -320,13 +327,35 @@ const Maintenance = () => {
                                 <button className={`sensor-tab ${activeCameraTab === 'feet' ? 'active' : ''}`} onClick={() => startCamera('feet') & setActiveCameraTab('feet')}>Feet Detector</button>
                                 <button className={`sensor-tab ${activeCameraTab === 'body' ? 'active' : ''}`} onClick={() => startCamera('body') & setActiveCameraTab('body')}>Wearables</button>
                             </div>
-                            <div className="camera-viewport-container">
-                                <img src={`${API_BASE}/${activeCameraTab === 'bp' ? 'bp' : 'camera'}/video_feed?t=${Date.now()}`} alt="Feed" className="main-feed" />
+                            <div
+                                className="camera-viewport-container"
+                                style={isFullScreen ? {
+                                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                                    maxWidth: '100%', margin: 0, zIndex: 9999, borderRadius: 0
+                                } : {
+                                    maxWidth: `${settings.viewport_size}%`, margin: '0 auto', position: 'relative'
+                                }}
+                            >
+                                <img src={`${API_BASE}/${activeCameraTab === 'bp' ? 'bp' : 'camera'}/video_feed?t=${Date.now()}`} alt="Feed" className="main-feed" style={{ objectFit: 'cover' }} />
                                 <div className="viewport-overlay-premium">
                                     <div className="overlay-top">
                                         <div className="ai-status-badge"><div className="pulse-red" /> {complianceStatus}</div>
                                         <div className="fps-badge">FPS: {fps}</div>
                                     </div>
+                                    <button
+                                        className="fullscreen-btn-premium"
+                                        onClick={() => setIsFullScreen(!isFullScreen)}
+                                        style={{
+                                            position: 'absolute', top: '1.5rem', right: '1.5rem',
+                                            background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)',
+                                            color: 'white', borderRadius: '8px', padding: '8px', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            backdropFilter: 'blur(5px)',
+                                            pointerEvents: 'auto'
+                                        }}
+                                    >
+                                        {isFullScreen ? <FullscreenExit /> : <Fullscreen />}
+                                    </button>
                                     <div className="overlay-bottom">
                                         <div className="session-stats">Collected: {captureCount} Samples</div>
                                     </div>
@@ -347,6 +376,10 @@ const Maintenance = () => {
                         <div className="camera-settings-panel">
                             <div className="settings-group">
                                 <h3><Settings /> Image Calibration</h3>
+                                <div className="setting-item">
+                                    <label>Viewport Size <span>{settings.viewport_size}%</span></label>
+                                    <input type="range" min="50" max="100" step="5" value={settings.viewport_size} onChange={(e) => handleSettingChange('viewport_size', parseInt(e.target.value))} />
+                                </div>
                                 <div className="setting-item">
                                     <label>Digital Zoom <span>{settings.zoom.toFixed(1)}x</span></label>
                                     <input type="range" min="1" max="3" step="0.1" value={settings.zoom} onChange={(e) => handleSettingChange('zoom', parseFloat(e.target.value))} />
