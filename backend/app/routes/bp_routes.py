@@ -17,6 +17,23 @@ def start_bp_camera():
     success, message = bp_sensor.start()
     return jsonify({"success": success, "message": message})
 
+@bp_routes.route('/trigger', methods=['POST'])
+def trigger_bp_measurement():
+    """Send 'start' command to Arduino to simulate physical button press.
+    This allows the screen button to start BP measurement."""
+    print("🩺 Screen button pressed - Triggering BP measurement via Arduino...")
+    # First ensure camera is running
+    if not bp_sensor.is_running:
+        bp_sensor.start()
+    # Send start command to Arduino (simulates button press)
+    success = bp_sensor.send_command("start")
+    if success:
+        print("✅ BP Start command sent to Arduino")
+        return jsonify({"success": True, "message": "BP measurement triggered"})
+    else:
+        print("⚠️ Arduino not connected - Using physical button instead")
+        return jsonify({"success": True, "message": "Camera started (use physical button)"})
+
 @bp_routes.route('/set_camera', methods=['POST'])
 def set_bp_camera_index():
     """Switch the BP camera index dynamically."""

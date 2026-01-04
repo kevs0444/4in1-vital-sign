@@ -59,7 +59,11 @@ export default function BloodPressure() {
     // Call init
     initializeBloodPressureSensor();
 
-    // Auto-start Smart Camera immediately
+    // Auto-start camera WATCHING mode when page loads
+    // This allows detection of readings when user presses EITHER:
+    //   1. Physical button on BP monitor device, OR
+    //   2. Screen button (which sends command to Arduino)
+    // The camera just OBSERVES - doesn't trigger measurement
     startLiveReading();
 
     return () => {
@@ -148,7 +152,7 @@ export default function BloodPressure() {
       if (measurementStep === 0) {
         speak("Blood Pressure Measurement. Get ready to measure your blood pressure.");
       } else if (measurementStep === 1) {
-        speak("Step 1. Ready. Click Start to begin measurement.");
+        speak("Step 1. Ready. Click Start or press the button on your blood pressure monitor to begin.");
       } else if (measurementStep === 2) {
         speak("Step 2. Measuring. Blood pressure measurement in progress.");
       } else if (measurementStep === 3) {
@@ -221,7 +225,22 @@ export default function BloodPressure() {
   const lastReadingRef = useRef({ sys: null, dia: null });
 
   const startMeasurement = async () => {
-    startLiveReading();
+    try {
+      // 1. Start camera watching if not already
+      if (!isLiveReading) {
+        startLiveReading();
+      }
+      // 2. Trigger BP measurement via Arduino (simulates physical button press)
+      console.log("🩺 Triggering BP measurement via screen button...");
+      await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/trigger`, {
+        method: 'POST'
+      });
+      setMeasurementStep(2);
+      setStatusMessage("Measurement started - watch the BP monitor...");
+    } catch (error) {
+      console.error("BP trigger error:", error);
+      setStatusMessage("Started - use physical button if needed");
+    }
   };
 
   // --- HELPER FUNCTIONS (Defined before use) ---
@@ -460,10 +479,10 @@ export default function BloodPressure() {
               // Stability Check (Only if we have BOTH values)
               if (newSys === lastReadingRef.current.sys && newDia === lastReadingRef.current.dia) {
                 stableCountRef.current += 1;
-                // Stability: 1 check = ~1 second
-                setStatusMessage(`Verifying Result... ${Math.round((stableCountRef.current / 1) * 100)}%`);
+                // Stability: 2 checks = ~2 seconds (polling at 1Hz)
+                setStatusMessage(`Verifying Result... ${Math.round((stableCountRef.current / 2) * 100)}%`);
 
-                if (stableCountRef.current >= 1) {
+                if (stableCountRef.current >= 2) {
                   setStatusMessage("✅ Result Confirmed!");
                   confirmReading();
                 }
@@ -515,9 +534,13 @@ export default function BloodPressure() {
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!measurementComplete || !systolic || !diastolic) return;
     stopAllTimers();
+
+    // Turn OFF the BP Arduino when leaving the page
+    console.log("🔌 Stopping BP camera and Arduino...");
+    await stopCameraMode();
 
     const completeVitalSignsData = {
       ...location.state,
@@ -534,12 +557,13 @@ export default function BloodPressure() {
   const getButtonText = () => {
     const isLast = isLastStep('bloodpressure', location.state?.checklist);
     if (measurementStep === 3) return isLast ? "Continue to Result" : "Continue to Next Step";
-    return "Scan Monitor with Camera";
+    // Camera is auto-watching, user uses physical button
+    return "Waiting for BP Monitor...";
   };
 
   const getButtonAction = () => {
     if (measurementStep === 3) return handleContinue;
-    return startCameraMode;
+    return null; // No action needed - camera is auto-watching
   };
 
   const getButtonDisabled = () => {
@@ -675,7 +699,7 @@ export default function BloodPressure() {
                   <div className="instruction-icon">🩺</div>
                   <h4 className="instruction-title">Ready</h4>
                   <p className="instruction-text">
-                    Click Start to begin measurement
+                    Click Start or press button on BP monitor
                   </p>
                 </div>
               </div>
@@ -719,27 +743,29 @@ export default function BloodPressure() {
         </div>
 
         <div className="measurement-navigation mt-5 d-flex flex-column align-items-center gap-3">
-          {!isCameraMode && (
+          {measurementStep === 3 ? (
             <button
               className="measurement-button"
-              onClick={getButtonAction()}
-              disabled={getButtonDisabled()}
+              onClick={handleContinue}
+              disabled={!measurementComplete}
             >
-              {measurementStep === 2 && (
-                <div className="spinner"></div>
-              )}
               {getButtonText()}
             </button>
-          )}
-
-          {measurementStep === 1 && !isCameraMode && (
-            <button
-              className="btn btn-link text-muted text-decoration-none"
-              onClick={startCameraMode}
-              style={{ fontSize: '1rem' }}
-            >
-              📷 Use Camera to Read Monitor
-            </button>
+          ) : (
+            <>
+              <button
+                className="measurement-button"
+                onClick={startMeasurement}
+                disabled={measurementComplete}
+              >
+                🩺 Start Measurement
+              </button>
+              <div className="text-center mt-2">
+                <div className="text-muted small">
+                  Or press the <strong>physical button</strong> on your BP monitor
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -795,21 +821,18 @@ export default function BloodPressure() {
             <h2 className="exit-modal-title">Cuff Error Detected</h2>
             <p className="exit-modal-message">
               The blood pressure monitor detected an error. Please ensure the cuff is
-              wrapped properly around your arm and try again.
+              wrapped properly around your arm.
+            </p>
+            <p className="exit-modal-message" style={{ fontWeight: 'bold', marginTop: '10px' }}>
+              👆 Press the <strong>physical button on BP monitor twice</strong> to retry.
             </p>
             <div className="exit-modal-buttons">
               <button
-                className="exit-modal-button secondary"
-                onClick={() => setShowErrorModal(false)}
-              >
-                Dismiss
-              </button>
-              <button
                 className="exit-modal-button primary"
-                onClick={retryMeasurement}
-                style={{ background: 'linear-gradient(135deg, #e74c3c, #c0392b)' }}
+                onClick={() => setShowErrorModal(false)}
+                style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}
               >
-                🔄 Retry Again
+                OK, I'll Retry
               </button>
             </div>
           </motion.div>

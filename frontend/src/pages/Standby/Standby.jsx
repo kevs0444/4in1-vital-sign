@@ -1,15 +1,13 @@
 // Standby.jsx - Dual Mode: Status Badge (Kiosk) | Landing Page (Remote)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Container, Row, Col, Button, Card } from 'react-bootstrap';
+import { Row, Col, Button } from 'react-bootstrap';
 import { motion } from 'framer-motion';
 import {
   Circle,
   CheckCircle,
   Error,
-  Warning,
-  Dashboard as DashboardIcon,
-  Login as LoginIcon
+  Warning
 } from '@mui/icons-material';
 import logo from '../../assets/images/juan.png';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -109,23 +107,27 @@ export default function Standby() {
       sessionStorage.removeItem('max30102Data');
 
       // 3. Reset sensors on backend ONLY if coming from inactivity or explicit cleanup
-      // Don't shutdown on initial app load - let sensors stay ready
-      const shouldCleanupSensors = location.state?.fromInactivity ||
+      // OR if it's the very first load, BUT skip if we are waiting for Auto-Tare (Calibrating)
+      const shouldCleanupSensors = (location.state?.fromInactivity ||
         location.state?.cleanupSensors ||
-        location.state?.cancelled;
+        location.state?.cancelled ||
+        !location.state) &&
+        systemCheck.overall_status !== 'waiting_auto_tare';
 
       if (isLocalDevice() && shouldCleanupSensors) {
         try {
           // Shutdown weight and height sensors to clear any stale data
-          console.log('🧹 Standby: Cleaning up sensors (from inactivity/cancel)');
+          console.log('🧹 Standby: Cleaning up/Booting sensors (Start fresh)');
           await sensorAPI.shutdownWeight();
           await sensorAPI.shutdownHeight();
-          console.log('✅ Backend sensor shutdown complete (Tare preserved, live data cleared)');
+          console.log('✅ Backend sensor shutdown complete');
         } catch (error) {
           console.log('ℹ️ Backend sensor shutdown skipped (may not be connected yet)');
         }
+      } else if (systemCheck.overall_status === 'waiting_auto_tare') {
+        console.log('⏳ Standby: Skipping sensor shutdown - System is Calibrating...');
       } else {
-        console.log('📍 Standby: Initial load - sensors not shutdown (staying ready)');
+        console.log('📍 Standby: Remote view or No Cleanup Needed');
       }
 
       console.log('✅ All measurement data cleared - ready for new user');
@@ -133,7 +135,7 @@ export default function Standby() {
 
     clearAllMeasurementData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state]); // Re-run if navigation state changes (e.g., from inactivity)
+  }, [location.state]); // Re-run if navigation state changes
 
   // Perform comprehensive system check
   const performSystemCheck = useCallback(async () => {
@@ -216,10 +218,7 @@ export default function Standby() {
     }, 200);
   };
 
-  const handleRemoteAccess = () => {
-    // Direct navigation for remote users
-    navigate('/login');
-  };
+
 
   const formatTime = (date) =>
     date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });

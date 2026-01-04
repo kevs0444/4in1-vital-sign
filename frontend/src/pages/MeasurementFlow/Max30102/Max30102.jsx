@@ -292,19 +292,21 @@ export default function Max30102() {
           }
 
           const elapsed = Date.now() - fingerRemovalStartRef.current;
-          if (elapsed > 2000) {
-            console.log("❌ Finger removed confirmed (>2s) - stopping timer and showing alert");
-            showFingerRemovedNotification();
-            setStatusMessage("❌ Finger removed! Please reinsert finger to RESTART measurement.");
-            invalidateMeasurement(); // INVALIDATE AND RESET EVERYTHING
+
+          // FAST DEBOUNCE: 1000ms (1 second) to feel more "in sync" effectively
+          if (elapsed > 1000) {
+            console.log("❌ Finger removed confirmed (>1s) - stopping timer and showing alert");
+            // Only trigger if we haven't already shown it
+            if (!showFingerRemovedAlert) {
+              showFingerRemovedNotification();
+              setStatusMessage("❌ Finger removed! Please reinsert finger to RESTART measurement.");
+              invalidateMeasurement(); // INVALIDATE AND RESET EVERYTHING
+            }
             fingerRemovalStartRef.current = null;
           } else {
-            console.log(`⚠️ Finger missing for ${elapsed}ms - ignoring glitch`);
-            // Optional: Pause timer temporarily?
-            // stopProgressTimer();
-            // We keep timer running for 2s grace period to feel smoother, or stop it? 
-            // If we stop it, we extend the duration. Let's PAUSE it to be accurate.
-            stopProgressTimer();
+            // Keep user informed instantly even during debounce
+            if (elapsed > 500) setStatusMessage("⚠️ Finger placement unstable...");
+            stopProgressTimer(); // Pause timer immediately on suspicion
           }
         }
 
@@ -319,8 +321,8 @@ export default function Max30102() {
             fingerRemovalStartRef.current = null;
             resumeMeasurement();
           } else if (isMeasuringRef.current && !measurementCompleteRef.current) {
-            // Finger was reinserted after removal - RESET TO 0 and start over
-            console.log("Finger reinserted during measurement - resetting to 0 and starting over");
+            // Finger was reinserted after removal (and alert was shown) - RESET TO 0 and start over
+            console.log("Finger reinserted - resetting to 0 and starting over");
             resetAndStartMeasurement();
           } else if (!isMeasuringRef.current && !measurementCompleteRef.current) {
             // First time finger insertion - start measurement
@@ -340,9 +342,12 @@ export default function Max30102() {
         // This handles cases where backend detected finger removal but frontend logic missed the edge trigger
         // UPDATED: Only invalidate if NOT in grace period
         if (isMeasuringRef.current && measurementCompleteRef.current === false && data.measurement_started === false && !fingerRemovalStartRef.current) {
-          console.log("SYNC CHECK: Backend says measurement stopped. Invalidating...");
-          // Only invalidate if we didn't just complete it (race condition check)
-          invalidateMeasurement();
+          // Double check finger status - if backend says not measuring, maybe it's because finger is gone
+          if (!newFingerDetected) {
+            console.log("SYNC CHECK: Backend says measurement stopped & finger gone. Invalidating...");
+            invalidateMeasurement();
+            showFingerRemovedNotification();
+          }
         }
 
         // Update previous state
@@ -355,7 +360,7 @@ export default function Max30102() {
         console.error("Error checking finger status:", error);
         setStatusMessage("⚠️ Connection issue, retrying...");
       }
-    }, 200); // Poll check every 200ms for faster response
+    }, 200); // Poll check every 200ms is good
 
     startMainPolling();
   };

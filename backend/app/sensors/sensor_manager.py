@@ -49,8 +49,12 @@ class SensorManager:
     def connect(self):
         result, message = self.serial_interface.connect()
         if result:
-            time.sleep(2)
-        return result
+            time.sleep(3) # Increased from 2s to 3s to ensure Mega is ready
+            # Explicitly trigger Auto-Tare on connection to ensure calibration
+            logger.info("Triggering initial Auto-Tare...")
+            self.start_auto_tare()
+            return True, message
+        return False, message
 
     def disconnect(self):
         return self.serial_interface.disconnect()
@@ -185,10 +189,18 @@ class SensorManager:
 
     def get_max30102_status(self):
         status = self.max30102_manager.get_status()
-        return {
-            "live_data": status["live_data"],
-            "status": status["live_data"]["status"]
-        }
+        
+        # Flatten the response for frontend convenience
+        response = status["live_data"].copy()
+        
+        # Add high-level flags from manager
+        response["sensor_prepared"] = status["ready"]
+        response["measurement_started"] = status["active"]
+        
+        # Ensure finger_detected is consistent
+        response["finger_detected"] = status["finger_detected"]
+        
+        return response
 
     def shutdown_all_sensors(self):
         self.serial_interface.send_command("SHUTDOWN_ALL")

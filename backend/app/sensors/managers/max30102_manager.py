@@ -51,8 +51,32 @@ class Max30102Manager:
             except:
                 pass
 
-        # Emoji-based data "❤️ HR: 75 💨 RR: 18"
-        if "❤️ HR:" in data:
+        # New Parsing for "MAX30102_LIVE_DATA:HR=75,SPO2=98,RR=18.5..."
+        elif "MAX30102_LIVE_DATA:" in data:
+            try:
+                # Extract the part after the prefix
+                content = data.split("MAX30102_LIVE_DATA:")[1]
+                
+                # Parse key-value pairs
+                pairs = content.split(',')
+                for pair in pairs:
+                    if '=' in pair:
+                        key, value = pair.split('=')
+                        if key == 'HR':
+                            self.live_data['heart_rate'] = int(value)
+                        elif key == 'SPO2':
+                            self.live_data['spo2'] = int(value)
+                        elif key == 'RR':
+                            self.live_data['respiratory_rate'] = float(value)
+                
+                self.active = True
+                self.live_data['status'] = 'measuring'
+                self.live_data['finger_detected'] = True # Implicit if we are getting live data
+            except Exception as e:
+                logger.error(f"Error parsing MAX30102 data: {e}")
+
+        # Emoji-based data "❤️ HR: 75 💨 RR: 18" (Legacy support)
+        elif "❤️ HR:" in data:
             try:
                 # Simple extraction
                 hr = re.search(r'❤️ HR:\s*(\d+)', data)

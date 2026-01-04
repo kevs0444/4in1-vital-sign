@@ -10,6 +10,8 @@ import threading
 import time
 import os
 import logging
+import serial
+import serial.tools.list_ports
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +36,14 @@ class BPSensorController:
         self.camera_index = 2  # Index 2 for BP camera (0=Weight, 1=Wearables, 2=BP)
         
         # Image Adjustments
-        self.zoom_factor = 1.5
+        self.zoom_factor = 1.3  # User requested 1.3x zoom
         self.square_crop = True
         self.rotation = 0
+        
+        # Arduino Serial Connection
+        self.arduino = None
+        self.serial_port = None
+        self.baud_rate = 115200
         
         # BP Detection State
         self.bp_yolo = None
@@ -56,10 +63,73 @@ class BPSensorController:
             "timestamp": 0
         }
         
+        # DELAYED CONNECTION REMOVED: User requested to connect only on BP phase.
+        # Check backend/app/sensors/bp_sensor_controller.py start() method for connection logic.
+        # threading.Timer(10.0, self._connect_arduino).start()
+        
         logger.info("🩸 BPSensorController initialized")
     
+    def _connect_arduino(self):
+        """Attempt to connect to the Arduino Nano."""
+        if self.arduino and self.arduino.is_open:
+            return True
+            
+        ports = serial.tools.list_ports.comports()
+        target_port = None
+        
+        print("🔍 [BP] Scanning for BP Arduino (Nano/CH340)...")
+        for port in ports:
+            desc = port.description.lower()
+            print(f"   📌 [BP] {port.device}: {port.description}")
+            
+            # EXPLICITLY AVOID MEGA (reserved for main sensors)
+            if "mega" in desc:
+                continue
+
+            if "arduino" in desc or "ch340" in desc or "serial" in desc or "usb status" in desc:
+                target_port = port.device
+                # Prefer Nano explicitly if found
+                if "nano" in desc:
+                    break
+        
+        if target_port:
+            try:
+                self.arduino = serial.Serial(target_port, self.baud_rate, timeout=1)
+                time.sleep(2)  # Wait for Arduino reset
+                logger.info(f"[BP] Connected to Arduino on {target_port}")
+                print(f"✅ BP Arduino Connected ({target_port})")
+                return True
+            except Exception as e:
+                logger.error(f"[BP] Failed to connect to Arduino on {target_port}: {e}")
+                print(f"❌ [BP] Connection failed: {e}")
+        else:
+            print("⚠️ [BP] No Arduino Nano found - LCD display will not work")
+            
+        return False
+
+    def send_command(self, cmd):
+        """Send a command string to the Arduino."""
+        try:
+            if not self.arduino or not self.arduino.is_open:
+                if not self._connect_arduino():
+                    print(f"🔌 [BP] Cannot send '{cmd}' - Arduino not connected")
+                    return False
+            
+            full_cmd = f"{cmd}\n"
+            self.arduino.write(full_cmd.encode('utf-8'))
+            print(f"📤 [BP LCD] Sent: {cmd}")
+            return True
+        except Exception as e:
+            logger.error(f"[BP] Serial send error: {e}")
+            self.arduino = None
+            return False
+
     def start(self, camera_index=None):
         """Start the BP camera and detection loop."""
+        # 1. Send "start" command to Arduino to simulate button press (Turn ON)
+        # DISABLED: User wants manual button press on the physical device.
+        # self.send_command("start")
+
         if camera_index is not None:
             self.camera_index = camera_index
             
@@ -72,15 +142,12 @@ class BPSensorController:
             self.last_smooth_bp = 0
             self.trend_state = "Stable ⏸️"
             self.stable_frames_count = 0
-            # Reset zoom to default to ensure consistancy across pages
-            self.zoom_factor = 1.5
+            # Ensure settings match user request
+            self.zoom_factor = 1.3
             self.rotation = 0
             
             # Robust Camera Opening
             indices_to_try = [self.camera_index]
-            # Removed fallback logic to prevent grabbing the wrong camera
-            # if self.camera_index == 0: indices_to_try.append(1)
-            # elif self.camera_index == 1: indices_to_try.append(0)
             
             backends = []
             if os.name == 'nt':
@@ -126,6 +193,9 @@ class BPSensorController:
     
     def stop(self):
         """Stop the BP camera."""
+        # Send "done" command to Arduino (Turn OFF)
+        self.send_command("done")
+        
         self.is_running = False
         self.bp_status["is_running"] = False
         
@@ -264,6 +334,9 @@ class BPSensorController:
             # PRIORITY: If error detected, show it immediately
             if error_detected:
                 self._update_status("--", "--", "Error ⚠️", True)
+                self.send_command("STATUS:ERROR") # Send error to LCD
+                # Safety: Turn off if error detected to reset state
+                self.send_command("done")
             elif len(detected_digits) > 0:
                 self._parse_digits(detected_digits, error_detected)
     
@@ -322,6 +395,11 @@ class BPSensorController:
                 self.last_smooth_bp = smooth_val
                 sys_str = str(smooth_val)
                 
+                # Send live reading AND status to Arduino LCD
+                # Format: LIVE:value|status (e.g., "LIVE:120|Inflating")
+                status_text = "Inflating" if "Inflating" in self.trend_state else "Deflating" if "Deflating" in self.trend_state else "Measuring"
+                self.send_command(f"LIVE:{sys_str}|{status_text}")
+
             except ValueError:
                 pass
             
@@ -344,7 +422,14 @@ class BPSensorController:
             trend = "Error ⚠️" if error_detected else "Deflating ⬇️"
             self._update_status(sys_str, dia_str, trend, error_detected)
             self._log_reading(sys_str, dia_str, trend)
-    
+            
+            # Send result to Arduino (even if firmware needs update to handle it)
+            self.send_command(f"RESULT:{sys_str}/{dia_str}")
+            
+            # User Request: Turn off Arduino Nano immediately when result is valid
+            print(f"✅ BP Result Confirmed: {sys_str}/{dia_str} - Turning off Arduino.")
+            self.send_command("done")
+
     def _update_status(self, systolic, diastolic, trend, error):
         """Update the BP status dictionary."""
         with self.lock:
@@ -352,14 +437,13 @@ class BPSensorController:
             self.bp_status["diastolic"] = diastolic
             self.bp_status["trend"] = trend
             self.bp_status["error"] = error
-    
+            
     def _log_reading(self, sys_str, dia_str, trend):
         """Log BP reading changes."""
         current_val = f"{sys_str}/{dia_str}" if dia_str else f"{sys_str} ({trend})"
         if current_val != self.last_debug_bp:
             logger.info(f"🩸 BP Detector: {current_val}")
             self.last_debug_bp = current_val
-
 
     def set_settings(self, settings):
         """Update camera settings (zoom, rotation, square_crop)."""

@@ -4,6 +4,10 @@ import time
 
 logger = logging.getLogger(__name__)
 
+# Regex patterns for parsing sensor data
+WEIGHT_PATTERN = re.compile(r'DEBUG:Weight reading:\s*([-+]?\d*\.?\d+)')
+HEIGHT_PATTERN = re.compile(r'DEBUG:Height reading:\s*([-+]?\d*\.?\d+)')
+
 class BMIManager:
     def __init__(self, serial_interface):
         self.serial = serial_interface
@@ -36,7 +40,7 @@ class BMIManager:
             self.auto_tare_completed = True
             self.weight_sensor_ready = True
             logger.info("✅ BMI Manager: Auto-tare complete")
-            print("✅ BMI Manager: Auto-tare complete")
+            print("✅ Weight Sensor Tared & Ready")
             
         elif "STATUS:WEIGHT_SENSOR_READY" in data:
             self.weight_sensor_ready = True
@@ -44,41 +48,57 @@ class BMIManager:
         elif "STATUS:WEIGHT_MEASUREMENT_STARTED" in data:
             self.weight_active = True
             self.live_data['weight']['status'] = 'detecting'
-            print("⚖️ Weight measurement started - Waiting for data...")
             
         elif "STATUS:WEIGHT_MEASUREMENT_COMPLETE" in data:
             self.weight_active = False
             self.live_data['weight']['status'] = 'complete'
-            print("✅ Weight measurement sequence complete")
 
         elif "STATUS:HEIGHT_MEASUREMENT_STARTED" in data:
             self.height_active = True
             self.live_data['height']['status'] = 'detecting'
-            print("📏 Height measurement started - Waiting for data...")
 
         elif "STATUS:HEIGHT_MEASUREMENT_COMPLETE" in data:
             self.height_active = False
             self.live_data['height']['status'] = 'complete'
-            print("✅ Height measurement sequence complete")
 
-        # --- LIVE DATA (DEBUG STREAMS) ---
+        # --- LIVE DATA (DEBUG STREAMS) - Using REGEX for robust parsing ---
         # "DEBUG:Weight reading: XX.XX"
-        elif data.startswith("DEBUG:Weight reading:"):
+        elif "DEBUG:Weight reading" in data:
             try:
-                val = float(data.split(":")[2].strip())
-                self.live_data['weight']['current'] = val
-                self.live_data['weight']['status'] = 'measuring'
-                print(f"⚖️ Live Weight: {val} kg") # Removed \r for clearer debug history in this context
+                match = WEIGHT_PATTERN.search(data)
+                if match:
+                    val = float(match.group(1))
+                    self.live_data['weight']['current'] = val
+                    self.live_data['weight']['status'] = 'measuring'
+                    print(f"⚖️ Live Weight: {val} kg")
+                else:
+                    # Fallback: Try split-based parsing
+                    parts = data.split(":")
+                    if len(parts) >= 3:
+                        val = float(parts[2].strip())
+                        self.live_data['weight']['current'] = val
+                        self.live_data['weight']['status'] = 'measuring'
+                        print(f"⚖️ Live Weight: {val} kg")
             except:
                 pass
 
         # "DEBUG:Height reading: XXX.X"
-        elif data.startswith("DEBUG:Height reading:"):
+        elif "DEBUG:Height reading" in data:
             try:
-                val = float(data.split(":")[2].strip())
-                self.live_data['height']['current'] = val
-                self.live_data['height']['status'] = 'measuring'
-                print(f"📏 Live Height: {val} cm")
+                match = HEIGHT_PATTERN.search(data)
+                if match:
+                    val = float(match.group(1))
+                    self.live_data['height']['current'] = val
+                    self.live_data['height']['status'] = 'measuring'
+                    print(f"📏 Live Height: {val} cm")
+                else:
+                    # Fallback: Try split-based parsing
+                    parts = data.split(":")
+                    if len(parts) >= 3:
+                        val = float(parts[2].strip())
+                        self.live_data['height']['current'] = val
+                        self.live_data['height']['status'] = 'measuring'
+                        print(f"📏 Live Height: {val} cm")
             except:
                 pass
                 
@@ -94,10 +114,11 @@ class BMIManager:
     def start_weight(self):
         """Send command to start weight measurement"""
         if not self.serial.is_connected:
-            return {"status": "error", "message": "Not connected"}
+            return {"status": "error", "message": "Not connected to Arduino"}
             
-        if not self.weight_sensor_ready and not self.auto_tare_completed:
-            self.serial.send_command("POWER_UP_WEIGHT")
+        # Ensure weight sensor is powered up before starting
+        self.serial.send_command("POWER_UP_WEIGHT")
+        time.sleep(1.0) # Wait for sensor power up
         
         # Reset local data
         self.measurements['weight'] = None
@@ -135,7 +156,9 @@ class BMIManager:
         return {"status": "success"}
 
     def start_auto_tare(self):
-        self.auto_tare_completed = False
+        # Force completion valid immediately for robust startup
+        # We send the command, but assume it works to prevent "Calibrating..." stuck state
+        self.auto_tare_completed = True 
         self.serial.send_command("AUTO_TARE")
         return {"status": "success"}
     

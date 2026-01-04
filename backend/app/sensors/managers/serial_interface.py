@@ -44,7 +44,7 @@ class SerialInterface:
             return True, f"Already connected to {self.port}"
 
         try:
-            arduino_port = self._find_arduino_port()
+            arduino_port, desc_name = self._find_arduino_port()
             if not arduino_port:
                 return False, "Arduino port not found"
 
@@ -59,7 +59,7 @@ class SerialInterface:
             self.is_connected = True
             self._start_data_listener()
             
-            logger.info(f"SUCCESS: Connected to {self.port}")
+            logger.info(f"[SensorManager] Connected to Arduino ({desc_name}) on {self.port}")
             return True, f"Connected to {self.port}"
 
         except Exception as e:
@@ -99,12 +99,41 @@ class SerialInterface:
 
     def _find_arduino_port(self):
         ports = list_ports.comports()
+        
+        # DEBUG: Print all available ports
+        print("🔍 Scanning COM ports...")
         for port in ports:
-            # Common descriptions for Arduinos
+            print(f"   📌 {port.device}: {port.description}")
+        
+        # 1. Look for explicit MEGA
+        for port in ports:
+            if "mega" in port.description.lower():
+                print(f"✅ Found Arduino Mega on {port.device}")
+                return port.device, "Mega"
+        
+        # 2. Look for Generic Arduino (excluding typical Nano signatures if possible)
+        for port in ports:
             desc = port.description.lower()
-            if 'arduino' in desc or 'ch340' in desc or 'usb serial' in desc:
-                return port.device
-        return None
+            if "arduino" in desc and "nano" not in desc:
+                print(f"✅ Found Arduino (non-Nano) on {port.device}: {port.description}")
+                return port.device, "Main Board"
+
+        # 3. Fallback to anything with CH340 (common for Mega clones)
+        for port in ports:
+            desc = port.description.lower()
+            if 'ch340' in desc:
+                print(f"⚠️ Fallback to CH340 device on {port.device}: {port.description}")
+                return port.device, "CH340"
+        
+        # 4. Last resort - any USB serial
+        for port in ports:
+            desc = port.description.lower()
+            if 'usb serial' in desc or 'arduino' in desc:
+                print(f"⚠️ Last resort fallback on {port.device}: {port.description}")
+                return port.device, "Generic"
+        
+        print("❌ No Arduino port found!")
+        return None, None
 
     def _start_data_listener(self):
         self._stop_listener = False
