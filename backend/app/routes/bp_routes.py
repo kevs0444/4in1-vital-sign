@@ -20,14 +20,24 @@ def start_bp_camera():
 @bp_routes.route('/trigger', methods=['POST'])
 def trigger_bp_measurement():
     """Send 'start' command to Arduino to simulate physical button press.
-    This allows the screen button to start BP measurement."""
+    This allows the screen button to start BP measurement.
+    Only sends command ONCE per measurement session to avoid looping."""
+    
+    # Check if already triggered to prevent looping
+    if bp_sensor.start_command_sent:
+        print("⏳ BP Start already sent - ignoring duplicate trigger")
+        return jsonify({"success": True, "message": "Already triggered"})
+    
     print("🩺 Screen button pressed - Triggering BP measurement via Arduino...")
+    
     # First ensure camera is running
     if not bp_sensor.is_running:
         bp_sensor.start()
+    
     # Send start command to Arduino (simulates button press)
     success = bp_sensor.send_command("start")
     if success:
+        bp_sensor.start_command_sent = True  # Mark as sent
         print("✅ BP Start command sent to Arduino")
         return jsonify({"success": True, "message": "BP measurement triggered"})
     else:

@@ -152,7 +152,7 @@ export default function BloodPressure() {
       if (measurementStep === 0) {
         speak("Blood Pressure Measurement. Get ready to measure your blood pressure.");
       } else if (measurementStep === 1) {
-        speak("Step 1. Ready. Click Start or press the button on your blood pressure monitor to begin.");
+        speak("Step 1. Ready. Press the physical button on your blood pressure monitor to begin.");
       } else if (measurementStep === 2) {
         speak("Step 2. Measuring. Blood pressure measurement in progress.");
       } else if (measurementStep === 3) {
@@ -575,7 +575,7 @@ export default function BloodPressure() {
       stopAllTimers();
       setBpMeasuring(false);
       setMeasurementStep(1);
-      setStatusMessage("✅ Blood pressure monitor ready - Click 'Start Measurement' to begin");
+      setStatusMessage("✅ Blood pressure monitor ready - Press Physical Button to begin");
     } else {
       navigate(-1);
     }
@@ -699,7 +699,7 @@ export default function BloodPressure() {
                   <div className="instruction-icon">🩺</div>
                   <h4 className="instruction-title">Ready</h4>
                   <p className="instruction-text">
-                    Click Start or press button on BP monitor
+                    Press Physical Button on BP monitor
                   </p>
                 </div>
               </div>
@@ -752,20 +752,12 @@ export default function BloodPressure() {
               {getButtonText()}
             </button>
           ) : (
-            <>
-              <button
-                className="measurement-button"
-                onClick={startMeasurement}
-                disabled={measurementComplete}
-              >
-                🩺 Start Measurement
-              </button>
-              <div className="text-center mt-2">
-                <div className="text-muted small">
-                  Or press the <strong>physical button</strong> on your BP monitor
-                </div>
-              </div>
-            </>
+            <div className="text-center mt-3 p-4 rounded" style={{ background: 'rgba(255,255,255,0.05)', border: '1px dashed #666' }}>
+              <h4 className="mb-2">👉 Ready to Measure</h4>
+              <p className="text-white mb-0" style={{ fontSize: '1.2rem' }}>
+                Please press the <strong style={{ color: '#4facfe' }}>Physical Button</strong> on the BP Monitor to start.
+              </p>
+            </div>
           )}
         </div>
       </div>

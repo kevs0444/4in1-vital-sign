@@ -36,7 +36,7 @@ class BPSensorController:
         self.camera_index = 2  # Index 2 for BP camera (0=Weight, 1=Wearables, 2=BP)
         
         # Image Adjustments
-        self.zoom_factor = 1.3  # User requested 1.3x zoom
+        self.zoom_factor = 1.5  # User requested 1.5x zoom
         self.square_crop = True
         self.rotation = 0
         
@@ -62,6 +62,13 @@ class BPSensorController:
             "is_running": False,
             "timestamp": 0
         }
+        
+        # Prevent duplicate start commands
+        self.start_command_sent = False
+        
+        # Validation Flags
+        self.has_inflated = False # Must detect inflation before confirming result
+        self.stable_result_timer = 0
         
         # DELAYED CONNECTION REMOVED: User requested to connect only on BP phase.
         # Check backend/app/sensors/bp_sensor_controller.py start() method for connection logic.
@@ -94,8 +101,17 @@ class BPSensorController:
         
         if target_port:
             try:
-                self.arduino = serial.Serial(target_port, self.baud_rate, timeout=1)
-                time.sleep(2)  # Wait for Arduino reset
+                # Initialize Serial without opening first to configure DTR
+                self.arduino = serial.Serial()
+                self.arduino.port = target_port
+                self.arduino.baudrate = self.baud_rate
+                self.arduino.timeout = 1
+                self.arduino.dtr = False # Prevent DTR reset
+                self.arduino.rts = False
+                
+                self.arduino.open()
+                
+                time.sleep(2)
                 logger.info(f"[BP] Connected to Arduino on {target_port}")
                 print(f"✅ BP Arduino Connected ({target_port})")
                 return True
@@ -107,10 +123,14 @@ class BPSensorController:
             
         return False
 
-    def send_command(self, cmd):
-        """Send a command string to the Arduino."""
+    def send_command(self, cmd, auto_connect=True):
+        """Send a command string to the Arduino.
+        auto_connect: If False, will not attempt to connect if discouraged."""
         try:
             if not self.arduino or not self.arduino.is_open:
+                if not auto_connect:
+                    return False # Fail silently if we don't want to force connect
+                
                 if not self._connect_arduino():
                     print(f"🔌 [BP] Cannot send '{cmd}' - Arduino not connected")
                     return False
@@ -193,17 +213,24 @@ class BPSensorController:
     
     def stop(self):
         """Stop the BP camera."""
-        # Send "done" command to Arduino (Turn OFF)
-        self.send_command("done")
+        # Send "done" command to Arduino (Turn OFF) ONLY if connected
+        # Connecting just to stop causes a RESET which turns IT ON!
+        if self.arduino and self.arduino.is_open:
+            self.send_command("done")
+        else:
+            print("ℹ️ [BP] Arduino not connected, skipping shutdown command")
         
         self.is_running = False
         self.bp_status["is_running"] = False
+        self.start_command_sent = False  # Reset for next measurement
+        self.has_inflated = False # Reset inflation flag
         
         if self.cap:
             self.cap.release()
             self.cap = None
         
         logger.info("[BP] Camera stopped")
+        print("🔌 BP Camera & Arduino stopped - Ready for new measurement")
         return True, "BP Camera stopped"
     
     def get_status(self):
@@ -332,11 +359,22 @@ class BPSensorController:
             
             # Parse digits
             # PRIORITY: If error detected, show it immediately
+            # PRIORITY: If error detected, show it immediately
+            # BUT only if we are actually running or have seen numbers.
+            # Ignore "Ghost Errors" on blank screen or noise.
             if error_detected:
-                self._update_status("--", "--", "Error ⚠️", True)
-                self.send_command("STATUS:ERROR") # Send error to LCD
-                # Safety: Turn off if error detected to reset state
-                self.send_command("done")
+                if self.start_command_sent: # Only care if we actually started
+                     logger.warning("⚠️ BP Monitor ERROR Symbol Detected!")
+                     self._update_status("--", "--", "Error ⚠️", True)
+                     
+                     # Report Error (don't force connect if not already)
+                     self.send_command("STATUS:ERROR", auto_connect=False)
+                     
+                     # Safety: Turn off if error detected to reset state (don't force connect)
+                     self.send_command("done", auto_connect=False)
+                else:
+                    # Ignore error if we haven't even started (likely noise)
+                    pass
             elif len(detected_digits) > 0:
                 self._parse_digits(detected_digits, error_detected)
     
@@ -371,16 +409,21 @@ class BPSensorController:
                 if smooth_val < 10 and self.last_smooth_bp > 10:
                     smooth_val = self.last_smooth_bp
                 
-                # Safety: Ignore unrealistic low values (noise)
-                # Values below 5 are likely detection noise
-                if smooth_val < 5:
-                    return  # Don't update status with noise
+                # Safety: Ignore unrealistic low values (noise/glare)
+                # BP values usually start higher or at 0. Glitches are often small numbers.
+                # Increased threshold from 5 to 30 to prevent "Automatic On" ghosting
+                if smooth_val < 30:
+                    return  # Ignore noise
                 
                 # Trend detection with persistence
                 if smooth_val > self.last_smooth_bp + 1:
                     inst_trend = "Inflating ⬆️"
+                    if smooth_val > 40: # Valid inflation
+                        self.has_inflated = True
                 elif smooth_val < self.last_smooth_bp - 1:
                     inst_trend = "Deflating ⬇️"
+                    if smooth_val > 40:
+                         self.has_inflated = True
                 else:
                     inst_trend = "Stable"
                 
@@ -396,9 +439,18 @@ class BPSensorController:
                 sys_str = str(smooth_val)
                 
                 # Send live reading AND status to Arduino LCD
-                # Format: LIVE:value|status (e.g., "LIVE:120|Inflating")
-                status_text = "Inflating" if "Inflating" in self.trend_state else "Deflating" if "Deflating" in self.trend_state else "Measuring"
-                self.send_command(f"LIVE:{sys_str}|{status_text}")
+                # DISABLED: To prevent "Reset" loops, we do NOT send live strings to Arduino.
+                # The user watches the BP Monitor screen. We only touch Arduino to STOP it.
+                # self.send_command(f"LIVE:{sys_str}|{status_text}", auto_connect=False)
+                
+                # Detect Physical Button Usage (Real activity)
+                if not self.start_command_sent and smooth_val > 40 and self.has_inflated:
+                     # If we see valid numbers AND have seen inflation -> Physical Button
+                     if "Measuring" not in self.trend_state: # Avoid spamming while stable
+                         print(f"👆 Physical Button usage detected! (Readings appeared: {smooth_val})")
+                         # Do NOT connect. Stay passive.
+                            
+                         self.start_command_sent = True # Treat as started so we don't log again
 
             except ValueError:
                 pass
@@ -423,12 +475,31 @@ class BPSensorController:
             self._update_status(sys_str, dia_str, trend, error_detected)
             self._log_reading(sys_str, dia_str, trend)
             
-            # Send result to Arduino (even if firmware needs update to handle it)
-            self.send_command(f"RESULT:{sys_str}/{dia_str}")
+            # CONFIRM RESULT LOGIC
+            # Only confirm if we have seen valid inflation activity OR if we explicitly started via screen
+            # This prevents confirming "Static" numbers from a previous session on startup
+            if not self.has_inflated and not self.start_command_sent:
+                 # We see a result (e.g. 116/75) but we never saw it inflate/deflate.
+                 # This is likely a previous result on the screen. IGNORE IT.
+                 return
+
+            # Verification Logic could go here (e.g., must see result for X frames)
+            # Currently assuming detection of 2 rows is final result
             
-            # User Request: Turn off Arduino Nano immediately when result is valid
-            print(f"✅ BP Result Confirmed: {sys_str}/{dia_str} - Turning off Arduino.")
-            self.send_command("done")
+            # Send result to Arduino (even if firmware needs update to handle it)
+            # FORCE CONNECTION NOW? NO! 
+            # Connecting causes a RESET which turns the device ON again.
+            # We must be purely PASSIVE. Do not control the hardware.
+            # Let the device timeout or user turn it off.
+            logger.info(f"✅ BP Result Confirmed: {sys_str}/{dia_str} - Stopping Camera.")
+            print(f"✅ BP Result Confirmed: {sys_str}/{dia_str}")
+            
+            # self.send_command("done", auto_connect=True) # DISABLED to prevent loop
+            
+            # STOP the loop immediately
+            self.is_running = False 
+            self.bp_status["is_running"] = False
+            return # Exit loop iteration
 
     def _update_status(self, systolic, diastolic, trend, error):
         """Update the BP status dictionary."""
