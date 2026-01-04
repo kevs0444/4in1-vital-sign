@@ -26,7 +26,7 @@ export default function BMI() {
 
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
-  const [isVisible, setIsVisible] = useState(false);
+
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [currentMeasurement, setCurrentMeasurement] = useState(""); // "weight" or "height"
   const [measurementComplete, setMeasurementComplete] = useState(false);
@@ -67,6 +67,8 @@ export default function BMI() {
   const weightIntervalRef = useRef(null);
   const heightIntervalRef = useRef(null);
   const measurementStarted = useRef(false);
+  const measurementStartTime = useRef(0);
+  const isMountedRef = useRef(true);
 
   // Add viewport meta tag to prevent zooming
   useEffect(() => {
@@ -116,19 +118,67 @@ export default function BMI() {
     };
   }, []);
 
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const initializeSensors = async () => {
+    try {
+      /* Dev mode removed for production build */
+
+      // SKIP Automatic Taring to preserve calibration from previous session/startup
+      // The user requested to "not reset the tare" when a new user starts.
+      // We assume the machine is tared once at startup or via a dedicated Maintenance button.
+      console.log("⚖️ BMI Page: Skipping redundant tare to preserve calibration...");
+      // await sensorAPI.prepareWeight(); 
+
+      // Start actual measurement directly
+      console.log("⚖️ Starting weight measurement...");
+      const weightRes = await sensorAPI.startWeight();
+      measurementStartTime.current = Date.now();
+
+      // Update state to reflect measurement started
+      setMeasurementStep(1);
+      setWeightMeasuring(true);
+      setIsMeasuring(true);
+      setCurrentMeasurement("weight");
+      setStatusMessage("Please step on the scale and stand still for 3 seconds");
+
+      if (weightRes.error) {
+        console.error("Weight start error:", weightRes.error);
+
+        // Retry logic for connection issues
+        if (weightRes.error.includes("connect")) {
+          console.log("Attempting to reconnect sensors...");
+          await sensorAPI.connect();
+          await sleep(1000);
+          // Just start directly, assuming system is ok
+          await sensorAPI.startWeight();
+        }
+      }
+
+      // Start monitoring loop
+      // Start monitoring loop for WEIGHT
+      startMonitoring("weight");
+
+    } catch (error) {
+      console.error("Sensor initialization error:", error);
+    }
+  };
+
   // Initialization
   useEffect(() => {
+    isMountedRef.current = true;
     // Enable inactivity timer initially
     setIsInactivityEnabled(true);
-
-    const timer = setTimeout(() => setIsVisible(true), 100);
     console.log("📍 BMI received location.state:", location.state);
 
-    // Call initialization directly (we'll ignore dependency warning as refactoring strictly for this is overkill)
+    // Explicitly reset any lingering state to handle new users
+    clearSimulatedMeasurements();
+
+    // Call initialization directly 
     initializeSensors();
 
     return () => {
-      clearTimeout(timer);
+      isMountedRef.current = false;
       stopMonitoring();
       stopCountdown();
       clearSimulatedMeasurements();
@@ -138,14 +188,18 @@ export default function BMI() {
 
   // Sync inactivity with measurement
   useEffect(() => {
-    // If measuring, DISABLE inactivity (enabled = false)
-    // If NOT measuring, ENABLE inactivity (enabled = true)
-    setIsInactivityEnabled(!isMeasuring);
-  }, [isMeasuring, setIsInactivityEnabled]);
+    // If measuring OR weight is detected (> 0.5kg), DISABLE inactivity
+    // This mimics the "finger detected" logic in Max30102
+    const isWeightDetected = liveWeightData.current && liveWeightData.current > 0.5;
+    const shouldDisable = isMeasuring || isWeightDetected;
+
+    setIsInactivityEnabled(!shouldDisable);
+  }, [isMeasuring, liveWeightData.current, setIsInactivityEnabled]);
 
   // Voice Instructions
   useEffect(() => {
     const timer = setTimeout(() => {
+      if (!isMountedRef.current) return;
       if (measurementStep === 0) {
         speak("BMI Measurement. Get ready to measure your weight and height.");
       } else if (measurementStep === 1) {
@@ -165,11 +219,7 @@ export default function BMI() {
   // The original code had them outside. Let's keep them here for safety, but check usage.
 
 
-  const initializeSensors = async () => {
-    setStatusMessage("Initializing sensors...");
-    // Start with weight measurement
-    startWeightMeasurement();
-  };
+
 
   const startCountdown = (seconds) => {
     setCountdown(seconds);
@@ -250,6 +300,7 @@ export default function BMI() {
 
       setStatusMessage("Please step on the scale and stand still for 3 seconds");
       measurementStarted.current = true;
+      measurementStartTime.current = Date.now();
       startCountdown(3);
       startMonitoring("weight");
 
@@ -294,6 +345,7 @@ export default function BMI() {
 
       setStatusMessage("Please stand under the height sensor for 2 seconds");
       measurementStarted.current = true;
+      measurementStartTime.current = Date.now();
       startCountdown(2);
       startMonitoring("height");
 
@@ -308,6 +360,10 @@ export default function BMI() {
     stopMonitoring();
 
     pollerRef.current = setInterval(async () => {
+      if (!isMountedRef.current) {
+        stopMonitoring();
+        return;
+      }
       try {
         const data = type === "weight"
           ? await sensorAPI.getWeightStatus()
@@ -351,13 +407,21 @@ export default function BMI() {
 
         setIsMeasuring(data.measurement_active);
 
-        // Handle measurement completion - WEIGHT
         if (type === "weight") {
-          const isWeightComplete = (data.weight && data.weight > 0) ||
-            (data.live_data && data.live_data.status === 'complete' && data.weight);
+          // Frontend controlled timing (3 seconds)
+          const elapsed = Date.now() - measurementStartTime.current;
+          const isTimeUp = elapsed >= 3000;
+          const currentWeight = data.live_data?.current || 0;
+
+          /* 
+             Criteria for completion:
+             1. 3 seconds have passed
+             2. We have a valid weight reading > 0
+          */
+          const isWeightComplete = isTimeUp && currentWeight > 0;
 
           if (isWeightComplete && !weight) {
-            const finalWeight = data.weight.toFixed(1);
+            const finalWeight = Number(currentWeight).toFixed(1);
             setWeight(finalWeight);
             setWeightMeasuring(false);
             setWeightComplete(true);
@@ -372,18 +436,22 @@ export default function BMI() {
 
             // Start Height Measurement after a short delay
             setTimeout(() => {
-              startHeightMeasurement();
+              if (isMountedRef.current) startHeightMeasurement();
             }, 2000);
           }
         }
 
         // Handle measurement completion - HEIGHT
         if (type === "height") {
-          const isHeightComplete = (data.height && data.height > 0) ||
-            (data.live_data && data.live_data.status === 'complete' && data.height);
+          // Frontend controlled timing (2 seconds)
+          const elapsed = Date.now() - measurementStartTime.current;
+          const isTimeUp = elapsed >= 2000;
+          const currentHeight = data.live_data?.current || 0;
+
+          const isHeightComplete = isTimeUp && currentHeight > 0;
 
           if (isHeightComplete && !height) {
-            const finalHeight = data.height.toFixed(1);
+            const finalHeight = Number(currentHeight).toFixed(1);
             setHeight(finalHeight);
             setHeightMeasuring(false);
             setHeightComplete(true);
@@ -462,7 +530,11 @@ export default function BMI() {
 
   const confirmExit = async () => {
     try {
-      await sensorAPI.reset();
+      // Use Shutdown instead of Reset to preserve TARE calibration
+      // await sensorAPI.reset();
+      await sensorAPI.shutdownWeight();
+      await sensorAPI.shutdownHeight();
+      console.log("🛑 Sensors shut down (Tare preserved)");
     } catch (e) {
       console.error("Error resetting sensors:", e);
     }
@@ -618,10 +690,15 @@ export default function BMI() {
   const progressInfo = getProgressInfo('bmi', location.state?.checklist);
 
   return (
-    <div
+    <motion.div
       className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.5 }}
+      style={{ overflow: 'hidden', maxHeight: '100vh' }}
     >
-      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
+      <div className="card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content visible">
         {/* Progress bar for Step X of Y */}
         <div className="w-100 mb-4">
           <div className="measurement-progress-bar">
@@ -738,7 +815,9 @@ export default function BMI() {
               <div className="col-12 col-md-4">
                 <div className={`instruction-card h-100 ${measurementStep >= 1 ? (measurementStep > 1 ? 'completed' : 'active') : ''}`}>
                   <div className="instruction-step-number">1</div>
-                  <div className="instruction-icon">⚖️</div>
+                  <div className="instruction-icon">
+                    <img src={weightIcon} alt="Measure Weight" className="step-icon-image" />
+                  </div>
                   <h4 className="instruction-title">Measure Weight</h4>
                   <p className="instruction-text">
                     Stand still for 3 seconds
@@ -750,7 +829,9 @@ export default function BMI() {
               <div className="col-12 col-md-4">
                 <div className={`instruction-card h-100 ${measurementStep >= 2 ? (measurementStep > 2 ? 'completed' : 'active') : ''}`}>
                   <div className="instruction-step-number">2</div>
-                  <div className="instruction-icon">📏</div>
+                  <div className="instruction-icon">
+                    <img src={heightIcon} alt="Measure Height" className="step-icon-image" />
+                  </div>
                   <h4 className="instruction-title">Measure Height</h4>
                   <p className="instruction-text">
                     Stand still under height sensor for 2 seconds
@@ -835,6 +916,6 @@ export default function BMI() {
           </motion.div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 import os
 import logging
-from app.sensors.camera_manager import camera_manager
+from app.sensors.weight_compliance_camera import weight_compliance_camera as camera_manager
 
 bp_ai_camera_bp = Blueprint('bp_ai_camera', __name__)
 

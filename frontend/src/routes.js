@@ -15,6 +15,7 @@ import Saving from "./pages/MeasurementFlow/Saving/Saving";
 import Sharing from "./pages/MeasurementFlow/Sharing/Sharing";
 import Starting from "./pages/MeasurementFlow/Starting/Starting";
 import Checklist from "./pages/MeasurementFlow/Checklist/Checklist";
+import Clearance from "./pages/MeasurementFlow/Clearance/Clearance";
 
 // 🧾 Register Flow (Kiosk - Regular Imports)
 import RegisterWelcome from "./pages/RegisterFlow/RegisterWelcome/RegisterWelcome";
@@ -113,6 +114,7 @@ function AppRoutes() {
         <Route path="/measure/starting" element={isLocalDevice() ? <Starting /> : <Navigate to="/" />} />
         <Route path="/measure/ai-loading" element={isLocalDevice() ? <AILoading /> : <Navigate to="/" />} />
         <Route path="/measure/checklist" element={isLocalDevice() ? <Checklist /> : <Navigate to="/" />} />
+        <Route path="/measure/clearance" element={isLocalDevice() ? <Clearance /> : <Navigate to="/" />} />
         <Route path="/measure/bloodpressure" element={isLocalDevice() ? <BloodPressure /> : <Navigate to="/" />} />
         <Route path="/measure/bmi" element={isLocalDevice() ? <BMI /> : <Navigate to="/" />} />
         <Route path="/measure/bodytemp" element={isLocalDevice() ? <BodyTemp /> : <Navigate to="/" />} />

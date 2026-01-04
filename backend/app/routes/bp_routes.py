@@ -17,6 +17,19 @@ def start_bp_camera():
     success, message = bp_sensor.start()
     return jsonify({"success": success, "message": message})
 
+@bp_routes.route('/set_camera', methods=['POST'])
+def set_bp_camera_index():
+    """Switch the BP camera index dynamically."""
+    from flask import request
+    data = request.json
+    index = data.get('index')
+    if index is not None:
+        # Stop, switch index, and restart
+        bp_sensor.stop()
+        success, msg = bp_sensor.start(camera_index=int(index))
+        return jsonify({"success": success, "message": msg})
+    return jsonify({"success": False, "message": "Index required"}), 400
+
 @bp_routes.route('/stop', methods=['POST'])
 def stop_bp_camera():
     """Stop the BP camera."""

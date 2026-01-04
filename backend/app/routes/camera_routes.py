@@ -1,12 +1,15 @@
 from flask import Blueprint, jsonify, Response
-from app.sensors.camera_manager import camera_manager
+from app.sensors.weight_compliance_camera import weight_compliance_camera as camera_manager
 import time
 
 camera_bp = Blueprint('camera', __name__)
 
 @camera_bp.route('/start', methods=['POST'])
 def start_camera():
-    success, message = camera_manager.start_camera()
+    from flask import request
+    data = request.get_json() or {}
+    camera_index = data.get('index', None)
+    success, message = camera_manager.start_camera(camera_index=camera_index)
     if success:
         return jsonify({"status": "success", "message": message})
     else:
@@ -40,6 +43,11 @@ def set_camera():
         success, msg = camera_manager.set_camera(int(index))
         return jsonify({"status": "success" if success else "error", "message": msg})
     return jsonify({"status": "error", "message": "Index required"}), 400
+
+@camera_bp.route('/list', methods=['GET'])
+def list_cameras():
+    cameras = camera_manager.list_available_cameras()
+    return jsonify({"status": "success", "cameras": cameras})
 
 @camera_bp.route('/set_settings', methods=['POST'])
 def set_settings():

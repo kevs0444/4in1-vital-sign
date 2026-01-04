@@ -2,6 +2,8 @@ import { isLocalDevice } from './network';
 
 let voices = [];
 let voicesLoaded = false;
+let lastText = "";
+let lastTime = 0;
 
 // Helper to reliably load voices (Chrome loads them async)
 const loadVoices = () => {
@@ -83,6 +85,17 @@ export const speak = (text) => {
     if (!isLocalDevice()) return;
 
     if (!text || typeof text !== 'string') return;
+
+    // DEBOUNCE: Prevent repeating the exact same text within a short window (2 seconds)
+    // This fixes issues where components re-render and spam the same speech command.
+    const now = Date.now();
+    if (text === lastText && (now - lastTime) < 2000) {
+        console.log("🤫 Speech debounce suppressed duplicate:", text);
+        return;
+    }
+
+    lastText = text;
+    lastTime = now;
 
     try {
         if (!window.speechSynthesis) return;

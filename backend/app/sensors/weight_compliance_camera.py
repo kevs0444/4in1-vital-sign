@@ -1,3 +1,9 @@
+"""
+Weight Compliance Camera Controller
+Dedicated camera for weight/feet compliance detection.
+Camera Index: 1 (0=Wearables, 1=Weight, 2=BP)
+"""
+
 import cv2
 import threading
 import time
@@ -22,14 +28,14 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-class CameraManager:
+class WeightComplianceCamera:
     def __init__(self):
         self.cap = None
         self.is_running = False
         self.detector = None
         self.lock = threading.Lock()
         self.latest_frame = None
-        self.camera_index = 0
+        self.camera_index = 1  # Index 1 for Weight/Feet camera (0=Wearables, 1=Weight, 2=BP)
         self.current_mode = 'feet'
         
         # Image Adjustments
@@ -156,22 +162,23 @@ class CameraManager:
                 logger.warning("ComplianceDetector class not imported")
 
             # Robust Camera Opening Strategy
-            # Try specified index first, then fallback to 0 or 1
+            # Try specified index ONLY to avoid conflict with other sensors
             indices_to_try = [self.camera_index]
-            if self.camera_index == 0: indices_to_try.append(1)
-            elif self.camera_index == 1: indices_to_try.append(0)
+            # Removed fallback logic to prevent grabbing the wrong camera
+            # if self.camera_index == 0: indices_to_try.append(1)
+            # elif self.camera_index == 1: indices_to_try.append(0)
             
-            # Backends to try: DSHOW (fastest on Win), MSMF (default), VFW (Video for Windows)
+            # Backends to try: CAP_ANY (auto-select), then MSMF as fallback
             backends = []
             if os.name == 'nt':
-                backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
+                backends = [cv2.CAP_ANY, cv2.CAP_MSMF, cv2.CAP_DSHOW]
             else:
                 backends = [cv2.CAP_ANY]
                 
             for idx in indices_to_try:
                 for backend in backends:
                     backend_name = "DSHOW" if backend == cv2.CAP_DSHOW else "MSMF" if backend == cv2.CAP_MSMF else "ANY"
-                    logger.info(f"Trying to open camera {idx} with backend {backend_name}...")
+                    logger.info(f"[Weight] Trying to open camera {idx} with backend {backend_name}...")
                     
                     try:
                         temp_cap = cv2.VideoCapture(idx, backend)
@@ -181,28 +188,28 @@ class CameraManager:
                             if ret and frame is not None and frame.size > 0:
                                 self.cap = temp_cap
                                 self.camera_index = idx
-                                logger.info(f"✅ Success! Camera {idx} opened with {backend_name}")
+                                logger.info(f"[Weight] ✅ Success! Camera {idx} opened with {backend_name}")
                                 break # Stop backend loop
                             else:
-                                logger.warning(f"Camera {idx} with {backend_name} opened but failed to read frame.")
+                                logger.warning(f"[Weight] Camera {idx} with {backend_name} opened but failed to read frame.")
                                 temp_cap.release()
                     except Exception as e:
-                        logger.error(f"Crash trying {idx} {backend_name}: {e}")
+                        logger.error(f"[Weight] Crash trying {idx} {backend_name}: {e}")
                         
                 if self.cap and self.cap.isOpened():
                     break # Stop index loop
 
             if not self.cap or not self.cap.isOpened():
-                logger.error(f"❌ Failed to open ANY camera after multiple attempts.")
+                logger.error(f"[Weight] ❌ Failed to open ANY camera after multiple attempts.")
                 return False, "Failed to open camera (checked all backends)"
                 
             self.is_running = True
             threading.Thread(target=self._process_feed, daemon=True).start()
-            logger.info(f"Camera started successfully on index {self.camera_index}")
+            logger.info(f"[Weight] Camera started successfully on index {self.camera_index}")
             return True, "Camera started"
             
         except Exception as e:
-            logger.error(f"Error starting camera: {e}")
+            logger.error(f"[Weight] Error starting camera: {e}")
             return False, str(e)
 
     def stop_camera(self):
@@ -210,7 +217,7 @@ class CameraManager:
         if self.cap:
             self.cap.release()
         self.cap = None
-        logger.info("Camera stopped")
+        logger.info("[Weight] Camera stopped")
         return True, "Camera stopped"
         
     def _process_feed(self):
@@ -239,7 +246,7 @@ class CameraManager:
             
             elif current_mode == 'reading':
                  # BP Reading mode is now handled by bp_sensor_controller.py
-                 # This mode is deprecated in camera_manager
+                 # This mode is deprecated in weight_compliance_camera
                  annotated_frame = frame
                  status_msg = "BP Mode - Use /api/bp/* endpoints"
                  is_compliant = True
@@ -282,6 +289,31 @@ class CameraManager:
             # Adaptive sleep to maintain ~30 FPS cap if system is too fast
             # time.sleep(0.03) # Removed specific sleep to allow max FPS testing
 
+    def list_available_cameras(self):
+        """
+        Check indices 0-3 to see which ones are valid cameras.
+        This is a blocking operation, so use sparingly.
+        """
+        available = []
+        # Checks indices 0 to 3
+        for i in range(4):
+            try:
+                # If we are currently using this camera, it's definitely available
+                if self.is_running and self.cap and self.camera_index == i:
+                    available.append(i)
+                    continue
+                
+                # Otherwise try to open it
+                cap = cv2.VideoCapture(i, cv2.CAP_DSHOW if os.name == 'nt' else cv2.CAP_ANY)
+                if cap.isOpened():
+                    ret, frame = cap.read()
+                    if ret and frame is not None:
+                        available.append(i)
+                    cap.release()
+            except:
+                pass
+        return available
+
     def get_frame(self):
         with self.lock:
             if self.latest_frame is None:
@@ -294,4 +326,4 @@ class CameraManager:
             return self.compliance_status
 
 # Global instance
-camera_manager = CameraManager()
+weight_compliance_camera = WeightComplianceCamera()

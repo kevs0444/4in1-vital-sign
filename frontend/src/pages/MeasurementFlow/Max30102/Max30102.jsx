@@ -59,6 +59,9 @@ export default function Max30102() {
   // Removed unused irValue state
   // const [irValue, setIrValue] = useState(0);
 
+  // Debounce ref to track when finger was lost
+  const fingerRemovalStartRef = useRef(null);
+
   const [showFingerRemovedAlert, setShowFingerRemovedAlert] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
 
@@ -78,6 +81,7 @@ export default function Max30102() {
   const isMeasuringRef = useRef(false);
   const measurementCompleteRef = useRef(false);
   const isStoppingRef = useRef(false); // Fix race conditions for stop commands
+  const isMountedRef = useRef(true);
   const totalMeasurementTime = 30;
 
 
@@ -170,7 +174,9 @@ export default function Max30102() {
           // Auto-complete the measurement (only if not already complete)
           if (!measurementCompleteRef.current) {
             console.log("⏱️ Frontend timer reached 30s - triggering completion");
-            setTimeout(() => completeMeasurement(), 100);
+            setTimeout(() => {
+              if (isMountedRef.current) completeMeasurement();
+            }, 100);
           }
           return totalMeasurementTime; // Lock at 30
         }
@@ -222,8 +228,10 @@ export default function Max30102() {
 
       setStatusMessage("✅ Pulse oximeter ready. Place finger to start automatic measurement...");
 
-      // Safe speech call only after successful initialization
-      setTimeout(() => speak("Pulse oximeter ready. Place finger on sensor."), 500);
+      // Speech managed by useEffect on step change
+      // setTimeout(() => {
+      //   if (isMountedRef.current) speak("Pulse oximeter ready. Place finger on sensor.");
+      // }, 500);
 
       setSensorReady(true);
       setMeasurementStep(2);
@@ -234,6 +242,27 @@ export default function Max30102() {
       console.error("MAX30102 initialization error:", error);
       setStatusMessage("❌ Failed to initialize pulse oximeter");
       handleRetry();
+    }
+  };
+
+  const resumeMeasurement = async () => {
+    console.log("🔄 Resuming measurement after temporary finger loss...");
+    setStatusMessage("✅ Finger detected! Resuming measurement...");
+
+    // Resume timer if stopped
+    if (!progressTimerRef.current) {
+      startProgressTimer();
+    }
+
+    // Restart backend measurement if it stopped (but keep frontend data!)
+    try {
+      const status = await sensorAPI.getMax30102Status();
+      if (!status.measurement_started) {
+        console.log("➡️ Restarting backend stream...");
+        await sensorAPI.startMax30102();
+      }
+    } catch (e) {
+      console.error("Error resuming backend:", e);
     }
   };
 
@@ -258,10 +287,27 @@ export default function Max30102() {
 
         // Check if finger was JUST REMOVED (was detected, now not detected) during measurement
         if (previousFingerStateRef.current && !newFingerDetected && isMeasuringRef.current && !measurementCompleteRef.current) {
-          console.log("Finger removed during measurement - stopping timer and showing alert");
-          showFingerRemovedNotification();
-          setStatusMessage("❌ Finger removed! Please reinsert finger to RESTART measurement.");
-          invalidateMeasurement(); // INVALIDATE AND RESET EVERYTHING
+          if (!fingerRemovalStartRef.current) {
+            console.log("⚠️ Potential finger removal detected at", Date.now());
+            fingerRemovalStartRef.current = Date.now();
+            setStatusMessage("⚠️ Keep finger still...");
+          }
+
+          const elapsed = Date.now() - fingerRemovalStartRef.current;
+          if (elapsed > 2000) {
+            console.log("❌ Finger removed confirmed (>2s) - stopping timer and showing alert");
+            showFingerRemovedNotification();
+            setStatusMessage("❌ Finger removed! Please reinsert finger to RESTART measurement.");
+            invalidateMeasurement(); // INVALIDATE AND RESET EVERYTHING
+            fingerRemovalStartRef.current = null;
+          } else {
+            console.log(`⚠️ Finger missing for ${elapsed}ms - ignoring glitch`);
+            // Optional: Pause timer temporarily?
+            // stopProgressTimer(); 
+            // We keep timer running for 2s grace period to feel smoother, or stop it? 
+            // If we stop it, we extend the duration. Let's PAUSE it to be accurate.
+            stopProgressTimer();
+          }
         }
 
         // Check if finger was JUST INSERTED (was not detected, now detected) AND sensor is ready
@@ -269,7 +315,12 @@ export default function Max30102() {
           // NEW: Signal activity to InactivityWrapper - finger insertion counts as user activity!
           signalActivity();
 
-          if (isMeasuringRef.current && !measurementCompleteRef.current) {
+          // If we were "glitching" (fingerRemovalStartRef set), clear it and resume!
+          if (fingerRemovalStartRef.current) {
+            console.log("✅ Finger signal restored! Glitch ignored.");
+            fingerRemovalStartRef.current = null;
+            resumeMeasurement();
+          } else if (isMeasuringRef.current && !measurementCompleteRef.current) {
             // Finger was reinserted after removal - RESET TO 0 and start over
             console.log("Finger reinserted during measurement - resetting to 0 and starting over");
             resetAndStartMeasurement();
@@ -280,9 +331,17 @@ export default function Max30102() {
           }
         }
 
+        // Handle persistent "finger present" state during debounce to ensure we recover from glitch
+        if (newFingerDetected && fingerRemovalStartRef.current) {
+          console.log("✅ Finger signal restored (persistent)! Glitch ignored.");
+          fingerRemovalStartRef.current = null;
+          resumeMeasurement();
+        }
+
         // FAILSAFE: If backend says "Not Measuring" but frontend thinks "Measuring", sync up!
         // This handles cases where backend detected finger removal but frontend logic missed the edge trigger
-        if (isMeasuringRef.current && measurementCompleteRef.current === false && data.measurement_started === false) {
+        // UPDATED: Only invalidate if NOT in grace period
+        if (isMeasuringRef.current && measurementCompleteRef.current === false && data.measurement_started === false && !fingerRemovalStartRef.current) {
           console.log("SYNC CHECK: Backend says measurement stopped. Invalidating...");
           // Only invalidate if we didn't just complete it (race condition check)
           invalidateMeasurement();
@@ -320,6 +379,7 @@ export default function Max30102() {
     respiratoryRateReadingsRef.current = [];
     startProgressTimer();
     clearFingerRemovedAlert();
+    fingerRemovalStartRef.current = null;
   };
 
   const invalidateMeasurement = () => {
@@ -585,7 +645,7 @@ export default function Max30102() {
       initializationRef.current = false;
 
       setTimeout(() => {
-        initializeMax30102Sensor();
+        if (isMountedRef.current) initializeMax30102Sensor();
       }, 3000);
     } else {
       setStatusMessage("❌ Maximum retries reached. Please check the device.");
@@ -746,6 +806,7 @@ export default function Max30102() {
 
   // Initialize sensors ONCE - Moved to end to ensure functions are defined
   useEffect(() => {
+    isMountedRef.current = true;
     // Reset inactivity setting on mount (timer enabled by default)
     setIsInactivityEnabled(true);
 
@@ -755,6 +816,7 @@ export default function Max30102() {
     initializeMax30102Sensor();
 
     return () => {
+      isMountedRef.current = false;
       clearTimeout(timer);
       stopAllTimers();
       clearFingerRemovedAlert();

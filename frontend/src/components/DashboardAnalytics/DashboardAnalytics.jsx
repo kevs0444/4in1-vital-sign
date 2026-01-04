@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     Favorite,
@@ -39,12 +39,284 @@ ChartJS.register(
     ArcElement
 );
 
+// ============================================================================
+// REUSABLE MULTI-SELECT DROPDOWN COMPONENT
+// Consistent styling with TimePeriodFilter for all dashboard dropdowns
+// Handles: ESC key, scroll, resize, sidebar, tab changes, click outside
+// ============================================================================
+export const MultiSelectDropdown = ({
+    label,
+    selectedItems,
+    options,
+    onToggle,
+    allLabel = 'All',
+    icon = null,
+    minWidth = '160px'
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownId = React.useRef(`dropdown-${Math.random().toString(36).substr(2, 9)}`);
+
+    // Comprehensive close handlers for all scenarios
+    useEffect(() => {
+        const handleCloseDropdowns = (e) => {
+            // If specific dropdown ID provided, only close if not this one
+            if (e.detail && e.detail.except === dropdownId.current) {
+                return;
+            }
+            setIsOpen(false);
+        };
+
+        const handleResize = () => {
+            // Close dropdown when resizing to mobile breakpoint
+            if (window.innerWidth <= 1024) {
+                setIsOpen(false);
+            }
+        };
+
+        const handleKeyDown = (e) => {
+            // Close on ESC key press
+            if (e.key === 'Escape') {
+                setIsOpen(false);
+            }
+        };
+
+        const handleScroll = () => {
+            // Close dropdown when user scrolls the page
+            setIsOpen(false);
+        };
+
+        // Listen for all close events
+        window.addEventListener('closeAllDropdowns', handleCloseDropdowns);
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('keydown', handleKeyDown);
+        // Add scroll listener to the dashboard content wrapper
+        const contentWrapper = document.querySelector('.dashboard-content-wrapper');
+        if (contentWrapper) {
+            contentWrapper.addEventListener('scroll', handleScroll);
+        }
+
+        return () => {
+            window.removeEventListener('closeAllDropdowns', handleCloseDropdowns);
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('keydown', handleKeyDown);
+            if (contentWrapper) {
+                contentWrapper.removeEventListener('scroll', handleScroll);
+            }
+        };
+    }, []);
+
+    // When this dropdown opens, close all others
+    const handleToggle = () => {
+        if (!isOpen) {
+            // Close all other dropdowns first, except this one
+            window.dispatchEvent(new CustomEvent('closeAllDropdowns', {
+                detail: { except: dropdownId.current }
+            }));
+        }
+        setIsOpen(!isOpen);
+    };
+
+    const displayLabel = selectedItems.includes('All') || selectedItems.includes('all')
+        ? allLabel
+        : selectedItems.length > 0
+            ? `${selectedItems.length} Selected`
+            : label;
+
+    return (
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+                onClick={handleToggle}
+                style={{
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    background: 'white',
+                    color: '#1e293b',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    minWidth: minWidth,
+                    justifyContent: 'space-between',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                    transition: 'all 0.2s ease'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {icon && <span style={{ color: '#dc2626', display: 'flex', alignItems: 'center' }}>{icon}</span>}
+                    <span>{displayLabel}</span>
+                </div>
+                <span style={{
+                    fontSize: '0.7rem',
+                    color: '#64748b',
+                    transform: isOpen ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.2s'
+                }}>▼</span>
+            </button>
+
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        zIndex: 1000,
+                        background: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+                        width: '220px',
+                        padding: '6px',
+                        marginTop: '8px',
+                        maxHeight: '300px',
+                        overflowY: 'auto'
+                    }}
+                >
+                    {options.map(option => {
+                        const optionId = typeof option === 'object' ? option.id : option;
+                        const optionLabel = typeof option === 'object' ? option.label : option;
+                        const isSelected = selectedItems.includes(optionId);
+
+                        return (
+                            <div
+                                key={optionId}
+                                onClick={() => {
+                                    onToggle(optionId);
+                                    // Don't close dropdown on multi-select
+                                }}
+                                style={{
+                                    padding: '10px 12px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.9rem',
+                                    color: isSelected ? '#dc2626' : '#475569',
+                                    background: isSelected ? '#fff1f2' : 'transparent',
+                                    fontWeight: isSelected ? '700' : '500',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    transition: 'all 0.1s'
+                                }}
+                            >
+                                <div style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '4px',
+                                    border: `2px solid ${isSelected ? '#dc2626' : '#cbd5e1'}`,
+                                    background: isSelected ? '#dc2626' : 'transparent',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                    transition: 'all 0.15s ease'
+                                }}>
+                                    {isSelected && (
+                                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                            <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    )}
+                                </div>
+                                {optionLabel}
+                            </div>
+                        );
+                    })}
+                </motion.div>
+            )}
+
+            {/* Click outside to close */}
+            {isOpen && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 999
+                    }}
+                    onClick={() => setIsOpen(false)}
+                />
+            )}
+        </div>
+    );
+};
+
+
 // Shared Time Period Filter Component - can be used anywhere
+// Handles: ESC key, scroll, resize, sidebar, tab changes, click outside
 export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, setCustomDateRange, showCustom = true, variant = 'pills' }) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [tempStartDate, setTempStartDate] = useState(customDateRange?.start || '');
     const [tempEndDate, setTempEndDate] = useState(customDateRange?.end || '');
+    const dropdownId = React.useRef(`timeperiod-${Math.random().toString(36).substr(2, 9)}`);
+
+    // Comprehensive close handlers for all scenarios
+    useEffect(() => {
+        const handleCloseDropdowns = (e) => {
+            // If specific dropdown ID provided, only close if not this one
+            if (e.detail && e.detail.except === dropdownId.current) {
+                return;
+            }
+            setShowDropdown(false);
+            setShowDatePicker(false);
+        };
+
+        const handleResize = () => {
+            if (window.innerWidth <= 1024) {
+                setShowDropdown(false);
+                setShowDatePicker(false);
+            }
+        };
+
+        const handleKeyDown = (e) => {
+            // Close on ESC key press
+            if (e.key === 'Escape') {
+                setShowDropdown(false);
+                setShowDatePicker(false);
+            }
+        };
+
+        const handleScroll = () => {
+            // Close dropdown when user scrolls the page
+            setShowDropdown(false);
+            setShowDatePicker(false);
+        };
+
+        // Listen for all close events
+        window.addEventListener('closeAllDropdowns', handleCloseDropdowns);
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('keydown', handleKeyDown);
+        // Add scroll listener to the dashboard content wrapper
+        const contentWrapper = document.querySelector('.dashboard-content-wrapper');
+        if (contentWrapper) {
+            contentWrapper.addEventListener('scroll', handleScroll);
+        }
+
+        return () => {
+            window.removeEventListener('closeAllDropdowns', handleCloseDropdowns);
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('keydown', handleKeyDown);
+            if (contentWrapper) {
+                contentWrapper.removeEventListener('scroll', handleScroll);
+            }
+        };
+    }, []);
+
+    // When this dropdown opens, close all others
+    const handleToggle = () => {
+        if (!showDropdown) {
+            // Close all other dropdowns first, except this one
+            window.dispatchEvent(new CustomEvent('closeAllDropdowns', {
+                detail: { except: dropdownId.current }
+            }));
+        }
+        setShowDropdown(!showDropdown);
+    };
 
     const periods = [
         { id: 'daily', label: 'Daily' },
@@ -75,7 +347,7 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
         return (
             <div style={{ position: 'relative', display: 'inline-block' }}>
                 <button
-                    onClick={() => setShowDropdown(!showDropdown)}
+                    onClick={handleToggle}
                     style={{
                         padding: '10px 16px',
                         borderRadius: '8px',
@@ -565,7 +837,14 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { display: false },
+            legend: {
+                display: true,
+                align: 'end',
+                labels: {
+                    boxWidth: 10,
+                    usePointStyle: true
+                }
+            },
             tooltip: {
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 titleColor: '#1e293b',
@@ -582,7 +861,13 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
         },
         elements: {
             line: { tension: 0.4 },
-            point: { radius: 0, hoverRadius: 6 }
+            point: {
+                radius: 0,
+                hoverRadius: 8,
+                hoverBorderWidth: 4,
+                hoverBackgroundColor: '#fff',
+                hoverBorderColor: '#dc2626'
+            }
         }
     };
 
@@ -693,6 +978,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.25)' }}
                     style={{
                         gridRow: 'span 2',
                         background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
@@ -745,6 +1031,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
                     transition={{ delay: 0.1 }}
                     style={{
                         background: 'white',
@@ -816,6 +1103,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
                     transition={{ delay: 0.15 }}
                     style={{
                         background: 'white',
@@ -883,6 +1171,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
                     transition={{ delay: 0.2 }}
                     style={{
                         background: 'white',
@@ -919,6 +1208,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
                     transition={{ delay: 0.25 }}
                     style={{
                         background: 'white',
@@ -946,6 +1236,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
                     transition={{ delay: 0.3 }}
                     style={{
                         background: 'white',
@@ -972,7 +1263,14 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                             options={{
                                 maintainAspectRatio: false,
                                 cutout: '80%',
-                                plugins: { tooltip: { enabled: false }, legend: { display: false } },
+                                plugins: {
+                                    tooltip: { enabled: false },
+                                    legend: {
+                                        display: true,
+                                        position: 'bottom',
+                                        labels: { boxWidth: 10, font: { size: 10 } }
+                                    }
+                                },
                                 rotation: 270,
                                 circumference: 180
                             }}
@@ -988,6 +1286,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
                     transition={{ delay: 0.35 }}
                     style={{
                         background: 'white',

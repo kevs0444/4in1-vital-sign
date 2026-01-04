@@ -9,6 +9,7 @@ export const getNextStepPath = (currentStepId, checklist) => {
     // Default flow if no checklist is present (fallback for backward compatibility)
     if (!checklist || !Array.isArray(checklist) || checklist.length === 0) {
         switch (currentStepId) {
+            case 'clearance': return '/measure/bmi'; // Clearance always goes to BMI first
             case 'bmi': return '/measure/bodytemp';
             case 'bodytemp': return '/measure/max30102';
             case 'max30102': return '/measure/bloodpressure';
@@ -29,6 +30,20 @@ export const getNextStepPath = (currentStepId, checklist) => {
 
     // Map ID to route
     switch (nextStepId) {
+        case 'clearance':
+            // If we are at clearance, go to the first step in the checklist
+            // This assumes checklist has at least one item (guaranteed by Checklist.jsx)
+            return getRouteForId(checklist[0]);
+        case 'bmi': return '/measure/bmi';
+        case 'bodytemp': return '/measure/bodytemp';
+        case 'max30102': return '/measure/max30102';
+        case 'bloodpressure': return '/measure/bloodpressure';
+        default: return '/measure/ai-loading';
+    }
+};
+
+const getRouteForId = (id) => {
+    switch (id) {
         case 'bmi': return '/measure/bmi';
         case 'bodytemp': return '/measure/bodytemp';
         case 'max30102': return '/measure/max30102';
@@ -57,7 +72,15 @@ export const getProgressInfo = (currentStepId, checklist) => {
     const currentStep = list.indexOf(currentStepId) + 1;
 
     // If step not found (shouldn't happen in normal flow), default to 1
-    const safeCurrentStep = currentStep > 0 ? currentStep : 1;
+    // Special handling for 'clearance' - treat it as part of BMI (Step 1)
+    let safeCurrentStep = currentStep;
+
+    if (currentStepId === 'clearance') {
+        const bmiIndex = list.indexOf('bmi');
+        safeCurrentStep = (bmiIndex !== -1 ? bmiIndex : 0) + 1;
+    } else {
+        safeCurrentStep = currentStep > 0 ? currentStep : 1;
+    }
 
     // Calculate percentage based on CURRENT step to show progress through the workflow
     // Example: Step 1 of 2 -> 50%

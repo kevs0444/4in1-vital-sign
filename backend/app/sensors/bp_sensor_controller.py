@@ -1,7 +1,8 @@
 """
 Blood Pressure Sensor Controller
 Dedicated camera + AI module for BP measurement.
-Separate from camera_manager.py to avoid mode conflicts.
+Camera Index: 2 (0=Wearables, 1=Weight, 2=BP)
+Separate from weight_compliance_camera.py to avoid mode conflicts.
 """
 
 import cv2
@@ -30,12 +31,12 @@ class BPSensorController:
         self.is_running = False
         self.lock = threading.Lock()
         self.latest_frame = None
-        self.camera_index = 0
+        self.camera_index = 2  # Index 2 for BP camera (0=Weight, 1=Wearables, 2=BP)
         
         # Image Adjustments
         self.zoom_factor = 1.5
         self.square_crop = True
-        self.rotation = 180
+        self.rotation = 0
         
         # BP Detection State
         self.bp_yolo = None
@@ -73,16 +74,17 @@ class BPSensorController:
             self.stable_frames_count = 0
             # Reset zoom to default to ensure consistancy across pages
             self.zoom_factor = 1.5
-            self.rotation = 180
+            self.rotation = 0
             
             # Robust Camera Opening
             indices_to_try = [self.camera_index]
-            if self.camera_index == 0: indices_to_try.append(1)
-            elif self.camera_index == 1: indices_to_try.append(0)
+            # Removed fallback logic to prevent grabbing the wrong camera
+            # if self.camera_index == 0: indices_to_try.append(1)
+            # elif self.camera_index == 1: indices_to_try.append(0)
             
             backends = []
             if os.name == 'nt':
-                backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
+                backends = [cv2.CAP_MSMF, cv2.CAP_DSHOW, cv2.CAP_ANY]
             else:
                 backends = [cv2.CAP_ANY]
             

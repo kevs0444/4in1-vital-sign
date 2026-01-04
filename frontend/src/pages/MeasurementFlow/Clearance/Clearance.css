@@ -1,0 +1,123 @@
+.clearance-camera-container {
+    background: #000;
+    border-radius: 20px;
+    position: relative;
+    aspect-ratio: 1/1;
+    /* Square for square crop */
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border: 4px solid #fff;
+    margin: 0 auto;
+    max-width: 100%;
+    /* Full width of parent */
+    width: 100%;
+    min-height: 350px;
+    /* Ensure minimum size */
+}
+
+.clearance-feed {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.clearance-overlay {
+    position: absolute;
+    inset: 0;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, transparent 20%, transparent 80%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+.clearance-status-badge {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    align-self: flex-start;
+}
+
+.clearance-status-badge.success {
+    background: rgba(16, 185, 129, 0.9);
+}
+
+.clearance-status-badge.warning {
+    background: rgba(245, 158, 11, 0.9);
+}
+
+.clearance-status-badge.error {
+    background: rgba(220, 38, 38, 0.9);
+}
+
+.instruction-list {
+    text-align: left;
+    margin: 0 auto;
+    max-width: 400px;
+}
+
+.instruction-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.instruction-item.active {
+    border-color: #dc2626;
+    background: #fef2f2;
+}
+
+.instruction-item.completed {
+    border-color: #10b981;
+    background: #ecfdf5;
+}
+
+.instruction-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.instruction-item.active .instruction-check {
+    background: #dc2626;
+    color: white;
+}
+
+.instruction-item.completed .instruction-check {
+    background: #10b981;
+    color: white;
+}
+
+.instruction-item:not(.active):not(.completed) .instruction-check {
+    background: #cbd5e1;
+    color: white;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

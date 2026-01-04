@@ -522,6 +522,10 @@ class SensorManager:
             self.live_data['weight']['elapsed'] = 0
             logger.info("⚖️ Weight measurement started")
 
+        elif data.startswith("STATUS:WEIGHT_MEASURING"):
+            self.live_data['weight']['status'] = 'measuring'
+            logger.info("⚖️ Weight measuring active")
+
         elif data.startswith("STATUS:HEIGHT_MEASUREMENT_STARTED"):
             self._height_measurement_active = True
             self.live_data['height']['status'] = 'detecting'
@@ -708,6 +712,13 @@ class SensorManager:
         """Start weight measurement"""
         if not self.is_connected:
             return {"status": "error", "message": "Not connected to Arduino"}
+        
+        # RESET local data to prevent showing previous user's weight
+        self.measurements['weight'] = None
+        self.live_data['weight']['current'] = None
+        self.live_data['weight']['status'] = 'detecting'
+        self.live_data['weight']['progress'] = 0
+        self.live_data['weight']['elapsed'] = 0
         
         try:
             self.serial_conn.write("START_WEIGHT\n".encode())
@@ -905,6 +916,8 @@ class SensorManager:
         
         try:
             self.serial_conn.write("POWER_DOWN_WEIGHT\n".encode())
+            self._weight_measurement_active = False
+            self.live_data['weight']['status'] = 'idle'
             time.sleep(1)
             return {"status": "success", "message": "Weight sensor shutdown"}
         except Exception as e:
@@ -968,6 +981,8 @@ class SensorManager:
         
         try:
             self.serial_conn.write("POWER_DOWN_HEIGHT\n".encode())
+            self._height_measurement_active = False
+            self.live_data['height']['status'] = 'idle'
             time.sleep(1)
             return {"status": "success", "message": "Height sensor shutdown"}
         except Exception as e:

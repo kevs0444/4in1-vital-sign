@@ -111,8 +111,9 @@ export default function Standby() {
       // 3. Reset sensors on backend (if connected) - ONLY FOR LOCAL COMPONENT
       if (isLocalDevice()) {
         try {
-          await sensorAPI.reset();
-          console.log('✅ Backend sensor data reset');
+          // COMMENTED OUT to preserve TARE calibration for next user
+          // await sensorAPI.reset();
+          console.log('✅ Backend sensor data cleanup (Skipped full reset to preserve Tare)');
         } catch (error) {
           console.log('ℹ️ Backend reset skipped (may not be connected yet)');
         }

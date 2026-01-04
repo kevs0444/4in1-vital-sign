@@ -41,7 +41,7 @@ def load_models_if_needed():
         print(f"⚠️ Warning: Could not load Juan AI models. Using fallback mode. Error: {e}")
         MODEL_LOADED = False
 
-from app.sensors.camera_manager import camera_manager
+from app.sensors.weight_compliance_camera import weight_compliance_camera as camera_manager
 
 
 

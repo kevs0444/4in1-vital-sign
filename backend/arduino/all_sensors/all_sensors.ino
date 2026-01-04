@@ -78,14 +78,17 @@ bool weightSensorInitialized = false;
 bool autoTareCompleted = false;
 
 // --- Measurement Variables ---
-// Weight
-const unsigned long WEIGHT_MEASUREMENT_TIME = 3000; // 3 seconds total
+// Weight - OPTIMIZED with noise filter from working code
+const unsigned long WEIGHT_MEASUREMENT_TIME = 60000; // 60 seconds (Frontend controls actual duration)
 const float WEIGHT_THRESHOLD = 1.0; // Require at least 1kg to start
+const float WEIGHT_NOISE_THRESHOLD = 0.02; // 20 grams = 0.02 kg (noise filter)
+float lastWeightKg = 0.0; // For noise filtering
+unsigned long lastWeightPrint = 0; // For 30ms update rate
 enum WeightSubState { W_DETECTING, W_MEASURING };
 WeightSubState weightState = W_DETECTING;
 
 // Height  
-const unsigned long HEIGHT_MEASUREMENT_TIME = 2000; // 2 seconds total
+const unsigned long HEIGHT_MEASUREMENT_TIME = 60000; // 60 seconds (Frontend controls actual duration)
 const unsigned long HEIGHT_READ_INTERVAL = 100;
 enum HeightSubState { H_DETECTING, H_MEASURING };
 HeightSubState heightState = H_DETECTING;
@@ -164,10 +167,13 @@ void startAutoTare() {
   float calFactor;
   EEPROM.get(0, calFactor);
   if (isnan(calFactor) || calFactor == 0) {
-    calFactor = -21314.96;
+    calFactor = -21330.55; // UPDATED: Working calibration factor
     Serial.println("STATUS:USING_DEFAULT_CALIBRATION");
   }
   LoadCell.setCalFactor(calFactor);
+  
+  // 🔥 FAST response (setSamplesInUse = 2 for real-time)
+  LoadCell.setSamplesInUse(2);
 
   Serial.print("STATUS:CALIBRATION_FACTOR:");
   Serial.println(calFactor);
@@ -231,10 +237,13 @@ void initializeWeightSensor() {
   float calFactor;
   EEPROM.get(0, calFactor);
   if (isnan(calFactor) || calFactor == 0) {
-    calFactor = -21314.96;
+    calFactor = -21330.55; // UPDATED: Working calibration factor
     Serial.println("STATUS:USING_DEFAULT_CALIBRATION");
   }
   LoadCell.setCalFactor(calFactor);
+  
+  // 🔥 FAST response (setSamplesInUse = 2 for real-time)
+  LoadCell.setSamplesInUse(2);
 
   Serial.print("STATUS:CALIBRATION_FACTOR:");
   Serial.println(calFactor);
@@ -656,13 +665,17 @@ void powerUpWeightSensor() {
     delay(100);
     
     if (!weightSensorInitialized) {
-      LoadCell.start(2000, true);
+      LoadCell.start(1000, true); // OPTIMIZED: Reduced from 2000 to 1000 for faster start
       float calFactor;
       EEPROM.get(0, calFactor);
       if (isnan(calFactor) || calFactor == 0) {
-        calFactor = -21314.96;
+        calFactor = -21330.55; // UPDATED: Working calibration factor
       }
       LoadCell.setCalFactor(calFactor);
+      
+      // 🔥 FAST response (setSamplesInUse = 2 for real-time)
+      LoadCell.setSamplesInUse(2);
+      
       weightSensorInitialized = true;
     }
     
@@ -787,9 +800,40 @@ void startWeightMeasurement() {
   
   measurementActive = true;
   currentPhase = WEIGHT;
-  weightState = W_DETECTING;
+  weightState = W_MEASURING; // Start measuring immediately (like MAX30102)
   phaseStartTime = millis();
+  
+  // RESET internal content
+  finalRealTimeWeight = 0;
   Serial.println("STATUS:WEIGHT_MEASUREMENT_STARTED");
+  Serial.println("STATUS:WEIGHT_MEASURING"); // Force frontend to state 'measuring'
+}
+
+void runWeightPhase() {
+  static unsigned long lastWeightRead = 0;
+  
+  // Always update and stream data (like MAX30102)
+  if (LoadCell.update()) {
+    float currentWeight = LoadCell.getData();
+    
+    // STREAMING MODE: Send data frequently
+    if (millis() - lastWeightRead > 100) { // 100ms update rate
+      Serial.print("DEBUG:Weight reading: ");
+      Serial.println(currentWeight, 2);
+      lastWeightRead = millis();
+      
+      // If weight is stable and valid, frontend will capture it
+      if (currentWeight > WEIGHT_THRESHOLD) {
+        // Optional: We can still send "progress" marks if needed, 
+        // but frontend controls the 3s checkout logic.
+      }
+    }
+    
+    // Safety timeout (stop after 60s to save power if abandoned)
+    if (millis() - phaseStartTime > WEIGHT_MEASUREMENT_TIME) {
+       finalizeWeightMeasurement();
+    }
+  }
 }
 
 void startHeightMeasurement() {
@@ -962,8 +1006,7 @@ void runWeightInitializationPhase() {
   }
 }
 
-void runWeightPhase() {
-  static unsigned long lastLiveUpdate = 0;
+void runWeightPhase_OLD_Deprecated() {
   static bool measurementTaken = false;
 
   switch (weightState) {
@@ -971,10 +1014,15 @@ void runWeightPhase() {
       if (LoadCell.update()) {
         float currentWeight = LoadCell.getData();
         
-        if (millis() - lastLiveUpdate > 200) {
-          Serial.print("DEBUG:Weight reading: ");
-          Serial.println(currentWeight, 2);
-          lastLiveUpdate = millis();
+        // 🔥 OPTIMIZED: Noise filter - only update if change >= 0.02 kg (20 grams)
+        if (abs(currentWeight - lastWeightKg) >= WEIGHT_NOISE_THRESHOLD) {
+          // 🔥 OPTIMIZED: Print every ~30ms max for real-time response
+          if (millis() - lastWeightPrint >= 30) {
+            Serial.print("DEBUG:Weight reading: ");
+            Serial.println(currentWeight, 2);
+            lastWeightKg = currentWeight;
+            lastWeightPrint = millis();
+          }
         }
         
         if (currentWeight > WEIGHT_THRESHOLD) {
@@ -982,6 +1030,7 @@ void runWeightPhase() {
           weightState = W_MEASURING;
           measurementStartTime = millis();
           measurementTaken = false;
+          lastWeightKg = currentWeight; // Reset noise filter baseline
         }
       }
       break;
@@ -990,10 +1039,15 @@ void runWeightPhase() {
       if (LoadCell.update()) {
         float currentWeight = LoadCell.getData();
         
-        if (millis() - lastLiveUpdate > 200) {
-          Serial.print("DEBUG:Weight reading: ");
-          Serial.println(currentWeight, 2);
-          lastLiveUpdate = millis();
+        // 🔥 OPTIMIZED: Noise filter - only update if change >= 0.02 kg (20 grams)
+        if (abs(currentWeight - lastWeightKg) >= WEIGHT_NOISE_THRESHOLD) {
+          // 🔥 OPTIMIZED: Print every ~30ms max for real-time response
+          if (millis() - lastWeightPrint >= 30) {
+            Serial.print("DEBUG:Weight reading: ");
+            Serial.println(currentWeight, 2);
+            lastWeightKg = currentWeight;
+            lastWeightPrint = millis();
+          }
         }
 
         if (millis() - lastProgressUpdate > 500) {

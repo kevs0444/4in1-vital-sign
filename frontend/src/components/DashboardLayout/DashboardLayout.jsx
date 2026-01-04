@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Logout, Menu, Close, ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { isLocalDevice } from '../../utils/network';
 import './DashboardLayout.css';
 
 
@@ -44,13 +45,52 @@ const DashboardLayout = ({
         };
     }, []);
 
+    // Session Protection: End session when remote user leaves the browser tab
+    useEffect(() => {
+        // Only apply to remote devices, not kiosk
+        if (isLocalDevice()) return;
 
-    // Close sidebar when active tab changes on mobile
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                // User switched tabs or minimized browser - show confirmation on return
+                // We'll store a flag to check when they come back
+                sessionStorage.setItem('tabLeftTimestamp', Date.now().toString());
+            } else if (document.visibilityState === 'visible') {
+                // User returned to tab - check if they were away
+                const leftTimestamp = sessionStorage.getItem('tabLeftTimestamp');
+                if (leftTimestamp) {
+                    const timeAway = Date.now() - parseInt(leftTimestamp);
+                    // If away for more than 30 seconds, show logout confirmation
+                    if (timeAway > 30000) {
+                        setShowLogoutConfirm(true);
+                    }
+                    sessionStorage.removeItem('tabLeftTimestamp');
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
+
+    // Close sidebar and all dropdowns when active tab changes on mobile
     useEffect(() => {
         if (window.innerWidth <= 1024) {
             setIsSidebarOpen(false);
         }
+        // Dispatch event to close all dropdowns when tab changes
+        window.dispatchEvent(new Event('closeAllDropdowns'));
     }, [activeTab]);
+
+    // Close all dropdowns when mobile sidebar opens
+    useEffect(() => {
+        if (isSidebarOpen) {
+            window.dispatchEvent(new Event('closeAllDropdowns'));
+        }
+    }, [isSidebarOpen]);
 
     // Load collapsed state from localStorage
     useEffect(() => {
@@ -60,11 +100,13 @@ const DashboardLayout = ({
         }
     }, []);
 
-    // Save collapsed state to localStorage
+    // Save collapsed state to localStorage and close all dropdowns
     const toggleCollapse = () => {
         const newState = !isCollapsed;
         setIsCollapsed(newState);
         localStorage.setItem('sidebar-collapsed', newState.toString());
+        // Close all dropdowns when sidebar state changes
+        window.dispatchEvent(new Event('closeAllDropdowns'));
     };
 
     // Helper to get user initials (handles different property naming conventions)
@@ -139,17 +181,36 @@ const DashboardLayout = ({
                 </div>
 
                 <nav className="sidebar-nav">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
-                            onClick={() => onTabChange(tab.id)}
-                            title={isCollapsed ? tab.label : undefined}
-                        >
-                            <span className="nav-item-icon">{tab.icon}</span>
-                            {!isCollapsed && <span>{tab.label}</span>}
-                        </button>
-                    ))}
+                    {tabs.map((tab, index) => {
+                        if (tab.type === 'divider') {
+                            return (
+                                <div
+                                    key={`divider-${index}`}
+                                    className="nav-divider"
+                                    style={{
+                                        height: '1px',
+                                        background: 'rgba(255,255,255,0.1)',
+                                        margin: '10px 16px',
+                                        width: 'calc(100% - 32px)'
+                                    }}
+                                />
+                            );
+                        }
+                        if (tab.type === 'spacer') {
+                            return <div key={`spacer-${index}`} style={{ height: '20px' }} />;
+                        }
+                        return (
+                            <button
+                                key={tab.id}
+                                className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
+                                onClick={() => onTabChange(tab.id)}
+                                title={isCollapsed ? tab.label : undefined}
+                            >
+                                <span className="nav-item-icon">{tab.icon}</span>
+                                {!isCollapsed && <span>{tab.label}</span>}
+                            </button>
+                        );
+                    })}
                 </nav>
 
                 <div className="sidebar-footer">

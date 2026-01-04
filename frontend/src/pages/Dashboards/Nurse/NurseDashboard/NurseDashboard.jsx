@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Logout, Search, Visibility, LocalHospital, Settings, GridView, TableRows, History, Check, Close, ErrorOutline, WarningAmber } from '@mui/icons-material';
+import { Logout, Search, Visibility, LocalHospital, Settings, GridView, TableRows, History, Check, Close, ErrorOutline, WarningAmber, Dashboard } from '@mui/icons-material';
 import './NurseDashboard.css';
 import { getAdminUsers, getMeasurementHistory } from '../../../../utils/api';
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
-import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
+import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod, MultiSelectDropdown } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
 import PopulationAnalytics from '../../../../components/PopulationAnalytics/PopulationAnalytics';
 import { Assessment } from '@mui/icons-material';
 import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
@@ -407,7 +407,9 @@ const NurseDashboard = () => {
     const tabs = [
         { id: 'patients', label: 'Patients Overview', icon: <LocalHospital /> },
         { id: 'analytics', label: 'Population Analytics', icon: <Assessment /> },
-        { id: 'personal', label: 'My Measurement History', icon: <History /> },
+        { type: 'spacer' },
+        { id: 'myoverview', label: 'My Health Overview', icon: <Dashboard /> },
+        { id: 'personal', label: 'My Measurements', icon: <History /> },
         { id: 'profile', label: 'Personal Info', icon: <Settings /> }
     ];
 
@@ -415,7 +417,7 @@ const NurseDashboard = () => {
 
     return (
         <DashboardLayout
-            title="Medical Portal"
+            title={tabs.find(t => t.id === activeTab)?.label || 'Dashboard'}
             subtitle="Nurse Dashboard"
             user={currentUser}
             tabs={tabs}
@@ -657,16 +659,21 @@ const NurseDashboard = () => {
                 </motion.div>
             )}
 
-            {/* --- Personal History Tab --- */}
-            {activeTab === 'personal' && (
-                <>
+            {/* --- My Health Overview Tab --- */}
+            {activeTab === 'myoverview' && (
+                <div style={{ padding: '0 0 40px 0' }}>
                     <DashboardAnalytics
                         user={currentUser}
                         history={myHistory}
                         timePeriod={timePeriod}
                         customDateRange={customDateRange}
                     />
+                </div>
+            )}
 
+            {/* --- My Measurements Tab --- */}
+            {activeTab === 'personal' && (
+                <>
                     {/* Time Period Filter for Table */}
                     <div style={{ marginTop: '30px', marginBottom: '20px' }}>
                         <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter Records</h3>
@@ -703,132 +710,40 @@ const NurseDashboard = () => {
                         </div>
 
                         <div className="table-header">
-                            <h3>My Measurement History ({processHistory(timeFilteredHistory).length} records)</h3>
+                            <h3>My Measurements ({processHistory(timeFilteredHistory).length} records)</h3>
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
 
-                                <div style={{ position: 'relative' }}>
-                                    <button
-                                        onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
-                                        style={{
-                                            padding: '8px 12px',
-                                            borderRadius: '6px',
-                                            border: '1px solid #cbd5e1',
-                                            background: 'white',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '5px',
-                                            minWidth: '150px',
-                                            justifyContent: 'space-between'
-                                        }}
-                                    >
-                                        <span>
-                                            {metricFilter.includes('all') ? 'All Metrics' :
-                                                metricFilter.length > 0 ? `${metricFilter.length} Selected` : 'Select Metrics'}
-                                        </span>
-                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                    </button>
-                                    {isMetricDropdownOpen && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '100%',
-                                            left: 0,
-                                            zIndex: 100,
-                                            background: 'white',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '6px',
-                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                            width: '200px',
-                                            padding: '8px',
-                                            marginTop: '4px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '4px'
-                                        }}>
-                                            {[
-                                                { value: 'all', label: 'All Metrics' },
-                                                { value: 'bp', label: 'Blood Pressure' },
-                                                { value: 'hr', label: 'Heart Rate' },
-                                                { value: 'rr', label: 'Respiratory Rate' },
-                                                { value: 'spo2', label: 'SpO2' },
-                                                { value: 'temp', label: 'Temp' },
-                                                { value: 'weight', label: 'Weight' },
-                                                { value: 'height', label: 'Height' },
-                                                { value: 'bmi', label: 'BMI' }
-                                            ].map(opt => (
-                                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={metricFilter.includes(opt.value)}
-                                                        onChange={() => toggleMetric(opt.value)}
-                                                        style={{ cursor: 'pointer' }}
-                                                    />
-                                                    {opt.label}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                <MultiSelectDropdown
+                                    label="Select Metrics"
+                                    selectedItems={metricFilter}
+                                    options={[
+                                        { id: 'all', label: 'All Metrics' },
+                                        { id: 'bp', label: 'Blood Pressure' },
+                                        { id: 'hr', label: 'Heart Rate' },
+                                        { id: 'rr', label: 'Respiratory Rate' },
+                                        { id: 'spo2', label: 'SpO2' },
+                                        { id: 'temp', label: 'Temp' },
+                                        { id: 'weight', label: 'Weight' },
+                                        { id: 'height', label: 'Height' },
+                                        { id: 'bmi', label: 'BMI' }
+                                    ]}
+                                    onToggle={toggleMetric}
+                                    allLabel="All Metrics"
+                                />
 
-                                <div style={{ position: 'relative' }}>
-                                    <button
-                                        onClick={() => setIsRiskDropdownOpen(!isRiskDropdownOpen)}
-                                        style={{
-                                            padding: '8px 12px',
-                                            borderRadius: '6px',
-                                            border: '1px solid #cbd5e1',
-                                            background: 'white',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '5px',
-                                            minWidth: '150px',
-                                            justifyContent: 'space-between'
-                                        }}
-                                    >
-                                        <span>
-                                            {riskFilter.includes('all') ? 'All Risks' :
-                                                riskFilter.length > 0 ? `${riskFilter.length} Selected` : 'Select Risks'}
-                                        </span>
-                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                    </button>
-                                    {isRiskDropdownOpen && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '100%',
-                                            left: 0,
-                                            zIndex: 100,
-                                            background: 'white',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '6px',
-                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                            width: '200px',
-                                            padding: '8px',
-                                            marginTop: '4px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '4px'
-                                        }}>
-                                            {[
-                                                { value: 'all', label: 'All Risks' },
-                                                { value: 'low', label: 'Low Risk' },
-                                                { value: 'moderate', label: 'Moderate Risk' },
-                                                { value: 'high', label: 'High Risk' },
-                                                { value: 'critical', label: 'Critical Risk' }
-                                            ].map(opt => (
-                                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={riskFilter.includes(opt.value)}
-                                                        onChange={() => toggleRisk(opt.value)}
-                                                        style={{ cursor: 'pointer' }}
-                                                    />
-                                                    {opt.label}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                <MultiSelectDropdown
+                                    label="Select Risks"
+                                    selectedItems={riskFilter}
+                                    options={[
+                                        { id: 'all', label: 'All Risks' },
+                                        { id: 'low', label: 'Low Risk' },
+                                        { id: 'moderate', label: 'Moderate Risk' },
+                                        { id: 'high', label: 'High Risk' },
+                                        { id: 'critical', label: 'Critical Risk' }
+                                    ]}
+                                    onToggle={toggleRisk}
+                                    allLabel="All Risks"
+                                />
                                 <select
                                     value={sortOrder}
                                     onChange={(e) => setSortOrder(e.target.value)}

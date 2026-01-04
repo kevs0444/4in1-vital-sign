@@ -83,6 +83,7 @@ class ComplianceDetector:
 
                 if self.feet_model:
                      self.feet_classes = self.feet_model.names
+                     print(f"Feet Model Classes: {self.feet_classes}")
 
                 print("AI Models loaded successfully.")
             except Exception as e:
@@ -117,9 +118,6 @@ class ComplianceDetector:
                     cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 255, 0), 2)
                     cv2.putText(annotated_frame, "User Detected", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
 
-        # --- Step 2: Detect Wearables (Conditional) ---
-        # Optimization: Only scan for small wearables if a person is actually present.
-        # This prevents double-inference on empty frames, doubling the idle framerate.
         # --- Step 2: Detect Wearables (Conditional) ---
         # Optimization: Only scan for small wearables if a person is actually present.
         if self.wearables_model and person_detected:
@@ -171,47 +169,100 @@ class ComplianceDetector:
 
         # Run Inference
         # FIX: Aggressive NMS settings to prevent "Double Boxes"
-        # 1. conf=0.5: Ignore weak "ghost" predictions (shadows)
-        # 2. iou=0.5: Merge boxes that overlap significantly (default is 0.7)
-        # 3. agnostic_nms=True: Force "Shoe" vs "Foot" to compete. One must win.
-        results = self.feet_model(frame, verbose=False, conf=0.5, iou=0.5, agnostic_nms=True)
-        annotated_frame = results[0].plot() # Use default plot for feet is fine
+        # 1. conf=0.5: Ignore weak "ghost" predictions
+        # 2. iou=0.5: Merge boxes that overlap significantly
+        # Run Inference
+        # CHANGE: Use low confidence (0.25) to catch everything, then apply custom thresholds
+        results = self.feet_model(frame, verbose=False, conf=0.25, iou=0.5)
+        
+        # Manual Drawing instead of default plot() to control colors/labels
+        annotated_frame = frame.copy()
         
         detections = results[0].boxes
         
         feet_count = 0
         socks_count = 0
         shoe_count = 0
+        suspicious_count = 0
         
         for box in detections:
             cls_id = int(box.cls[0])
+            conf = float(box.conf[0])
             class_name = self.feet_classes.get(cls_id, "unknown").lower()
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
             
-            if "barefeet" in class_name:
-                feet_count += 1
-            elif "socks" in class_name:
-                socks_count += 1
-            elif "footwear" in class_name:
-                shoe_count += 1
+            # SPLIT THRESHOLDING STRATEGY & MANUAL DRAWING
+            
+            is_footwear = any(x in class_name for x in ["footwear", "shoe", "sandal", "boot", "slipper"])
+            
+            label = ""
+            box_color = (128, 128, 128) # Gray default
+            
+            if is_footwear:
+                if conf > 0.40: # Aggressive detection for invalid items
+                     shoe_count += 1
+                     box_color = (0, 0, 255) # Red
+                     label = f"{class_name} {conf:.2f}"
+            else:
+                # Valid items (Barefeet/Socks)
+                if conf > 0.65: 
+                    # High Confidence -> Valid
+                    if "barefeet" in class_name:
+                        feet_count += 1
+                        label = f"Barefeet {conf:.2f}"
+                    elif "socks" in class_name:
+                        socks_count += 1
+                        label = f"Socks {conf:.2f}"
+                    box_color = (0, 255, 0) # Green
+                    
+                else: 
+                    # Low Confidence (Gray Zone) -> Suspicious
+                    # It detected 'barefeet' but weak (e.g. 0.56 on a sandal)
+                    # We treat this as "Uncertain/Obstruction" to prevent False Positives
+                    suspicious_count += 1
+                    box_color = (0, 255, 255) # Yellow/Orange
+                    label = f"Check.. {conf:.2f}"
+
+            # Draw Box
+            if label:
+                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), box_color, 2)
+                cv2.putText(annotated_frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color, 2)
         
-        # Decision
+        # Decision Logic
         status_text = "Waiting..."
         is_compliant = False
-        color = (0, 255, 255)
+        status_color = (0, 255, 255)
 
         if shoe_count > 0:
-            status_text = "INVALID: Footwear Detected"
+            if feet_count > 0 or socks_count > 0:
+                status_text = "INVALID: Mixed Footwear/Barefeet"
+            else:
+                status_text = "INVALID: Footwear Detected"
+            
             is_compliant = False
-            color = (0, 0, 255)
+            status_color = (0, 0, 255) # Red
+            
+        elif suspicious_count > 0:
+            # If we have "maybe barefeet" (weak), we hold. We do NOT validate.
+            status_text = "Adjust Position / Checking..."
+            is_compliant = False
+            status_color = (0, 255, 255) # Yellow
+            
         elif feet_count > 0 or socks_count > 0:
-            status_text = "VALID: Ready to Measure"
+            # Only valid if Strong detections exists AND no suspicion/shoes
+            det_list = []
+            if feet_count > 0: det_list.append("Barefeet")
+            if socks_count > 0: det_list.append("Socks")
+            status_text = f"VALID: {' & '.join(det_list)} Detected"
             is_compliant = True
-            color = (0, 255, 0)
+            status_color = (0, 255, 0) # Green
+            
         else:
+            # Nothing significant detected
             status_text = "Waiting for Feet..."
             is_compliant = False
-            color = (0, 255, 255)
+            status_color = (0, 255, 255)
 
-        cv2.putText(annotated_frame, status_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+        cv2.putText(annotated_frame, status_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2)
         
         return annotated_frame, status_text, is_compliant

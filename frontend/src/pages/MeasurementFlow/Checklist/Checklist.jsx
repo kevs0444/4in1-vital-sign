@@ -74,7 +74,17 @@ export default function Checklist() {
     };
 
     console.log("🚀 Starting prototype with checklist:", checklistData);
-    navigate(firstProcess.route, { state: checklistData });
+
+    // Check if BMI is selected
+    const hasBMI = sortedSelected.includes('bmi');
+
+    if (hasBMI) {
+      // If BMI is selected, go to Clearance first
+      navigate('/measure/clearance', { state: checklistData });
+    } else {
+      // Otherwise start normally with the first selected process
+      navigate(firstProcess.route, { state: checklistData });
+    }
   };
 
   const handleBack = () => {
@@ -92,7 +102,7 @@ export default function Checklist() {
     <div
       className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 checklist-container"
     >
-      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 checklist-content page-transition`}>
+      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 checklist-content ${isVisible ? 'visible' : ''}`}>
         <button className="close-button" onClick={handleExit}>←</button>
         <div className="text-center mb-5">
           <h1 className="checklist-title">

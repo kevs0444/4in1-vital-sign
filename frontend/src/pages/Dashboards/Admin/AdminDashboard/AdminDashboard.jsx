@@ -14,7 +14,8 @@ import {
     People,
     History,
     Build,
-    Print
+    Print,
+    Dashboard
 } from '@mui/icons-material';
 import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
 import {
@@ -31,12 +32,12 @@ import {
     RadialLinearScale,
     Filler
 } from 'chart.js';
-import { Line, Radar, Doughnut } from 'react-chartjs-2';
+import { Line, Radar, Doughnut, Pie } from 'react-chartjs-2';
 import './AdminDashboard.css';
 import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory, printerAPI } from '../../../../utils/api';
 import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance component
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
-import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
+import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod, MultiSelectDropdown } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
 
 import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
 
@@ -471,9 +472,17 @@ const AdminDashboard = () => {
         }]
     };
 
-    const doughnutOptions = {
-        cutout: '75%',
-        plugins: { legend: { display: false } },
+    const pieOptions = {
+        plugins: {
+            legend: {
+                display: true,
+                position: 'bottom',
+                labels: {
+                    usePointStyle: true,
+                    padding: 20
+                }
+            }
+        },
         maintainAspectRatio: false
     };
 
@@ -539,18 +548,20 @@ const AdminDashboard = () => {
     if (!user) return null;
 
     // Define Tabs
+    // Define Tabs
     const tabs = [
         { id: 'dashboard', label: 'Overview', icon: <GridView /> },
-
         { id: 'users', label: 'Users', icon: <People /> },
-        { id: 'history', label: 'History', icon: <History /> },
         { id: 'maintenance', label: 'System', icon: <Build /> },
+        { type: 'spacer' },
+        { id: 'myoverview', label: 'My Health Overview', icon: <Dashboard /> },
+        { id: 'personal', label: 'My Measurements', icon: <History /> },
         { id: 'profile', label: 'Settings', icon: <Settings /> }
     ];
 
     return (
         <DashboardLayout
-            title="User Management"
+            title={tabs.find(t => t.id === activeTab)?.label || 'Dashboard'}
             subtitle="Administrator Dashboard"
             user={user}
             tabs={tabs}
@@ -633,21 +644,18 @@ const AdminDashboard = () => {
                             className="analytics-card distribution-card"
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
+                            whileHover={{ scale: 1.01, boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.1)' }}
                             transition={{ delay: 0.2 }}
                         >
                             <div className="card-header">
                                 <h3>User Distribution</h3>
                             </div>
-                            <div className="chart-wrapper doughnut-wrapper">
+                            <div className="chart-wrapper pie-wrapper">
                                 {loading ? (
                                     <div className="loading-spinner"></div>
                                 ) : (
-                                    <Doughnut data={roleDoughnutData} options={doughnutOptions} />
+                                    <Pie data={roleDoughnutData} options={pieOptions} />
                                 )}
-                                <div className="doughnut-center-text">
-                                    <span className="center-number">{stats.total_users}</span>
-                                    <span className="center-label">Users</span>
-                                </div>
                             </div>
                         </motion.div>
 
@@ -656,6 +664,7 @@ const AdminDashboard = () => {
                             className="analytics-card trends-card"
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
+                            whileHover={{ scale: 1.01, boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.1)' }}
                             transition={{ delay: 0.3 }}
                         >
                             <div className="card-header">
@@ -666,7 +675,7 @@ const AdminDashboard = () => {
                                 <Line data={trafficData} options={{
                                     ...chartOptions,
                                     maintainAspectRatio: false,
-                                    plugins: { legend: { display: false } },
+                                    plugins: { legend: { display: true, position: 'top' } },
                                     scales: {
                                         y: { grid: { borderDash: [5, 5], color: '#f1f5f9' }, beginAtZero: true },
                                         x: { grid: { display: false } }
@@ -757,133 +766,31 @@ const AdminDashboard = () => {
                                     />
                                 </div>
                                 <div className="role-filter-wrapper" style={{ display: 'flex', gap: '0.8rem' }}>
-                                    <div style={{ position: 'relative' }}>
-                                        <button
-                                            className="role-select"
-                                            onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                                            style={{
-                                                padding: '8px 12px',
-                                                borderRadius: '6px',
-                                                border: '1px solid #cbd5e1',
-                                                background: 'white',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '5px',
-                                                minWidth: '150px',
-                                                justifyContent: 'space-between',
-                                                height: '100%'
-                                            }}
-                                        >
-                                            <span>
-                                                {roleFilter.includes('All') ? 'All Roles' :
-                                                    roleFilter.length > 0 ? `${roleFilter.length} Roles Selected` : 'Select Roles'}
-                                            </span>
-                                            <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                        </button>
-                                        {isRoleDropdownOpen && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '100%',
-                                                left: 0,
-                                                zIndex: 100,
-                                                background: 'white',
-                                                border: '1px solid #e2e8f0',
-                                                borderRadius: '6px',
-                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                                width: '200px',
-                                                padding: '8px',
-                                                marginTop: '4px',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '4px'
-                                            }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={roleFilter.includes('All')}
-                                                        onChange={() => toggleRole('All')}
-                                                        style={{ cursor: 'pointer' }}
-                                                    />
-                                                    All Roles
-                                                </label>
-                                                {(Object.keys(stats.roles_distribution || {}).length > 0
-                                                    ? Object.keys(stats.roles_distribution)
-                                                    : ['Admin', 'Doctor', 'Nurse', 'Employee', 'Student']
-                                                ).map(role => (
-                                                    <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={roleFilter.includes(role)}
-                                                            onChange={() => toggleRole(role)}
-                                                            style={{ cursor: 'pointer' }}
-                                                        />
-                                                        {role}
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div style={{ position: 'relative' }}>
-                                        <button
-                                            className="role-select"
-                                            onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                                            style={{
-                                                padding: '8px 12px',
-                                                borderRadius: '6px',
-                                                border: '1px solid #cbd5e1',
-                                                background: 'white',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '5px',
-                                                minWidth: '150px',
-                                                justifyContent: 'space-between',
-                                                height: '100%'
-                                            }}
-                                        >
-                                            <span>
-                                                {statusFilter.includes('All') ? 'All Status' :
-                                                    statusFilter.length > 0 ? `${statusFilter.length} Status Selected` : 'Select Status'}
-                                            </span>
-                                            <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                        </button>
-                                        {isStatusDropdownOpen && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '100%',
-                                                left: 0,
-                                                zIndex: 100,
-                                                background: 'white',
-                                                border: '1px solid #e2e8f0',
-                                                borderRadius: '6px',
-                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                                width: '200px',
-                                                padding: '8px',
-                                                marginTop: '4px',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '4px'
-                                            }}>
-                                                {[
-                                                    { id: 'All', label: 'All Status' },
-                                                    { id: 'approved', label: 'Approved' },
-                                                    { id: 'pending', label: 'Pending' },
-                                                    { id: 'rejected', label: 'Rejected' }
-                                                ].map(status => (
-                                                    <label key={status.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={statusFilter.includes(status.id)}
-                                                            onChange={() => toggleStatus(status.id)}
-                                                            style={{ cursor: 'pointer' }}
-                                                        />
-                                                        {status.label}
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                    <MultiSelectDropdown
+                                        label="Select Roles"
+                                        selectedItems={roleFilter}
+                                        options={[
+                                            { id: 'All', label: 'All Roles' },
+                                            ...(Object.keys(stats.roles_distribution || {}).length > 0
+                                                ? Object.keys(stats.roles_distribution)
+                                                : ['Admin', 'Doctor', 'Nurse', 'Employee', 'Student']
+                                            ).map(role => ({ id: role, label: role }))
+                                        ]}
+                                        onToggle={toggleRole}
+                                        allLabel="All Roles"
+                                    />
+                                    <MultiSelectDropdown
+                                        label="Select Status"
+                                        selectedItems={statusFilter}
+                                        options={[
+                                            { id: 'All', label: 'All Status' },
+                                            { id: 'approved', label: 'Approved' },
+                                            { id: 'pending', label: 'Pending' },
+                                            { id: 'rejected', label: 'Rejected' }
+                                        ]}
+                                        onToggle={toggleStatus}
+                                        allLabel="All Status"
+                                    />
                                 </div>
 
                                 <button
@@ -1120,8 +1027,8 @@ const AdminDashboard = () => {
                     </motion.div>
                 </>
             )}
-            {/* Admin's Personal History Section */}
-            {activeTab === 'history' && (
+            {/* Admin's My Health Overview */}
+            {activeTab === 'myoverview' && (
                 <>
                     <motion.div
                         className="summary-cards"
@@ -1151,7 +1058,12 @@ const AdminDashboard = () => {
                         timePeriod={timePeriod}
                         customDateRange={customDateRange}
                     />
+                </>
+            )}
 
+            {/* Admin's My Measurements */}
+            {activeTab === 'personal' && (
+                <>
                     {/* Time Period Filter for Table */}
                     <div style={{ marginTop: '30px', marginBottom: '20px' }}>
                         <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter Records</h3>
@@ -1171,130 +1083,38 @@ const AdminDashboard = () => {
                         style={{ marginBottom: '2rem' }}
                     >
                         <div className="table-header">
-                            <h3>My Measurement History ({displayedMyHistory.length} records)</h3>
+                            <h3>My Measurements ({displayedMyHistory.length} records)</h3>
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <div style={{ position: 'relative' }}>
-                                    <button
-                                        onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
-                                        style={{
-                                            padding: '8px 12px',
-                                            borderRadius: '6px',
-                                            border: '1px solid #cbd5e1',
-                                            background: 'white',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '5px',
-                                            minWidth: '150px',
-                                            justifyContent: 'space-between'
-                                        }}
-                                    >
-                                        <span>
-                                            {metricFilter.includes('all') ? 'All Metrics' :
-                                                metricFilter.length > 0 ? `${metricFilter.length} Selected` : 'Select Metrics'}
-                                        </span>
-                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                    </button>
-                                    {isMetricDropdownOpen && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '100%',
-                                            left: 0,
-                                            zIndex: 100,
-                                            background: 'white',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '6px',
-                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                            width: '200px',
-                                            padding: '8px',
-                                            marginTop: '4px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '4px'
-                                        }}>
-                                            {[
-                                                { value: 'all', label: 'All Metrics' },
-                                                { value: 'bp', label: 'Blood Pressure' },
-                                                { value: 'hr', label: 'Heart Rate' },
-                                                { value: 'rr', label: 'Respiratory Rate' },
-                                                { value: 'spo2', label: 'SpO2' },
-                                                { value: 'temp', label: 'Temp' },
-                                                { value: 'weight', label: 'Weight' },
-                                                { value: 'height', label: 'Height' },
-                                                { value: 'bmi', label: 'BMI' }
-                                            ].map(opt => (
-                                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155', hover: { background: '#f8fafc' } }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={metricFilter.includes(opt.value)}
-                                                        onChange={() => toggleMetric(opt.value)}
-                                                        style={{ cursor: 'pointer' }}
-                                                    />
-                                                    {opt.label}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                                <div style={{ position: 'relative' }}>
-                                    <button
-                                        onClick={() => setIsRiskDropdownOpen(!isRiskDropdownOpen)}
-                                        style={{
-                                            padding: '8px 12px',
-                                            borderRadius: '6px',
-                                            border: '1px solid #cbd5e1',
-                                            background: 'white',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '5px',
-                                            minWidth: '150px',
-                                            justifyContent: 'space-between'
-                                        }}
-                                    >
-                                        <span>
-                                            {riskFilter.includes('all') ? 'All Risks' :
-                                                riskFilter.length > 0 ? `${riskFilter.length} Selected` : 'Select Risks'}
-                                        </span>
-                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                    </button>
-                                    {isRiskDropdownOpen && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '100%',
-                                            left: 0,
-                                            zIndex: 100,
-                                            background: 'white',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '6px',
-                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                            width: '200px',
-                                            padding: '8px',
-                                            marginTop: '4px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '4px'
-                                        }}>
-                                            {[
-                                                { value: 'all', label: 'All Risks' },
-                                                { value: 'low', label: 'Low Risk' },
-                                                { value: 'moderate', label: 'Moderate Risk' },
-                                                { value: 'high', label: 'High Risk' },
-                                                { value: 'critical', label: 'Critical Risk' }
-                                            ].map(opt => (
-                                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={riskFilter.includes(opt.value)}
-                                                        onChange={() => toggleRisk(opt.value)}
-                                                        style={{ cursor: 'pointer' }}
-                                                    />
-                                                    {opt.label}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                <MultiSelectDropdown
+                                    label="Select Metrics"
+                                    selectedItems={metricFilter}
+                                    options={[
+                                        { id: 'all', label: 'All Metrics' },
+                                        { id: 'bp', label: 'Blood Pressure' },
+                                        { id: 'hr', label: 'Heart Rate' },
+                                        { id: 'rr', label: 'Respiratory Rate' },
+                                        { id: 'spo2', label: 'SpO2' },
+                                        { id: 'temp', label: 'Temp' },
+                                        { id: 'weight', label: 'Weight' },
+                                        { id: 'height', label: 'Height' },
+                                        { id: 'bmi', label: 'BMI' }
+                                    ]}
+                                    onToggle={toggleMetric}
+                                    allLabel="All Metrics"
+                                />
+                                <MultiSelectDropdown
+                                    label="Select Risks"
+                                    selectedItems={riskFilter}
+                                    options={[
+                                        { id: 'all', label: 'All Risks' },
+                                        { id: 'low', label: 'Low Risk' },
+                                        { id: 'moderate', label: 'Moderate Risk' },
+                                        { id: 'high', label: 'High Risk' },
+                                        { id: 'critical', label: 'Critical Risk' }
+                                    ]}
+                                    onToggle={toggleRisk}
+                                    allLabel="All Risks"
+                                />
                                 <select
                                     value={sortOrder}
                                     onChange={(e) => setSortOrder(e.target.value)}
