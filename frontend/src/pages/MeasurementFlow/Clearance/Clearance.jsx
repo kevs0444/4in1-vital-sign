@@ -505,10 +505,13 @@ export default function Clearance() {
         }, 500);
     };
 
-    const handleCompletion = () => {
+    const handleCompletion = async () => {
         setStep(3);
+
+        // Stop Everything Immediately
         if (pollerRef.current) clearInterval(pollerRef.current);
-        stopCamera();
+        if (checkIntervalRef.current) clearTimeout(checkIntervalRef.current);
+        await stopCamera(); // Ensure await
         stopSpeaking();
 
         setStatusMessage("✅ Clearance Complete! Proceeding to BMI...");

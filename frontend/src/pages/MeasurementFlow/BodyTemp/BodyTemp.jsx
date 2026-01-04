@@ -59,7 +59,7 @@ export default function BodyTemp() {
     }
     viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
 
-    // Prevent zooming via touch gestures - Helper functions defined inside to avoid dependency issues if kept outside
+    // Prevent zooming via touch gestures
     const handleTouchStart = (e) => {
       if (e.touches.length > 1) {
         e.preventDefault();
@@ -143,16 +143,20 @@ export default function BodyTemp() {
     return () => clearTimeout(timer);
   }, [measurementStep, location.state?.checklist]);
 
-  // Prevent zooming functions - placeholders if referenced elsewhere (unlikely due to scoping above, removing global ones)
-  // Actually, keeping them might be safer if used by other hooks, but they are not. Removing to keep clean.
+  // Ref for cleanup
+  const isMountedRef = useRef(true);
+  const isMeasuringRef = useRef(false);
 
-  // Need to define dependencies for handlers if defined outside.
-  // We'll define dummy handles just in case or better, rely on the ones inside useEffect scope.
-  // BUT the previous implementation had them outside.
-  // The 'no-unused-vars' warning for 'handleBack' needs to be addressed too in the rest of the file.
-  // We'll deal with hooks here.
+  // Sync ref with state
+  useEffect(() => {
+    isMeasuringRef.current = isMeasuring;
+  }, [isMeasuring]);
 
-
+  // Initialize mount ref
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   const initializeTemperatureSensor = async () => {
     try {
@@ -160,24 +164,55 @@ export default function BodyTemp() {
       const prepareResult = await sensorAPI.prepareTemperature();
 
       if (prepareResult.error || prepareResult.status === 'error') {
-        setStatusMessage(`❌ ${prepareResult.error || prepareResult.message || 'Initialization failed'}`);
-        handleRetry();
-        return;
+        // Only retry if it's a connection error, not just "busy"
+        console.warn("Prepare warning:", prepareResult);
       }
 
       setStatusMessage("✅ Temperature sensor ready. Point at forehead and click Start Measurement");
+      // Don't force retry here, just let user try to start
       setMeasurementStep(1);
       startMonitoring();
 
     } catch (error) {
       console.error("Temperature initialization error:", error);
-      setStatusMessage("❌ Failed to initialize temperature sensor");
-      handleRetry();
+      setStatusMessage("⚠️ Sensor check failed. Check connection.");
+      // NO aggressive retry loop here
     }
   };
 
+  const tempReadingsRef = useRef([]);
+
+  // Handle Countdown Completion - Frontend Timing Control
+  useEffect(() => {
+    if (isMeasuring && countdown === 0) {
+      if (tempReadingsRef.current.length > 0) {
+        // Calculate Average of VALID readings
+        const sum = tempReadingsRef.current.reduce((a, b) => a + b, 0);
+        const avg = sum / tempReadingsRef.current.length;
+
+        // Double check validity (though inputs were filtered)
+        if (avg >= 35.0 && avg <= 43.0) {
+          handleMeasurementComplete(avg);
+        } else {
+          // Should ideally not happen if we filtered inputs, but safe fallback
+          setStatusMessage("Reading unclear. Try again.");
+          tempReadingsRef.current = [];
+          startCountdown(2);
+        }
+      } else {
+        // Time is up but no valid readings (e.g. ambient only)
+        // Keep waiting / looping
+        setStatusMessage("🌡️ Low reading. Move sensor closer to forehead...");
+        // Reset timer to keep scanning without user interaction
+        startCountdown(2);
+      }
+    }
+  }, [countdown, isMeasuring]);
+
   const startCountdown = (seconds) => {
     setCountdown(seconds);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+
     countdownRef.current = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
@@ -200,56 +235,55 @@ export default function BodyTemp() {
   const startMonitoring = () => {
     stopMonitoring();
 
-    pollerRef.current = setInterval(async () => {
+    const poll = async () => {
+      if (!isMountedRef.current) return;
       try {
         const data = await sensorAPI.getTemperatureStatus();
-        console.log("Temperature status:", data);
 
         // Update sensor readiness
         setIsReady(data.is_ready_for_measurement);
 
-        // Update live reading from actual sensor data
+        // Update live reading
         if (data.live_temperature !== null && data.live_temperature !== undefined) {
-          const currentTemp = data.live_temperature.toFixed(1);
-          setLiveTempValue(currentTemp);
+          // Only update if value is valid number
+          if (!isNaN(data.live_temperature)) {
+            const currentTemp = parseFloat(data.live_temperature);
 
-          // Show live temperature when sensor is ready but not measuring
-          if (!isMeasuring && !measurementComplete) {
-            setStatusMessage(`✅ Sensor ready. Current reading: ${currentTemp}°C - Click Start Measurement`);
+            // Only show and record valid body temperatures
+            if (currentTemp >= 35.0) {
+              setLiveTempValue(currentTemp.toFixed(1));
+
+              if (isMeasuringRef.current) {
+                tempReadingsRef.current.push(currentTemp);
+              }
+            } else {
+              // Hide ambient/invalid readings
+              setLiveTempValue("--.--");
+            }
+
+            // Passive update of status message
+            if (!isMeasuringRef.current && !measurementComplete) {
+              setStatusMessage("✅ Sensor ready. Click Start.");
+            }
           }
         }
 
-        // Handle progress during active measurement
-        if (data.measurement_active && data.live_data) {
-          setProgress(data.live_data.progress);
-          const timeLeft = data.live_data.total - data.live_data.elapsed;
-          setStatusMessage(`Measuring... ${timeLeft}s remaining`);
-        }
-
-        // Handle final result
-        if (data.temperature !== null && data.temperature !== undefined && !measurementComplete) {
-          if (data.temperature >= 34.0 && data.temperature <= 42.0) {
-            // Valid temperature received
-            handleMeasurementComplete(data.temperature);
-          } else {
-            // Invalid temperature, retry
-            setStatusMessage("❌ Invalid temperature reading, please try again");
-            resetMeasurement();
-          }
-        }
-
-        // Handle measurement completion from sensor manager
-        if (data.live_data && data.live_data.status === 'complete' && data.temperature) {
-          handleMeasurementComplete(data.temperature);
+        // Handle progress signal from backend
+        if (isMeasuringRef.current && data.measurement_active && data.live_data) {
+          if (data.live_data.progress) setProgress(data.live_data.progress);
         }
 
       } catch (error) {
-        console.error("Error polling temperature status:", error);
-        if (!measurementComplete) {
-          setStatusMessage("⚠️ Connection issue, retrying...");
+        console.warn("Poll temp error (silent)");
+      } finally {
+        if (isMountedRef.current && pollerRef.current) {
+          pollerRef.current = setTimeout(poll, 200);
         }
       }
-    }, 500); // Poll every 500ms for faster response
+    };
+
+    // Start recursive polling
+    pollerRef.current = setTimeout(poll, 200);
   };
 
   const startMeasurement = async () => {
@@ -261,25 +295,26 @@ export default function BodyTemp() {
       setTempMeasuring(true);
       setMeasurementStep(2);
       setProgress(0);
-
-      // Clear any previous measurement
       setTemperature("");
+
+      // Clear data
+      tempReadingsRef.current = [];
 
       const response = await sensorAPI.startTemperature();
 
       if (response.error) {
-        setStatusMessage(`❌ ${response.error}`);
-        resetMeasurement();
-        handleRetry();
+        setStatusMessage(`❌ ${response.error || 'Start failed'}`);
+        setIsMeasuring(false);
+        setTempMeasuring(false);
       } else {
-        setStatusMessage("🔄 Measuring temperature... Hold sensor steady");
-        startCountdown(2); // 2 seconds countdown
+        setStatusMessage("🔄 Measuring... Hold sensor steady");
+        startCountdown(2); // 2 seconds valid averaging
       }
     } catch (error) {
-      console.error("Start temperature error:", error);
-      setStatusMessage("❌ Failed to start measurement");
-      resetMeasurement();
-      handleRetry();
+      console.error("Start temp error:", error);
+      setStatusMessage("❌ Connection Failed");
+      setIsMeasuring(false);
+      setTempMeasuring(false);
     }
   };
 
@@ -318,7 +353,7 @@ export default function BodyTemp() {
 
   const stopMonitoring = () => {
     if (pollerRef.current) {
-      clearInterval(pollerRef.current);
+      clearTimeout(pollerRef.current);
       pollerRef.current = null;
     }
   };
@@ -395,9 +430,12 @@ export default function BodyTemp() {
       return getTemperatureStatus(temperature);
     }
 
-    const currentValue = getCurrentDisplayValue();
-    if (currentValue !== "--.-") {
-      return getTemperatureStatus(currentValue);
+    if (tempMeasuring) {
+      return {
+        text: "Scanning...",
+        class: "active",
+        description: "Detecting temperature..."
+      };
     }
 
     return {
@@ -423,8 +461,6 @@ export default function BodyTemp() {
   const getButtonDisabled = () => {
     return isMeasuring;
   };
-
-
 
   const handleExit = () => setShowExitModal(true);
 

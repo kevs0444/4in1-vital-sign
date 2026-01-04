@@ -38,10 +38,7 @@ export default function Max30102() {
     spo2: "--",
     respiratoryRate: "--"
   });
-  // Arrays to store all readings for averaging
-  // Arrays to store all readings for averaging
-  // REPLACED BY REFS for performance and data integrity
-  // eslint-disable-next-line no-unused-vars
+
   // eslint-disable-next-line no-unused-vars
   const [respiratoryRateReadings, setRespiratoryRateReadings] = useState([]);
 
@@ -56,8 +53,6 @@ export default function Max30102() {
   const [sensorReady, setSensorReady] = useState(false);
   const [measurementStep, setMeasurementStep] = useState(0);
   const [countdown, setCountdown] = useState(30);
-  // Removed unused irValue state
-  // const [irValue, setIrValue] = useState(0);
 
   // Debounce ref to track when finger was lost
   const fingerRemovalStartRef = useRef(null);
@@ -116,6 +111,23 @@ export default function Max30102() {
     spo2ReadingsRef.current = [];
     respiratoryRateReadingsRef.current = [];
     setRespiratoryRateReadings([]);
+
+    // Initialize only if not already done (though useEffect [] runs once)
+    // Add small delay to ensure UI renders first
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+      initializeMax30102Sensor();
+    }, 100);
+
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timer);
+      stopAllTimers();
+      clearFingerRemovedAlert();
+      // Safe shutdown on unmount
+      sensorAPI.shutdownMax30102().catch(e => console.error("Unmount shutdown error:", e));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update progress percentage when seconds change
@@ -228,11 +240,6 @@ export default function Max30102() {
 
       setStatusMessage("✅ Pulse oximeter ready. Place finger to start automatic measurement...");
 
-      // Speech managed by useEffect on step change
-      // setTimeout(() => {
-      //   if (isMountedRef.current) speak("Pulse oximeter ready. Place finger on sensor.");
-      // }, 500);
-
       setSensorReady(true);
       setMeasurementStep(2);
 
@@ -276,15 +283,6 @@ export default function Max30102() {
         const newFingerDetected = Boolean(data.finger_detected);
         const newSensorReady = Boolean(data.sensor_prepared);
 
-        console.log("Finger check:", {
-          newFingerDetected,
-          fingerStatus: data.finger_status, // NEW: Backend-provided finger status
-          irValue: data.ir_value, // IR value for debugging
-          previousFingerState: previousFingerStateRef.current,
-          isMeasuring,
-          measurementComplete
-        });
-
         // Check if finger was JUST REMOVED (was detected, now not detected) during measurement
         if (previousFingerStateRef.current && !newFingerDetected && isMeasuringRef.current && !measurementCompleteRef.current) {
           if (!fingerRemovalStartRef.current) {
@@ -303,7 +301,7 @@ export default function Max30102() {
           } else {
             console.log(`⚠️ Finger missing for ${elapsed}ms - ignoring glitch`);
             // Optional: Pause timer temporarily?
-            // stopProgressTimer(); 
+            // stopProgressTimer();
             // We keep timer running for 2s grace period to feel smoother, or stop it? 
             // If we stop it, we extend the duration. Let's PAUSE it to be accurate.
             stopProgressTimer();
@@ -465,9 +463,6 @@ export default function Max30102() {
     let avgSpo2 = "--";
     let avgRespiratoryRate = "--";
 
-    // DEBUG: Log all readings
-    console.log("DEBUG RAW READINGS FROM REFS:", { HR: hrReadings, SpO2: spo2ReadingsData, RR: rrReadings });
-
     // Filter out invalid readings (0 or negative values) before averaging
     const validHeartRateReadings = hrReadings.filter(val => val > 0 && val < 200);
     const validSpo2Readings = spo2ReadingsData.filter(val => val > 0 && val <= 100);
@@ -475,23 +470,14 @@ export default function Max30102() {
 
     if (validHeartRateReadings.length > 0) {
       avgHeartRate = Math.round(validHeartRateReadings.reduce((a, b) => a + b, 0) / validHeartRateReadings.length).toString();
-      console.log(`✅ Heart Rate Average: ${avgHeartRate} BPM (from ${validHeartRateReadings.length} valid readings)`);
-    } else {
-      console.warn("⚠️ No valid heart rate readings collected");
     }
 
     if (validSpo2Readings.length > 0) {
       avgSpo2 = Math.round(validSpo2Readings.reduce((a, b) => a + b, 0) / validSpo2Readings.length).toString();
-      console.log(`✅ SpO2 Average: ${avgSpo2}% (from ${validSpo2Readings.length} valid readings)`);
-    } else {
-      console.warn("⚠️ No valid SpO2 readings collected");
     }
 
     if (validRespiratoryRateReadings.length > 0) {
       avgRespiratoryRate = Math.round(validRespiratoryRateReadings.reduce((a, b) => a + b, 0) / validRespiratoryRateReadings.length).toString();
-      console.log(`✅ Respiratory Rate Average: ${avgRespiratoryRate}/min (from ${validRespiratoryRateReadings.length} valid readings)`);
-    } else {
-      console.warn("⚠️ No valid respiratory rate readings collected");
     }
 
     // Determine final values
@@ -517,7 +503,6 @@ export default function Max30102() {
       spo2: finalSpo2 !== "--" ? parseInt(finalSpo2) : null,
       respiratoryRate: finalRespiratoryRate !== "--" ? parseInt(finalRespiratoryRate) : null
     };
-    console.log("📌 Stored final measurements in ref:", finalMeasurementsRef.current);
 
     // 4. UPDATE UI STATE IMMEDIATELY (User sees results instantly)
     setMeasurements({
@@ -592,22 +577,17 @@ export default function Max30102() {
 
           if (liveHR && liveHR > 0 && !isNaN(liveHR)) {
             updateCurrentMeasurement('heartRate', liveHR);
-            // setHeartRateReadings(prev => [...prev, liveHR]); // PERFORMANCE: Removed state update to prevent re-renders
             heartRateReadingsRef.current.push(liveHR); // Store in ref!
           }
           if (liveSpo2 && liveSpo2 > 0 && !isNaN(liveSpo2)) {
             updateCurrentMeasurement('spo2', liveSpo2);
-            // setSpo2Readings(prev => [...prev, liveSpo2]); // PERFORMANCE: Removed state update
             spo2ReadingsRef.current.push(liveSpo2); // Store in ref!
           }
           if (liveRR && liveRR > 0 && !isNaN(liveRR)) {
             updateCurrentMeasurement('respiratoryRate', liveRR);
-            // setRespiratoryRateReadings(prev => [...prev, liveRR]); // PERFORMANCE: Removed state update
             respiratoryRateReadingsRef.current.push(liveRR); // Store in ref!
           }
         }
-
-        // NOTE: NO backend completion check here - Frontend timer triggers completion!
 
       } catch (error) {
         console.error("Error polling MAX30102 status:", error);
@@ -688,7 +668,6 @@ export default function Max30102() {
     // FIXED: Read from ref instead of state to avoid stale closure issue
     // React state updates are async, so measurements state may still have old values
     const finalVals = finalMeasurementsRef.current;
-    console.log("📖 Reading final measurements from ref:", finalVals);
 
     // Only add measurements if they have real values
     if (finalVals.heartRate !== null && !isNaN(finalVals.heartRate)) {
@@ -804,36 +783,12 @@ export default function Max30102() {
     navigate("/login");
   };
 
-  // Initialize sensors ONCE - Moved to end to ensure functions are defined
-  useEffect(() => {
-    isMountedRef.current = true;
-    // Reset inactivity setting on mount (timer enabled by default)
-    setIsInactivityEnabled(true);
-
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    console.log("📍 Max30102 received location.state:", location.state);
-
-    initializeMax30102Sensor();
-
-    return () => {
-      isMountedRef.current = false;
-      clearTimeout(timer);
-      stopAllTimers();
-      clearFingerRemovedAlert();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
-
   return (
     <div
       className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container max30102-page"
     >
       <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
 
-
-
-
-        {/* Progress bar for Step X of Y */}
         {/* Progress bar for Step X of Y */}
         <div className="w-100 mb-4">
           <div className="measurement-progress-bar">
@@ -975,7 +930,6 @@ export default function Max30102() {
                   <p className="instruction-text">
                     Keep your finger completely still for accurate readings
                   </p>
-                  {/* Timer removed to prevent duplication */}
                 </div>
               </div>
 
@@ -1011,7 +965,7 @@ export default function Max30102() {
         </div>
       </div>
 
-      {/* Finger Removed Modal - Moved to root level for proper overlay */}
+      {/* Finger Removed Modal */}
       {showFingerRemovedAlert && (
         <div className="exit-modal-overlay" onClick={clearFingerRemovedAlert}>
           <motion.div

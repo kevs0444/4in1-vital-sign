@@ -66,14 +66,17 @@ const InactivityWrapper = ({ children }) => {
             // Clear items to reset progress
             localStorage.removeItem('currentUser');
             sessionStorage.removeItem('currentUser');
-
-            // Attempt to trigger a backend reset if possible
-            // We'll rely on the Standby page to handle the cleanup or add global cleanup here later
+            localStorage.removeItem('measurementData');
+            sessionStorage.removeItem('measurementData');
 
             setShowWarning(false);
             navigate('/', {
                 replace: true,
-                state: { fromInactivity: true, reset: true } // Add reset flag
+                state: {
+                    fromInactivity: true,
+                    reset: true,
+                    cleanupSensors: true  // Signal to Standby to cleanup sensors
+                }
             });
         }, FINAL_TIMEOUT);
     }, [location.pathname, isInactivityEnabled, navigate]);

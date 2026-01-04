@@ -29,9 +29,10 @@ int32_t heartRate;
 int8_t validHeartRate; 
 float respiratoryRate = 0;
 
-// MAX30102 Measurement Variables
-const unsigned long MAX30102_MEASUREMENT_TIME = 30000;     // 30 seconds total duration
-const unsigned long MAX30102_READ_INTERVAL = 100;          // Show readings every 100ms
+// MAX30102 - FRONTEND CONTROLS TIMING (30 seconds)
+// Arduino only streams data, does NOT track progress
+const unsigned long MAX30102_SAFETY_TIMEOUT = 60000;  // 60 seconds safety timeout (longer for pulse ox)
+const unsigned long MAX30102_READ_INTERVAL = 100;     // Show readings every 100ms
 
 // BPM deduction
 const int BPM_DEDUCTION = 25;  // Deduct 25 BPM dynamically
@@ -55,7 +56,7 @@ int sampleCount = 0;
 // =================================================================
 // --- TEMPERATURE CONSTANTS ---
 // =================================================================
-const float TEMPERATURE_CALIBRATION_OFFSET = 2.5;  // Calibration offset
+const float TEMPERATURE_CALIBRATION_OFFSET = 3.5;  // Calibration offset
 const float TEMPERATURE_THRESHOLD = 35.0;          // Minimum valid temperature
 const float TEMPERATURE_MAX = 42.0;                // Maximum valid temperature
 
@@ -78,23 +79,26 @@ bool weightSensorInitialized = false;
 bool autoTareCompleted = false;
 
 // --- Measurement Variables ---
-// Weight - OPTIMIZED with noise filter from working code
-const unsigned long WEIGHT_MEASUREMENT_TIME = 60000; // 60 seconds (Frontend controls actual duration)
+// Weight - FRONTEND CONTROLS TIMING (3 seconds)
+// Arduino only streams data, does NOT track progress
+const unsigned long WEIGHT_SAFETY_TIMEOUT = 30000; // 30 seconds safety timeout
 const float WEIGHT_THRESHOLD = 1.0; // Require at least 1kg to start
 const float WEIGHT_NOISE_THRESHOLD = 0.02; // 20 grams = 0.02 kg (noise filter)
 float lastWeightKg = 0.0; // For noise filtering
-unsigned long lastWeightPrint = 0; // For 30ms update rate
+unsigned long lastWeightPrint = 0; // For 100ms update rate
 enum WeightSubState { W_DETECTING, W_MEASURING };
 WeightSubState weightState = W_DETECTING;
 
-// Height  
-const unsigned long HEIGHT_MEASUREMENT_TIME = 60000; // 60 seconds (Frontend controls actual duration)
+// Height - FRONTEND CONTROLS TIMING (2 seconds)  
+// Arduino only streams data, does NOT track progress
+const unsigned long HEIGHT_SAFETY_TIMEOUT = 30000; // 30 seconds safety timeout
 const unsigned long HEIGHT_READ_INTERVAL = 100;
 enum HeightSubState { H_DETECTING, H_MEASURING };
 HeightSubState heightState = H_DETECTING;
 
-// Temperature
-const unsigned long TEMPERATURE_MEASUREMENT_TIME = 2000; // 2 seconds total
+// Temperature - FRONTEND CONTROLS TIMING
+// Arduino only streams data, does NOT track progress
+const unsigned long TEMPERATURE_SAFETY_TIMEOUT = 30000; // 30 seconds safety timeout
 const unsigned long TEMPERATURE_READ_INTERVAL = 200;
 enum TemperatureSubState { T_DETECTING, T_MEASURING };
 TemperatureSubState temperatureState = T_DETECTING;
@@ -316,9 +320,20 @@ void powerUpMax30102Sensor() {
     
     for (int attempt = 0; attempt < 3; attempt++) {
       if (particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
-        particleSensor.setup();
-        particleSensor.setPulseAmplitudeRed(0x0A);
-        particleSensor.setPulseAmplitudeGreen(0);
+        // Configure sensor for reliable detection
+        byte ledBrightness = 0x7F; // Options: 0=Off to 255=50mA (0x7F = ~25mA, visible and reliable)
+        byte sampleAverage = 4; // Options: 1, 2, 4, 8, 16, 32
+        byte ledMode = 2; // Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
+        int sampleRate = 400; // Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
+        int pulseWidth = 411; // Options: 69, 118, 215, 411
+        int adcRange = 4096; // Options: 2048, 4096, 8192, 16384
+
+        particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
+        
+        // Explicitly set amplitudes to ensure visibility and detection
+        particleSensor.setPulseAmplitudeRed(0x7F); // Bright Red (visible)
+        particleSensor.setPulseAmplitudeIR(0x7F);  // Strong IR (detection)
+        particleSensor.setPulseAmplitudeGreen(0);  // Green off
         particleSensor.wakeUp(); // Ensure it's awake after setup
         
         max30102SensorPowered = true;
@@ -345,7 +360,7 @@ void powerUpMax30102Sensor() {
 
 void powerDownMax30102Sensor() {
   // Always set flag to false
-  // max30102SensorPowered = false; // KEEP SENSOR ACTIVE (Fake Shutdown to avoid I2C hangs)
+  max30102SensorPowered = false; // LOGICAL SHUTDOWN: Stops loop data processing
   
   // Force hardware shutdown (Sleep mode is safe)
   // particleSensor.shutDown(); // KEEP SENSOR ACTIVE avoids wake-up issues
@@ -363,7 +378,7 @@ void startFingerDetection() {
 void monitorFingerPresence() {
   static unsigned long lastFingerCheck = 0;
   
-  if (millis() - lastFingerCheck > 200) { // OPTIMIZED: Check every 200ms for faster response
+  if (millis() - lastFingerCheck > 50) { // OPTIMIZED: Check every 50ms for faster response
     long irValue = particleSensor.getIR();
     
     // Always send IR value for monitoring
@@ -515,8 +530,11 @@ void runMax30102Phase() {
     Serial.println("MAX30102_WAITING_FOR_VALID_SIGNAL");
   }
   
-  // NOTE: NO 30-second completion logic here! Frontend controls timing.
-  // Frontend will call STOP_MAX30102 when done or finger removal detected.
+  // Safety timeout (stop after 60s if frontend doesn't respond)
+  if (currentTime - max30102StartTime > MAX30102_SAFETY_TIMEOUT) {
+    Serial.println("STATUS:MAX30102_SAFETY_TIMEOUT");
+    finalizeMax30102Measurement();
+  }
 }
 
 void finalizeMax30102Measurement() {
@@ -685,11 +703,12 @@ void powerUpWeightSensor() {
 }
 
 void powerDownWeightSensor() {
-  if (weightSensorPowered) {
-    LoadCell.powerDown();
-    weightSensorPowered = false;
-    Serial.println("STATUS:WEIGHT_SENSOR_POWERED_DOWN");
-  }
+  // DISABLE PHYSICAL SHUTDOWN to allow rapid restart for next user and PRESERVE TARE
+  // LoadCell.powerDown(); -- Keep physical power ON
+  weightSensorPowered = false; // LOGICAL SHUTDOWN: Stops data stream & triggers 'powerUp' check on next start
+  
+  // Respond to backend so it thinks we shut down
+  Serial.println("STATUS:WEIGHT_SENSOR_POWERED_DOWN");
 }
 
 void powerUpHeightSensor() {
@@ -706,10 +725,13 @@ void powerUpHeightSensor() {
 }
 
 void powerDownHeightSensor() {
-  if (heightSensorPowered) {
-    // heightSensorPowered = false; // KEEP SENSOR ACTIVE
-    Serial.println("STATUS:HEIGHT_SENSOR_POWERED_DOWN");
-  }
+  // LOGICAL SHUTDOWN: Stops runHeightPhase data stream
+  heightSensorPowered = false; 
+  
+  // Physical shutdown commented out to keep TF-Luna ready
+  // Serial.println("STATUS:HEIGHT_SENSOR_POWERED_DOWN"); -- Duplicate print removed
+  
+  Serial.println("STATUS:HEIGHT_SENSOR_POWERED_DOWN");
 }
 void powerUpTemperatureSensor() {
   if (temperatureSensorPowered) {
@@ -800,38 +822,33 @@ void startWeightMeasurement() {
   
   measurementActive = true;
   currentPhase = WEIGHT;
-  weightState = W_MEASURING; // Start measuring immediately (like MAX30102)
+  weightState = W_DETECTING; // Wait for user to step on scale
   phaseStartTime = millis();
   
   // RESET internal content
   finalRealTimeWeight = 0;
   Serial.println("STATUS:WEIGHT_MEASUREMENT_STARTED");
-  Serial.println("STATUS:WEIGHT_MEASURING"); // Force frontend to state 'measuring'
+  // Serial.println("STATUS:WEIGHT_MEASURING"); // Don't force measuring, let detection trigger it
 }
 
 void runWeightPhase() {
-  static unsigned long lastWeightRead = 0;
+  // FRONTEND CONTROLS TIMING - Arduino just streams data
+  // Frontend sends POWER_DOWN_WEIGHT when 3 seconds of stable readings complete
   
-  // Always update and stream data (like MAX30102)
   if (LoadCell.update()) {
     float currentWeight = LoadCell.getData();
     
-    // STREAMING MODE: Send data frequently
-    if (millis() - lastWeightRead > 100) { // 100ms update rate
+    // STREAMING MODE: Send data every 100ms for responsive UI
+    if (millis() - lastWeightPrint >= 100) {
       Serial.print("DEBUG:Weight reading: ");
       Serial.println(currentWeight, 2);
-      lastWeightRead = millis();
-      
-      // If weight is stable and valid, frontend will capture it
-      if (currentWeight > WEIGHT_THRESHOLD) {
-        // Optional: We can still send "progress" marks if needed, 
-        // but frontend controls the 3s checkout logic.
-      }
+      lastWeightPrint = millis();
     }
     
-    // Safety timeout (stop after 60s to save power if abandoned)
-    if (millis() - phaseStartTime > WEIGHT_MEASUREMENT_TIME) {
-       finalizeWeightMeasurement();
+    // Safety timeout (stop after 30s if frontend doesn't respond)
+    if (millis() - phaseStartTime > WEIGHT_SAFETY_TIMEOUT) {
+      Serial.println("STATUS:WEIGHT_SAFETY_TIMEOUT");
+      finalizeWeightMeasurement();
     }
   }
 }
@@ -869,10 +886,11 @@ void startTemperatureMeasurement() {
 // --- UPDATED TEMPERATURE MEASUREMENT FUNCTIONS ---
 // =================================================================
 void runTemperaturePhase() {
+  // FRONTEND CONTROLS TIMING - Arduino just streams data
+  // Frontend sends POWER_DOWN_TEMPERATURE when measurement is complete
+  
   static unsigned long lastTemperatureRead = 0;
   static unsigned long lastLiveUpdate = 0;
-  static unsigned long lastProgressUpdate = 0;
-  static bool measurementTaken = false;
   unsigned long currentTime = millis();
 
   switch (temperatureState) {
@@ -880,37 +898,24 @@ void runTemperaturePhase() {
       Serial.println("STATUS:TEMPERATURE_MEASURING");
       temperatureState = T_MEASURING;
       measurementStartTime = millis();
-      measurementTaken = false;
       finalRealTimeTemperature = 0;
       break;
 
     case T_MEASURING:
       if (currentTime - lastTemperatureRead >= TEMPERATURE_READ_INTERVAL) {
         if (temperatureSensorPowered && temperatureSensorInitialized) {
-          // Apply calibration offset like testing code
+          // Apply calibration offset
           float currentTemperature = mlx.readObjectTempC() + TEMPERATURE_CALIBRATION_OFFSET;
           
-          // Check if temperature is in valid human range (like testing code)
-          if (currentTemperature >= TEMPERATURE_THRESHOLD && currentTemperature <= TEMPERATURE_MAX) {
-            finalRealTimeTemperature = currentTemperature;
+          // Stream data every 200ms for responsive UI
+          if (currentTime - lastLiveUpdate >= 200) {
+            Serial.print("DEBUG:Temperature reading: ");
+            Serial.println(currentTemperature, 2);
+            lastLiveUpdate = currentTime;
             
-            if (currentTime - lastLiveUpdate > 500) { // Update every 500ms like testing code
-              int secondsPassed = (currentTime - measurementStartTime) / 1000;
-              Serial.print("⏱️ Measuring... ");
-              Serial.print(secondsPassed);
-              Serial.println("s");
-              
-              Serial.print("DEBUG:Temperature reading: ");
-              Serial.println(currentTemperature, 2);
-              lastLiveUpdate = currentTime;
-            }
-          } else {
-            // No human detected or out of range
-            if (currentTime - lastLiveUpdate > 1000) {
-              Serial.println("⚠️ No human detected or out of range. Please stand closer.");
-              lastLiveUpdate = currentTime;
-              // Reset measurement time when no valid reading
-              measurementStartTime = currentTime;
+            // Check if temperature is in valid human range
+            if (currentTemperature >= TEMPERATURE_THRESHOLD && currentTemperature <= TEMPERATURE_MAX) {
+              finalRealTimeTemperature = currentTemperature;
             }
           }
         }
@@ -918,50 +923,9 @@ void runTemperaturePhase() {
         lastTemperatureRead = currentTime;
       }
 
-      // Progress updates
-      if (currentTime - lastProgressUpdate > 500) {
-        int elapsed = (currentTime - measurementStartTime) / 1000;
-        int total = TEMPERATURE_MEASUREMENT_TIME / 1000;
-        int progressPercent = (elapsed * 100) / total;
-        Serial.print("STATUS:TEMPERATURE_PROGRESS:");
-        Serial.print(elapsed);
-        Serial.print("/");
-        Serial.print(total);
-        Serial.print(":");
-        Serial.println(progressPercent);
-        lastProgressUpdate = currentTime;
-      }
-
-      // Finalize measurement after 2 seconds with valid reading
-      if (!measurementTaken && (currentTime - measurementStartTime >= TEMPERATURE_MEASUREMENT_TIME)) {
-        if (finalRealTimeTemperature >= TEMPERATURE_THRESHOLD) {
-          // Classify temperature with new ranges
-          String tempCategory = classifyTemperature(finalRealTimeTemperature);
-          
-          Serial.println("\n✅ Final Body Temperature Result:");
-          Serial.print("   Temperature: ");
-          Serial.print(finalRealTimeTemperature, 2);
-          Serial.println(" °C");
-          Serial.print("   Category: ");
-          Serial.println(tempCategory);
-          Serial.println("--------------------------------");
-          
-          Serial.print("RESULT:TEMPERATURE:");
-          Serial.println(finalRealTimeTemperature, 2);
-          Serial.print("RESULT:TEMPERATURE_CATEGORY:");
-          Serial.println(tempCategory);
-          
-          Serial.print("FINAL_RESULT: Temperature measurement complete: ");
-          Serial.print(finalRealTimeTemperature, 2);
-          Serial.print(" °C (");
-          Serial.print(tempCategory);
-          Serial.println(")");
-        } else {
-          Serial.println("ERROR:TEMPERATURE_READING_FAILED");
-          Serial.println("ERROR:No valid human temperature detected");
-        }
-        
-        measurementTaken = true;
+      // Safety timeout (stop after 30s if frontend doesn't respond)
+      if (currentTime - measurementStartTime > TEMPERATURE_SAFETY_TIMEOUT) {
+        Serial.println("STATUS:TEMPERATURE_SAFETY_TIMEOUT");
         finalizeTemperatureMeasurement();
       }
       break;
@@ -1006,86 +970,14 @@ void runWeightInitializationPhase() {
   }
 }
 
-void runWeightPhase_OLD_Deprecated() {
-  static bool measurementTaken = false;
 
-  switch (weightState) {
-    case W_DETECTING:
-      if (LoadCell.update()) {
-        float currentWeight = LoadCell.getData();
-        
-        // 🔥 OPTIMIZED: Noise filter - only update if change >= 0.02 kg (20 grams)
-        if (abs(currentWeight - lastWeightKg) >= WEIGHT_NOISE_THRESHOLD) {
-          // 🔥 OPTIMIZED: Print every ~30ms max for real-time response
-          if (millis() - lastWeightPrint >= 30) {
-            Serial.print("DEBUG:Weight reading: ");
-            Serial.println(currentWeight, 2);
-            lastWeightKg = currentWeight;
-            lastWeightPrint = millis();
-          }
-        }
-        
-        if (currentWeight > WEIGHT_THRESHOLD) {
-          Serial.println("STATUS:WEIGHT_MEASURING");
-          weightState = W_MEASURING;
-          measurementStartTime = millis();
-          measurementTaken = false;
-          lastWeightKg = currentWeight; // Reset noise filter baseline
-        }
-      }
-      break;
-
-    case W_MEASURING:
-      if (LoadCell.update()) {
-        float currentWeight = LoadCell.getData();
-        
-        // 🔥 OPTIMIZED: Noise filter - only update if change >= 0.02 kg (20 grams)
-        if (abs(currentWeight - lastWeightKg) >= WEIGHT_NOISE_THRESHOLD) {
-          // 🔥 OPTIMIZED: Print every ~30ms max for real-time response
-          if (millis() - lastWeightPrint >= 30) {
-            Serial.print("DEBUG:Weight reading: ");
-            Serial.println(currentWeight, 2);
-            lastWeightKg = currentWeight;
-            lastWeightPrint = millis();
-          }
-        }
-
-        if (millis() - lastProgressUpdate > 500) {
-          int elapsed = (millis() - measurementStartTime) / 1000;
-          int total = WEIGHT_MEASUREMENT_TIME / 1000;
-          int progressPercent = (elapsed * 100) / total;
-          Serial.print("STATUS:WEIGHT_PROGRESS:");
-          Serial.print(elapsed);
-          Serial.print("/");
-          Serial.print(total);
-          Serial.print(":");
-          Serial.println(progressPercent);
-          lastProgressUpdate = millis();
-        }
-
-        if (!measurementTaken && (millis() - measurementStartTime >= WEIGHT_MEASUREMENT_TIME)) {
-          finalRealTimeWeight = currentWeight;
-          if (finalRealTimeWeight < 0) finalRealTimeWeight = 0;
-          
-          Serial.print("RESULT:WEIGHT:");
-          Serial.println(finalRealTimeWeight, 2);
-          Serial.print("FINAL_RESULT: Weight measurement complete: ");
-          Serial.print(finalRealTimeWeight, 2);
-          Serial.println(" kg");
-          
-          measurementTaken = true;
-          finalizeWeightMeasurement();
-        }
-      }
-      break;
-  }
-}
 
 void runHeightPhase() {
+  // FRONTEND CONTROLS TIMING - Arduino just streams data
+  // Frontend sends POWER_DOWN_HEIGHT when 2 seconds of stable readings complete
+  
   static unsigned long lastHeightRead = 0;
   static unsigned long lastLiveUpdate = 0;
-  static unsigned long lastProgressUpdate = 0;
-  static bool measurementTaken = false;
   unsigned long currentTime = millis();
 
   switch (heightState) {
@@ -1093,7 +985,6 @@ void runHeightPhase() {
       Serial.println("STATUS:HEIGHT_MEASURING");
       heightState = H_MEASURING;
       measurementStartTime = millis();
-      measurementTaken = false;
       finalRealTimeHeight = 0;
       break;
 
@@ -1104,12 +995,20 @@ void runHeightPhase() {
         
         if (heightSensorPowered) {
           readSuccess = heightSensor.getData(distance, strength, temperature, 0x10);
+          
+          if (!readSuccess) {
+             Serial.println("DEBUG:Height Error: TF-Luna Read Failed");
+          }
+        } else {
+          // If logically powered down, do not read or report
+          return;
         }
         
         if (readSuccess) {
           float currentHeight = SENSOR_HEIGHT_CM - distance;
           
-          if (currentTime - lastLiveUpdate > 200) {
+          // Stream data every 100ms for responsive UI
+          if (currentTime - lastLiveUpdate >= 100) {
             Serial.print("DEBUG:Height reading: ");
             Serial.println(currentHeight, 1);
             lastLiveUpdate = currentTime;
@@ -1123,31 +1022,9 @@ void runHeightPhase() {
         lastHeightRead = currentTime;
       }
 
-      if (currentTime - lastProgressUpdate > 500) {
-        int elapsed = (currentTime - measurementStartTime) / 1000;
-        int total = HEIGHT_MEASUREMENT_TIME / 1000;
-        int progressPercent = (elapsed * 100) / total;
-        Serial.print("STATUS:HEIGHT_PROGRESS:");
-        Serial.print(elapsed);
-        Serial.print("/");
-        Serial.print(total);
-        Serial.print(":");
-        Serial.println(progressPercent);
-        lastProgressUpdate = currentTime;
-      }
-
-      if (!measurementTaken && (currentTime - measurementStartTime >= HEIGHT_MEASUREMENT_TIME)) {
-        if (finalRealTimeHeight > 0) {
-          Serial.print("RESULT:HEIGHT:");
-          Serial.println(finalRealTimeHeight, 1);
-          Serial.print("FINAL_RESULT: Height measurement complete: ");
-          Serial.print(finalRealTimeHeight, 1);
-          Serial.println(" cm");
-        } else {
-          Serial.println("ERROR:HEIGHT_READING_FAILED");
-        }
-        
-        measurementTaken = true;
+      // Safety timeout (stop after 30s if frontend doesn't respond)
+      if (currentTime - measurementStartTime > HEIGHT_SAFETY_TIMEOUT) {
+        Serial.println("STATUS:HEIGHT_SAFETY_TIMEOUT");
         finalizeHeightMeasurement();
       }
       break;

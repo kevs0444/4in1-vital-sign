@@ -108,22 +108,32 @@ export default function Standby() {
       sessionStorage.removeItem('bloodPressureData');
       sessionStorage.removeItem('max30102Data');
 
-      // 3. Reset sensors on backend (if connected) - ONLY FOR LOCAL COMPONENT
-      if (isLocalDevice()) {
+      // 3. Reset sensors on backend ONLY if coming from inactivity or explicit cleanup
+      // Don't shutdown on initial app load - let sensors stay ready
+      const shouldCleanupSensors = location.state?.fromInactivity ||
+        location.state?.cleanupSensors ||
+        location.state?.cancelled;
+
+      if (isLocalDevice() && shouldCleanupSensors) {
         try {
-          // COMMENTED OUT to preserve TARE calibration for next user
-          // await sensorAPI.reset();
-          console.log('✅ Backend sensor data cleanup (Skipped full reset to preserve Tare)');
+          // Shutdown weight and height sensors to clear any stale data
+          console.log('🧹 Standby: Cleaning up sensors (from inactivity/cancel)');
+          await sensorAPI.shutdownWeight();
+          await sensorAPI.shutdownHeight();
+          console.log('✅ Backend sensor shutdown complete (Tare preserved, live data cleared)');
         } catch (error) {
-          console.log('ℹ️ Backend reset skipped (may not be connected yet)');
+          console.log('ℹ️ Backend sensor shutdown skipped (may not be connected yet)');
         }
+      } else {
+        console.log('📍 Standby: Initial load - sensors not shutdown (staying ready)');
       }
 
       console.log('✅ All measurement data cleared - ready for new user');
     };
 
     clearAllMeasurementData();
-  }, []); // Run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]); // Re-run if navigation state changes (e.g., from inactivity)
 
   // Perform comprehensive system check
   const performSystemCheck = useCallback(async () => {
