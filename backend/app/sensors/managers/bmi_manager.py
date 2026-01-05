@@ -32,11 +32,32 @@ class BMIManager:
             'height': {'current': None, 'status': 'idle', 'progress': 0, 'elapsed': 0}
         }
         
+        self.last_log_time = 0
+        
     def process_data(self, data):
         """Process incoming serial data related to BMI"""
         
+        # --- POWER STATUS (SLAVE LOGIC) ---
+        if "STATUS:WEIGHT_SENSOR_POWERED_UP" in data:
+            self.weight_active = True
+            self.live_data['weight']['status'] = 'measuring'
+            logger.info("=== ⚖️ WEIGHT SENSOR POWERED UP ===")
+            
+        elif "STATUS:WEIGHT_SENSOR_POWERED_DOWN" in data:
+            self.weight_active = False
+            self.live_data['weight']['status'] = 'idle'
+            logger.info("=== ⚖️ WEIGHT SENSOR POWERED DOWN ===")
+
+        elif "STATUS:HEIGHT_SENSOR_POWERED_UP" in data:
+            self.height_active = True
+            logger.info("=== 📏 HEIGHT SENSOR POWERED UP ===")
+            
+        elif "STATUS:HEIGHT_SENSOR_POWERED_DOWN" in data:
+            self.height_active = False
+            logger.info("=== 📏 HEIGHT SENSOR POWERED DOWN ===")
+
         # --- STATUS UPDATES ---
-        if "STATUS:AUTO_TARE_COMPLETE" in data:
+        elif "STATUS:AUTO_TARE_COMPLETE" in data:
             self.auto_tare_completed = True
             self.weight_sensor_ready = True
             logger.info("✅ BMI Manager: Auto-tare complete")
@@ -48,37 +69,57 @@ class BMIManager:
         elif "STATUS:WEIGHT_MEASUREMENT_STARTED" in data:
             self.weight_active = True
             self.live_data['weight']['status'] = 'detecting'
+            print("\n" + "="*50)
+            print("⚖️  WEIGHT MEASUREMENT - Started")
+            print("="*50)
             
         elif "STATUS:WEIGHT_MEASUREMENT_COMPLETE" in data:
             self.weight_active = False
             self.live_data['weight']['status'] = 'complete'
+            print("\n" + "="*50)
+            print("✅ WEIGHT MEASUREMENT - Complete")
+            print("="*50)
 
         elif "STATUS:HEIGHT_MEASUREMENT_STARTED" in data:
             self.height_active = True
             self.live_data['height']['status'] = 'detecting'
+            print("\n" + "="*50)
+            print("📏 HEIGHT MEASUREMENT - Started")
+            print("="*50)
 
         elif "STATUS:HEIGHT_MEASUREMENT_COMPLETE" in data:
             self.height_active = False
             self.live_data['height']['status'] = 'complete'
+            print("\n" + "="*50)
+            print("✅ HEIGHT MEASUREMENT - Complete")
+            print("="*50)
 
-        # --- LIVE DATA (DEBUG STREAMS) - Using REGEX for robust parsing ---
+        # --- LIVE DATA (DEBUG STREAMS) - Throttled 1Hz ---
         # "DEBUG:Weight reading: XX.XX"
         elif "DEBUG:Weight reading" in data:
             try:
+                # Robust parsing
                 match = WEIGHT_PATTERN.search(data)
                 if match:
                     val = float(match.group(1))
-                    self.live_data['weight']['current'] = val
-                    self.live_data['weight']['status'] = 'measuring'
-                    print(f"⚖️ Live Weight: {val} kg")
                 else:
-                    # Fallback: Try split-based parsing
                     parts = data.split(":")
                     if len(parts) >= 3:
                         val = float(parts[2].strip())
-                        self.live_data['weight']['current'] = val
-                        self.live_data['weight']['status'] = 'measuring'
-                        print(f"⚖️ Live Weight: {val} kg")
+                    else:
+                        return
+
+                self.live_data['weight']['current'] = val
+                self.live_data['weight']['status'] = 'measuring'
+                
+                # Throttle log
+                current_time = time.time()
+                if current_time - self.last_log_time > 1.0:
+                    print(f"⚖️ Live Weight: {val} kg", flush=True)
+                    # Don't update last_log_time here, let next sensor update do it or allow both
+                    # Actually, we might miss height if we block both. 
+                    # Let's simple use separate throttles or just accept interleaved printing
+                    # For simplicity, print both if they come
             except:
                 pass
 
@@ -88,17 +129,21 @@ class BMIManager:
                 match = HEIGHT_PATTERN.search(data)
                 if match:
                     val = float(match.group(1))
-                    self.live_data['height']['current'] = val
-                    self.live_data['height']['status'] = 'measuring'
-                    print(f"📏 Live Height: {val} cm")
                 else:
-                    # Fallback: Try split-based parsing
                     parts = data.split(":")
                     if len(parts) >= 3:
                         val = float(parts[2].strip())
-                        self.live_data['height']['current'] = val
-                        self.live_data['height']['status'] = 'measuring'
-                        print(f"📏 Live Height: {val} cm")
+                    else:
+                        return
+
+                self.live_data['height']['current'] = val
+                self.live_data['height']['status'] = 'measuring'
+                
+                # Throttle log - share the timer or verify
+                current_time = time.time()
+                if current_time - self.last_log_time > 0.5: # 2Hz combined?
+                    print(f"📏 Live Height: {val} cm", flush=True)
+                    self.last_log_time = current_time
             except:
                 pass
                 

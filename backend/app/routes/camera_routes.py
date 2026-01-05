@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, Response
 from app.sensors.weight_compliance_camera import weight_compliance_camera as camera_manager
+from app.utils.camera_config import CameraConfig
 import time
 
 camera_bp = Blueprint('camera', __name__)
@@ -7,9 +8,20 @@ camera_bp = Blueprint('camera', __name__)
 @camera_bp.route('/start', methods=['POST'])
 def start_camera():
     from flask import request
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     camera_index = data.get('index', None)
-    success, message = camera_manager.start_camera(camera_index=camera_index)
+    camera_name = data.get('camera_name', None)
+    
+    # DEBUG: Print what we received
+    print(f"🎥 [CAMERA ROUTE] /camera/start called:")
+    print(f"   📥 Received index: {camera_index}")
+    print(f"   📥 Received camera_name: {camera_name}")
+    
+    success, message = camera_manager.start_camera(camera_index=camera_index, camera_name=camera_name)
+    
+    print(f"   📤 Result: success={success}, message={message}")
+    print(f"   🎯 Final camera_index used: {camera_manager.camera_index}")
+    
     if success:
         return jsonify({"status": "success", "message": message})
     else:
@@ -27,7 +39,7 @@ def get_status():
 @camera_bp.route('/set_mode', methods=['POST'])
 def set_mode():
     from flask import request
-    data = request.json
+    data = request.get_json(silent=True) or {}
     mode = data.get('mode')
     if mode in ['feet', 'body', 'reading', 'capture_only']:
         camera_manager.set_mode(mode)
@@ -37,7 +49,7 @@ def set_mode():
 @camera_bp.route('/set_camera', methods=['POST'])
 def set_camera():
     from flask import request
-    data = request.json
+    data = request.get_json(silent=True) or {}
     index = data.get('index')
     if index is not None:
         success, msg = camera_manager.set_camera(int(index))
@@ -52,14 +64,14 @@ def list_cameras():
 @camera_bp.route('/set_settings', methods=['POST'])
 def set_settings():
     from flask import request
-    data = request.json
+    data = request.get_json(silent=True) or {}
     camera_manager.set_settings(data)
     return jsonify({"status": "success", "message": "Settings updated"})
 
 @camera_bp.route('/capture', methods=['POST'])
 def capture():
     from flask import request
-    data = request.json
+    data = request.get_json(silent=True) or {}
     class_name = data.get('class_name', 'unknown')
     success, result = camera_manager.capture_image(class_name)
     if success:

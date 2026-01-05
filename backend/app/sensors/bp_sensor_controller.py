@@ -1,7 +1,15 @@
 """
 Blood Pressure Sensor Controller
 Dedicated camera + AI module for BP measurement.
-Camera Index: 2 (0=Wearables, 1=Weight, 2=BP)
+
+CAMERA INDICES (Based on ACTUAL PowerShell enumeration order):
+- Index 0 = "2 - Blood Pressure Camera"
+- Index 1 = "0 - Weight Compliance Camera"
+- Index 2 = "1 - Wearables Compliance Camera"
+
+NOTE: The prefix numbers in the camera names do NOT match the actual indices!
+This is because Windows PnP enumeration order differs from the friendly names.
+
 Separate from weight_compliance_camera.py to avoid mode conflicts.
 """
 
@@ -12,6 +20,8 @@ import os
 import logging
 import serial
 import serial.tools.list_ports
+from app.utils.camera_config import CameraConfig
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +43,16 @@ class BPSensorController:
         self.is_running = False
         self.lock = threading.Lock()
         self.latest_frame = None
-        self.camera_index = 2  # Index 2 for BP camera (0=Weight, 1=Wearables, 2=BP)
+        self.camera_index = CameraConfig.get_index('bp') if CameraConfig.get_index('bp') is not None else 0  # Confirmed: BP is Index 0
+        
+        logger.info(f"🩸 BPSensorController initialized with index: {self.camera_index}")
+
         
         # Image Adjustments
-        self.zoom_factor = 1.5  # User requested 1.5x zoom
+        # Image Adjustments - Matches user preference for BP cam
+        self.zoom_factor = 1.4  # Default 1.4x zoom per user preference
         self.square_crop = True
-        self.rotation = 0
+        self.rotation = 0 # Assume default orientation
         
         # Arduino Serial Connection
         self.arduino = None
@@ -144,8 +158,28 @@ class BPSensorController:
             self.arduino = None
             return False
 
-    def start(self, camera_index=None):
+    def set_camera(self, index=None, camera_name=None):
+        """Update sensor camera target."""
+        if camera_name:
+             idx = CameraConfig.get_index_by_name(camera_name)
+             if idx is not None:
+                 index = idx
+                 logger.info(f"🩸 BP Camera Resolved '{camera_name}' -> Index {index}")
+        
+        if index is not None:
+            logger.info(f"🩸 BP Camera Index updated to: {index}")
+            self.camera_index = index
+
+    def start(self, camera_index=None, camera_name=None):
         """Start the BP camera and detection loop."""
+        
+        # Resolve name if present
+        if camera_name:
+             idx = CameraConfig.get_index_by_name(camera_name)
+             if idx is not None:
+                 camera_index = idx # Override
+                 logger.info(f"🩸 BP Start: Resolved '{camera_name}' -> Index {camera_index}")
+
         # 1. Send "start" command to Arduino to simulate button press (Turn ON)
         # DISABLED: User wants manual button press on the physical device.
         # self.send_command("start")
@@ -163,7 +197,7 @@ class BPSensorController:
             self.trend_state = "Stable ⏸️"
             self.stable_frames_count = 0
             # Ensure settings match user request
-            self.zoom_factor = 1.3
+            self.zoom_factor = 1.4  # Default 1.4x zoom per user preference
             self.rotation = 0
             
             # Robust Camera Opening

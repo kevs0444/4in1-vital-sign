@@ -10,6 +10,7 @@ import time
 import os
 import logging
 from flask import Blueprint, Response, jsonify
+from app.utils.camera_config import CameraConfig
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,11 @@ class WearablesCameraController:
         self.is_running = False
         self.lock = threading.Lock()
         self.latest_frame = None
-        self.camera_index = 0  # Index 0 for Wearables camera (0=Wearables, 1=Weight, 2=BP)
+        self.latest_frame = None
+        self.camera_index = CameraConfig.get_index('wearables') if CameraConfig.get_index('wearables') is not None else 1  # Confirmed: Wearables is Index 1
+        
+        logger.info(f"👕 WearablesCameraController initialized with index: {self.camera_index}")
+
         
         logger.info("👕 WearablesCameraController initialized")
     

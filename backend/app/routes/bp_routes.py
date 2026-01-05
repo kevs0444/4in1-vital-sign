@@ -14,7 +14,12 @@ bp_routes = Blueprint('bp', __name__, url_prefix='/api/bp')
 @bp_routes.route('/start', methods=['POST'])
 def start_bp_camera():
     """Start the BP camera and detection."""
-    success, message = bp_sensor.start()
+    from flask import request
+    data = request.get_json(silent=True) or {}
+    camera_name = data.get('camera_name', None)
+    camera_index = data.get('index', None)
+    
+    success, message = bp_sensor.start(camera_index=camera_index, camera_name=camera_name)
     return jsonify({"success": success, "message": message})
 
 @bp_routes.route('/trigger', methods=['POST'])

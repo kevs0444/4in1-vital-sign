@@ -1,0 +1,18 @@
+{
+    "raw_count": 3,
+    "raw_list": [
+        "Blood Pressure Camera",
+        "Weight Compliance Camera",
+        "Wearables Compliance Camera"
+    ],
+    "sorted_list": [
+        "Blood Pressure Camera",
+        "Wearables Compliance Camera",
+        "Weight Compliance Camera"
+    ],
+    "indices_if_sorted": {
+        "Blood Pressure Camera": 0,
+        "Wearables Compliance Camera": 1,
+        "Weight Compliance Camera": 2
+    }
+}

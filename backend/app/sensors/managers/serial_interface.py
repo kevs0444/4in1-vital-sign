@@ -52,8 +52,8 @@ class SerialInterface:
             self.serial_conn = serial.Serial(
                 port=self.port,
                 baudrate=self.baudrate,
-                timeout=1,
-                write_timeout=1
+                timeout=3,  # Increased from 1 to 3 seconds
+                write_timeout=3  # Increased from 1 to 3 seconds for buffer-heavy operations
             )
             
             self.is_connected = True
@@ -85,13 +85,20 @@ class SerialInterface:
             return False, f"Disconnect failed: {str(e)}"
 
     def send_command(self, command):
-        """Send a command to the Arduino"""
+        """Send a command to the Arduino with buffer management"""
         if not self.is_connected or not self.serial_conn:
             return False
             
         try:
+            # Clear input buffer before sending critical commands
+            # This prevents old data from interfering
+            if self.serial_conn.in_waiting > 100:
+                logger.warning(f"Serial buffer has {self.serial_conn.in_waiting} bytes - clearing")
+                self.serial_conn.reset_input_buffer()
+            
             cmd_str = f"{command}\n"
             self.serial_conn.write(cmd_str.encode())
+            self.serial_conn.flush()  # Ensure data is actually sent
             return True
         except Exception as e:
             logger.error(f"Failed to send command {command}: {e}")

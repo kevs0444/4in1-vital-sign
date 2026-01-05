@@ -277,13 +277,13 @@ export default function BodyTemp() {
         console.warn("Poll temp error (silent)");
       } finally {
         if (isMountedRef.current && pollerRef.current) {
-          pollerRef.current = setTimeout(poll, 200);
+          pollerRef.current = setTimeout(poll, 100); // UNIFORM 100ms polling
         }
       }
     };
 
     // Start recursive polling
-    pollerRef.current = setTimeout(poll, 200);
+    pollerRef.current = setTimeout(poll, 100); // UNIFORM 100ms polling
   };
 
   const startMeasurement = async () => {

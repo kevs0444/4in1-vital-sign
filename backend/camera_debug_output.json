@@ -1,0 +1,16 @@
+{
+    "cameras": [
+        {
+            "index": 0,
+            "name": "2 - Blood Pressure Camera"
+        },
+        {
+            "index": 1,
+            "name": "0 - Weight Compliance Camera"
+        },
+        {
+            "index": 2,
+            "name": "1 - Wearables Compliance Camera"
+        }
+    ]
+}

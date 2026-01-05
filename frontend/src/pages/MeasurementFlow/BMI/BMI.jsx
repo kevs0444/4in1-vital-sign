@@ -30,7 +30,7 @@ const PHASE = {
 const WEIGHT_DURATION_MS = 2000;
 const HEIGHT_DURATION_MS = 2000;
 const TRANSITION_DELAY_MS = 1000;
-const POLL_INTERVAL_MS = 200;
+const POLL_INTERVAL_MS = 100; // UNIFORM 100ms polling (matches all sensors)
 
 const WEIGHT_TOLERANCE = 0.5;
 const HEIGHT_TOLERANCE = 2.0;
@@ -336,7 +336,7 @@ export default function BMI() {
           }
         }
       } catch (e) { console.error("Sys check error:", e); }
-    }, 200);
+    }, 100); // UNIFORM 100ms polling
   }, [startWeightMeasurement]);
 
   useEffect(() => {

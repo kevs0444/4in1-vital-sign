@@ -184,8 +184,23 @@ def create_app():
     print("="*60)
     print("🚀 BACKEND SERVER is READY and RUNNING")
     print(f"📂 Serving Frontend from: {app.static_folder}")
+
+    # Print Camera Map
+    print("-"*60)
+    print("📷 CAMERAS DETECTED & ASSIGNED:")
+    try:
+        from app.utils.camera_config import CameraConfig
+        config = CameraConfig.load()
+        print(f"   🦶 Weight/Feet:    Index {config.get('weight_index', '?')}")
+        print(f"   👕 Wearables:      Index {config.get('wearables_index', '?')}")
+        print(f"   🩸 Blood Pressure: Index {config.get('bp_index', '?')}")
+    except Exception as e:
+         print(f"   ⚠️ Camera Config Error: {e}")
+    print("-"*60)
+
     print("="*60)
     print("📍 API available at: http://127.0.0.1:5000")
+
     print("🔌 WebSocket available at: ws://127.0.0.1:5000")
     print("="*60 + "\n")
     sys.stdout.flush()

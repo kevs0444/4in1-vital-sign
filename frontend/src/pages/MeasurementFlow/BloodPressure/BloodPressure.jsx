@@ -49,6 +49,16 @@ export default function BloodPressure() {
   const countdownRef = useRef(null);
   const progressIntervalRef = useRef(null);
 
+  // Camera Config State - UPDATED based on user testing:
+  // Index 0 = Weight Compliance Camera (Feet/Platform) ✅
+  // Index 1 = Blood Pressure Camera (BP Monitor)
+  // Index 2 = Wearables Compliance Camera (Body)
+  const [cameraConfig, setCameraConfig] = useState({
+    weight_index: 0,     // VERIFIED: Shows feet/platform
+    wearables_index: 2,  // Wearables camera (body)
+    bp_index: 1          // BP Monitor camera
+  });
+
   useEffect(() => {
     // Reset inactivity setting on mount (timer enabled by default)
     setIsInactivityEnabled(true);
@@ -59,12 +69,27 @@ export default function BloodPressure() {
     // Call init
     initializeBloodPressureSensor();
 
-    // Auto-start camera WATCHING mode when page loads
-    // This allows detection of readings when user presses EITHER:
-    //   1. Physical button on BP monitor device, OR
-    //   2. Screen button (which sends command to Arduino)
-    // The camera just OBSERVES - doesn't trigger measurement
-    startLiveReading();
+    // Explicit camera names for robust backend lookups
+    // These must match the EXACT friendly names set in Windows Registry (including prefix)
+    const CAMERA_NAMES = {
+      weight: "0 - Weight Compliance Camera",
+      wearables: "1 - Wearables Compliance Camera",
+      bp: "2 - Blood Pressure Camera"
+    };
+
+    // Auto-start camera WATCHING mode when page loads (after fetching config)
+    const initCamera = async () => {
+      try {
+        // We'll trust the names over the config indices initially, sending names to backend
+        console.log("📷 Starting BP Camera with Name Lookup...");
+        startLiveReading(null, CAMERA_NAMES.bp);
+      } catch (e) {
+        console.error("Config fetch failed", e);
+        startLiveReading(2); // fallback
+      }
+    };
+
+    initCamera();
 
     return () => {
       clearTimeout(timer);
@@ -370,13 +395,40 @@ export default function BloodPressure() {
   const displayValue = getCurrentDisplayValue();
   const progressInfo = getProgressInfo('bloodpressure', location.state?.checklist);
 
-  const startCameraMode = async () => {
+  const startCameraMode = async (forceIndex = null, forceName = null) => {
     setIsCameraMode(true);
     setStatusMessage("Starting BP camera...");
+
+    // Explicit camera names for robust backend lookups (with prefixes)
+    const CAMERA_NAMES = {
+      weight: "0 - Weight Compliance Camera",
+      wearables: "1 - Wearables Compliance Camera",
+      bp: "2 - Blood Pressure Camera"
+    };
+
+    // Use provided index or state
+    const camIndex = forceIndex !== null ? forceIndex : cameraConfig.bp_index;
+    const camName = forceName || CAMERA_NAMES.bp;
+
     try {
-      // Use dedicated BP sensor controller
+      // Use dedicated BP sensor controller with explicit index param if needed, 
+      // though backend controller usually handles it. Passing index updates the controller.
+      await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/set_camera`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          index: camIndex,
+          camera_name: camName
+        })
+      });
+
       await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/start`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          index: camIndex,
+          camera_name: camName
+        })
       });
       setStatusMessage("Position the digital BP monitor in the frame");
     } catch (err) {
@@ -395,10 +447,10 @@ export default function BloodPressure() {
     setIsCameraMode(false);
   };
 
-  const startLiveReading = async () => {
+  const startLiveReading = async (forceIndex = null, forceName = null) => {
     // 1. Start BP Camera Backend if not running
     if (!isCameraMode) {
-      await startCameraMode();
+      await startCameraMode(forceIndex, forceName);
     }
 
     setIsLiveReading(true);

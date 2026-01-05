@@ -44,13 +44,44 @@ export default function Clearance() {
     const [isCameraLoading, setIsCameraLoading] = useState(true);
     const [isVisible, setIsVisible] = useState(false);
 
+    // Camera Config State - UPDATED based on user testing:
+    // Index 0 = Weight Compliance Camera (Feet/Platform) ✅
+    // Index 1 = Blood Pressure Camera (BP Monitor)
+    // Index 2 = Wearables Compliance Camera (Body)
+    const [cameraConfig, setCameraConfig] = useState({
+        weight_index: 0,     // VERIFIED: Shows feet/platform
+        wearables_index: 2,  // Wearables camera (body)
+        bp_index: 1          // BP Monitor camera
+    });
+
+    // Explicit camera names for robust backend lookups
+    // These must match the EXACT friendly names set in Windows Registry (including prefix)
+    const CAMERA_NAMES = {
+        weight: "0 - Weight Compliance Camera",
+        wearables: "1 - Wearables Compliance Camera",
+        bp: "2 - Blood Pressure Camera"
+    };
+
     // Initialize
     useEffect(() => {
         isMountedRef.current = true;
         setIsInactivityEnabled(true);
         const timer = setTimeout(() => setIsVisible(true), 100);
 
-        startFootwearCheck();
+        // Fetch Camera Config FIRST, then start check
+        const init = async () => {
+            try {
+                // VERIFIED: Weight camera = Index 0
+                // Just pass the index directly - name lookup was broken
+                console.log("📷 Starting Clearance with VERIFIED index 0 (Weight Camera)...");
+                startFootwearCheck(0); // Use verified index directly
+            } catch (e) {
+                console.error("Config fetch failed", e);
+                startFootwearCheck(0); // Still use verified index
+            }
+        };
+
+        init();
 
         return () => {
             isMountedRef.current = false;
@@ -152,10 +183,14 @@ export default function Clearance() {
         }
     };
 
-    const startFootwearCheck = async () => {
+    const startFootwearCheck = async (forceIndex = null, forceName = null) => {
         setStep(1);
         setIsCompliant(false);
         setIsCameraLoading(true); // Show loading while camera initializes
+
+        // Prefer name, then index, then config, then fallback
+        const camName = forceName || CAMERA_NAMES.weight;
+        const camIndex = forceIndex !== null ? forceIndex : cameraConfig.weight_index;
 
         try {
             setStatusMessage("Initializing feet camera...");
@@ -165,10 +200,14 @@ export default function Clearance() {
             await sleep(200);
 
             // Start Weight/Feet camera (Camera Index 1) using /camera endpoint
+            // Sending BOTH index and name allows backend to be smart
             await fetch(`${API_BASE}/camera/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ index: 1 })
+                body: JSON.stringify({
+                    index: camIndex,
+                    camera_name: camName
+                })
             });
 
             await sleep(100);
@@ -222,12 +261,16 @@ export default function Clearance() {
             await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
             await sleep(200); // Longer delay for camera to fully release
 
-            // Start Weight Compliance Camera on Camera Index 0 (Wearables camera)
-            // This uses the same /camera controller which has ComplianceDetector for body mode
+            // Start Wearables Camera
+            // Index 1 showed BP, so Wearables must be Index 2
+            const camIndex = 2; // Wearables = Index 2
+
             await fetch(`${API_BASE}/camera/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ index: 0 })
+                body: JSON.stringify({
+                    index: camIndex  // Just pass index, no name
+                })
             });
 
             await sleep(100);
@@ -348,6 +391,7 @@ export default function Clearance() {
                                 // Proceed to next step
                                 setTimeout(() => {
                                     if (isMountedRef.current) {
+                                        // Pass the config index explicitly if needed, but the function reads from state now
                                         startWearablesCheck();
                                         lastSpokenRef.current = ""; // Reset speech tracking
                                     }

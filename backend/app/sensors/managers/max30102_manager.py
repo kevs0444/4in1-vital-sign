@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -23,24 +24,54 @@ class Max30102Manager:
             'spo2': None,
             'respiratory_rate': None,
             'ir_value': 0,
+            'pi': None,              # Perfusion Index (Medical Grade)
+            'signal_quality': None,  # EXCELLENT/GOOD/FAIR/WEAK/POOR
             'status': 'idle',
             'progress': 0,
-            'finger_detected': False
+            'finger_detected': False,
+            'stable_hr': None
         }
+        self.last_log_time = 0
 
     def process_data(self, data):
+        # --- POWER STATUS (SLAVE LOGIC) ---
         if "STATUS:MAX30102_SENSOR_POWERED_UP" in data:
             self.sensor_ready = True
+            self.active = True
+            logger.info("=== ❤️ MAX30102 SENSOR POWERED UP ===")
+            
+        elif "STATUS:MAX30102_SENSOR_POWERED_DOWN" in data:
+            self.active = False
+            self.sensor_ready = False
+            self.live_data['status'] = 'idle'
+            logger.info("=== ❤️ MAX30102 SENSOR POWERED DOWN ===")
+
+        elif "STATUS:MAX30102_MEASUREMENT_STARTED" in data:
+            self.active = True
+            logger.info("=== ❤️ MAX30102 MEASUREMENT STARTED ===")
+            
+        elif "STATUS:MAX30102_MEASUREMENT_COMPLETE" in data:
+            self.active = False
+            logger.info("=== ✅ MAX30102 MEASUREMENT COMPLETE ===")
             
         elif "FINGER_DETECTED" in data or "Finger Detected" in data:
             self.finger_detected = True
             self.live_data['finger_detected'] = True
-            self.active = True # Implicit start
+            # Reset live metrics to prevent stale data
+            self.live_data['heart_rate'] = None
+            self.live_data['spo2'] = None
+            self.live_data['respiratory_rate'] = None
+            self.live_data['stable_hr'] = None
+            print("👆 FINGER DETECTED - Measurement Starting", flush=True)
             
         elif "FINGER_REMOVED" in data:
             self.finger_detected = False
             self.live_data['finger_detected'] = False
-            self.active = False
+            self.live_data['heart_rate'] = None
+            self.live_data['spo2'] = None
+            self.live_data['respiratory_rate'] = None
+            self.live_data['stable_hr'] = None
+            print("✋ FINGER REMOVED - Measurement Pause", flush=True)
 
         # IR Value "MAX30102_IR_VALUE:12345"
         elif data.startswith("MAX30102_IR_VALUE:"):
@@ -51,56 +82,94 @@ class Max30102Manager:
             except:
                 pass
 
-        # New Parsing for "MAX30102_LIVE_DATA:HR=75,SPO2=98,RR=18.5..."
+        # "MAX30102_LIVE_DATA:HR=75,SPO2=98,RR=18.5..."
         elif "MAX30102_LIVE_DATA:" in data:
             try:
-                # Extract the part after the prefix
                 content = data.split("MAX30102_LIVE_DATA:")[1]
-                
-                # Parse key-value pairs
                 pairs = content.split(',')
                 for pair in pairs:
                     if '=' in pair:
                         key, value = pair.split('=')
                         if key == 'HR':
-                            self.live_data['heart_rate'] = int(value)
+                            hr = int(value)
+                            self.live_data['heart_rate'] = hr
+                            self.live_data['stable_hr'] = hr
                         elif key == 'SPO2':
                             self.live_data['spo2'] = int(value)
                         elif key == 'RR':
                             self.live_data['respiratory_rate'] = float(value)
+                        elif key == 'PI':
+                            self.live_data['pi'] = float(value)
+                        elif key == 'QUALITY':
+                            self.live_data['signal_quality'] = value
                 
-                self.active = True
                 self.live_data['status'] = 'measuring'
-                self.live_data['finger_detected'] = True # Implicit if we are getting live data
+                self.live_data['finger_detected'] = True 
+                
+                # Throttled Logging (1Hz)
+                current_time = time.time()
+                if current_time - self.last_log_time > 1.0:
+                    hr = self.live_data.get('heart_rate', '--')
+                    spo2 = self.live_data.get('spo2', '--')
+                    rr = self.live_data.get('respiratory_rate', '--')
+                    quality = self.live_data.get('signal_quality', '--')
+                    
+                    print(f"❤️ HR: {hr} BPM | SpO2: {spo2}% | RR: {rr} | Quality: {quality}", flush=True)
+                    self.last_log_time = current_time
+                
             except Exception as e:
-                logger.error(f"Error parsing MAX30102 data: {e}")
+                pass
 
-        # Emoji-based data "❤️ HR: 75 💨 RR: 18" (Legacy support)
+        # Legacy Emoji support "❤️ HR: 75"
         elif "❤️ HR:" in data:
             try:
-                # Simple extraction
                 hr = re.search(r'❤️ HR:\s*(\d+)', data)
                 if hr: self.live_data['heart_rate'] = int(hr.group(1))
                 
                 spo2 = re.search(r'🩸 SpO2:\s*(\d+)', data)
                 if spo2: self.live_data['spo2'] = int(spo2.group(1))
                 
-                rr = re.search(r'💨 RR:\s*([\d.]+)', data)
-                if rr: self.live_data['respiratory_rate'] = float(rr.group(1))
-                
-                self.active = True
                 self.live_data['status'] = 'measuring'
+                
+                # Throttled Logging (1Hz) for legacy too
+                current_time = time.time()
+                if current_time - self.last_log_time > 1.0:
+                    print(f"❤️ HR: {self.live_data['heart_rate']} | SpO2: {self.live_data['spo2']}%", flush=True)
+                    self.last_log_time = current_time
             except:
                 pass
 
+    def prepare_sensor(self):
+        """Power up and prepare sensor"""
+        logger.info("Preparing MAX30102 Sensor...")
+        self.serial.send_command("POWER_UP_MAX30102")
+        # Wait a moment for Arduino to confirm - handled by process_data now
+        return {"status": "success", "message": "MAX30102 sensor prepared"}
+
     def start_measurement(self):
+        """Start measurement (Arduino will auto-start when finger detected)"""
         self.measurements = {'heart_rate': None, 'spo2': None, 'respiratory_rate': None}
-        self.serial.send_command("START_MAX30102")
         return {"status": "success"}
 
     def stop_measurement(self):
+        """Stop MAX30102 measurement"""
         self.active = False
-        self.serial.send_command("STOP_MAX30102")
+        self.sensor_ready = False 
+        self.finger_detected = False
+        self.live_data['finger_detected'] = False
+        self.live_data['status'] = 'stopped'
+        self.serial.send_command("POWER_DOWN_MAX30102")
+        return {"status": "success", "message": "MAX30102 measurement stopped"}
+
+    def shutdown_sensor(self):
+        """Shutdown MAX30102 sensor - power down completely"""
+        self.active = False
+        self.sensor_ready = False
+        self.finger_detected = False
+        self.live_data['finger_detected'] = False
+        self.live_data['status'] = 'shutdown'
+        self.serial.send_command("POWER_DOWN_MAX30102")
+        return {"status": "success", "message": "MAX30102 sensor shutdown"}
 
     def get_status(self):
         return {
@@ -118,7 +187,10 @@ class Max30102Manager:
             'spo2': None,
             'respiratory_rate': None,
             'ir_value': 0,
+            'pi': None,
+            'signal_quality': None,
             'status': 'idle',
             'progress': 0,
-            'finger_detected': False
+            'finger_detected': False,
+            'stable_hr': None
         }

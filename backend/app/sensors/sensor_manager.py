@@ -179,10 +179,10 @@ class SensorManager:
         return self.max30102_manager.start_measurement()
 
     def prepare_max30102_sensor(self):
-        return self.max30102_manager.start_measurement()
+        return self.max30102_manager.prepare_sensor()
 
     def shutdown_max30102_sensor(self):
-        return self.max30102_manager.stop_measurement()
+        return self.max30102_manager.shutdown_sensor()
         
     def stop_max30102_measurement(self):
         return self.max30102_manager.stop_measurement()

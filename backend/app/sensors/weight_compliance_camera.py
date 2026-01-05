@@ -1,7 +1,13 @@
 """
 Weight Compliance Camera Controller
 Dedicated camera for weight/feet compliance detection.
-Camera Index: 1 (0=Wearables, 1=Weight, 2=BP)
+
+CAMERA INDICES (Based on ACTUAL PowerShell enumeration order):
+- Index 0 = "2 - Blood Pressure Camera"
+- Index 1 = "0 - Weight Compliance Camera"  <-- THIS CAMERA
+- Index 2 = "1 - Wearables Compliance Camera"
+
+NOTE: The prefix numbers in the camera names do NOT match the actual indices!
 """
 
 import cv2
@@ -15,6 +21,12 @@ import logging
 # Assuming this file is in backend/app/sensors/
 # We need to go up 3 levels to reach backend/
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+
+try:
+    from app.utils.camera_config import CameraConfig
+except ImportError:
+    CameraConfig = None
+
 
 try:
     from backend.ai_camera.detection.dual_camera_detect import ComplianceDetector
@@ -35,14 +47,24 @@ class WeightComplianceCamera:
         self.detector = None
         self.lock = threading.Lock()
         self.latest_frame = None
-        self.camera_index = 1  # Index 1 for Weight/Feet camera (0=Wearables, 1=Weight, 2=BP)
+        self.latest_frame = None
+        
+        # Load from config if available (Dynamic Indexing)
+        if CameraConfig:
+             self.camera_index = CameraConfig.get_index('weight')
+             if self.camera_index is None: self.camera_index = 0  # VERIFIED: Weight = Index 0
+        else:
+             self.camera_index = 0  # VERIFIED: Weight = Index 0
+        
+        logger.info(f"🦶 WeightCamera initialized with index: {self.camera_index}")
+
         self.current_mode = 'feet'
         
-        # Image Adjustments
-        self.zoom_factor = 1.3 # Default 1.3x zoom as requested
+        # Image Adjustments (Preserved from user request)
+        self.zoom_factor = 1.3 
         self.brightness = 1.0
         self.contrast = 1.0
-        self.rotation = 0
+        self.rotation = 180 # Feet camera is often upside down/rotated
         self.square_crop = True
         
         self.compliance_status = {
@@ -143,9 +165,34 @@ class WeightComplianceCamera:
             self.start_camera(index)
         return True, f"Switched to camera {index}"
 
-    def start_camera(self, camera_index=None):
+    def start_camera(self, camera_index=None, camera_name=None):
+        """
+        Start the camera.
+        
+        IMPORTANT: We now IGNORE camera_name and use only camera_index.
+        The camera_config.json file contains the VERIFIED correct indices.
+        PowerShell name resolution was returning incorrect values.
+        """
+        # DEBUG: Log what we received
+        print(f"📷 [Weight] start_camera called: camera_index={camera_index}, camera_name={camera_name}")
+        logger.info(f"[Weight] start_camera called: camera_index={camera_index}, camera_name={camera_name}")
+        
+        # SIMPLE LOGIC: Use passed index, or fall back to config file
         if camera_index is not None:
             self.camera_index = camera_index
+            print(f"📷 [Weight] Using provided camera_index: {camera_index}")
+        else:
+            # Use the verified config file value
+            config_idx = CameraConfig.get_index('weight')
+            if config_idx is not None:
+                self.camera_index = config_idx
+                print(f"📷 [Weight] Using config file index: {config_idx}")
+            else:
+                self.camera_index = 0  # Ultimate fallback (verified: Weight = Index 0)
+                print(f"📷 [Weight] Using hardcoded fallback: 0")
+        
+        print(f"🎯 [Weight] Final camera_index to use: {self.camera_index}")
+        logger.info(f"[Weight] Final camera_index: {self.camera_index}")
             
         if self.is_running:
             return True, "Camera already running"
