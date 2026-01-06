@@ -217,21 +217,23 @@ export default function Max30102() {
 
         } else if (currentStep === 3 && !isFinger && secondsRemaining > 0 && !finalResults.heartRate) {
           // Rule: Backend says "Finger Removed" -> IMMEDIATE Reset
-          console.log("✋ Backend Finger Removed -> Resetting Immediately");
-          setStatusMessage("✋ Finger removed! Resetting...");
+          // FINAL GUARD: Only process if measurement is NOT complete
+          if (!isMeasurementCompleteRef.current) {
+            console.log("✋ Backend Finger Removed -> Resetting Immediately");
+            setStatusMessage("✋ Finger removed! Resetting...");
 
-          // ONE-TIME SPEECH: Finger Removed
-          if (!hasAnnouncedRemoveRef.current) {
-            speak(SPEECH_MESSAGES.MAX30102.FINGER_REMOVED);
-            hasAnnouncedRemoveRef.current = true;
-            hasAnnouncedInsertRef.current = false; // Reset insert flag for next cycle
-            wasRemovedRef.current = true; // Mark that removal happened (for re-insertion speech)
+            // ONE-TIME SPEECH: Finger Removed
+            if (!hasAnnouncedRemoveRef.current) {
+              speak(SPEECH_MESSAGES.MAX30102.FINGER_REMOVED);
+              hasAnnouncedRemoveRef.current = true;
+              hasAnnouncedInsertRef.current = false; // Reset insert flag for next cycle
+              wasRemovedRef.current = true; // Mark that removal happened (for re-insertion speech)
+            }
+
+            setShowInterruptedModal(true);
+            setStep(2);
+            resetMeasurementState();
           }
-
-          setShowInterruptedModal(true);
-
-          setStep(2);
-          resetMeasurementState();
         }
 
       } catch (err) {
@@ -255,6 +257,9 @@ export default function Max30102() {
       setSecondsRemaining(prev => {
         const next = prev - 1;
         if (next <= 0) {
+          // IMMEDIATELY mark as complete - SYNCHRONOUS, before any async operations
+          isMeasurementCompleteRef.current = true;
+
           stopTimer(); // Stop counting
           stopPolling(); // Stop data collection
           completeMeasurement(); // Finish
@@ -300,6 +305,9 @@ export default function Max30102() {
 
     setStep(4);
     setStatusMessage("✅ Measurement complete!");
+
+    // Speak completion message
+    speak(SPEECH_MESSAGES.MAX30102.COMPLETE);
 
     const avgHR = heartRateBuffer.current.length > 0
       ? Math.round(heartRateBuffer.current.reduce((a, b) => a + b, 0) / heartRateBuffer.current.length)
@@ -422,6 +430,14 @@ export default function Max30102() {
     }, 500);
     return () => clearTimeout(timer);
   }, [step, secondsRemaining, location.state?.checklist]);
+
+  // ========== AUTO-CLOSE MODAL ON COMPLETION ==========
+  // This is a FAILSAFE - if modal is somehow showing when timer ends, forcibly close it
+  useEffect(() => {
+    if (secondsRemaining <= 0 || step === 4) {
+      setShowInterruptedModal(false);
+    }
+  }, [secondsRemaining, step]);
 
   // ========== RENDER ==========
   return (
@@ -609,8 +625,8 @@ export default function Max30102() {
         </div>
       )}
 
-      {/* Interrupted Modal - NEVER show after step 4 (measurement complete) */}
-      {showInterruptedModal && step !== 4 && (
+      {/* Interrupted Modal - NEVER show if: step=4 OR timer done */}
+      {showInterruptedModal && step !== 4 && secondsRemaining > 0 && (
         <div className="exit-modal-overlay" onClick={() => setShowInterruptedModal(false)}>
           <motion.div
             className="exit-modal-content"
