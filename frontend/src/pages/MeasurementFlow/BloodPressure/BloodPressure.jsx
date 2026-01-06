@@ -66,6 +66,21 @@ export default function BloodPressure() {
     const timer = setTimeout(() => setIsVisible(true), 100);
     console.log("📍 BloodPressure received location.state:", location.state);
 
+    // RESET STATE ON MOUNT (Reusability Fix)
+    setSystolic("");
+    setDiastolic("");
+    setMeasurementComplete(false);
+    setBpComplete(false);
+    setMeasurementStep(1);
+    setStatusTrend("Smart Scan");
+    setStatusMessage("Initializing blood pressure monitor...");
+    setShowErrorModal(false);
+
+    // Reset specific refs
+    stableCountRef.current = 0;
+    detectionStartTimeRef.current = null;
+    lastReadingRef.current = { sys: null, dia: null };
+
     // Call init
     initializeBloodPressureSensor();
 
@@ -447,10 +462,12 @@ export default function BloodPressure() {
     }
   };
 
-  const stopCameraMode = async () => {
+  const stopCameraMode = async (forceOff = false) => {
     try {
       await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/stop`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force_off: forceOff })
       });
     } catch (e) { console.error(e) }
 
@@ -612,7 +629,7 @@ export default function BloodPressure() {
 
     // Turn OFF the BP Arduino when leaving the page
     console.log("🔌 Stopping BP camera and Arduino...");
-    await stopCameraMode();
+    await stopCameraMode(true); // FORCE OFF on Continue
 
     const completeVitalSignsData = {
       ...location.state,

@@ -26,7 +26,7 @@ const API_BASE = getDynamicApiUrl();
 const modes = {
     feet: ["platform", "barefeet", "socks", "footwear"],
     body: ["null", "bag", "cap", "id", "watch"],
-    bp: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "error"]
+    bp: ["numbers", "error", "null"]
 };
 
 const Maintenance = () => {
@@ -376,10 +376,25 @@ const Maintenance = () => {
         try {
             if (mode === 'bp') {
                 await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
+
+                // 1. Set Camera Explicitly (Matches BloodPressure.jsx logic)
+                await fetch(`${API_BASE}/bp/set_camera`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        index: 1,
+                        camera_name: "2 - Blood Pressure Camera"
+                    })
+                });
+
+                // 2. Start BP Sensor
                 await fetch(`${API_BASE}/bp/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ index: 1, camera_name: "Blood Pressure Camera" }) // Explicit Index 1
+                    body: JSON.stringify({
+                        index: 1,
+                        camera_name: "2 - Blood Pressure Camera"
+                    })
                 });
                 await fetch(`${API_BASE}/bp/set_settings`, {
                     method: 'POST',
@@ -414,7 +429,13 @@ const Maintenance = () => {
         try {
             setShowCaptureFlash(true);
             setTimeout(() => setShowCaptureFlash(false), 150);
-            await fetch(`${API_BASE}/camera/capture`, {
+
+            // Use correct endpoint based on active camera tab
+            const captureEndpoint = activeCameraTab === 'bp'
+                ? `${API_BASE}/bp/capture`
+                : `${API_BASE}/camera/capture`;
+
+            await fetch(captureEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ class_name: selectedClass })
@@ -423,7 +444,7 @@ const Maintenance = () => {
         } catch (err) {
             console.error('Capture error:', err);
         }
-    }, [selectedClass]);
+    }, [selectedClass, activeCameraTab]);
 
     // =====================================================
     // EFFECTS
@@ -1042,36 +1063,6 @@ const Maintenance = () => {
                                         </button>
                                         <div className="overlay-bottom">
                                             <div className="session-stats">Collected: {captureCount} Samples</div>
-                                            {/* Camera Selection UI inside Viewport */}
-                                            <div className="camera-selector-overlay" style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
-                                                {availableCameras.map(idx => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => handleCameraSelect(idx)}
-                                                        className={`cam-select-btn ${settings.camera_index === idx ? 'active' : ''}`}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            borderRadius: '6px',
-                                                            border: 'none',
-                                                            background: settings.camera_index === idx ? '#dc2626' : 'rgba(0,0,0,0.6)',
-                                                            color: 'white',
-                                                            cursor: 'pointer',
-                                                            fontSize: '0.8rem',
-                                                            fontWeight: '600'
-                                                        }}
-                                                    >
-                                                        {getCameraLabel(idx)}
-                                                    </button>
-                                                ))}
-                                                <button
-                                                    onClick={fetchAvailableCameras}
-                                                    className="cam-select-btn"
-                                                    style={{ padding: '6px 8px', borderRadius: '6px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white', cursor: 'pointer' }}
-                                                    title="Refresh Camera List"
-                                                >
-                                                    ↻
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>

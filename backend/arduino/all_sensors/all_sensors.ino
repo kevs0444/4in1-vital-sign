@@ -435,11 +435,16 @@ void powerUpMax30102Sensor() {
 }
 
 void powerDownMax30102Sensor() {
-  // Always set flag to false
-  max30102SensorPowered = false; // LOGICAL SHUTDOWN: Stops loop data processing
+  // Stop active measurement if running
+  if (currentPhase == MAX30102) {
+    measurementActive = false;
+    currentPhase = IDLE;
+    max30102MeasurementStarted = false;
+    fingerDetected = false;
+  }
   
-  // Force hardware shutdown (Sleep mode is safe)
-  // particleSensor.shutDown(); // KEEP SENSOR ACTIVE avoids wake-up issues
+  // Set power flag to false
+  max30102SensorPowered = false;
   
   Serial.println("STATUS:MAX30102_SENSOR_POWERED_DOWN");
 }
@@ -983,9 +988,16 @@ void startHeightMeasurement() {
 void startTemperatureMeasurement() {
   if (!temperatureSensorPowered) powerUpTemperatureSensor();
   
+  // If not initialized, try to initialize now (sensor may have been connected after boot)
   if (!temperatureSensorInitialized) {
-    Serial.println("ERROR:TEMPERATURE_SENSOR_NOT_INITIALIZED");
-    return;
+    Serial.println("STATUS:ATTEMPTING_TEMPERATURE_SENSOR_INIT");
+    if (mlx.begin()) {
+      temperatureSensorInitialized = true;
+      Serial.println("STATUS:TEMPERATURE_SENSOR_INITIALIZED");
+    } else {
+      Serial.println("ERROR:TEMPERATURE_SENSOR_NOT_FOUND");
+      return;
+    }
   }
   
   measurementActive = true;

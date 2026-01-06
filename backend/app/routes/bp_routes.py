@@ -65,7 +65,11 @@ def set_bp_camera_index():
 @bp_routes.route('/stop', methods=['POST'])
 def stop_bp_camera():
     """Stop the BP camera."""
-    success, message = bp_sensor.stop()
+    from flask import request
+    data = request.json or {}
+    force_off = data.get('force_off', False)
+    
+    success, message = bp_sensor.stop(force_off=force_off)
     return jsonify({"success": success, "message": message})
 
 @bp_routes.route('/status', methods=['GET'])
@@ -96,4 +100,18 @@ def set_bp_settings():
     from flask import request
     data = request.json
     bp_sensor.set_settings(data)
+    bp_sensor.set_settings(data)
     return jsonify({"success": True, "message": "Settings updated"})
+
+@bp_routes.route('/capture', methods=['POST'])
+def capture_bp_image():
+    """Capture image from BP camera."""
+    from flask import request
+    data = request.json or {}
+    class_name = data.get('class_name', 'unknown')
+    
+    success, result = bp_sensor.capture_image(class_name)
+    if success:
+        return jsonify({"success": True, "filepath": result})
+    else:
+        return jsonify({"success": False, "message": result}), 500

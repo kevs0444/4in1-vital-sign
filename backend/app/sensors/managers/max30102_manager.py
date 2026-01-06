@@ -127,11 +127,22 @@ class Max30102Manager:
             return # Ignore legacy if present to avoid double-processing/logging
 
     def prepare_sensor(self):
-        """Power up and prepare sensor"""
+        """Power up and prepare sensor - waits for Arduino confirmation"""
         logger.info("Preparing MAX30102 Sensor...")
         self.serial.send_command("POWER_UP_MAX30102")
-        # Wait a moment for Arduino to confirm - handled by process_data now
-        return {"status": "success", "message": "MAX30102 sensor prepared"}
+        
+        # Wait for Arduino confirmation (up to 3 seconds)
+        timeout = 3.0
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if self.sensor_ready:
+                logger.info("MAX30102 Sensor prepared successfully!")
+                return {"status": "success", "message": "MAX30102 sensor prepared"}
+            time.sleep(0.1)
+        
+        # Timeout - sensor didn't respond
+        logger.warning("MAX30102 prepare timeout - sensor may not be ready")
+        return {"status": "error", "message": "MAX30102 sensor timeout"}
 
     def start_measurement(self):
         """Start measurement (Arduino will auto-start when finger detected)"""

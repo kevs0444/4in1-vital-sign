@@ -148,9 +148,9 @@ class BMIManager:
             except:
                 pass
 
-        # DEBUG: Catch-all for "reading" lines that failed regex
+        # DEBUG: Skip debug lines silently (no need to warn)
         elif "reading:" in data and "DEBUG" in data:
-            print(f"⚠️ UNMATCHED DATA LINE: '{data.strip()}' - Check Regex patterns!", flush=True)
+            pass  # Ignore debug output from Arduino
                 
         # --- PROGRESS UPDATES ---
         elif data.startswith("STATUS:WEIGHT_PROGRESS:"):
