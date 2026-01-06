@@ -48,6 +48,28 @@ if __name__ == '__main__':
     print("🔌 WebSocket available at: ws://127.0.0.1:5000")
     print("📋 Real-time updates ENABLED")
     print("="*50 + "\n")
+    from app.utils.camera_config import CameraConfig
+
+    print("\n" + "="*50)
+    print("📷 CHECKING CAMERA CONFIGURATION")
+    print("="*50)
+    roles = [("weight", "Weight Compliance"), ("bp", "Blood Pressure"), ("wearables", "Wearables Compliance")]
+    
+    # Force auto-detection if enabled in config
+    CameraConfig.autodetect_indices()
+    
+    for role_key, role_label in roles:
+        # This will trigger the name-based resolution we just added
+        idx = CameraConfig.get_index(role_key)
+        config = CameraConfig.load()
+        name = config.get(f"{role_key}_name", "Unknown")
+        
+        if idx is not None:
+            print(f"   ✅ {role_label:<20} : Index {idx} (mapped to '{name}')")
+        else:
+            print(f"   ❌ {role_label:<20} : NOT FOUND (looking for '{name}')")
+            
+    print("="*50 + "\n")
     
     # Use socketio.run() instead of app.run() for WebSocket support
     socketio.run(app, debug=True, host='0.0.0.0', port=5000, use_reloader=False, allow_unsafe_werkzeug=True)

@@ -1,5 +1,9 @@
 {
-    "weight_index": 0,
+    "weight_index": 1,
     "wearables_index": 2,
-    "bp_index": 1
+    "bp_index": 0,
+    "weight_name": "Weight Compliance Camera",
+    "wearables_name": "Wearables Compliance Camera",
+    "bp_name": "Blood Pressure Camera",
+    "auto_detect_on_startup": false
 }

@@ -79,9 +79,9 @@ const Maintenance = () => {
     });
 
     const [cameraConfig, setCameraConfig] = useState({
-        weight_index: 1,
-        wearables_index: 0,
-        bp_index: 2
+        weight_index: 0,
+        wearables_index: 2,
+        bp_index: 1
     });
 
     const fetchCameraConfig = useCallback(async () => {
@@ -376,7 +376,11 @@ const Maintenance = () => {
         try {
             if (mode === 'bp') {
                 await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
-                await fetch(`${API_BASE}/bp/start`, { method: 'POST' });
+                await fetch(`${API_BASE}/bp/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ index: 1, camera_name: "Blood Pressure Camera" }) // Explicit Index 1
+                });
                 await fetch(`${API_BASE}/bp/set_settings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -384,10 +388,16 @@ const Maintenance = () => {
                 });
             } else {
                 await fetch(`${API_BASE}/bp/stop`, { method: 'POST' });
+
+                // Determine index for main camera modes
+                let camIndex = 0; // Default to Feet
+                if (mode === 'body') camIndex = 2; // Wearables = 2
+                if (mode === 'feet') camIndex = 0; // Feet = 0
+
                 await fetch(`${API_BASE}/camera/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
+                    body: JSON.stringify({ index: camIndex })
                 });
                 await fetch(`${API_BASE}/camera/set_mode`, {
                     method: 'POST',
@@ -496,7 +506,7 @@ const Maintenance = () => {
         fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newSettings) }).catch(console.error);
     };
 
-    const [availableCameras, setAvailableCameras] = useState([0, 1, 2]); // 0=Weight, 1=Wearables, 2=BP
+    const [availableCameras, setAvailableCameras] = useState([0, 1, 2]); // 0=Weight, 1=BP, 2=Wearables
 
     const fetchAvailableCameras = useCallback(async () => {
         try {
@@ -556,7 +566,7 @@ const Maintenance = () => {
             // MATCH BloodPressure.jsx Defaults
             newSettings = {
                 ...newSettings,
-                zoom: 1.4,  // Default 1.4x zoom per user preference
+                zoom: 1.1,  // Default 1.1x zoom per user preference
                 rotation: 0,
                 square_crop: true
             };
@@ -575,9 +585,9 @@ const Maintenance = () => {
 
     // Helper to label cameras based on physical setup
     const getCameraLabel = (idx) => {
-        if (idx === 0) return 'Wearables';
-        if (idx === 1) return 'Weight (Feet)';
-        if (idx === 2) return 'BP Monitor';
+        if (idx === 0) return 'Weight (Feet)';
+        if (idx === 1) return 'BP Monitor';
+        if (idx === 2) return 'Wearables';
         return `CAM ${idx}`;
     };
 

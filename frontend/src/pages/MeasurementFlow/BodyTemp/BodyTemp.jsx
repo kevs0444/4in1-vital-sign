@@ -265,9 +265,9 @@ export default function BodyTemp() {
               setLiveTempValue("--.--");
               // Update status to guide user
               if (isMeasuringRef.current) {
-                setStatusMessage("🌡️ Reading low. Wait for 35°C+...");
+                setStatusMessage("🌡️ Waiting for valid readings...");
               } else {
-                setStatusMessage("🌡️ Position sensor closer to forehead...");
+                setStatusMessage("🌡️ Waiting for valid readings...");
               }
             }
 

@@ -54,7 +54,7 @@ export default function BloodPressure() {
   // Index 1 = Blood Pressure Camera (BP Monitor)
   // Index 2 = Wearables Compliance Camera (Body)
   const [cameraConfig, setCameraConfig] = useState({
-    weight_index: 0,     // VERIFIED: Shows feet/platform
+    weight_index: 0,     // VERIFIED: Feet/Platform
     wearables_index: 2,  // Wearables camera (body)
     bp_index: 1          // BP Monitor camera
   });
@@ -140,10 +140,20 @@ export default function BloodPressure() {
     detectionStartTimeRef.current = null;
     lastReadingRef.current = { sys: null, dia: null };
 
-    // Stop and restart BP camera
-    await stopCameraMode();
-    await new Promise(r => setTimeout(r, 500)); // Brief pause
-    await startLiveReading();
+    // Correctly apply BP settings on retry
+    try {
+      await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/set_settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rotation: 0,
+          zoom: 1.1, // Updated to 1.1x per user
+          square_crop: true
+        })
+      });
+    } catch (e) {
+      console.error("Failed to reset BP settings:", e);
+    }
 
     setStatusMessage("🔄 Retrying measurement...");
   };
@@ -495,18 +505,28 @@ export default function BloodPressure() {
 
           // 1. Update Display if valid (accept any detected number)
           // Filter out 888/88/8 patterns - these are monitor startup self-test displays
+
+          // 1. Check for Startup Patterns (888, 8888) - User requested to IGNORE these
           const isStartupPattern = (val) => val && /^8+$/.test(val);
 
-          if (newSys && newSys !== '--' && newSys.length >= 1 && !isStartupPattern(newSys)) {
+          if (isStartupPattern(newSys)) {
+            // Reset detection triggers if we see the startup sequence
+            detectionStartTimeRef.current = null;
+            setStatusMessage("Monitor Starting...");
+            return;
+          }
 
-            // --- QUICK DELAY LOGIC (500ms) ---
+          // 2. Update Display if valid (accept any detected number, even single digit)
+          if (newSys && newSys !== '--' && newSys.length >= 1) {
+
+            // --- QUICK DELAY LOGIC (300ms) - Faster response for inflation ---
             if (!detectionStartTimeRef.current) {
               detectionStartTimeRef.current = Date.now();
             }
 
-            // Wait only 500ms before showing to filter quick glitches
-            if (Date.now() - detectionStartTimeRef.current < 500) {
-              setStatusMessage("Detecting...");
+            // Wait 300ms (reduced from 500ms) to confirm not noise
+            if (Date.now() - detectionStartTimeRef.current < 300) {
+              if (!newDia || newDia === "") setStatusMessage("Starting...");
               return;
             }
             // -----------------------------
@@ -518,8 +538,8 @@ export default function BloodPressure() {
 
               // Reset stability because we are pumping, not done
               stableCountRef.current = 0;
-              // Use backend trend for accurate status (Inflating or Deflating)
-              setStatusMessage(`${trend || 'Measuring'}... ${newSys} mmHg`);
+              // Use backend trend or default to Inflating
+              setStatusMessage(`Inflating... ${newSys}`);
 
               lastReadingRef.current = { sys: newSys, dia: "" };
             }

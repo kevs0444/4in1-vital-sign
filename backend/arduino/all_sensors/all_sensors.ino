@@ -89,7 +89,7 @@ bool autoTareCompleted = false;
 // Weight - FRONTEND CONTROLS TIMING (3 seconds)
 // Arduino only streams data, does NOT track progress
 const unsigned long WEIGHT_SAFETY_TIMEOUT = 30000; // 30 seconds safety timeout
-const float WEIGHT_THRESHOLD = 1.0; // Require at least 1kg to start
+const float WEIGHT_THRESHOLD = 5.0; // Require at least 5kg to start
 const float WEIGHT_NOISE_THRESHOLD = 0.02; // 20 grams = 0.02 kg (noise filter)
 float lastWeightKg = 0.0; // For noise filtering
 unsigned long lastWeightPrint = 0; // For 100ms update rate
@@ -178,7 +178,7 @@ void startAutoTare() {
   float calFactor;
   EEPROM.get(0, calFactor);
   if (isnan(calFactor) || calFactor == 0) {
-    calFactor = -21330.55; // UPDATED: Working calibration factor
+    calFactor = 20503.32; // UPDATED: Working calibration factor
     Serial.println("STATUS:USING_DEFAULT_CALIBRATION");
   }
   LoadCell.setCalFactor(calFactor);
@@ -256,7 +256,7 @@ void initializeWeightSensor() {
   float calFactor;
   EEPROM.get(0, calFactor);
   if (isnan(calFactor) || calFactor == 0) {
-    calFactor = -21330.55; // UPDATED: Working calibration factor
+    calFactor = 20503.32; // UPDATED: Working calibration factor
     Serial.println("STATUS:USING_DEFAULT_CALIBRATION");
   }
   LoadCell.setCalFactor(calFactor);
@@ -848,8 +848,9 @@ void performTare() {
 }
 
 void powerUpWeightSensor() {
-  // INSTANT LOGICAL POWER-UP (no physical delay)
+  // Ensure physical wake up
   if (!weightSensorPowered) {
+    LoadCell.powerUp();
     weightSensorPowered = true;
     Serial.println("STATUS:WEIGHT_SENSOR_POWERED_UP");
   } else {
@@ -859,9 +860,12 @@ void powerUpWeightSensor() {
 }
 
 void powerDownWeightSensor() {
-  // INSTANT LOGICAL SHUTDOWN (no physical power-down)
-  weightSensorPowered = false;
-  Serial.println("STATUS:WEIGHT_SENSOR_POWERED_DOWN");
+  // Physical power down for energy saving
+  if (weightSensorPowered) {
+    LoadCell.powerDown();
+    weightSensorPowered = false;
+    Serial.println("STATUS:WEIGHT_SENSOR_POWERED_DOWN");
+  }
 }
 
 void powerUpHeightSensor() {
