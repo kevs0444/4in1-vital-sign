@@ -162,6 +162,7 @@ export const SPEECH_MESSAGES = {
         COMPLETE: "Step 3. Measurement Complete. Continue to next step.",
         RESULTS_READY: "Step 3. Results Ready. All measurements complete.",
         FINGER_INSERTED: "Finger inserted. Measuring now.",
+        FINGER_REINSERTED: "Finger inserted. Measurement restarting for 30 seconds.",
         FINGER_REMOVED: "Finger removed."
     }
 };

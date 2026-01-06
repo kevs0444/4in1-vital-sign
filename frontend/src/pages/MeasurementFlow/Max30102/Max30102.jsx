@@ -78,6 +78,13 @@ export default function Max30102() {
   const spo2Buffer = useRef([]);
   const respiratoryBuffer = useRef([]);
 
+  // One-time speech flags (prevent glitching/repeating)
+  const hasAnnouncedInsertRef = useRef(false);
+  const hasAnnouncedRemoveRef = useRef(false);
+  const wasRemovedRef = useRef(false); // Tracks if finger was ever removed (for re-insertion speech)
+  const isShuttingDownRef = useRef(false); // Prevents polling after shutdown
+  const isMeasurementCompleteRef = useRef(false); // Blocks finger removed modal after completion
+
   // ========== INITIALIZATION ==========
   useEffect(() => {
     const init = async () => {
@@ -118,7 +125,8 @@ export default function Max30102() {
 
     pollingIntervalRef.current = setInterval(async () => {
       const currentStep = stepRef.current;
-      if (currentStep === 4) return; // Stop polling if complete
+      // Stop polling if complete, shutting down, or measurement completed
+      if (currentStep === 4 || isShuttingDownRef.current || isMeasurementCompleteRef.current) return;
 
       try {
         const response = await sensorAPI.getMax30102Status();
@@ -164,6 +172,24 @@ export default function Max30102() {
             startTimer();
             setStatusMessage("📊 Measuring...");
             setShowInterruptedModal(false); // Auto-dismiss error modal
+
+            // ONE-TIME SPEECH: Finger Inserted (or Re-Inserted), then Step 2 after delay
+            if (!hasAnnouncedInsertRef.current) {
+              // If this is a RE-INSERTION after removal, say the reinserted message
+              if (wasRemovedRef.current) {
+                speak(SPEECH_MESSAGES.MAX30102.FINGER_REINSERTED);
+              } else {
+                speak(SPEECH_MESSAGES.MAX30102.FINGER_INSERTED);
+              }
+
+              // Speak Step 2 (Hold Steady) after a delay to allow Finger Inserted to finish
+              setTimeout(() => {
+                speak(SPEECH_MESSAGES.MAX30102.HOLD_STEADY);
+              }, 5000); // 5 second delay for speech to finish
+
+              hasAnnouncedInsertRef.current = true;
+              hasAnnouncedRemoveRef.current = false; // Reset remove flag for next cycle
+            }
           }
 
           // Debug what we are receiving
@@ -189,20 +215,19 @@ export default function Max30102() {
 
           signalActivity();
 
-          // Buffer Data
-          if (hr >= 40 && hr <= 180) heartRateBuffer.current.push(hr);
-          if (spo2 >= 80 && spo2 <= 104) spo2Buffer.current.push(spo2);
-          if (rr >= 5 && rr <= 60) respiratoryBuffer.current.push(rr);
-
-          signalActivity();
-
-        } else if (currentStep === 3 && !isFinger) {
+        } else if (currentStep === 3 && !isFinger && secondsRemaining > 0 && !finalResults.heartRate) {
           // Rule: Backend says "Finger Removed" -> IMMEDIATE Reset
           console.log("✋ Backend Finger Removed -> Resetting Immediately");
           setStatusMessage("✋ Finger removed! Resetting...");
 
-          // Trigger Feedback
-          speak(SPEECH_MESSAGES.MAX30102.FINGER_REMOVED);
+          // ONE-TIME SPEECH: Finger Removed
+          if (!hasAnnouncedRemoveRef.current) {
+            speak(SPEECH_MESSAGES.MAX30102.FINGER_REMOVED);
+            hasAnnouncedRemoveRef.current = true;
+            hasAnnouncedInsertRef.current = false; // Reset insert flag for next cycle
+            wasRemovedRef.current = true; // Mark that removal happened (for re-insertion speech)
+          }
+
           setShowInterruptedModal(true);
 
           setStep(2);
@@ -268,6 +293,11 @@ export default function Max30102() {
   // ========== COMPLETION ==========
   const completeMeasurement = async () => {
     console.log("🏁 Completion Triggered");
+
+    // IMMEDIATELY mark as complete to block finger removed modal
+    isMeasurementCompleteRef.current = true;
+    stopPolling(); // Stop polling immediately
+
     setStep(4);
     setStatusMessage("✅ Measurement complete!");
 
@@ -296,9 +326,7 @@ export default function Max30102() {
       await sensorAPI.shutdownMax30102();
     } catch (e) { console.error(e); }
 
-    setTimeout(() => {
-      if (isMountedRef.current) handleContinue(avgHR, avgSpO2, avgRR);
-    }, 2000);
+    // User must click Continue button manually - no auto-continue
   };
 
   // ========== NAVIGATION ==========
@@ -322,8 +350,23 @@ export default function Max30102() {
 
   const handleExit = () => setShowExitModal(true);
   const confirmExit = async () => {
-    try { await sensorAPI.reset(); } catch (e) { }
+    // Mark as shutting down to stop polling immediately
+    isShuttingDownRef.current = true;
+
+    // Stop all ongoing processes
+    stopPolling();
+    stopTimer();
+
+    // Clean up sensor
+    try {
+      await sensorAPI.shutdownMax30102();
+    } catch (e) {
+      console.error("Shutdown error:", e);
+    }
+
+    // Close modals and navigate
     setShowExitModal(false);
+    setShowInterruptedModal(false);
     navigate("/login");
   };
 
@@ -367,14 +410,15 @@ export default function Max30102() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const isLast = isLastStep('max30102', location.state?.checklist);
-      if (step === 2) {
+      if (step === 2 && !wasRemovedRef.current) {
+        // Only speak INSERT_FINGER on initial page load, not after removal
         speak(SPEECH_MESSAGES.MAX30102.INSERT_FINGER);
-      } else if (step === 3 && secondsRemaining === MEASUREMENT_DURATION) {
-        speak(SPEECH_MESSAGES.MAX30102.HOLD_STEADY);
       } else if (step === 4) {
+        // Speak completion message
         if (isLast) speak(SPEECH_MESSAGES.MAX30102.RESULTS_READY);
         else speak(SPEECH_MESSAGES.MAX30102.COMPLETE);
       }
+      // Note: HOLD_STEADY removed here because FINGER_INSERTED already covers measurement start
     }, 500);
     return () => clearTimeout(timer);
   }, [step, secondsRemaining, location.state?.checklist]);
@@ -565,8 +609,8 @@ export default function Max30102() {
         </div>
       )}
 
-      {/* Interrupted Modal */}
-      {showInterruptedModal && (
+      {/* Interrupted Modal - NEVER show after step 4 (measurement complete) */}
+      {showInterruptedModal && step !== 4 && (
         <div className="exit-modal-overlay" onClick={() => setShowInterruptedModal(false)}>
           <motion.div
             className="exit-modal-content"
@@ -574,11 +618,12 @@ export default function Max30102() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="exit-modal-icon" style={{ background: '#ffebee', color: '#f44336' }}><span>✋</span></div>
+            <div className="exit-modal-icon" style={{ background: '#ffebee', color: '#f44336' }}><span>☝️</span></div>
             <h2 className="exit-modal-title">Finger Removed</h2>
-            <p className="exit-modal-message">The measurement was interrupted. Please place your finger back on the sensor to restart.</p>
+            <p className="exit-modal-message">The measurement was interrupted. Place your finger back to retry, or cancel to exit.</p>
             <div className="exit-modal-buttons">
-              <button className="exit-modal-button primary" onClick={() => setShowInterruptedModal(false)}>Okay, Retry</button>
+              <button className="exit-modal-button secondary" onClick={confirmExit}>Cancel Measurement</button>
+              <button className="exit-modal-button primary" onClick={() => setShowInterruptedModal(false)}>Retry</button>
             </div>
           </motion.div>
         </div>
