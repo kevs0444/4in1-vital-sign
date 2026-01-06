@@ -229,8 +229,16 @@ void initializeBasicSensors() {
   LoadCell.begin();
   Serial.println("DEBUG:Load cell initialized");
   
+  // Initialize Temperature Sensor
+  if (!mlx.begin()) {
+    Serial.println("ERROR:MLX90614_NOT_FOUND");
+    temperatureSensorInitialized = false;
+  } else {
+    Serial.println("STATUS:TEMPERATURE_SENSOR_INITIALIZED");
+    temperatureSensorInitialized = true;
+  }
+  
   Serial.println("DEBUG:Height sensor ready for initialization");
-  Serial.println("DEBUG:Temperature sensor ready for initialization");
   Serial.println("DEBUG:MAX30102 sensor ready for initialization");
   
   Serial.println("STATUS:BASIC_SENSORS_INITIALIZED");

@@ -116,10 +116,18 @@ export default function Standby() {
 
       if (isLocalDevice() && shouldCleanupSensors) {
         try {
-          // Shutdown weight and height sensors to clear any stale data
+          // Shutdown ALL sensors to reset system state
           console.log('🧹 Standby: Cleaning up/Booting sensors (Start fresh)');
-          await sensorAPI.shutdownWeight();
-          await sensorAPI.shutdownHeight();
+
+          if (sensorAPI.shutdownAll) {
+            await sensorAPI.shutdownAll();
+          } else {
+            // Fallback if API outdated
+            await sensorAPI.shutdownWeight();
+            await sensorAPI.shutdownHeight();
+            await sensorAPI.shutdownTemperature();
+            await sensorAPI.shutdownMax30102();
+          }
           console.log('✅ Backend sensor shutdown complete');
         } catch (error) {
           console.log('ℹ️ Backend sensor shutdown skipped (may not be connected yet)');

@@ -203,5 +203,15 @@ class SensorManager:
         return response
 
     def shutdown_all_sensors(self):
-        self.serial_interface.send_command("SHUTDOWN_ALL")
+        # Reset internal state
+        self.bmi_manager.reset()
+        self.temp_manager.reset()
+        self.max30102_manager.reset()
+        
+        # Power down hardware
+        self.serial_interface.send_command("POWER_DOWN_WEIGHT")
+        self.serial_interface.send_command("POWER_DOWN_HEIGHT")
+        self.serial_interface.send_command("POWER_DOWN_TEMPERATURE")
+        self.serial_interface.send_command("POWER_DOWN_MAX30102")
+        
         return {"status": "success"}

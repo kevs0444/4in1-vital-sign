@@ -153,3 +153,15 @@ export const stopSpeaking = () => {
 export const isSpeaking = () => {
     return window.speechSynthesis ? window.speechSynthesis.speaking : false;
 };
+
+// Centralized Speech Messages
+export const SPEECH_MESSAGES = {
+    MAX30102: {
+        INSERT_FINGER: "Step 1. Insert Finger. Place your left index finger on the pulse oximeter.",
+        HOLD_STEADY: "Step 2. Hold Steady. Keep your finger completely still for accurate readings.",
+        COMPLETE: "Step 3. Measurement Complete. Continue to next step.",
+        RESULTS_READY: "Step 3. Results Ready. All measurements complete.",
+        FINGER_INSERTED: "Finger inserted. Measuring now.",
+        FINGER_REMOVED: "Finger removed."
+    }
+};

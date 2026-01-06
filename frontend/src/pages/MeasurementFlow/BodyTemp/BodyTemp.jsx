@@ -111,6 +111,7 @@ export default function BodyTemp() {
       clearTimeout(timer);
       stopMonitoring();
       stopCountdown();
+      sensorAPI.shutdownTemperature();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -249,20 +250,29 @@ export default function BodyTemp() {
           if (!isNaN(data.live_temperature)) {
             const currentTemp = parseFloat(data.live_temperature);
 
-            // Only show and record valid body temperatures
+            // UPDATED: Filter out low temperatures (< 35.0) as per user request
+            // Only show valid body temperature ranges.
             if (currentTemp >= 35.0) {
               setLiveTempValue(currentTemp.toFixed(1));
+              setStatusMessage("✅ Valid reading. Hold steady...");
 
               if (isMeasuringRef.current) {
+                // Collect VALID BODY TEMP for averaging
                 tempReadingsRef.current.push(currentTemp);
               }
             } else {
-              // Hide ambient/invalid readings
+              // Temperature too low (ambient or bad positioning)
               setLiveTempValue("--.--");
+              // Update status to guide user
+              if (isMeasuringRef.current) {
+                setStatusMessage("🌡️ Reading low. Wait for 35°C+...");
+              } else {
+                setStatusMessage("🌡️ Position sensor closer to forehead...");
+              }
             }
 
             // Passive update of status message
-            if (!isMeasuringRef.current && !measurementComplete) {
+            if (!isMeasuringRef.current && !measurementComplete && currentTemp >= 35.0) {
               setStatusMessage("✅ Sensor ready. Click Start.");
             }
           }
@@ -327,8 +337,13 @@ export default function BodyTemp() {
     setMeasurementStep(3);
     setProgress(100);
     setStatusMessage("✅ Temperature Measurement Complete!");
+
+    // STOP POLLING
     stopMonitoring();
     stopCountdown();
+
+    // CRITICAL: Explicitly shutdown sensor to prevent interference
+    sensorAPI.shutdownTemperature().catch(e => console.error("Temp shutdown error:", e));
   };
 
   const resetMeasurement = () => {

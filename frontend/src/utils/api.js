@@ -1085,6 +1085,17 @@ export const sensorAPI = {
     }
   },
 
+  // Helper to deep-clean state
+  resetMax30102State: async () => {
+    try {
+      console.log('🧹 Deep cleaning MAX30102 state...');
+      // We reuse shutdown as it powers down the sensor and resets manager
+      return await sensorAPI.shutdownMax30102();
+    } catch (error) {
+      return { error: error.message };
+    }
+  },
+
   // Check finger detection
   checkFingerDetection: async () => {
     try {
@@ -1109,6 +1120,8 @@ export const sensorAPI = {
       };
     }
   },
+
+
 };
 
 export const cameraAPI = {

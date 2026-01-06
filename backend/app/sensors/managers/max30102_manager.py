@@ -55,23 +55,25 @@ class Max30102Manager:
             logger.info("=== ✅ MAX30102 MEASUREMENT COMPLETE ===")
             
         elif "FINGER_DETECTED" in data or "Finger Detected" in data:
-            self.finger_detected = True
-            self.live_data['finger_detected'] = True
-            # Reset live metrics to prevent stale data
-            self.live_data['heart_rate'] = None
-            self.live_data['spo2'] = None
-            self.live_data['respiratory_rate'] = None
-            self.live_data['stable_hr'] = None
-            print("👆 FINGER DETECTED - Measurement Starting", flush=True)
+            if not self.finger_detected: # Prevent duplicate logs
+                self.finger_detected = True
+                self.live_data['finger_detected'] = True
+                # Reset live metrics to prevent stale data
+                self.live_data['heart_rate'] = None
+                self.live_data['spo2'] = None
+                self.live_data['respiratory_rate'] = None
+                self.live_data['stable_hr'] = None
+                print("👆 FINGER DETECTED - Measurement Starting", flush=True)
             
         elif "FINGER_REMOVED" in data:
-            self.finger_detected = False
-            self.live_data['finger_detected'] = False
-            self.live_data['heart_rate'] = None
-            self.live_data['spo2'] = None
-            self.live_data['respiratory_rate'] = None
-            self.live_data['stable_hr'] = None
-            print("✋ FINGER REMOVED - Measurement Pause", flush=True)
+            if self.finger_detected: # Prevent duplicate logs
+                self.finger_detected = False
+                self.live_data['finger_detected'] = False
+                self.live_data['heart_rate'] = None
+                self.live_data['spo2'] = None
+                self.live_data['respiratory_rate'] = None
+                self.live_data['stable_hr'] = None
+                print("✋ FINGER REMOVED - Measurement Pause", flush=True)
 
         # IR Value "MAX30102_IR_VALUE:12345"
         elif data.startswith("MAX30102_IR_VALUE:"):
@@ -120,24 +122,9 @@ class Max30102Manager:
             except Exception as e:
                 pass
 
-        # Legacy Emoji support "❤️ HR: 75"
+        # Legacy Emoji support "❤️ HR: 75" - ONLY if not handled by new format
         elif "❤️ HR:" in data:
-            try:
-                hr = re.search(r'❤️ HR:\s*(\d+)', data)
-                if hr: self.live_data['heart_rate'] = int(hr.group(1))
-                
-                spo2 = re.search(r'🩸 SpO2:\s*(\d+)', data)
-                if spo2: self.live_data['spo2'] = int(spo2.group(1))
-                
-                self.live_data['status'] = 'measuring'
-                
-                # Throttled Logging (1Hz) for legacy too
-                current_time = time.time()
-                if current_time - self.last_log_time > 1.0:
-                    print(f"❤️ HR: {self.live_data['heart_rate']} | SpO2: {self.live_data['spo2']}%", flush=True)
-                    self.last_log_time = current_time
-            except:
-                pass
+            return # Ignore legacy if present to avoid double-processing/logging
 
     def prepare_sensor(self):
         """Power up and prepare sensor"""

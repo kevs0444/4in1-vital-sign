@@ -353,7 +353,11 @@ export default function BMI() {
     };
     init();
 
-    return () => { isMountedRef.current = false; };
+    return () => {
+      isMountedRef.current = false;
+      sensorAPI.shutdownWeight().catch(e => console.error("Cleanup weight error", e));
+      sensorAPI.shutdownHeight().catch(e => console.error("Cleanup height error", e));
+    };
   }, [setIsInactivityEnabled, waitForSystemReady]);
 
   // Inactivity Control
@@ -388,8 +392,12 @@ export default function BMI() {
   const handleExit = () => { setShowExitModal(true); };
   const confirmExit = () => { navigate("/login"); };
 
-  const formattedWeight = savedWeight || (liveWeight && liveWeight >= MIN_VALID_WEIGHT ? liveWeight.toFixed(1) : "--.--");
-  const formattedHeight = savedHeight || (liveHeight && liveHeight >= MIN_VALID_HEIGHT ? liveHeight.toFixed(1) : "--.--");
+  // UPDATED: Show any non-zero reading for visual feedback, even if below validation threshold
+  const DISPLAY_THRESHOLD_WEIGHT = 0.1;
+  const DISPLAY_THRESHOLD_HEIGHT = 1.0;
+
+  const formattedWeight = savedWeight || (liveWeight && liveWeight >= DISPLAY_THRESHOLD_WEIGHT ? liveWeight.toFixed(1) : "--.--");
+  const formattedHeight = savedHeight || (liveHeight && liveHeight >= DISPLAY_THRESHOLD_HEIGHT ? liveHeight.toFixed(1) : "--.--");
   const bmi = calculateBMI();
 
   const getBMICategory = (val) => {
