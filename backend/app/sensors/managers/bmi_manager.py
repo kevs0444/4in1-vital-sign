@@ -36,10 +36,7 @@ class BMIManager:
         
     def process_data(self, data):
         """Process incoming serial data related to BMI"""
-        # DEBUG: Print ALL incoming data to diagnose silence
-        if data.strip():
-             print(f"[RAW] {data.strip()}", flush=True)
-
+        
         # --- POWER STATUS (SLAVE LOGIC) ---
         if "STATUS:WEIGHT_SENSOR_POWERED_UP" in data:
             self.weight_active = True
@@ -142,15 +139,13 @@ class BMIManager:
                 self.live_data['height']['current'] = val
                 self.live_data['height']['status'] = 'measuring'
                 
+                # Throttle log - share the timer or verify
+                current_time = time.time()
                 if current_time - self.last_log_time > 0.5: # 2Hz combined?
                     print(f"📏 Live Height: {val} cm", flush=True)
                     self.last_log_time = current_time
             except:
                 pass
-
-        # DEBUG: Skip debug lines silently (no need to warn)
-        elif "reading:" in data and "DEBUG" in data:
-            pass  # Ignore debug output from Arduino
                 
         # --- PROGRESS UPDATES ---
         elif data.startswith("STATUS:WEIGHT_PROGRESS:"):
@@ -229,11 +224,5 @@ class BMIManager:
 
     def reset(self):
         self.measurements = {'weight': None, 'height': None}
-        self.live_data = {
-            'weight': {'current': None, 'status': 'idle', 'progress': 0, 'elapsed': 0},
-            'height': {'current': None, 'status': 'idle', 'progress': 0, 'elapsed': 0}
-        }
-        self.weight_active = False
-        self.height_active = False
-        # Optional: Send a command to Arduino to reset phase if needed, but usually redundant
-        # self.serial.send_command("STOP_BMI")
+        self.live_data['weight'] = {'current': None, 'status': 'idle', 'progress': 0}
+        self.live_data['height'] = {'current': None, 'status': 'idle', 'progress': 0}

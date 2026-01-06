@@ -79,27 +79,17 @@ class CameraConfig:
     def get_index(role):
         """
         Get the camera index for a given role (weight, wearables, bp).
-        Uses name-based detection for robustness across restarts.
+        IMPORTANT: This now simply returns the value from config file.
+        The config file values were VERIFIED via visual testing and should be trusted.
         """
         config = CameraConfig.load()
-        
-        # If auto_detect is enabled, resolve by name first
-        if config.get('auto_detect_on_startup', True):
-            camera_name = config.get(f"{role}_name")
-            if camera_name:
-                resolved_idx = CameraConfig.get_index_by_name(camera_name)
-                if resolved_idx is not None:
-                    logger.info(f"📷 Resolved {role} camera '{camera_name}' to Index {resolved_idx}")
-                    return resolved_idx
-                else:
-                    logger.warning(f"⚠️ Could not find camera '{camera_name}', falling back to config index")
-        
-        # Fallback to stored index
         idx = config.get(f"{role}_index")
+        
+        # Simply return the config value - it's been verified!
         if idx is not None:
             return idx
         
-        # Final fallback to DEFAULT_CONFIG
+        # Fallback to DEFAULT_CONFIG only if not in config file
         return DEFAULT_CONFIG.get(f"{role}_index")
 
     @staticmethod

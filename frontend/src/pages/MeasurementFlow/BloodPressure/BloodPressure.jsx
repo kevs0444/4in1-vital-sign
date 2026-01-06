@@ -66,21 +66,6 @@ export default function BloodPressure() {
     const timer = setTimeout(() => setIsVisible(true), 100);
     console.log("📍 BloodPressure received location.state:", location.state);
 
-    // RESET STATE ON MOUNT (Reusability Fix)
-    setSystolic("");
-    setDiastolic("");
-    setMeasurementComplete(false);
-    setBpComplete(false);
-    setMeasurementStep(1);
-    setStatusTrend("Smart Scan");
-    setStatusMessage("Initializing blood pressure monitor...");
-    setShowErrorModal(false);
-
-    // Reset specific refs
-    stableCountRef.current = 0;
-    detectionStartTimeRef.current = null;
-    lastReadingRef.current = { sys: null, dia: null };
-
     // Call init
     initializeBloodPressureSensor();
 
@@ -155,20 +140,10 @@ export default function BloodPressure() {
     detectionStartTimeRef.current = null;
     lastReadingRef.current = { sys: null, dia: null };
 
-    // Correctly apply BP settings on retry
-    try {
-      await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/set_settings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rotation: 0,
-          zoom: 1.1, // Updated to 1.1x per user
-          square_crop: true
-        })
-      });
-    } catch (e) {
-      console.error("Failed to reset BP settings:", e);
-    }
+    // Stop and restart BP camera
+    await stopCameraMode();
+    await new Promise(r => setTimeout(r, 500)); // Brief pause
+    await startLiveReading();
 
     setStatusMessage("🔄 Retrying measurement...");
   };
@@ -462,12 +437,10 @@ export default function BloodPressure() {
     }
   };
 
-  const stopCameraMode = async (forceOff = false) => {
+  const stopCameraMode = async () => {
     try {
       await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/stop`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ force_off: forceOff })
+        method: 'POST'
       });
     } catch (e) { console.error(e) }
 
@@ -522,28 +495,18 @@ export default function BloodPressure() {
 
           // 1. Update Display if valid (accept any detected number)
           // Filter out 888/88/8 patterns - these are monitor startup self-test displays
-
-          // 1. Check for Startup Patterns (888, 8888) - User requested to IGNORE these
           const isStartupPattern = (val) => val && /^8+$/.test(val);
 
-          if (isStartupPattern(newSys)) {
-            // Reset detection triggers if we see the startup sequence
-            detectionStartTimeRef.current = null;
-            setStatusMessage("Monitor Starting...");
-            return;
-          }
+          if (newSys && newSys !== '--' && newSys.length >= 1 && !isStartupPattern(newSys)) {
 
-          // 2. Update Display if valid (accept any detected number, even single digit)
-          if (newSys && newSys !== '--' && newSys.length >= 1) {
-
-            // --- QUICK DELAY LOGIC (300ms) - Faster response for inflation ---
+            // --- QUICK DELAY LOGIC (500ms) ---
             if (!detectionStartTimeRef.current) {
               detectionStartTimeRef.current = Date.now();
             }
 
-            // Wait 300ms (reduced from 500ms) to confirm not noise
-            if (Date.now() - detectionStartTimeRef.current < 300) {
-              if (!newDia || newDia === "") setStatusMessage("Starting...");
+            // Wait only 500ms before showing to filter quick glitches
+            if (Date.now() - detectionStartTimeRef.current < 500) {
+              setStatusMessage("Detecting...");
               return;
             }
             // -----------------------------
@@ -555,8 +518,8 @@ export default function BloodPressure() {
 
               // Reset stability because we are pumping, not done
               stableCountRef.current = 0;
-              // Use backend trend or default to Inflating
-              setStatusMessage(`Inflating... ${newSys}`);
+              // Use backend trend for accurate status (Inflating or Deflating)
+              setStatusMessage(`${trend || 'Measuring'}... ${newSys} mmHg`);
 
               lastReadingRef.current = { sys: newSys, dia: "" };
             }
@@ -629,7 +592,7 @@ export default function BloodPressure() {
 
     // Turn OFF the BP Arduino when leaving the page
     console.log("🔌 Stopping BP camera and Arduino...");
-    await stopCameraMode(true); // FORCE OFF on Continue
+    await stopCameraMode();
 
     const completeVitalSignsData = {
       ...location.state,

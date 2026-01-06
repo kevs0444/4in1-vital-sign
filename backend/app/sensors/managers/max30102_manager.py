@@ -129,10 +129,16 @@ class Max30102Manager:
     def prepare_sensor(self):
         """Power up and prepare sensor - waits for Arduino confirmation"""
         logger.info("Preparing MAX30102 Sensor...")
+        
+        # Reset state before preparing (handles re-init after shutdown)
+        self.sensor_ready = False
+        self.finger_detected = False
+        self.active = False
+        
         self.serial.send_command("POWER_UP_MAX30102")
         
-        # Wait for Arduino confirmation (up to 3 seconds)
-        timeout = 3.0
+        # Wait for Arduino confirmation (up to 5 seconds for re-init cases)
+        timeout = 5.0
         start_time = time.time()
         while time.time() - start_time < timeout:
             if self.sensor_ready:

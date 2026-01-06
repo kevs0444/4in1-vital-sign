@@ -22,7 +22,6 @@ const FINAL_TIMEOUT = 60000;   // 60 seconds (1 minute total)
 const EXCLUDED_PATHS = [
     '/',           // Standby page
     '/standby',    // Alternative standby path
-    // Measurement pages are NOT excluded - they use signalActivity() on finger detection
 ];
 
 const InactivityWrapper = ({ children }) => {

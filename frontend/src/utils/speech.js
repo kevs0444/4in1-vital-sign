@@ -161,8 +161,6 @@ export const SPEECH_MESSAGES = {
         HOLD_STEADY: "Step 2. Hold Steady. Keep your finger completely still for accurate readings.",
         COMPLETE: "Step 3. Measurement Complete. Continue to next step.",
         RESULTS_READY: "Step 3. Results Ready. All measurements complete.",
-        FINGER_INSERTED: "Finger inserted. Measuring now.",
-        FINGER_REINSERTED: "Finger inserted. Measurement restarting for 30 seconds.",
         FINGER_REMOVED: "Finger removed."
     }
 };

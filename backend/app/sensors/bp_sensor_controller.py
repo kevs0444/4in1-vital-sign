@@ -83,12 +83,10 @@ class BPSensorController:
         # Validation Flags
         self.has_inflated = False # Must detect inflation before confirming result
         self.stable_result_timer = 0
-        self.stable_result_timer = 0
-        self.device_powered_off = False # Track power state
-        self.shutdown_pending = False   # Track if a 5s shutdown is active
         
-        # Eagerly connect to Arduino for LCD display
-        threading.Timer(2.0, self._connect_arduino).start()
+        # DELAYED CONNECTION REMOVED: User requested to connect only on BP phase.
+        # Check backend/app/sensors/bp_sensor_controller.py start() method for connection logic.
+        # threading.Timer(10.0, self._connect_arduino).start()
         
         logger.info("🩸 BPSensorController initialized")
     
@@ -183,59 +181,24 @@ class BPSensorController:
                  logger.info(f"🩸 BP Start: Resolved '{camera_name}' -> Index {camera_index}")
 
         # 1. Send "start" command to Arduino to simulate button press (Turn ON)
-        # MOVED: Executed later only if not already running
-        pass
-        
-        # ACTIVE SHUTDOWN CANCELLATION LOGIC
-        # If the user clicks "Start" while we are waiting 5s to turn off, 
-        # it means they want to Keep it ON and retry.
-        if self.shutdown_pending:
-             logger.info("⚡ BP Start called during pending shutdown -> CANCELLING Shutdown & Keeping Device ON")
-             self.shutdown_pending = False # Cancel the pending thread's action
-             # ALSO: Do NOT send "start" because device is currently ON (waiting for off)
-             # By skipping "start", we avoid toggling it OFF.
-             # We just reset the state and continue.
-             start_cmd_needed = False
-        else:
-             # Normal case: Device is assumed OFF, so we need to toggle it ON.
-             start_cmd_needed = True
+        # DISABLED: User wants manual button press on the physical device.
+        # self.send_command("start")
 
         if camera_index is not None:
             self.camera_index = camera_index
             
-        # ALWAYS Reset state on start (Reusability Fix)
-        self.bp_history = []
-        self.last_smooth_bp = 0
-        self.trend_state = "Stable ⏸️"
-        self.stable_frames_count = 0
-        self.result_stability_count = 0
-        self.has_inflated = False
-        self.start_command_sent = False # DISABLED: User wants Manual Start via Physical Button
-        self.bp_status["systolic"] = "--"
-        self.bp_status["error"] = False
-        
-        # Clear LCD on start to remove old values
-        self.send_command("STATUS:Ready", auto_connect=True)
-        self.send_command("LIVE:--", auto_connect=True)
-        
-        # Result Stability Logic
-        self.last_result_candidate = None
-        self.result_stability_count = 0
-        
-        # Ensure settings match user request
-        self.zoom_factor = 1.1  # Default 1.1x per user preference (synced with Frontend)
-        self.rotation = 0
-
         if self.is_running:
-            return True, "BP Camera already running (State Reset)"
-            
+            return True, "BP Camera already running"
+        
         try:
-            # 1. Send "start" command to Arduino to simulate button press (Turn ON)
-            # DISABLED RECENTLY: User wants to press the PHYSICAL button themselves.
-            # if start_cmd_needed:
-            #      self.send_command("start")
-            # else:
-            #      logger.info("⚡ Skipping 'start' command (Device preserved ON from cancelled shutdown)")
+            # Reset state
+            self.bp_history = []
+            self.last_smooth_bp = 0
+            self.trend_state = "Stable ⏸️"
+            self.stable_frames_count = 0
+            # Ensure settings match user request
+            self.zoom_factor = 1.4  # Default 1.4x zoom per user preference
+            self.rotation = 0
             
             # Robust Camera Opening
             indices_to_try = [self.camera_index]
@@ -282,21 +245,15 @@ class BPSensorController:
             logger.error(f"[BP] Start error: {e}")
             return False, str(e)
     
-    def stop(self, force_off=False):
+    def stop(self):
         """Stop the BP camera."""
-        # Send "done" command to Arduino (Turn OFF) ONLY if explicitly requested
-        if force_off and self.arduino and self.arduino.is_open:
-            if not self.device_powered_off:
-                 logger.info("🔌 Force-Off requested: Sending 'done' command")
-                 self.send_command("done")
-                 self.device_powered_off = True
-            else:
-                 print("ℹ️ [BP] Device already powered off, skipping force toggle.")
-        elif self.arduino and self.arduino.is_open:
-            # If NOT forcing off (Manual Stop), clear the screen so values don't stick
-             self.send_command("STATUS:Ready")
-             self.send_command("LIVE:--")
-                 
+        # Send "done" command to Arduino (Turn OFF) ONLY if connected
+        # Connecting just to stop causes a RESET which turns IT ON!
+        if self.arduino and self.arduino.is_open:
+            self.send_command("done")
+        else:
+            print("ℹ️ [BP] Arduino not connected, skipping shutdown command")
+        
         self.is_running = False
         self.bp_status["is_running"] = False
         self.start_command_sent = False  # Reset for next measurement
@@ -322,30 +279,6 @@ class BPSensorController:
                 return None
             _, buffer = cv2.imencode('.jpg', self.latest_frame)
             return buffer.tobytes()
-    
-    def capture_image(self, class_name):
-        """Capture the current frame and save to dataset."""
-        with self.lock:
-            # Use raw_frame (no bounding boxes) for clean captures
-            raw = getattr(self, 'raw_frame', None)
-            capture_frame = raw if raw is not None else self.latest_frame
-            if capture_frame is None:
-                return False, "No frame available"
-            
-            # User Preferred Path
-            save_dir = r"C:\Users\VitalSign\Pictures\Camera Roll"
-            class_dir = os.path.join(save_dir, class_name)
-            if not os.path.exists(class_dir):
-                os.makedirs(class_dir)
-            
-            timestamp = int(time.time() * 1000)
-            filename = f"{class_name}_{timestamp}.jpg"
-            filepath = os.path.join(class_dir, filename)
-            
-            cv2.imwrite(filepath, capture_frame)
-            logger.info(f"📸 [BP] Captured Image: {filepath}")
-            print(f"📸 [BP] Image saved: {filepath}")
-            return True, filepath
     
     def _apply_zoom(self, frame):
         """Apply rotation, zoom, and square crop."""
@@ -421,7 +354,6 @@ class BPSensorController:
             
             with self.lock:
                 self.latest_frame = annotated_frame
-                self.raw_frame = frame  # Store clean frame for capture
                 self.bp_status["timestamp"] = time.time()
                 self.bp_status["is_running"] = True
             
@@ -466,12 +398,14 @@ class BPSensorController:
             # Ignore "Ghost Errors" on blank screen or noise.
             if error_detected:
                 if self.start_command_sent: # Only care if we actually started
-                     logger.warning("⚠️ BP Monitor ERROR Symbol Detected! Initiating Recovery...")
+                     logger.warning("⚠️ BP Monitor ERROR Symbol Detected!")
+                     self._update_status("--", "--", "Error ⚠️", True)
                      
-                     # Trigger non-blocking recovery sequence (Power Cycle)
-                     if not hasattr(self, 'is_recovering') or not self.is_recovering:
-                         self.is_recovering = True
-                         threading.Thread(target=self._recovery_sequence, daemon=True).start()
+                     # Report Error (don't force connect if not already)
+                     self.send_command("STATUS:ERROR", auto_connect=False)
+                     
+                     # Safety: Turn off if error detected to reset state (don't force connect)
+                     self.send_command("done", auto_connect=False)
                 else:
                     # Ignore error if we haven't even started (likely noise)
                     pass
@@ -511,20 +445,18 @@ class BPSensorController:
                 
                 # Safety: Ignore unrealistic low values (noise/glare)
                 # BP values usually start higher or at 0. Glitches are often small numbers.
-                # Safety: Ignore unrealistic low values (noise/glare)
-                # BP values usually start higher or at 0. Glitches are often small numbers.
-                # User requested EARLY detection for inflation (single digits)
-                if smooth_val < 5:
-                    return  # Ignore absolute zero noise
+                # Increased threshold from 5 to 30 to prevent "Automatic On" ghosting
+                if smooth_val < 30:
+                    return  # Ignore noise
                 
                 # Trend detection with persistence
                 if smooth_val > self.last_smooth_bp + 1:
                     inst_trend = "Inflating ⬆️"
-                    if smooth_val > 5: # Valid inflation starts early
+                    if smooth_val > 40: # Valid inflation
                         self.has_inflated = True
                 elif smooth_val < self.last_smooth_bp - 1:
                     inst_trend = "Deflating ⬇️"
-                    if smooth_val > 5:
+                    if smooth_val > 40:
                          self.has_inflated = True
                 else:
                     inst_trend = "Stable"
@@ -540,23 +472,18 @@ class BPSensorController:
                 self.last_smooth_bp = smooth_val
                 sys_str = str(smooth_val)
                 
-                # Send live reading to Arduino LCD
-                # STRIP EMOJIS for LCD (standard 1602 LCDs don't support unicode)
-                clean_trend = self.trend_state.replace("⬆️", "").replace("⬇️", "").replace("⏸️", "").replace("⚠️", "").strip()
-                status_text = clean_trend.replace(" ", "") 
-                
-                self.send_command(f"STATUS:{status_text}", auto_connect=True)
-                self.send_command(f"LIVE:{sys_str}", auto_connect=True)
+                # Send live reading AND status to Arduino LCD
+                # DISABLED: To prevent "Reset" loops, we do NOT send live strings to Arduino.
+                # The user watches the BP Monitor screen. We only touch Arduino to STOP it.
+                # self.send_command(f"LIVE:{sys_str}|{status_text}", auto_connect=False)
                 
                 # Detect Physical Button Usage (Real activity)
-                if not self.start_command_sent and smooth_val > 5 and self.has_inflated:
+                if not self.start_command_sent and smooth_val > 40 and self.has_inflated:
                      # If we see valid numbers AND have seen inflation -> Physical Button
                      if "Measuring" not in self.trend_state: # Avoid spamming while stable
                          print(f"👆 Physical Button usage detected! (Readings appeared: {smooth_val})")
-                         
-                         # UPDATE LCD to confirm we detected the start
-                         self.send_command("STATUS:Measuring", auto_connect=True)
-                         
+                         # Do NOT connect. Stay passive.
+                            
                          self.start_command_sent = True # Treat as started so we don't log again
 
             except ValueError:
@@ -584,58 +511,26 @@ class BPSensorController:
             
             # CONFIRM RESULT LOGIC
             # Only confirm if we have seen valid inflation activity OR if we explicitly started via screen
+            # This prevents confirming "Static" numbers from a previous session on startup
             if not self.has_inflated and not self.start_command_sent:
                  # We see a result (e.g. 116/75) but we never saw it inflate/deflate.
                  # This is likely a previous result on the screen. IGNORE IT.
                  return
 
-            # STABILITY CHECK: Must match for ~2 seconds (40 frames) to be sure it's final
-            current_read = f"{sys_str}/{dia_str}"
+            # Verification Logic could go here (e.g., must see result for X frames)
+            # Currently assuming detection of 2 rows is final result
             
-            if current_read == self.last_result_candidate:
-                self.result_stability_count += 1
-            else:
-                self.result_stability_count = 0
-                self.last_result_candidate = current_read
-                logger.info(f"⏳ BP Stabilizing... Candidate: {current_read}")
-            
-            # If not stable enough, keep updating live status but DO NOT CONFIRM
-            if self.result_stability_count < 40:
-                 return 
-
-            # Send result to Arduino LCD
-            self.send_command(f"RESULT:{sys_str}/{dia_str}", auto_connect=True)
-            
+            # Send result to Arduino (even if firmware needs update to handle it)
+            # FORCE CONNECTION NOW? NO! 
+            # Connecting causes a RESET which turns the device ON again.
+            # We must be purely PASSIVE. Do not control the hardware.
+            # Let the device timeout or user turn it off.
             logger.info(f"✅ BP Result Confirmed: {sys_str}/{dia_str} - Stopping Camera.")
             print(f"✅ BP Result Confirmed: {sys_str}/{dia_str}")
             
-            # Turn OFF the device automatically AFTER 5 SECONDS (User Request)
-            if not self.device_powered_off:
-                self.device_powered_off = True 
-                self.shutdown_pending = True # Mark shutdown as pending
-                
-                def delayed_off():
-                    logger.info("⏳ BP Power Off scheduled in 5 seconds...")
-                    # Poll for cancellation
-                    for _ in range(50): # 5 seconds * 10 polls/sec
-                        if not self.shutdown_pending:
-                            logger.info("❌ BP Auto-Off CANCELLED by new session.")
-                            return # Cancel logic
-                        time.sleep(0.1)
-                        
-                    # Final check
-                    if self.shutdown_pending:
-                        self.send_command("done", auto_connect=True)
-                        self.shutdown_pending = False
-                        logger.info("✅ BP Device Powered Off (5s delay)")
-                        print("✅ BP Device Powered Off (5s delay)")
-
-                threading.Thread(target=delayed_off, daemon=True).start()
+            # self.send_command("done", auto_connect=True) # DISABLED to prevent loop
             
-            # STOP the loop immediately? 
-            # NO, keep running for 5s so user sees the result "Live" or similar?
-            # Actually, if we stop running, frontend might stop showing updates.
-            # But the result is confirmed. Let's stop the loop to free resources.
+            # STOP the loop immediately
             self.is_running = False 
             self.bp_status["is_running"] = False
             return # Exit loop iteration
@@ -674,47 +569,6 @@ class BPSensorController:
                 logger.info(f"[BP] Rotation set to {self.rotation}°")
             except ValueError:
                 pass
-
-    def _recovery_sequence(self):
-        """Power cycle the BP monitor to recover from error."""
-        try:
-            logger.info("🔄 BP Recovery: Starting Power Cycle...")
-            self._update_status("--", "--", "Resetting...", True)
-            self.send_command("STATUS:Resetting", auto_connect=True)
-            
-            # 1. Turn OFF
-            time.sleep(0.5)
-            self.send_command("done", auto_connect=True) 
-            logger.info("🔄 BP Recovery: Turned OFF")
-            
-            # 2. Wait for shutdown (3 seconds)
-            time.sleep(3.0)
-            
-            # 3. Turn ON
-            self.send_command("start", auto_connect=True)
-            logger.info("🔄 BP Recovery: Turned ON")
-            
-            # 4. Wait for startup (2 seconds)
-            self._update_status("--", "--", "Restarting", False)
-            self.send_command("STATUS:Restarting", auto_connect=True)
-            time.sleep(2.0)
-            
-            # 5. Reset internal state
-            with self.lock:
-                self.bp_history = []
-                self.last_smooth_bp = 0
-                self.trend_state = "Stable ⏸️"
-                self.has_inflated = False
-                self.stable_frames_count = 0
-            
-            logger.info("✅ BP Recovery: Complete. Ready for new measurement.")
-            self._update_status("--", "--", "Ready", False)
-            self.send_command("STATUS:Ready", auto_connect=True)
-            
-        except Exception as e:
-            logger.error(f"❌ Recovery sequence failed: {e}")
-        finally:
-            self.is_recovering = False
 
 # Singleton instance
 bp_sensor = BPSensorController()
