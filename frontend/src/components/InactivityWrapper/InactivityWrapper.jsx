@@ -74,8 +74,7 @@ const InactivityWrapper = ({ children }) => {
                 replace: true,
                 state: {
                     fromInactivity: true,
-                    reset: true,
-                    cleanupSensors: true  // Signal to Standby to cleanup sensors
+                    reset: true
                 }
             });
         }, FINAL_TIMEOUT);

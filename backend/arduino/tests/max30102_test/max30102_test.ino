@@ -21,7 +21,7 @@ MAX30105 particleSensor;
 // =================================================================
 #define BUFFER_SIZE 50           // Matches tested medical-grade config
 #define HR_HISTORY 5             // Heart rate history for median stabilization
-#define FINGER_THRESHOLD 70000   // IR threshold for finger detection
+#define FINGER_THRESHOLD 60000   // IR threshold for finger detection
 
 // BPM deduction (User Logic)
 const int BPM_DEDUCTION = 25; 
@@ -159,7 +159,7 @@ void setup() {
 
   // USE DEFAULT SETUP - SAME AS ALL_SENSORS.INO
   particleSensor.setup();
-  particleSensor.setPulseAmplitudeRed(0x0A);
+  particleSensor.setPulseAmplitudeRed(0x32); // Increased to 0x32 (50) for brighter LED
   particleSensor.setPulseAmplitudeGreen(0);
   
   Serial.println("STATUS:MAX30102_SENSOR_POWERED_UP");

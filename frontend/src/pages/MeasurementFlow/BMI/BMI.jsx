@@ -390,7 +390,16 @@ export default function BMI() {
   };
 
   const handleExit = () => { setShowExitModal(true); };
-  const confirmExit = () => { navigate("/login"); };
+  const confirmExit = async () => {
+    // Shutdown sensors before leaving page
+    try {
+      await sensorAPI.shutdownWeight();
+      await sensorAPI.shutdownHeight();
+    } catch (e) {
+      console.error("Exit cleanup error:", e);
+    }
+    navigate("/login", { state: { cancelled: true } });
+  };
 
   // UPDATED: Show any non-zero reading for visual feedback, even if below validation threshold
   const DISPLAY_THRESHOLD_WEIGHT = 0.1;

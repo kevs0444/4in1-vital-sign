@@ -69,7 +69,11 @@ class BodyTempManager:
                 pass
 
     def start_measurement(self):
+        # Reset state for fresh measurement (handles re-init after shutdown)
         self.measurement = None
+        self.sensor_ready = False
+        self.live_data = {'current': None, 'status': 'idle', 'progress': 0}
+        
         self.active = True
         self.serial.send_command("START_TEMPERATURE")
         return {"status": "success"}

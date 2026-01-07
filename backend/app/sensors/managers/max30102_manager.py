@@ -63,7 +63,7 @@ class Max30102Manager:
                 self.live_data['spo2'] = None
                 self.live_data['respiratory_rate'] = None
                 self.live_data['stable_hr'] = None
-                print("👆 FINGER DETECTED - Measurement Starting", flush=True)
+                print("\n🔔🔔🔔 [NOTIFY USER] FINGER DETECTED 🔔🔔🔔\n", flush=True)
             
         elif "FINGER_REMOVED" in data:
             if self.finger_detected: # Prevent duplicate logs
@@ -73,14 +73,42 @@ class Max30102Manager:
                 self.live_data['spo2'] = None
                 self.live_data['respiratory_rate'] = None
                 self.live_data['stable_hr'] = None
-                print("✋ FINGER REMOVED - Measurement Pause", flush=True)
+                print("\n⚠️⚠️⚠️ [NOTIFY USER] FINGER REMOVED ⚠️⚠️⚠️\n", flush=True)
 
-        # IR Value "MAX30102_IR_VALUE:12345"
+        # IR Value "MAX30102_IR_VALUE:12345" - PRIMARY FINGER DETECTION WITH DEBOUNCE
         elif data.startswith("MAX30102_IR_VALUE:"):
             try:
                 parts = data.split(":")
                 val = int(parts[1])
                 self.live_data['ir_value'] = val
+
+                # Initialize debounce counters if not present
+                if not hasattr(self, "ir_detection_counter"):
+                    self.ir_detection_counter = 0
+                if not hasattr(self, "ir_removal_counter"):
+                    self.ir_removal_counter = 0
+
+                FINGER_THRESHOLD = 70000
+
+                if val > FINGER_THRESHOLD:
+                    self.ir_detection_counter += 1
+                    self.ir_removal_counter = 0
+                else:
+                    self.ir_removal_counter += 1
+                    self.ir_detection_counter = 0
+
+                # Fast Detect: 2 consecutive frames > threshold
+                if self.ir_detection_counter >= 2 and not self.finger_detected:
+                    self.finger_detected = True
+                    self.live_data['finger_detected'] = True
+                    print("👆 FINGER DETECTED (IR debounced)", flush=True)
+
+                # Slow Remove: 3 consecutive frames < threshold to prevent false negatives
+                # Lower than Arduino's 5 to ensure backend detects it before stream stops
+                if self.ir_removal_counter >= 3 and self.finger_detected:
+                    self.finger_detected = False
+                    self.live_data['finger_detected'] = False
+                    print("✋ FINGER REMOVED (IR debounced)", flush=True)
             except:
                 pass
 
@@ -106,7 +134,8 @@ class Max30102Manager:
                             self.live_data['signal_quality'] = value
                 
                 self.live_data['status'] = 'measuring'
-                self.live_data['finger_detected'] = True 
+                # NOTE: finger_detected is set from explicit FINGER_DETECTED message, not from data
+                # This ensures we follow the backend's status flow exactly
                 
                 # Throttled Logging (1Hz)
                 current_time = time.time()
@@ -127,33 +156,40 @@ class Max30102Manager:
             return # Ignore legacy if present to avoid double-processing/logging
 
     def prepare_sensor(self):
-        """Power up and prepare sensor - waits for Arduino confirmation"""
+        """Power up and prepare sensor - immediate return, frontend polls for readiness"""
         logger.info("Preparing MAX30102 Sensor...")
         
         # Reset state before preparing (handles re-init after shutdown)
         self.sensor_ready = False
         self.finger_detected = False
         self.active = False
+        self.live_data['status'] = 'initializing'
+        
+        # Reset debounce counters for fresh session
+        self.ir_detection_counter = 0
+        self.ir_removal_counter = 0
         
         self.serial.send_command("POWER_UP_MAX30102")
         
-        # Wait for Arduino confirmation (up to 5 seconds for re-init cases)
-        timeout = 5.0
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            if self.sensor_ready:
-                logger.info("MAX30102 Sensor prepared successfully!")
-                return {"status": "success", "message": "MAX30102 sensor prepared"}
-            time.sleep(0.1)
-        
-        # Timeout - sensor didn't respond
-        logger.warning("MAX30102 prepare timeout - sensor may not be ready")
-        return {"status": "error", "message": "MAX30102 sensor timeout"}
+        # Return immediately - frontend polls getStatus which will show sensor_ready
+        # when Arduino sends confirmation (no blocking/waiting)
+        logger.info("MAX30102 power-up command sent - frontend will poll for readiness")
+        return {"status": "success", "message": "MAX30102 sensor preparing"}
 
     def start_measurement(self):
         """Start measurement (Arduino will auto-start when finger detected)"""
         self.measurements = {'heart_rate': None, 'spo2': None, 'respiratory_rate': None}
-        return {"status": "success"}
+        # Flatten live_data into the response for easier frontend parsing
+        status = self.live_data.copy()
+        status['active'] = self.active
+        status['sensor_ready'] = self.sensor_ready
+        status['finger_detected'] = self.finger_detected
+        
+        # Debug: Print what we are sending to frontend
+        # print("API_RESPONSE_DEBUG:", status) 
+        
+        print(status)
+        return status
 
     def stop_measurement(self):
         """Stop MAX30102 measurement"""

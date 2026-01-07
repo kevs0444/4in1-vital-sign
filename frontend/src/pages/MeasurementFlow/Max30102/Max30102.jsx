@@ -68,6 +68,8 @@ export default function Max30102() {
   const timerIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
   const stepRef = useRef(step); // Track latest step for interval
+  const measurementCompleteRef = useRef(false); // Instantly blocks finger-removed after completion
+  const noFingerCounterRef = useRef(0); // Debounce counter for finger removal
 
   useEffect(() => {
     stepRef.current = step;
@@ -82,6 +84,7 @@ export default function Max30102() {
   useEffect(() => {
     const init = async () => {
       setIsVisible(true);
+      measurementCompleteRef.current = false; // Reset for fresh measurement
       try {
         setStatusMessage("🔄 Powering up pulse oximeter...");
         const result = await sensorAPI.prepareMax30102();
@@ -118,7 +121,10 @@ export default function Max30102() {
 
     pollingIntervalRef.current = setInterval(async () => {
       const currentStep = stepRef.current;
-      if (currentStep === 4) return; // Stop polling if complete
+
+      // 🛡️ CRITICAL: If complete, IGNORE EVERYTHING.
+      // This ensures "finger pop out" after 30s doesn't trigger a reset.
+      if (currentStep === 4 || measurementCompleteRef.current) return;
 
       try {
         const response = await sensorAPI.getMax30102Status();
@@ -126,10 +132,11 @@ export default function Max30102() {
         // DEBUG LOGGING - Essential for debugging "Why is it not reacting?"
         console.log("Max30102 Poll:", response);
 
-        // 🛡️ GUARD: Only return if response is completely invalid or represents an API error
-        // api.js returns { status: 'error', ... } on failure, which must be caught here.
-        if (!response || response.error || response.status === 'error') {
-          console.warn("⚠️ Valid packet dropped (Guard Clause Hit)");
+        // 🛡️ GUARD: Check for actual API error (not live_data.status)
+        // The flattened response includes 'status' from live_data which can be 'idle'/'measuring'/etc.
+        // API errors come as response.error or when response is null/undefined
+        if (!response || response.error) {
+          console.warn("⚠️ API Error:", response?.error || "No response");
           return;
         }
 
@@ -146,6 +153,9 @@ export default function Max30102() {
         // The top-level flag comes from the Manager's boolean state, which is set immediately on "FINGER_DETECTED".
         // We trust this flag even if 'data' is empty.
         const isFinger = response.finger_detected === true || data.finger_detected === true;
+
+        // DEBUG: Trace exact reason for decision
+        console.log(`🔍 Finger Logic: Backend=${response.finger_detected}, LiveData=${data.finger_detected} => FINAL=${isFinger}`);
 
         if (isFinger) {
           console.log("👉 Finger Detected (IsFinger=True). Step:", currentStep);
@@ -196,18 +206,35 @@ export default function Max30102() {
 
           signalActivity();
 
-        } else if (currentStep === 3 && !isFinger) {
-          // Rule: Backend says "Finger Removed" -> IMMEDIATE Reset
-          console.log("✋ Backend Finger Removed -> Resetting Immediately");
-          setStatusMessage("✋ Finger removed! Resetting...");
+          // Reset counter if finger is detected
+          noFingerCounterRef.current = 0;
 
-          // Trigger Feedback
-          speak(SPEECH_MESSAGES.MAX30102.FINGER_REMOVED);
-          setShowInterruptedModal(true);
+        } else if (currentStep === 3 && !isFinger && !measurementCompleteRef.current) {
+          // Rule: Backend says "Finger Removed" -> DEBOUNCED Reset
+          // We wait for 5 consecutive polls (approx 0.5s) to confirm finger is really gone
+          // This prevents transient dropouts (e.g. backend lag) from resetting UI
+          noFingerCounterRef.current++;
 
-          setStep(2);
-          resetMeasurementState();
+          console.log(`⚠️ Finger Missing Count: ${noFingerCounterRef.current}/2`);
+
+          // REDUCED THRESHOLD: 2 polls (200ms) for faster reaction
+          if (noFingerCounterRef.current >= 2) {
+            console.log("✋ Backend Finger Removed (Debounced) -> Resetting");
+            setStatusMessage("✋ Finger removed! Resetting...");
+
+            // Trigger Feedback
+            speak(SPEECH_MESSAGES.MAX30102.FINGER_REMOVED);
+            setShowInterruptedModal(true);
+
+            setStep(2);
+            resetMeasurementState();
+            noFingerCounterRef.current = 0;
+          }
+        } else {
+          // Reset counter if finger is detected
+          noFingerCounterRef.current = 0;
         }
+        // NOTE: When step === 4 (complete), we ignore finger removed events
 
       } catch (err) {
         console.error("Poll Error:", err);
@@ -232,6 +259,11 @@ export default function Max30102() {
         if (next <= 0) {
           stopTimer(); // Stop counting
           stopPolling(); // Stop data collection
+
+          // 🛡️ SUPER LOCK: Set ref immediately to block any parallel polling
+          measurementCompleteRef.current = true;
+          stepRef.current = 4;
+
           completeMeasurement(); // Finish
           return 0;
         }
@@ -250,6 +282,8 @@ export default function Max30102() {
   const resetMeasurementState = async () => {
     stopTimer();
     setSecondsRemaining(MEASUREMENT_DURATION);
+    measurementCompleteRef.current = false; // ALLOW new events
+
     heartRateBuffer.current = [];
     spo2Buffer.current = [];
     respiratoryBuffer.current = [];
@@ -261,14 +295,21 @@ export default function Max30102() {
       signalQuality: "--"
     });
 
-    // Remove backend reset to keep sensor active for re-insertion
-    // The backend manager auto-clears data on FINGER_REMOVED event anyway.
+    // Re-prepare sensor to ensure backend is listening (if it was stopped)
+    try {
+      await sensorAPI.prepareMax30102();
+    } catch (e) { console.error("Retry reset error:", e); }
   };
 
   // ========== COMPLETION ==========
   const completeMeasurement = async () => {
-    console.log("🏁 Completion Triggered");
+    // 🛡️ LOCK STATE IMMEDIATELY
+    measurementCompleteRef.current = true;
     setStep(4);
+    stopPolling(); // Stop data collection immediately
+    stopTimer();   // Ensure timer is dead
+
+    console.log("🏁 Completion Triggered - SENSOR LOCKED");
     setStatusMessage("✅ Measurement complete!");
 
     const avgHR = heartRateBuffer.current.length > 0
@@ -578,7 +619,10 @@ export default function Max30102() {
             <h2 className="exit-modal-title">Finger Removed</h2>
             <p className="exit-modal-message">The measurement was interrupted. Please place your finger back on the sensor to restart.</p>
             <div className="exit-modal-buttons">
-              <button className="exit-modal-button primary" onClick={() => setShowInterruptedModal(false)}>Okay, Retry</button>
+              <button className="exit-modal-button primary" onClick={() => {
+                resetMeasurementState();
+                setShowInterruptedModal(false);
+              }}>Okay, Retry</button>
             </div>
           </motion.div>
         </div>

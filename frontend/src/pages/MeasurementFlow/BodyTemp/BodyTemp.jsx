@@ -481,12 +481,12 @@ export default function BodyTemp() {
 
   const confirmExit = async () => {
     try {
-      await sensorAPI.reset();
+      await sensorAPI.shutdownTemperature();
     } catch (e) {
-      console.error("Error resetting sensors:", e);
+      console.error("Exit cleanup error:", e);
     }
     setShowExitModal(false);
-    navigate("/login");
+    navigate("/login", { state: { cancelled: true } });
   };
 
   const statusInfo = getCurrentStatusInfo();

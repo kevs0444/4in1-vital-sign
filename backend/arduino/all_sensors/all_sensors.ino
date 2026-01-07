@@ -209,11 +209,15 @@ void runAutoTarePhase() {
     measurementActive = false;
     currentPhase = IDLE;
     
-    // Power down weight sensor after tare
-    delay(100);
-    LoadCell.powerDown();
-    weightSensorPowered = false;
-    Serial.println("STATUS:WEIGHT_SENSOR_STANDBY");
+    // Power down weight sensor after tare - DISABLED per user request for multi-user stability
+    // delay(100);
+    // LoadCell.powerDown(); 
+    // weightSensorPowered = false; // Keep it logically true so we know it's hot and ready
+    
+    // Instead, just set logical state for safety but keep hardware ON
+    weightSensorPowered = true; 
+    
+    Serial.println("STATUS:WEIGHT_SENSOR_STANDBY_READY");
   } else if (millis() - phaseStartTime > 10000) {
     Serial.println("ERROR:AUTO_TARE_FAILED");
     weightSensorInitialized = false;
@@ -394,10 +398,15 @@ void powerUpMax30102Sensor() {
     Serial.println("STATUS:ACTIVE_MEASUREMENT_STOPPED_FOR_MAX30102");
   }
 
-  // If already powered, just ensure it's awake and restart monitoring
+  // If already powered, ensure it's fully re-configured (Fix for reusability)
   if (max30102SensorPowered) {
-    Serial.println("STATUS:MAX30102_SENSOR_POWERED_UP"); // Send standard success message
-    particleSensor.wakeUp();
+    fingerDetected = false;       // Reset for fresh detection
+    particleSensor.wakeUp();      // Wake from sleep
+    particleSensor.setup();       // FORCE RE-CONFIGURATION (Reset registers)
+    particleSensor.setPulseAmplitudeRed(0x0A); // Ensure LED is on
+    particleSensor.setPulseAmplitudeGreen(0);
+    
+    Serial.println("STATUS:MAX30102_SENSOR_POWERED_UP");
     startFingerDetection();
     return;
   }
@@ -441,6 +450,13 @@ void powerDownMax30102Sensor() {
     currentPhase = IDLE;
   }
   
+  // PHYSICALLY Turn off LEDs and Sleep
+  if (max30102SensorInitialized) {
+    particleSensor.setPulseAmplitudeRed(0);
+    particleSensor.setPulseAmplitudeGreen(0);
+    particleSensor.shutDown(); 
+  }
+
   // Reset all MAX30102 state flags
   max30102SensorPowered = false;
   max30102MeasurementStarted = false;
@@ -455,41 +471,62 @@ void startFingerDetection() {
   Serial.println("MAX30102_READY:Place finger on sensor to start automatic measurement");
 }
 
+// =================================================================
+// --- MAX30102 STATE HELPERS ---
+// =================================================================
+
+void stopMax30102Measurement() {
+  max30102MeasurementStarted = false;
+  measurementActive = false;
+  currentPhase = IDLE;
+  fingerDetected = false;
+  
+  Serial.println("MAX30102_STATE:MEASUREMENT_STOPPED_FINGER_REMOVED");
+  Serial.println("FINGER_REMOVED");
+  Serial.println("MAX30102_STATE:WAITING_FOR_FINGER");
+  Serial.println("MAX30102_READY:Place finger on sensor to start measurement");
+  
+  // Reset HR vars
+  hrIndex = 0;
+  hrFilled = false;
+  stableHR = 0;
+}
+
 // Continuous finger monitoring with automatic measurement start
 // EXACT COPY FROM max30102_test.ino (PROVEN WORKING)
 void monitorFingerPresence() {
   static unsigned long lastFingerCheck = 0;
+  static unsigned long lastWaitingMsg = 0;
   
   if (millis() - lastFingerCheck > 50) {
     long irValue = particleSensor.getIR();
     
-    // Always send IR value for monitoring
+    // Always send IR value for monitoring/backend debounce
     Serial.print("MAX30102_IR_VALUE:");
     Serial.println(irValue);
     
+    // Threshold check (no debounce here, fast react needed for start)
     bool currentFingerState = (irValue > FINGER_THRESHOLD);
     
     if (currentFingerState && !fingerDetected) {
       fingerDetected = true;
       Serial.println("FINGER_DETECTED");
       Serial.println("MAX30102_STATE:FINGER_DETECTED");
-      Serial.println("MAX30102_FINGER_STATUS:DETECTED");
-      startMax30102Measurement(); // AUTO-START (WORKING BEHAVIOR FROM TEST)
+      startMax30102Measurement(); // Auto-start
       
     } else if (!currentFingerState && fingerDetected) {
+      // If finger lost during monitoring (and not yet in full measurement phase)
       fingerDetected = false;
       Serial.println("FINGER_REMOVED");
-      Serial.println("MAX30102_STATE:WAITING_FOR_FINGER");
-      Serial.println("MAX30102_FINGER_STATUS:NOT_DETECTED");
-      Serial.println("MAX30102_READY:Place finger on sensor to start measurement");
-      
-      // Stop any ongoing measurement
       if (max30102MeasurementStarted) {
-        max30102MeasurementStarted = false;
-        measurementActive = false;
-        currentPhase = IDLE;
-        Serial.println("MAX30102_STATE:MEASUREMENT_STOPPED_FINGER_REMOVED");
+        stopMax30102Measurement();
       }
+    }
+    
+    // Periodic "Waiting" notification if no finger (User Request)
+    if (!fingerDetected && (millis() - lastWaitingMsg > 3000)) {
+       Serial.println("MAX30102_READY:Place finger on sensor to start measurement");
+       lastWaitingMsg = millis();
     }
     
     lastFingerCheck = millis();
@@ -541,67 +578,34 @@ void startMax30102Measurement() {
 
 
 void runMax30102Phase() {
-  unsigned long currentTime = millis();
-  
-  // Always monitor finger presence during MAX30102 phase
-  monitorFingerPresence();
-  
-  // If no finger detected during measurement, stop it
-  if (max30102MeasurementStarted && !fingerDetected) {
-    Serial.println("MAX30102_STATE:FINGER_REMOVED_DURING_MEASUREMENT");
-    Serial.println("FINGER_REMOVED");
-    max30102MeasurementStarted = false;
-    measurementActive = false;
-    currentPhase = IDLE;
-    
-    // Reset HR stabilization for next measurement
-    hrIndex = 0;
-    hrFilled = false;
-    stableHR = 0;
-    return;
-  }
-  
-  // If measurement hasn't started yet, just monitor finger
-  if (!max30102MeasurementStarted) {
-    return;
-  }
-
-  // Pre-check finger before collecting samples
+  // 1. Pre-check finger before collecting samples
   long preCheckIR = particleSensor.getIR();
-  Serial.print("MAX30102_IR_VALUE:");
-  Serial.println(preCheckIR);
   
   if (preCheckIR < FINGER_THRESHOLD) {
-    Serial.println("FINGER_REMOVED");
-    Serial.println("MAX30102_STATE:FINGER_NOT_DETECTED_PRE_SAMPLE");
-    
-    fingerDetected = false;
-    max30102MeasurementStarted = false;
-    measurementActive = false;
-    currentPhase = IDLE;
-    return;
+     stopMax30102Measurement();
+     return;
   }
 
-  // Collect 50 samples (matches tested medical-grade config)
+  // 2. Continuous Sampling Loop (50 samples)
   for (byte i = 0; i < BUFFER_SIZE; i++) {
     while (!particleSensor.available()) particleSensor.check();
     redBuffer[i] = particleSensor.getRed();
     irBuffer[i] = particleSensor.getIR();
     particleSensor.nextSample();
     
-    // Check finger during sampling
+    // Check finger during sampling (Fast Exit)
+    // Using user's "perfect" logic: Single sample drop = Exit
+    // Use slight debounce (2) to avoid total noise failure, but keep it snappy
+    static int lowConfCount = 0;
     if (irBuffer[i] < FINGER_THRESHOLD) {
-      Serial.println("FINGER_REMOVED");
-      Serial.println("MAX30102_STATE:FINGER_REMOVED_DURING_SAMPLING");
-      
-      fingerDetected = false;
-      max30102MeasurementStarted = false;
-      measurementActive = false;
-      currentPhase = IDLE;
-      
-      hrIndex = 0;
-      hrFilled = false;
-      stableHR = 0;
+       lowConfCount++;
+    } else {
+       lowConfCount = 0; 
+    }
+    
+    if (lowConfCount >= 2) {
+      stopMax30102Measurement();
+      lowConfCount = 0;
       return;
     }
   }
@@ -723,15 +727,7 @@ void runMax30102Phase() {
 }
 
 // NEW: Called by frontend when 30 seconds is complete
-void stopMax30102Measurement() {
-  Serial.println("STATUS:MAX30102_STOP_REQUESTED");
-  max30102MeasurementStarted = false;
-  measurementActive = false;
-  currentPhase = IDLE;
-  fingerDetected = false;
-  Serial.println("MAX30102_STATE:MEASUREMENT_COMPLETED_BY_FRONTEND");
-  Serial.println("STATUS:MAX30102_MEASUREMENT_COMPLETE");
-}
+
 
 // =================================================================
 // --- MAIN LOOP - UPDATED FOR CONTINUOUS FINGER MONITORING ---
@@ -853,20 +849,30 @@ void performTare() {
 }
 
 void powerUpWeightSensor() {
-  // INSTANT LOGICAL POWER-UP (no physical delay)
+  // Hardware is ALWAYS ON now. Just update logical flag.
   if (!weightSensorPowered) {
-    weightSensorPowered = true;
-    Serial.println("STATUS:WEIGHT_SENSOR_POWERED_UP");
+     // If coming from logical idle, just re-enable flag. No hardware wake needed.
+     weightSensorPowered = true;
+     Serial.println("STATUS:WEIGHT_SENSOR_READY_FAST");
   } else {
-    // Already powered - confirm status
-    Serial.println("STATUS:WEIGHT_SENSOR_POWERED_UP");
+    // Already active
+    Serial.println("STATUS:WEIGHT_SENSOR_ALREADY_ACTIVE");
   }
+  
+  // Safety: Ensure LoadCell is actually running just in case
+  LoadCell.powerUp(); 
 }
 
 void powerDownWeightSensor() {
-  // INSTANT LOGICAL SHUTDOWN (no physical power-down)
-  weightSensorPowered = false;
-  Serial.println("STATUS:WEIGHT_SENSOR_POWERED_DOWN");
+  // LOGICAL SHUTDOWN ONLY - Hardware stays powered for thermal stability (Tare preservation)
+  // weightSensorPowered = false; <--- actually, keep this valid so we know it's ready? 
+  // No, 'powered' flag is usually used for logical state in this specific invalid-state architecture.
+  // But wait, if we set it to false, `powerUpWeight` will try to `LoadCell.powerUp()`. 
+  // Let's modify: We will set the flag to false to indicate 'Idle', but we WON'T call hardware sleep.
+  
+  weightSensorPowered = false; 
+  // LoadCell.powerDown(); // REMOVED: Keep hardware active
+  Serial.println("STATUS:WEIGHT_SENSOR_LOGIC_IDLE");
 }
 
 void powerUpHeightSensor() {

@@ -106,37 +106,10 @@ export default function Standby() {
       sessionStorage.removeItem('bloodPressureData');
       sessionStorage.removeItem('max30102Data');
 
-      // 3. Reset sensors on backend ONLY if coming from inactivity or explicit cleanup
-      // OR if it's the very first load, BUT skip if we are waiting for Auto-Tare (Calibrating)
-      const shouldCleanupSensors = (location.state?.fromInactivity ||
-        location.state?.cleanupSensors ||
-        location.state?.cancelled ||
-        !location.state) &&
-        systemCheck.overall_status !== 'waiting_auto_tare';
-
-      if (isLocalDevice() && shouldCleanupSensors) {
-        try {
-          // Shutdown ALL sensors to reset system state
-          console.log('🧹 Standby: Cleaning up/Booting sensors (Start fresh)');
-
-          if (sensorAPI.shutdownAll) {
-            await sensorAPI.shutdownAll();
-          } else {
-            // Fallback if API outdated
-            await sensorAPI.shutdownWeight();
-            await sensorAPI.shutdownHeight();
-            await sensorAPI.shutdownTemperature();
-            await sensorAPI.shutdownMax30102();
-          }
-          console.log('✅ Backend sensor shutdown complete');
-        } catch (error) {
-          console.log('ℹ️ Backend sensor shutdown skipped (may not be connected yet)');
-        }
-      } else if (systemCheck.overall_status === 'waiting_auto_tare') {
-        console.log('⏳ Standby: Skipping sensor shutdown - System is Calibrating...');
-      } else {
-        console.log('📍 Standby: Remote view or No Cleanup Needed');
-      }
+      // REMOVED: Sensor shutdown is now handled by each measurement page's cleanup
+      // Each page (BMI, BodyTemp, MAX30102) shuts down its sensor on unmount
+      // Standby only handles auto-tare during system check (not individual sensor checks)
+      console.log('📍 Standby: Sensor lifecycle handled by individual pages');
 
       console.log('✅ All measurement data cleared - ready for new user');
     };

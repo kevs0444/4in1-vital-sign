@@ -112,14 +112,11 @@ class BMIManager:
                 self.live_data['weight']['current'] = val
                 self.live_data['weight']['status'] = 'measuring'
                 
-                # Throttle log
+                # Throttled logging (1Hz)
                 current_time = time.time()
                 if current_time - self.last_log_time > 1.0:
                     print(f"⚖️ Live Weight: {val} kg", flush=True)
-                    # Don't update last_log_time here, let next sensor update do it or allow both
-                    # Actually, we might miss height if we block both. 
-                    # Let's simple use separate throttles or just accept interleaved printing
-                    # For simplicity, print both if they come
+                    self.last_log_time = current_time
             except:
                 pass
 
