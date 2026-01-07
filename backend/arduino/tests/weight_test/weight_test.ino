@@ -13,11 +13,11 @@ const int HX711_sck = 5;
 // Constructor
 HX711_ADC LoadCell(HX711_dout, HX711_sck);
 
-const float calVal = 20503.32; // Adjust if needed
+const float calVal = 21165.89; // Matches user's latest validated value
 unsigned long t = 0;
 
 void setup() {
-  Serial.begin(57600);
+  Serial.begin(115200);
   delay(10);
   Serial.println("\nStarting Weight Sensor Test...");
 

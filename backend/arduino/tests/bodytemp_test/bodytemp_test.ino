@@ -1,45 +1,59 @@
+/*
+  MLX90614 Body Temperature Sensor Test
+  Includes safety check for boot loops.
+*/
+
 #include <Wire.h>
 #include <Adafruit_MLX90614.h>
 
-// Initialize sensor object
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
-
-const unsigned long READ_INTERVAL = 100;
-unsigned long lastReadTime = 0;
 
 void setup() {
   Serial.begin(115200);
-  Wire.begin();
   
-  Serial.println("==========================================");
-  Serial.println("BODY TEMPERATURE SENSOR TEST - MLX90614");
-  Serial.println("==========================================");
+  // Wait for serial
+  while (!Serial && millis() < 2000); 
+  
+  Serial.println("\n==================================");
+  Serial.println("BODY TEMP SENSOR TEST (MLX90614)");
+  Serial.println("==================================");
+
+  Wire.begin();
+  Wire.setWireTimeout(3000, true); // Safety for I2C hangs
+
+  Serial.print("STATUS: Initializing MLX90614... ");
   
   if (!mlx.begin()) {
-    Serial.println("❌ Error connecting to MLX sensor. Check wiring.");
-    while (1);
+    Serial.println("FAILED!");
+    Serial.println("ERROR: Sensor not found. Check wiring (SDA/SCL) and Power.");
+    // Don't halt, just warn
+  } else {
+    Serial.println("SUCCESS!");
   }
   
-  Serial.println("✅ MLX90614 Initialized.");
+  Serial.println("==================================");
 }
 
 void loop() {
-  unsigned long currentTime = millis();
+  // Read both Object (Body/Face) and Ambient temp
+  float objTemp = mlx.readObjectTempC();
+  float ambTemp = mlx.readAmbientTempC();
+
+  // Calibration Offset (e.g., +3.5C for skin-to-body calc)
+  const float CALIBRATION_OFFSET = 3.5;
   
-  if (currentTime - lastReadTime >= READ_INTERVAL) {
-    lastReadTime = currentTime;
-    
-    // Read temperature
-    float objTemp = mlx.readObjectTempC();
-    float ambTemp = mlx.readAmbientTempC();
-    
-    // Apply calibration offset
-    float calibratedTemp = objTemp + 3.5; // Calibration offset from all_sensors.ino
-    
-    Serial.print("DEBUG:Temperature reading: ");
-    Serial.println(calibratedTemp, 2);
-    
-    // Optional: Print Ambient for debugging
-    // Serial.print(" (Ambient: "); Serial.print(ambTemp); Serial.println(")");
-  }
+  Serial.print("Ambient: "); 
+  Serial.print(ambTemp); 
+  Serial.print(" C");
+  
+  Serial.print("\tObject: "); 
+  Serial.print(objTemp); 
+  Serial.print(" C");
+  
+  Serial.print("\t| Body Est: ");
+  Serial.print(objTemp + CALIBRATION_OFFSET);
+  Serial.println(" C");
+  
+  // Safe delay
+  delay(500);
 }

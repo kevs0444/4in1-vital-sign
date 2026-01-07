@@ -26,7 +26,7 @@ const API_BASE = getDynamicApiUrl();
 const modes = {
     feet: ["platform", "barefeet", "socks", "footwear"],
     body: ["null", "bag", "cap", "id", "watch"],
-    bp: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "error"]
+    bp: ["error", "null", "numbers"]
 };
 
 const Maintenance = () => {
@@ -404,7 +404,10 @@ const Maintenance = () => {
         try {
             setShowCaptureFlash(true);
             setTimeout(() => setShowCaptureFlash(false), 150);
-            await fetch(`${API_BASE}/camera/capture`, {
+
+            const endpoint = activeCameraTab === 'bp' ? `${API_BASE}/bp/capture` : `${API_BASE}/camera/capture`;
+
+            await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ class_name: selectedClass })
@@ -419,7 +422,7 @@ const Maintenance = () => {
     // EFFECTS
     // =====================================================
 
-    // Initial setup and cleanup on unmount
+    // Keydown handler
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.code === 'Space' && activeSection === 'cameras') {
@@ -432,12 +435,18 @@ const Maintenance = () => {
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [activeSection, handleCapture]);
+
+    // Cleanup on section change or unmount
+    useEffect(() => {
+        return () => {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             fetch(`${API_BASE}/camera/stop`, { method: 'POST' }).catch(() => { });
             fetch(`${API_BASE}/bp/stop`, { method: 'POST' }).catch(() => { });
             shutdownAllSensors();
         };
-    }, [activeSection, handleCapture, shutdownAllSensors]);
+    }, [activeSection, shutdownAllSensors]);
 
     // Handle section and sensor tab changes
     useEffect(() => {
@@ -1032,36 +1041,6 @@ const Maintenance = () => {
                                         </button>
                                         <div className="overlay-bottom">
                                             <div className="session-stats">Collected: {captureCount} Samples</div>
-                                            {/* Camera Selection UI inside Viewport */}
-                                            <div className="camera-selector-overlay" style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
-                                                {availableCameras.map(idx => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => handleCameraSelect(idx)}
-                                                        className={`cam-select-btn ${settings.camera_index === idx ? 'active' : ''}`}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            borderRadius: '6px',
-                                                            border: 'none',
-                                                            background: settings.camera_index === idx ? '#dc2626' : 'rgba(0,0,0,0.6)',
-                                                            color: 'white',
-                                                            cursor: 'pointer',
-                                                            fontSize: '0.8rem',
-                                                            fontWeight: '600'
-                                                        }}
-                                                    >
-                                                        {getCameraLabel(idx)}
-                                                    </button>
-                                                ))}
-                                                <button
-                                                    onClick={fetchAvailableCameras}
-                                                    className="cam-select-btn"
-                                                    style={{ padding: '6px 8px', borderRadius: '6px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white', cursor: 'pointer' }}
-                                                    title="Refresh Camera List"
-                                                >
-                                                    ↻
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>

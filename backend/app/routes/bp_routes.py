@@ -97,3 +97,14 @@ def set_bp_settings():
     data = request.json
     bp_sensor.set_settings(data)
     return jsonify({"success": True, "message": "Settings updated"})
+
+@bp_routes.route('/capture', methods=['POST'])
+def capture_bp_image():
+    """Capture an image from the BP camera."""
+    from flask import request
+    data = request.json
+    class_name = data.get('class_name', 'unknown')
+    success, result = bp_sensor.capture_image(class_name)
+    if success:
+        return jsonify({"success": True, "filepath": result})
+    return jsonify({"success": False, "message": result}), 500

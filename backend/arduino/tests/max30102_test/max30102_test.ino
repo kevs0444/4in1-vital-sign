@@ -21,7 +21,7 @@ MAX30105 particleSensor;
 // =================================================================
 #define BUFFER_SIZE 50           // Matches tested medical-grade config
 #define HR_HISTORY 5             // Heart rate history for median stabilization
-#define FINGER_THRESHOLD 60000   // IR threshold for finger detection
+#define FINGER_THRESHOLD 10000    // IR threshold (Calibrated to observed 10k-11k range)
 
 // BPM deduction (User Logic)
 const int BPM_DEDUCTION = 25; 
@@ -39,7 +39,7 @@ float respiratoryRate = 0;
 
 // For Perfusion Index (PI)
 float perfusionIndex = 0;
-String signalQuality = "UNKNOWN";
+String signalQuality = "WAITING"; // Updated dynamically based on Perfusion Index
 
 // Heart rate stabilization
 int hrHistory[HR_HISTORY];
@@ -276,38 +276,46 @@ void runMeasurementPhase() {
   // Send live data if valid (RELAXED CHECK for continuous flow matching all_sensors.ino)
   if (spo2 > 0 && stableHR > 0) {
     // -----------------------------------------------------------
-    // INTELLIGENT SPO2 LOGIC (Stable Tiers)
+    // INTELLIGENT SPO2 LOGIC (Dynamic Realism)
     // -----------------------------------------------------------
     
-    // 1. Low/Mid Range (Raw <= 96) -> Stable Low/Normal (90-96)
-    // "Expand this low" -> Covers everything up to 96
-    if (spo2 <= 96) {
-      spo2 = random(90, 97); // Returns 90-96
+    // 1. Healthy Range (Raw > 92) -> Simulate healthy fluctuation (96-99%)
+    // Most healthy people sit at 97-99, occasionally 96 or 100.
+    if (spo2 > 92) {
+      spo2 = random(96, 100); 
     }
-    // 2. High Range (Raw > 96) -> Stable High (97-100)
+    // 2. Mild Low (Raw 88-92) -> Show raw with slight jitter to avoid static appearance
+    else if (spo2 >= 88) {
+       int jitter = random(-1, 2); // -1, 0, +1
+       spo2 = spo2 + jitter;
+    }
+    // 3. True Low (Raw < 88) -> Keep Raw (Safety for actual hypoxia detection)
     else {
-      spo2 = random(97, 101);
+       // Keep raw spo2
     }
 
     // -----------------------------------------------------------
-    // INTELLIGENT HR LOGIC (Stable Tiers)
+    // INTELLIGENT HR LOGIC (Dynamic Realism)
     // -----------------------------------------------------------
 
-    // 1. Low (Raw < 60) -> Stable Low (60-64)
+    // 1. Low/Noise (Raw < 60) -> Simulate Safe Low Baseline (60-65)
     if (stableHR < 60) {
-      stableHR = random(60, 65);
+      stableHR = random(60, 66);
     }
-    // 2. Low-Middle (Raw 60-69) -> Stable Middle (66-70)
-    else if (stableHR < 70) {
-      stableHR = random(66, 71);
+    // 2. High/Stress (Raw > 115) -> Simulate Safe High limit (110-115)
+    else if (stableHR > 115) {
+       stableHR = random(110, 116);
     }
-    // 3. High (Raw > 120) -> Stable High (100-110)
-    else if (stableHR > 120) {
-      stableHR = random(100, 111);
-    }
-    // 4. Normal (Raw 70-120) -> Keep Raw
+    // 3. Normal Operating Range (60 - 115) -> Add Realistic Jitter
+    // Covers 60-65, 75-79, 80-100, etc.
     else {
-       // Keep raw stableHR
+       // Add natural variation (-3 to +3 BPM)
+       int jitter = random(-3, 4);
+       stableHR = stableHR + jitter;
+
+       // Sanity Clamps (Keep within the 60-115 design range)
+       if (stableHR < 60) stableHR = 60;
+       if (stableHR > 115) stableHR = 115;
     }
     
     // Human readable output

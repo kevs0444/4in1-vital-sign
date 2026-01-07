@@ -1,72 +1,139 @@
+/*
+  BMI Sensor Test (Weight + Height)
+  - Weight: HX711_ADC (Pins 4, 5)
+  - Height: TFLI2C (I2C) (TF-Luna Lidar)
+  
+  Use this to verify both sensors work together without the full system overhead.
+*/
+
 #include <Wire.h>
-#include <EEPROM.h>
-#include "HX711_ADC.h"
-#include "TFLI2C.h"
+#include <HX711_ADC.h>
+#include <TFLI2C.h> // Changed to system include style
 
-// Weight Sensor
-HX711_ADC LoadCell(4, 5); // DT=4, SCK=5
-float calFactor = -21330.55;
+// --- WEIGHT SENSOR ---
+const int HX711_dout = 4;
+const int HX711_sck = 5;
+HX711_ADC LoadCell(HX711_dout, HX711_sck);
 
-// Height Sensor
+// Calibration Factor (User Provided)
+float calibrationFactor = 21165.89; 
+
+// --- HEIGHT SENSOR ---
 TFLI2C heightSensor;
-const float SENSOR_HEIGHT_CM = 213.36; // 7 feet
+int16_t tfDist;    // Distance in cm
+int16_t tfFlux;    // Signal strength/quality
+int16_t tfTemp;    // Internal chip temp
 
-const unsigned long READ_INTERVAL = 100;
-unsigned long lastReadTime = 0;
+// --- TIMING ---
+unsigned long lastPrintTime = 0;
+const int PRINT_INTERVAL = 500; // 500ms update rate
 
 void setup() {
   Serial.begin(115200);
+  delay(100);
+  Serial.println("\n==========================================");
+  Serial.println("BMI SENSOR TEST (WEIGHT + HEIGHT)");
+  Serial.println("==========================================");
+
+  // 1. Initialize I2C
   Wire.begin();
-  
-  Serial.println("==========================================");
-  Serial.println("BMI SENSORS TEST (WEIGHT & HEIGHT)");
-  Serial.println("==========================================");
-  
-  // Initialize Weight
-  Serial.println("Initializing Weight Sensor...");
+  // Wire.setWireTimeout(3000, true); // Uncomment if I2C hangs
+
+  // --- I2C SCANNER (Debug) ---
+  Serial.println("DEBUG: Scanning I2C bus...");
+  int devicesFound = 0;
+  for (byte address = 1; address < 127; address++) {
+    Wire.beginTransmission(address);
+    byte error = Wire.endTransmission();
+    if (error == 0) {
+      Serial.print("DEBUG: I2C device found at address 0x");
+      if (address < 16) Serial.print("0");
+      Serial.print(address, HEX);
+      Serial.println("  !");
+      devicesFound++;
+    }
+  }
+  if (devicesFound == 0) Serial.println("DEBUG: No I2C devices found\n");
+  else Serial.println("DEBUG: I2C Scan Complete\n");
+  // ---------------------------
+
+  // 2. Initialize Weight Sensor
+  Serial.println("STATUS:INITIALIZING_WEIGHT...");
   LoadCell.begin();
-  LoadCell.start(2000, true); // 2000ms stabilizing time, do tare
-  LoadCell.setCalFactor(calFactor);
-  LoadCell.setSamplesInUse(2); // Fast response
+  
+  unsigned long stabilizingtime = 2000;
+  boolean _tare = true;
+  LoadCell.start(stabilizingtime, _tare);
+  
   if (LoadCell.getTareTimeoutFlag()) {
-    Serial.println("❌ Weight Sensor Timeout. Check wiring.");
+    Serial.println("ERROR:WEIGHT_SENSOR_TIMEOUT - Check wiring (Pins 4, 5)");
   } else {
-    Serial.println("✅ Weight Sensor Ready & Tared.");
+    LoadCell.setCalFactor(calibrationFactor);
+    LoadCell.setSamplesInUse(2); // Fast response
+    Serial.println("STATUS:WEIGHT_SENSOR_READY");
   }
 
-  // Initialize Height needs no special init for TFLI2C usually, just Wire.begin()
-  Serial.println("✅ Height Sensor (TF-Luna) Ready (assuming I2C connected).");
+  // 3. Initialize Height Sensor
+  Serial.println("STATUS:INITIALIZING_HEIGHT...");
+  // Try a dummy read to wake it up
+  if(heightSensor.getData(tfDist, tfFlux, tfTemp, 0x10)) {
+     Serial.println("STATUS:HEIGHT_SENSOR_DETECTED");
+  } else {
+     Serial.println("WARNING:HEIGHT_SENSOR_NOT_RESPONDING");
+  }
+  
+  Serial.println("==========================================");
+  Serial.println("COMMANDS:");
+  Serial.println(" 't' -> Tare Weight");
+  Serial.println("==========================================");
 }
 
 void loop() {
-  LoadCell.update(); // Must be called frequently
-  
-  unsigned long currentTime = millis();
-  
-  if (currentTime - lastReadTime >= READ_INTERVAL) {
-    lastReadTime = currentTime;
+  // --- READ WEIGHT ---
+  static boolean newDataReady = 0;
+  if (LoadCell.update()) newDataReady = true;
+
+  // --- READ/PRINT LOOP ---
+  if (millis() - lastPrintTime > PRINT_INTERVAL) {
     
-    // Read Weight
-    float weight = LoadCell.getData();
-    if (weight < 0) weight = 0.0;
+    // Get Weight
+    float weightKg = LoadCell.getData();
     
-    // Read Height
-    int16_t tfDist = 0;
-    int16_t tfFlux = 0;
-    int16_t tfTemp = 0;
-    heightSensor.getData(tfDist, tfFlux, tfTemp, 0x10); // Default address 0x10
+    // Get Height
+    bool heightSuccess = heightSensor.getData(tfDist, tfFlux, tfTemp, 0x10);
     
-    float heightCm = 0;
-    if (tfDist > 0 && tfDist < 250) { // Valid range
-        heightCm = SENSOR_HEIGHT_CM - tfDist;
-        if (heightCm < 0) heightCm = 0;
+    // Print Combined Data
+    Serial.print("Weight: ");
+    Serial.print(weightKg, 2);
+    Serial.print(" kg");
+    
+    Serial.print("  |  Height (Dist): ");
+    if (heightSuccess && tfDist > 0) {
+       Serial.print(tfDist);
+       Serial.print(" cm");
+       // Calculate Height (Assuming Sensor @ 213.36cm / 7ft)
+       float measuredHeight = 213.36 - tfDist;
+       Serial.print(" (Calc: ");
+       Serial.print(measuredHeight, 1);
+       Serial.print(" cm)");
+    } else {
+       Serial.print("ERROR/Range");
     }
     
-    // Print in format compatible with Backend regex
-    Serial.print("DEBUG:Weight reading: ");
-    Serial.println(weight, 2);
+    Serial.print("  |  Flux: ");
+    Serial.print(tfFlux);
     
-    Serial.print("DEBUG:Height reading: ");
-    Serial.println(heightCm, 1);
+    Serial.println();
+    
+    lastPrintTime = millis();
+  }
+
+  // --- SERIAL COMMANDS ---
+  if (Serial.available() > 0) {
+    char inByte = Serial.read();
+    if (inByte == 't') {
+      LoadCell.tareNoDelay();
+      Serial.println("...Taring...");
+    }
   }
 }

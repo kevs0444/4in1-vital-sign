@@ -570,5 +570,24 @@ class BPSensorController:
             except ValueError:
                 pass
 
+    def capture_image(self, class_name):
+        """Capture the current frame and save to disk."""
+        with self.lock:
+            if self.latest_frame is None:
+                return False, "No frame available"
+            
+            save_dir = r"C:\Users\VitalSign\Pictures\Camera Roll"
+            class_dir = os.path.join(save_dir, class_name)
+            if not os.path.exists(class_dir):
+                os.makedirs(class_dir)
+            
+            timestamp = int(time.time() * 1000)
+            filename = f"{class_name}_{timestamp}.jpg"
+            filepath = os.path.join(class_dir, filename)
+            
+            cv2.imwrite(filepath, self.latest_frame)
+            logger.info(f"[BP] Captured/Saved Image: {filepath}")
+            return True, filepath
+
 # Singleton instance
 bp_sensor = BPSensorController()
