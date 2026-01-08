@@ -3,20 +3,22 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import './InactivityWrapper.css';
 import juanSadIcon from '../../assets/icons/juan-sad-icon.png';
 import { isLocalDevice } from '../../utils/network';
+import { sensorAPI, cameraAPI } from '../../utils/api';
 
 // Create Context
 const InactivityContext = createContext({
     isInactivityEnabled: true,
     setIsInactivityEnabled: () => { },
-    signalActivity: () => { },  // NEW: Allow components to signal activity
+    signalActivity: () => { },
+    setCustomTimeout: (warningMs, finalMs) => { },
 });
 
 // Custom Hook
 export const useInactivity = () => useContext(InactivityContext);
 
-// Timeouts in milliseconds
-const WARNING_TIMEOUT = 30000; // 30 seconds
-const FINAL_TIMEOUT = 60000;   // 60 seconds (1 minute total)
+// Defaults in milliseconds
+const DEFAULT_WARNING = 30000; // 30s
+const DEFAULT_FINAL = 60000;   // 60s
 
 // Pages that should NOT trigger the inactivity redirect at all
 const EXCLUDED_PATHS = [
@@ -30,9 +32,25 @@ const InactivityWrapper = ({ children }) => {
     const [showWarning, setShowWarning] = useState(false);
     const [isInactivityEnabled, setIsInactivityEnabled] = useState(true);
 
+    // Dynamic Timeout State
+    const [timeoutConfig, setTimeoutConfig] = useState({
+        warning: DEFAULT_WARNING,
+        final: DEFAULT_FINAL
+    });
+
     // Refs to hold timer IDs
     const warningTimerRef = useRef(null);
     const finalTimerRef = useRef(null);
+
+    // Helper to update timeouts
+    const setCustomTimeout = useCallback((warningMs, finalMs) => {
+        if (!warningMs || !finalMs) {
+            // Reset to defaults
+            setTimeoutConfig({ warning: DEFAULT_WARNING, final: DEFAULT_FINAL });
+        } else {
+            setTimeoutConfig({ warning: warningMs, final: finalMs });
+        }
+    }, []);
 
     // Function to start/reset timers
     const startTimers = useCallback(() => {
@@ -54,14 +72,20 @@ const InactivityWrapper = ({ children }) => {
             return;
         }
 
-        // Set warning timer (30s)
+        // Set warning timer (Dynamic)
         warningTimerRef.current = setTimeout(() => {
             setShowWarning(true);
-        }, WARNING_TIMEOUT);
+        }, timeoutConfig.warning);
 
-        // Set final timer (60s)
+        // Set final timer (Dynamic)
         finalTimerRef.current = setTimeout(() => {
-            console.log('⏰ User inactive for 1 minute - Redirecting to Standby...');
+            console.log(`⏰ User inactive for ${(timeoutConfig.final / 1000)}s - Redirecting...`);
+
+            // 🧹 BACKEND CLEANUP: Fire-and-forget (Non-blocking)
+            // We do NOT await this, to ensure the UI navigates immediately.
+            // This mimics the "Cancel" behavior which feels faster.
+            sensorAPI.shutdownAll().catch(e => console.error("Background Shutdown Error:", e));
+            cameraAPI.stop().catch(e => console.error("Camera Stop Error:", e));
 
             // Clear items to reset progress
             localStorage.removeItem('currentUser');
@@ -77,8 +101,8 @@ const InactivityWrapper = ({ children }) => {
                     reset: true
                 }
             });
-        }, FINAL_TIMEOUT);
-    }, [location.pathname, isInactivityEnabled, navigate]);
+        }, timeoutConfig.final);
+    }, [location.pathname, isInactivityEnabled, navigate, timeoutConfig]);
 
     // Handler for user activity - also called by components via signalActivity
     const handleActivity = useCallback(() => {
@@ -152,7 +176,7 @@ const InactivityWrapper = ({ children }) => {
     };
 
     return (
-        <InactivityContext.Provider value={{ isInactivityEnabled, setIsInactivityEnabled, signalActivity }}>
+        <InactivityContext.Provider value={{ isInactivityEnabled, setIsInactivityEnabled, signalActivity, setCustomTimeout }}>
             {children}
             {canShowWarning() && (
                 <div className="inactivity-overlay" onClick={handleActivity}>

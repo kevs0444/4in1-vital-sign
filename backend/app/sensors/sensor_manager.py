@@ -203,12 +203,18 @@ class SensorManager:
         return response
 
     def shutdown_all_sensors(self):
-        # Reset internal state
+        # Use managers to ensure internal state (active flags) is updated
+        self.bmi_manager.stop_weight()
+        self.bmi_manager.stop_height()
         self.bmi_manager.reset()
+        
+        self.temp_manager.stop_measurement()
         self.temp_manager.reset()
+        
+        self.max30102_manager.shutdown_sensor()
         self.max30102_manager.reset()
         
-        # Power down hardware
+        # Redundant safety: Force power down commands
         self.serial_interface.send_command("POWER_DOWN_WEIGHT")
         self.serial_interface.send_command("POWER_DOWN_HEIGHT")
         self.serial_interface.send_command("POWER_DOWN_TEMPERATURE")

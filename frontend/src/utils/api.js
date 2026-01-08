@@ -1121,7 +1121,18 @@ export const sensorAPI = {
     }
   },
 
-
+  // NEW: Shutdown ALL sensors
+  shutdownAll: async () => {
+    try {
+      console.log('🛑 Shutting down ALL sensors...');
+      return await fetchWithTimeout(`${API_URL}/sensor/shutdown`, {
+        method: 'POST',
+      }, TIMEOUTS.SHORT);
+    } catch (error) {
+      console.error('Error shutting down all sensors:', error);
+      return { error: error.message };
+    }
+  }
 };
 
 export const cameraAPI = {

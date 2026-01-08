@@ -13,7 +13,7 @@ const API_BASE = '/api';
 export default function Clearance() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { setIsInactivityEnabled } = useInactivity();
+    const { setIsInactivityEnabled, signalActivity } = useInactivity();
 
     // BLOCK REMOTE ACCESS
     useEffect(() => {
@@ -27,6 +27,7 @@ export default function Clearance() {
     const [detectionStatus, setDetectionStatus] = useState("Waiting...");
     const [isCompliant, setIsCompliant] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
+    const [showRetryModal, setShowRetryModal] = useState(false);
 
     // Checks state
     const [footwearCleared, setFootwearCleared] = useState(false);
@@ -119,74 +120,14 @@ export default function Clearance() {
     };
 
     /* ============================================================
-       CAMERA CONTROL
+       CAMERA CONTROL - OPTIMIZED
        ============================================================ */
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    const startCamera = async (mode, cameraIndex) => {
-        try {
-            setStatusMessage("Initializing camera...");
-
-            // 1. Stop any existing camera
-            await stopCamera();
-            await sleep(300); // Allow camera to fully release
-
-            // 2. Start Camera with specified index
-            const startRes = await fetch(`${API_BASE}/camera/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ index: cameraIndex })
-            });
-
-            if (!startRes.ok) {
-                throw new Error('Failed to start camera');
-            }
-
-            await sleep(200); // Allow camera to initialize
-
-            // 3. Set AI Mode
-            await fetch(`${API_BASE}/camera/set_mode`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode })
-            });
-
-            setStatusMessage(mode === 'feet' ? "Scanning for footwear..." : "Scanning for wearables...");
-            console.log(`✅ Camera started: Mode=${mode}, Index=${cameraIndex}`);
-        } catch (e) {
-            console.error("Error starting camera:", e);
-            setStatusMessage("Camera error. Retrying...");
-
-            // Retry once with fallback camera index
-            try {
-                await sleep(500);
-                const fallbackIndex = cameraIndex === 1 ? 0 : 1;
-                console.log(`🔄 Retrying with camera index ${fallbackIndex}...`);
-
-                await fetch(`${API_BASE}/camera/start`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ index: fallbackIndex })
-                });
-
-                await fetch(`${API_BASE}/camera/set_mode`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode })
-                });
-
-                setStatusMessage(mode === 'feet' ? "Scanning for footwear..." : "Scanning for wearables...");
-            } catch (retryErr) {
-                console.error("Camera retry failed:", retryErr);
-                setStatusMessage("Camera unavailable. Please check hardware.");
-            }
-        }
-    };
 
     const startFootwearCheck = async (forceIndex = null, forceName = null) => {
         setStep(1);
         setIsCompliant(false);
-        setIsCameraLoading(true); // Show loading while camera initializes
+        setIsCameraLoading(true);
 
         // Prefer name, then index, then config, then fallback
         const camName = forceName || CAMERA_NAMES.weight;
@@ -195,52 +136,34 @@ export default function Clearance() {
         try {
             setStatusMessage("Initializing feet camera...");
 
-            // Stop any existing cameras
-            await stopCamera();
-            await sleep(200);
-
-            // Start Weight/Feet camera (Camera Index 1) using /camera endpoint
-            // Sending BOTH index and name allows backend to be smart
+            // SINGLE CALL OPTIMIZATION:
+            // Send index, name, mode, and settings ALL IN ONE GO via /start
             await fetch(`${API_BASE}/camera/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     index: camIndex,
-                    camera_name: camName
+                    camera_name: camName,
+                    mode: 'feet',
+                    settings: {
+                        rotation: 180,
+                        zoom: 1.3,
+                        square_crop: true
+                    }
                 })
             });
-
-            await sleep(100);
-
-            // Set to feet detection mode
-            await fetch(`${API_BASE}/camera/set_mode`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: 'feet' })
-            });
-
-            // Set camera settings for feet view (rotation=180, zoom=1.3)
-            await fetch(`${API_BASE}/camera/set_settings`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    rotation: 180,
-                    zoom: 1.3,
-                    square_crop: true
-                })
-            });
-
-            await sleep(300); // Wait for settings to apply
 
             // Use the camera video feed for feet
             setVideoFeedUrl(`${API_BASE}/camera/video_feed`);
             setIsCameraLoading(false); // Hide loading
+
+            // Immediate status update without sleep
             setStatusMessage("Scanning for footwear...");
-            console.log("✅ Feet camera started (Camera 1, rotation=180)");
+            console.log("✅ Feet camera started (Optimized)");
 
             setTimeout(() => {
                 startPolling('feet');
-            }, 500);
+            }, 500); // reduced from 500? keeping 500 to allow feed to spin up visually
 
         } catch (e) {
             console.error("Error starting feet camera:", e);
@@ -252,58 +175,41 @@ export default function Clearance() {
     const startWearablesCheck = async () => {
         setStep(2);
         setIsCompliant(false);
-        setIsCameraLoading(true); // Show loading during camera switch
+        setIsCameraLoading(true);
 
         try {
             setStatusMessage("Switching to wearables camera...");
 
-            // Stop the feet camera first
-            await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
-            await sleep(200); // Longer delay for camera to fully release
+            // FIX: Stop previous camera explicitly and wait to prevent "too fast" error
+            await stopCamera();
+            await sleep(800);
 
-            // Start Wearables Camera
-            // Index 1 showed BP, so Wearables must be Index 2
+            // Wearables = Index 2
             const camIndex = 2; // Wearables = Index 2
 
+            // SINGLE CALL OPTIMIZATION:
             await fetch(`${API_BASE}/camera/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    index: camIndex  // Just pass index, no name
+                    index: camIndex,
+                    mode: 'body',
+                    settings: {
+                        rotation: 180,
+                        zoom: 1.0,
+                        square_crop: true
+                    }
                 })
             });
 
-            await sleep(100);
-
-            // Set to body/wearables detection mode
-            await fetch(`${API_BASE}/camera/set_mode`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: 'body' })
-            });
-
-            // Set camera settings for wearables view (no zoom, 180° rotation, square crop)
-            await fetch(`${API_BASE}/camera/set_settings`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    rotation: 180,
-                    zoom: 1.0,
-                    square_crop: true
-                })
-            });
-
-            await sleep(300); // Wait for settings to apply
-
-            // Use the same /camera video feed (it has AI detection built in)
+            // Use the same /camera video feed
             setVideoFeedUrl(`${API_BASE}/camera/video_feed`);
-            setIsCameraLoading(false); // Hide loading
+            setIsCameraLoading(false);
 
             // Only speak AFTER camera is ready and showing
             setStatusMessage("Scanning for wearables...");
-            console.log("✅ Wearables camera started (Camera 0, zoom=1.0, rotation=180)");
+            console.log("✅ Wearables camera started (Optimized)");
 
-            // Short delay to ensure video is rendering before speaking
             setTimeout(() => {
                 if (!isMountedRef.current) return;
                 speakOnce("Now checking for wearables. Please look at the screen.");
@@ -353,6 +259,12 @@ export default function Clearance() {
                 const safeData = data || {};
 
                 const msg = (safeData.message || "").toLowerCase();
+
+                // SIGNAL ACTIVITY: If AI detects something (User presence), reset inactivity timer
+                // Ignore 'waiting' or 'bg' (background/empty)
+                if (msg && !msg.includes('waiting') && msg.trim() !== 'bg') {
+                    signalActivity();
+                }
 
                 // Update detection status badge
                 setDetectionStatus(msg);
@@ -543,8 +455,19 @@ export default function Clearance() {
                     }
                 }
 
+                // Reset retry count on success
+                setRetryCount(0);
             } catch (e) {
                 console.error("Polling error:", e);
+                setRetryCount(prev => {
+                    const newCount = prev + 1;
+                    if (newCount > 8) { // ~4 seconds of failure
+                        setShowRetryModal(true);
+                        if (pollerRef.current) clearInterval(pollerRef.current);
+                        return 0;
+                    }
+                    return newCount;
+                });
             }
         }, 500);
     };
@@ -594,6 +517,30 @@ export default function Clearance() {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5 }}
         >
+            {showRetryModal && (
+                <div className="exit-modal-overlay" onClick={() => { }}>
+                    <motion.div
+                        className="exit-modal-content"
+                        initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                    >
+                        <div className="exit-modal-icon" style={{ background: '#ffebee', color: '#f44336' }}><span>📡</span></div>
+                        <h2 className="exit-modal-title">Connection Issue</h2>
+                        <p className="exit-modal-message">Camera visual feed is lagging or disconnected.</p>
+                        <div className="exit-modal-buttons">
+                            <button className="exit-modal-button primary" onClick={() => {
+                                setShowRetryModal(false);
+                                setRetryCount(0);
+                                if (step === 1) startFootwearCheck();
+                                else startWearablesCheck();
+                            }}>
+                                Try Again
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
             <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
 
                 {/* Header */}

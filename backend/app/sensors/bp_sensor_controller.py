@@ -207,6 +207,16 @@ class BPSensorController:
             self.result_confirmed = False  # NEW: Prevent re-triggering result
             self.ignore_start_until = 0    # NEW: Cooldown for manual interrupts
             
+            # CRITICAL: Reset Status for New User
+            self.bp_status = {
+                "systolic": "--",
+                "diastolic": "--",
+                "trend": "Waiting",
+                "error": False,
+                "is_running": False,
+                "timestamp": 0
+            }
+            
             # Ensure settings match user request
             self.zoom_factor = 1.4  # Default 1.4x zoom per user preference (Updated to 1.4x for better digit visibility)
             self.rotation = 0

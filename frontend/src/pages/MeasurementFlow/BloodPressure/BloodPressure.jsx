@@ -14,7 +14,7 @@ import step3Icon from "../../../assets/icons/measurement-step3.png";
 export default function BloodPressure() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setIsInactivityEnabled, signalActivity } = useInactivity();
+  const { setIsInactivityEnabled, signalActivity, setCustomTimeout } = useInactivity();
 
   // BLOCK REMOTE ACCESS
   useEffect(() => {
@@ -63,6 +63,9 @@ export default function BloodPressure() {
     // Reset inactivity setting on mount (timer enabled by default)
     setIsInactivityEnabled(true);
 
+    // EXTENDED TIMEOUT: 60s Warning, 90s Final (User Request)
+    setCustomTimeout(60000, 90000);
+
     const timer = setTimeout(() => setIsVisible(true), 100);
     console.log("📍 BloodPressure received location.state:", location.state);
 
@@ -94,6 +97,8 @@ export default function BloodPressure() {
     return () => {
       clearTimeout(timer);
       stopAllTimers();
+      // RESET TIMEOUT to defaults
+      setCustomTimeout(null, null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -559,7 +564,7 @@ export default function BloodPressure() {
       } catch (err) {
         console.error("Polling error", err);
       }
-    }, 1000); // 1Hz polling
+    }, 100); // 10Hz polling for smoother sync
   };
 
   const captureAndAnalyze = async () => {

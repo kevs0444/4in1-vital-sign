@@ -169,7 +169,7 @@ class WeightComplianceCamera:
             self.start_camera(index)
         return True, f"Switched to camera {index}"
 
-    def start_camera(self, camera_index=None, camera_name=None):
+    def start_camera(self, camera_index=None, camera_name=None, mode='feet', settings=None):
         """
         Start the camera.
         
@@ -178,9 +178,16 @@ class WeightComplianceCamera:
         PowerShell name resolution was returning incorrect values.
         """
         # DEBUG: Log what we received
-        print(f"📷 [Weight] start_camera called: camera_index={camera_index}, camera_name={camera_name}")
-        logger.info(f"[Weight] start_camera called: camera_index={camera_index}, camera_name={camera_name}")
+        print(f"📷 [Weight] start_camera called: camera_index={camera_index}, camera_name={camera_name}, mode={mode}")
+        logger.info(f"[Weight] start_camera called: camera_index={camera_index}, camera_name={camera_name}, mode={mode}")
         
+        # 1. Update Mode immediately
+        self.current_mode = mode
+        
+        # 2. Update Settings if provided
+        if settings:
+            self.set_settings(settings)
+
         # SIMPLE LOGIC: Use passed index, or fall back to config file
         if camera_index is not None:
             self.camera_index = camera_index
@@ -199,7 +206,11 @@ class WeightComplianceCamera:
         logger.info(f"[Weight] Final camera_index: {self.camera_index}")
             
         if self.is_running:
-            return True, "Camera already running"
+            # If already running, we just successfully updated mode/settings and index logic
+            # However, if index CHANGED, we might need to restart.
+            # But the caller (Clearance.jsx) usually stops before starts.
+            # If we assume 'start' implies 'ensure running with these params':
+            return True, "Camera running (params updated)"
             
         try:
             # Init detector if needed (kept same)

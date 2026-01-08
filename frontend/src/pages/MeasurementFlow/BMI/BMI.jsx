@@ -35,7 +35,7 @@ const POLL_INTERVAL_MS = 100; // UNIFORM 100ms polling (matches all sensors)
 const WEIGHT_TOLERANCE = 0.5;
 const HEIGHT_TOLERANCE = 2.0;
 const MIN_VALID_WEIGHT = 5.0;
-const MIN_VALID_HEIGHT = 50;
+const MIN_VALID_HEIGHT = 61; // Approx 2ft (User Request)
 const MAX_RETRIES = 3;
 
 export default function BMI() {
@@ -62,6 +62,8 @@ export default function BMI() {
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showUnstableModal, setShowUnstableModal] = useState(false);
+  const [unstableMsg, setUnstableMsg] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const isMountedRef = useRef(true);
@@ -163,8 +165,50 @@ export default function BMI() {
 
   /* Recursive Poller Logic is now handled by runPoller */
 
+  // Refs for change detection
+  const lastLiveWeightRef = useRef(null);
+  const lastLiveHeightRef = useRef(null);
+
+  // Sync ref for unstable modal
+  const showUnstableModalRef = useRef(false);
+  useEffect(() => { showUnstableModalRef.current = showUnstableModal; }, [showUnstableModal]);
+
+  const triggerInstabilityWarning = (msg, isVoice = true) => {
+    // LOCK: Don't trigger if already showing (checked via Ref for immediate feedback)
+    if (showUnstableModalRef.current) return;
+
+    setUnstableMsg(msg);
+    setShowUnstableModal(true); // Triggers re-render
+
+    if (isVoice) {
+      speak(msg);
+    }
+
+    // Reset readings to force restart of measurement
+    weightReadingsRef.current = [];
+    heightReadingsRef.current = [];
+    setElapsedSeconds(0);
+    setProgress(0);
+  };
+
+  const handleUnstableContinue = () => {
+    setShowUnstableModal(false);
+    // Reset readings
+    weightReadingsRef.current = [];
+    heightReadingsRef.current = [];
+    setElapsedSeconds(0);
+    setProgress(0);
+  };
+
   const pollWeight = useCallback(async () => {
     if (!isMountedRef.current || savedWeightRef.current) return;
+    // Early exit if modal is active (debounce)
+    if (showUnstableModalRef.current) {
+      // Optionally checking for stability to auto-clear could happen here,
+      // but let's keep it simple to avoid flipping states
+      // We'll check ONCE per poll if we want to auto-clear
+    }
+
     try {
       const data = await sensorAPI.getWeightStatus();
       if (savedWeightRef.current) return;
@@ -174,7 +218,31 @@ export default function BMI() {
       // Update live weight only if not saved
       if (!savedWeightRef.current) setLiveWeight(val);
 
+      // AUTO-CLEAR MODAL: If user steps back on (and weight is stable/valid), clear the warning
+      if (showUnstableModalRef.current) {
+        if (val >= MIN_VALID_WEIGHT) {
+          // We can check if it holds for a moment, or just clear immediately
+          console.log("User returned to platform - clearing warning");
+          setShowUnstableModal(false);
+        }
+        // If modal is showing, do not proceed to normal measurement logic
+        return;
+      }
+
+      // INSTABILITY CHECK: Sudden Drop/Spike
       if (val >= MIN_VALID_WEIGHT) {
+        // Only check instability if we have started collecting ample samples (wait longer for step-on transient)
+        // INCREASED BUFFER: > 10 samples (1.0 second) to allow initial stepping on stabilization
+        if (weightReadingsRef.current.length > 10) {
+          const avg = weightReadingsRef.current.reduce((a, b) => a + b, 0) / weightReadingsRef.current.length;
+
+          // INCREASED TOLERANCE: > 3.0kg deviation (was 2.0kg) to reduce false positives
+          if (Math.abs(val - avg) > 3.0) {
+            triggerInstabilityWarning("Unstable weight. Please stand still.");
+            return;
+          }
+        }
+
         weightReadingsRef.current.push(val);
 
         const currentElapsed = weightReadingsRef.current.length * (POLL_INTERVAL_MS / 1000);
@@ -209,6 +277,11 @@ export default function BMI() {
         }
       } else {
         if (weightReadingsRef.current.length > 0) {
+          // Started measuring but dropped below min valid weight -> User likely stepped off
+          // Only trigger if we had a decent amount of data
+          if (weightReadingsRef.current.length > 5) {
+            triggerInstabilityWarning("Please go back to the platform.");
+          }
           setStatusMessage("Step on the scale...");
           weightReadingsRef.current = [];
           setElapsedSeconds(0);
@@ -217,11 +290,27 @@ export default function BMI() {
           setStatusMessage("Step on the scale...");
         }
       }
+      lastLiveWeightRef.current = val;
     } catch (e) { console.error("Poll weight error:", e); }
-  }, [startHeightMeasurement]);
+  }, [startHeightMeasurement]); // Removed showUnstableModal form dependency to reduce re-creation
 
   const pollHeight = useCallback(async () => {
     if (!isMountedRef.current || savedHeightRef.current) return;
+
+    // Check ref for modal
+    if (showUnstableModalRef.current) {
+      // Auto-clear logic for height
+      try {
+        const data = await sensorAPI.getHeightStatus();
+        const val = data.live_data?.current || 0;
+        if (val >= MIN_VALID_HEIGHT) {
+          console.log("User returned to height sensor - clearing warning");
+          setShowUnstableModal(false);
+        }
+      } catch (e) { }
+      return;
+    }
+
     try {
       const data = await sensorAPI.getHeightStatus();
       if (savedHeightRef.current) return;
@@ -229,6 +318,19 @@ export default function BMI() {
       const val = data.live_data?.current || 0;
 
       if (!savedHeightRef.current) setLiveHeight(val);
+
+      // INSTABILITY CHECK: Sudden Drop
+      if (lastLiveHeightRef.current !== null && val > 0) {
+        // Check for large drops (e.g., > 30cm drop instantly)
+        if (lastLiveHeightRef.current > MIN_VALID_HEIGHT) {
+          const diff = lastLiveHeightRef.current - val;
+          if (diff > 30) { // Dropped more than ~1ft
+            triggerInstabilityWarning("Height unstable. please stand still");
+            lastLiveHeightRef.current = val;
+            return;
+          }
+        }
+      }
 
       if (val >= MIN_VALID_HEIGHT) {
         heightReadingsRef.current.push(val);
@@ -244,7 +346,6 @@ export default function BMI() {
         setStatusMessage(`Scanning... ${remaining}s`);
 
         if (currentElapsed >= totalDuration) {
-          // Use LAST reading instead of average (User Request)
           const lastValue = heightReadingsRef.current[heightReadingsRef.current.length - 1];
           const final = lastValue.toFixed(1);
 
@@ -261,6 +362,10 @@ export default function BMI() {
         }
       } else {
         if (heightReadingsRef.current.length > 0) {
+          // Was valid, now below min (2ft) -> User likely left platform
+          if (heightReadingsRef.current.length > 5) {
+            triggerInstabilityWarning("User left platform. Please return.");
+          }
           setStatusMessage("Stand under sensor...");
           heightReadingsRef.current = [];
           setElapsedSeconds(0);
@@ -270,6 +375,7 @@ export default function BMI() {
           else setStatusMessage("Scanning for height...");
         }
       }
+      lastLiveHeightRef.current = val;
     } catch (e) { console.error("Poll height error:", e); }
   }, []);
 
@@ -543,6 +649,28 @@ export default function BMI() {
             <div className="exit-modal-buttons">
               <button className="exit-modal-button secondary" onClick={() => setShowExitModal(false)}>Cancel</button>
               <button className="exit-modal-button primary" onClick={confirmExit}>Yes, Exit</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {showUnstableModal && (
+        <div className="exit-modal-overlay" style={{ background: 'rgba(0,0,0,0.3)' }}>
+          <motion.div
+            className="exit-modal-content"
+            style={{ borderTop: '4px solid #f59e0b' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+          >
+            <div className="exit-modal-icon" style={{ background: '#fef3c7', color: '#f59e0b' }}><span>⚠️</span></div>
+            <h2 className="exit-modal-title">Measurement Interrupted</h2>
+            <p className="exit-modal-message" style={{ fontSize: '1.2rem', fontWeight: '500' }}>
+              {unstableMsg}
+            </p>
+            <div className="exit-modal-buttons mt-4">
+              <button className="exit-modal-button secondary" onClick={handleExit}>Cancel</button>
+              <button className="exit-modal-button primary" onClick={handleUnstableContinue}>Continue</button>
             </div>
           </motion.div>
         </div>

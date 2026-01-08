@@ -12,12 +12,23 @@ def start_camera():
     camera_index = data.get('index', None)
     camera_name = data.get('camera_name', None)
     
+    # NEW: Optimizations for faster startup
+    mode = data.get('mode', 'feet')
+    settings = data.get('settings', None)
+    
     # DEBUG: Print what we received
     print(f"🎥 [CAMERA ROUTE] /camera/start called:")
     print(f"   📥 Received index: {camera_index}")
     print(f"   📥 Received camera_name: {camera_name}")
+    print(f"   📥 Received mode: {mode}")
+    print(f"   📥 Received settings: {settings}")
     
-    success, message = camera_manager.start_camera(camera_index=camera_index, camera_name=camera_name)
+    success, message = camera_manager.start_camera(
+        camera_index=camera_index, 
+        camera_name=camera_name,
+        mode=mode,
+        settings=settings
+    )
     
     print(f"   📤 Result: success={success}, message={message}")
     print(f"   🎯 Final camera_index used: {camera_manager.camera_index}")

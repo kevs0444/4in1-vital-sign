@@ -206,4 +206,9 @@ def stop_max30102():
 def shutdown_sensors():
     """Shuts down all sensors (call this at the end of the flow)."""
     sensor_manager.shutdown_all_sensors()
+    
+    # Also stop BP sensor
+    from app.sensors.bp_sensor_controller import bp_sensor
+    bp_sensor.stop()
+    
     return jsonify({"status": "all_sensors_shutdown"})
