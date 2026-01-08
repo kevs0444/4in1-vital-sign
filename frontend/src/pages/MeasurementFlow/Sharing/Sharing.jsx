@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Sharing.css";
-import { speak, reinitSpeech } from "../../../utils/speech";
+import { speak, reinitSpeech, stopSpeaking } from "../../../utils/speech";
 
 const getDynamicApiUrl = () => {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
@@ -42,6 +42,11 @@ export default function Sharing() {
       // Fallback if no state
       navigate("/measure/result");
     }
+
+    // Cleanup speech on unmount
+    return () => {
+      stopSpeaking();
+    };
   }, [location.state, navigate]);
 
   const handleReturnHome = React.useCallback((force = false) => {

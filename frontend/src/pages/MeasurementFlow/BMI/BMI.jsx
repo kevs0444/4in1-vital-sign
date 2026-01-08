@@ -474,10 +474,19 @@ export default function BMI() {
 
   // Inactivity Control
   useEffect(() => {
+    // If modal is showing (user stuck/unstable/left), ENABLE inactivity so it can timeout
+    if (showUnstableModal) {
+      setIsInactivityEnabled(true);
+      return;
+    }
+
     const isActive = [PHASE.WEIGHT, PHASE.HEIGHT, PHASE.CALIBRATING].includes(currentPhase);
+    // If we have weight, we are "active" (unless modal is showing)
     const hasWeight = liveWeight && liveWeight > MIN_VALID_WEIGHT;
+
+    // Disable inactivity ONLY if active AND stable (no modal)
     setIsInactivityEnabled(!(isActive || hasWeight));
-  }, [currentPhase, liveWeight, setIsInactivityEnabled]);
+  }, [currentPhase, liveWeight, setIsInactivityEnabled, showUnstableModal]);
 
   // Voice
   useEffect(() => {

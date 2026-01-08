@@ -63,6 +63,9 @@ export default function Clearance() {
         bp: "2 - Blood Pressure Camera"
     };
 
+    // Stream timestamp state to prevent re-fetching on every render
+    const [streamTimestamp, setStreamTimestamp] = useState(Date.now());
+
     // Initialize
     useEffect(() => {
         isMountedRef.current = true;
@@ -73,12 +76,11 @@ export default function Clearance() {
         const init = async () => {
             try {
                 // VERIFIED: Weight camera = Index 0
-                // Just pass the index directly - name lookup was broken
                 console.log("📷 Starting Clearance with VERIFIED index 0 (Weight Camera)...");
-                startFootwearCheck(0); // Use verified index directly
+                startFootwearCheck(0);
             } catch (e) {
                 console.error("Config fetch failed", e);
-                startFootwearCheck(0); // Still use verified index
+                startFootwearCheck(0);
             }
         };
 
@@ -97,23 +99,20 @@ export default function Clearance() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Voice Instructions
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (step === 2) {
-                speakOnce("Please remove any wearables like caps, watches, or bags.");
-            } else if (step === 3) {
-                speakOnce("You are cleared. Taking you to the next step.");
-            }
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [step]);
+    // ... (existing voice effect)
 
     const stopCamera = async () => {
         try {
             // Stop both camera controllers to be safe
-            await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
-            await fetch(`${API_BASE}/aux/stop`, { method: 'POST' });
+            // ADDED TIMEOUT: Don't let a stuck stop prevent a new start
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 3000);
+
+            await Promise.all([
+                fetch(`${API_BASE}/camera/stop`, { method: 'POST', signal: controller.signal }).catch(e => console.warn("Stop cam timeout/err", e)),
+                fetch(`${API_BASE}/aux/stop`, { method: 'POST', signal: controller.signal }).catch(e => console.warn("Stop aux timeout/err", e))
+            ]);
+            clearTimeout(id);
         } catch (e) {
             console.error("Error stopping camera:", e);
         }
@@ -129,6 +128,16 @@ export default function Clearance() {
         setIsCompliant(false);
         setIsCameraLoading(true);
 
+        // FORCE RESET: Stop any existing camera streams to prevent conflicts (esp after AFK)
+        // This handles cases where backend might think camera is still running
+        await stopCamera();
+        await sleep(800);
+
+        // Reset Timers CRITICAL
+        if (complianceTimerRef.current) clearTimeout(complianceTimerRef.current);
+        complianceTimerRef.current = null;
+        if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
+
         // Prefer name, then index, then config, then fallback
         const camName = forceName || CAMERA_NAMES.weight;
         const camIndex = forceIndex !== null ? forceIndex : cameraConfig.weight_index;
@@ -136,8 +145,10 @@ export default function Clearance() {
         try {
             setStatusMessage("Initializing feet camera...");
 
-            // SINGLE CALL OPTIMIZATION:
-            // Send index, name, mode, and settings ALL IN ONE GO via /start
+            // Add Timeout to prevent infinite hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
             await fetch(`${API_BASE}/camera/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -150,25 +161,46 @@ export default function Clearance() {
                         zoom: 1.3,
                         square_crop: true
                     }
-                })
+                }),
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             // Use the camera video feed for feet
             setVideoFeedUrl(`${API_BASE}/camera/video_feed`);
+            setStreamTimestamp(Date.now()); // Update timestamp ONLY on start
             setIsCameraLoading(false); // Hide loading
 
             // Immediate status update without sleep
             setStatusMessage("Scanning for footwear...");
             console.log("✅ Feet camera started (Optimized)");
+            setDetectionStatus("Waiting..."); // Force reset detection status
+
+            // CRITICAL: Reset speech tracking for fresh voice prompts
+            lastSpokenRef.current = "";
+            setFootwearCleared(false);
+            setIsCompliant(false);
+
+            if (pollerRef.current) clearInterval(pollerRef.current);
 
             setTimeout(() => {
                 startPolling('feet');
-            }, 500); // reduced from 500? keeping 500 to allow feed to spin up visually
+            }, 500);
 
         } catch (e) {
             console.error("Error starting feet camera:", e);
-            setStatusMessage("Camera error. Please check hardware.");
-            setIsCameraLoading(false);
+            setStatusMessage("Camera initialization failed. Retrying...");
+
+            // Auto-retry once if it was a timeout or error
+            if (!forceName) { // Prevent infinite recursion by checking if we already retried (logic could be better but this works for now)
+                console.log("🔄 Auto-retrying camera start...");
+                await sleep(2000);
+                // Retry with explicit index just in case
+                startFootwearCheck(camIndex, camName);
+            } else {
+                setStatusMessage("Camera error. Please check hardware.");
+                setIsCameraLoading(false);
+            }
         }
     };
 
@@ -176,6 +208,10 @@ export default function Clearance() {
         setStep(2);
         setIsCompliant(false);
         setIsCameraLoading(true);
+
+        // Reset Timers
+        if (checkIntervalRef.current) clearTimeout(checkIntervalRef.current);
+        checkIntervalRef.current = null;
 
         try {
             setStatusMessage("Switching to wearables camera...");
@@ -204,11 +240,18 @@ export default function Clearance() {
 
             // Use the same /camera video feed
             setVideoFeedUrl(`${API_BASE}/camera/video_feed`);
+            setStreamTimestamp(Date.now()); // Update timestamp ONLY on start
             setIsCameraLoading(false);
 
             // Only speak AFTER camera is ready and showing
             setStatusMessage("Scanning for wearables...");
             console.log("✅ Wearables camera started (Optimized)");
+            setDetectionStatus("Waiting..."); // Force reset
+
+            // CRITICAL: Reset speech tracking for fresh voice prompts
+            lastSpokenRef.current = "";
+            setWearablesCleared(false);
+            setIsCompliant(false);
 
             setTimeout(() => {
                 if (!isMountedRef.current) return;
@@ -252,7 +295,8 @@ export default function Clearance() {
                 return;
             }
             try {
-                const res = await fetch(`${API_BASE}/camera/status`);
+                // CACHE BUSTER: Add timestamp to prevent caching of status
+                const res = await fetch(`${API_BASE}/camera/status?_=${Date.now()}`);
                 const data = await res.json();
 
                 // Ensure data is valid JSON
@@ -472,6 +516,30 @@ export default function Clearance() {
         }, 500);
     };
 
+    // WATCHDOG: If stuck on "Waiting..." for too long (e.g. 6s), restart camera/logic
+    // This handles cases where backend overlay is active (green) but API status lags.
+    // ENHANCED: Also triggers if stuck on "checking" or empty status too long
+    useEffect(() => {
+        let watchdogTimer;
+        // Only run if not loading
+        if (isCameraLoading) return;
+
+        const isStuckStatus = detectionStatus === 'Waiting...'
+            || detectionStatus === 'Waiting'
+            || detectionStatus === ''
+            || detectionStatus === 'checking'
+            || detectionStatus.toLowerCase() === 'bg';
+
+        if (isStuckStatus) {
+            watchdogTimer = setTimeout(() => {
+                console.log("🐶 Watchdog: Stuck on '", detectionStatus, "' for 8s - Auto-restarting...");
+                if (step === 1) startFootwearCheck(0);
+                else if (step === 2) startWearablesCheck();
+            }, 8000); // 8 seconds tolerance (was 6s, give a bit more time)
+        }
+        return () => clearTimeout(watchdogTimer);
+    }, [detectionStatus, isCameraLoading, step]); // detectionStatus resets timer on change
+
     const handleCompletion = async () => {
         setStep(3);
 
@@ -591,8 +659,8 @@ export default function Clearance() {
                             )}
 
                             <img
-                                key={videoFeedUrl}
-                                src={`${videoFeedUrl}?t=${Date.now()}`}
+                                key={`${videoFeedUrl}?t=${streamTimestamp}`}
+                                src={`${videoFeedUrl}?t=${streamTimestamp}`}
                                 alt="Camera Feed"
                                 className="clearance-feed"
                                 style={{ opacity: isCameraLoading ? 0.3 : 1 }}

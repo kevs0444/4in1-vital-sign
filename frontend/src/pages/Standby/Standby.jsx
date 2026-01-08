@@ -13,6 +13,7 @@ import logo from '../../assets/images/juan.png';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Standby.css';
 import { checkSystemStatus, sensorAPI } from '../../utils/api';
+import { speak } from '../../utils/speech';
 import { isLocalDevice } from '../../utils/network';
 
 export default function Standby() {
@@ -151,15 +152,27 @@ export default function Standby() {
       return status;
     } catch (error) {
       console.error('❌ System check failed:', error);
-      setSystemCheck(prev => ({
-        ...prev,
+      const newStatus = {
+        ...systemCheck,
         overall_status: 'backend_down',
         can_proceed: false,
         message: 'Backend server not responding'
-      }));
+      };
+      setSystemCheck(newStatus);
       return null;
     }
-  }, [isConnecting]);
+  }, [isConnecting, systemCheck]);
+
+  // Speech for status changes
+  useEffect(() => {
+    // Only speak negative statuses that block usage
+    const badStatuses = ['backend_down', 'database_error', 'critical_error'];
+
+    if (badStatuses.includes(systemCheck.overall_status)) {
+      const text = getButtonText(); // "System Unavailable", "Database Error" etc.
+      speak(`Attention. ${text}. Please contact support.`);
+    }
+  }, [systemCheck.overall_status]);
 
   // Initial system check and polling
   useEffect(() => {
