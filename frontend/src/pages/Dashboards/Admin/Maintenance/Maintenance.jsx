@@ -79,10 +79,12 @@ const Maintenance = () => {
     });
 
     const [cameraConfig, setCameraConfig] = useState({
-        weight_index: 1,
-        wearables_index: 0,
-        bp_index: 2
+        weight_index: 0,
+        wearables_index: 2,
+        bp_index: 1
     });
+
+    const [aiEnabled, setAiEnabled] = useState(false); // Default to AI Disabled
 
     const fetchCameraConfig = useCallback(async () => {
         try {
@@ -372,11 +374,19 @@ const Maintenance = () => {
         }
     }, [activeCameraTab]);
 
-    const startCamera = useCallback(async (mode) => {
+    const startCamera = useCallback(async (mode, enableAI = aiEnabled) => {
         try {
             if (mode === 'bp') {
                 await fetch(`${API_BASE}/camera/stop`, { method: 'POST' });
-                await fetch(`${API_BASE}/bp/start`, { method: 'POST' });
+                // Pass enable_ai based on state
+                await fetch(`${API_BASE}/bp/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        index: cameraConfig.bp_index,
+                        enable_ai: enableAI
+                    })
+                });
                 await fetch(`${API_BASE}/bp/set_settings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -384,21 +394,34 @@ const Maintenance = () => {
                 });
             } else {
                 await fetch(`${API_BASE}/bp/stop`, { method: 'POST' });
+
+                // Determine index based on mode/tab
+                const targetIndex = mode === 'body'
+                    ? cameraConfig.wearables_index
+                    : cameraConfig.weight_index; // default to feet/weight
+
                 await fetch(`${API_BASE}/camera/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
+                    body: JSON.stringify({ index: targetIndex })
                 });
+
+                // If AI Enabled -> Use 'feet' or 'body' mode
+                // If AI Disabled -> Use 'capture_only'
+                const targetMode = enableAI
+                    ? (mode === 'body' ? 'body' : 'feet')
+                    : 'capture_only';
+
                 await fetch(`${API_BASE}/camera/set_mode`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode })
+                    body: JSON.stringify({ mode: targetMode })
                 });
             }
         } catch (err) {
             console.error('Camera start error:', err);
         }
-    }, [settings]);
+    }, [settings, cameraConfig, aiEnabled]);
 
     const handleCapture = useCallback(async () => {
         try {
@@ -1060,6 +1083,30 @@ const Maintenance = () => {
                             activeCameraTab !== 'multiview' && <div className="camera-settings-panel">
                                 <div className="settings-group">
                                     <h3><Settings /> Image Calibration</h3>
+                                    <div className="setting-item" style={{ marginBottom: '1.5rem', background: '#f1f5f9', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                        <label style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span>Enable AI Detection</span>
+                                            <span style={{ fontSize: '0.8rem', color: aiEnabled ? '#166534' : '#64748b' }}>
+                                                {aiEnabled ? 'ON (Analyzing)' : 'OFF (Raw Feed)'}
+                                            </span>
+                                        </label>
+                                        <button
+                                            className="sensor-start-btn"
+                                            onClick={() => {
+                                                const newState = !aiEnabled;
+                                                setAiEnabled(newState);
+                                                startCamera(activeCameraTab, newState);
+                                            }}
+                                            style={{
+                                                background: aiEnabled ? '#16a34a' : '#cbd5e1',
+                                                color: aiEnabled ? 'white' : '#475569',
+                                                justifyContent: 'center',
+                                                border: 'none'
+                                            }}
+                                        >
+                                            {aiEnabled ? '🦾 AI ACTIVE' : '📷 RAW CAMERA'}
+                                        </button>
+                                    </div>
                                     <div className="setting-item">
                                         <label>Viewport Size <span>{settings.viewport_size}%</span></label>
                                         <input type="range" min="50" max="100" step="5" value={settings.viewport_size} onChange={(e) => handleSettingChange('viewport_size', parseInt(e.target.value))} />

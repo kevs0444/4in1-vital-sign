@@ -134,9 +134,9 @@ export default function Max30102() {
 
         // 🛡️ GUARD: Check for actual API error (not live_data.status)
         // The flattened response includes 'status' from live_data which can be 'idle'/'measuring'/etc.
-        // API errors come as response.error or when response is null/undefined
-        if (!response || response.error) {
-          console.warn("⚠️ API Error:", response?.error || "No response");
+        // API errors come as response.error or when response is null/undefined OR status === 'error'
+        if (!response || response.error || response.status === 'error') {
+          console.warn("⚠️ API Error/Timeout - Skipping Poll:", response?.message || response?.error || "Unknown error");
           return;
         }
 
@@ -168,12 +168,14 @@ export default function Max30102() {
 
         // COMBINED RULE: If Finger Detected (Backend Flag) -> MEASURING
         if (isFinger) { // Strict Backend Logic: Only start if Backend says "Finger Detected"
+          // ALWAYS dismiss the interrupted modal when finger is detected
+          setShowInterruptedModal(false);
+
           if (currentStep !== 3) {
             console.log("🚀 Backend Finger Detected -> Starting Measurement");
             setStep(3);
             startTimer();
             setStatusMessage("📊 Measuring...");
-            setShowInterruptedModal(false); // Auto-dismiss error modal
           }
 
           // Debug what we are receiving
@@ -199,27 +201,18 @@ export default function Max30102() {
 
           signalActivity();
 
-          // Buffer Data
-          if (hr >= 40 && hr <= 180) heartRateBuffer.current.push(hr);
-          if (spo2 >= 80 && spo2 <= 104) spo2Buffer.current.push(spo2);
-          if (rr >= 5 && rr <= 60) respiratoryBuffer.current.push(rr);
-
-          signalActivity();
-
           // Reset counter if finger is detected
           noFingerCounterRef.current = 0;
 
         } else if (currentStep === 3 && !isFinger && !measurementCompleteRef.current) {
-          // Rule: Backend says "Finger Removed" -> DEBOUNCED Reset
-          // We wait for 5 consecutive polls (approx 0.5s) to confirm finger is really gone
-          // This prevents transient dropouts (e.g. backend lag) from resetting UI
+          // DELAYED: Require 0.5 SECONDS (10 polls @ 50ms) of "no finger" before triggering reset
+          // Faster response while still preventing instant glitches
           noFingerCounterRef.current++;
 
-          console.log(`⚠️ Finger Missing Count: ${noFingerCounterRef.current}/2`);
+          console.log(`⚠️ No Finger Count: ${noFingerCounterRef.current}/10`);
 
-          // REDUCED THRESHOLD: 2 polls (200ms) for faster reaction
-          if (noFingerCounterRef.current >= 2) {
-            console.log("✋ Backend Finger Removed (Debounced) -> Resetting");
+          if (noFingerCounterRef.current >= 10) {
+            console.log("✋ Backend Finger Removed (0.5s confirmed) -> Resetting UI");
             setStatusMessage("✋ Finger removed! Resetting...");
 
             // Trigger Feedback
@@ -231,15 +224,15 @@ export default function Max30102() {
             noFingerCounterRef.current = 0;
           }
         } else {
-          // Reset counter if finger is detected
-          noFingerCounterRef.current = 0;
+          // Waiting phase (step 2) or any other case - signal activity
+          signalActivity();
         }
         // NOTE: When step === 4 (complete), we ignore finger removed events
 
       } catch (err) {
         console.error("Poll Error:", err);
       }
-    }, 100);
+    }, 50); // FAST: 50ms polling (was 100ms)
   };
 
   const stopPolling = () => {
@@ -295,10 +288,10 @@ export default function Max30102() {
       signalQuality: "--"
     });
 
-    // Re-prepare sensor to ensure backend is listening (if it was stopped)
-    try {
-      await sensorAPI.prepareMax30102();
-    } catch (e) { console.error("Retry reset error:", e); }
+    // Re-prepare not needed - sensor stays active
+    // try {
+    //   await sensorAPI.prepareMax30102();
+    // } catch (e) { console.error("Retry reset error:", e); }
   };
 
   // ========== COMPLETION ==========
@@ -337,9 +330,7 @@ export default function Max30102() {
       await sensorAPI.shutdownMax30102();
     } catch (e) { console.error(e); }
 
-    setTimeout(() => {
-      if (isMountedRef.current) handleContinue(avgHR, avgSpO2, avgRR);
-    }, 2000);
+    // Removed auto-continue setTimeout. User must click 'Continue' button.
   };
 
   // ========== NAVIGATION ==========

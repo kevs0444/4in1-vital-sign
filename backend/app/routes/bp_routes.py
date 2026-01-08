@@ -18,8 +18,9 @@ def start_bp_camera():
     data = request.get_json(silent=True) or {}
     camera_name = data.get('camera_name', None)
     camera_index = data.get('index', None)
+    enable_ai = data.get('enable_ai', True) # Default to True
     
-    success, message = bp_sensor.start(camera_index=camera_index, camera_name=camera_name)
+    success, message = bp_sensor.start(camera_index=camera_index, camera_name=camera_name, enable_ai=enable_ai)
     return jsonify({"success": success, "message": message})
 
 @bp_routes.route('/trigger', methods=['POST'])

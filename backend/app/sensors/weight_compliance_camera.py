@@ -48,6 +48,7 @@ class WeightComplianceCamera:
         self.lock = threading.Lock()
         self.latest_frame = None
         self.latest_frame = None
+        self.latest_clean_frame = None # Store clean frame for capture
         
         # Load from config if available (Dynamic Indexing)
         if CameraConfig:
@@ -131,7 +132,10 @@ class WeightComplianceCamera:
 
     def capture_image(self, class_name):
         with self.lock:
-            if self.latest_frame is None:
+            # Prefer clean frame if available
+            frame_to_save = self.latest_clean_frame if self.latest_clean_frame is not None else self.latest_frame
+
+            if frame_to_save is None:
                 return False, "No frame available"
             
             save_dir = r"C:\Users\VitalSign\Pictures\Camera Roll"
@@ -143,7 +147,7 @@ class WeightComplianceCamera:
             filename = f"{class_name}_{timestamp}.jpg"
             filepath = os.path.join(class_dir, filename)
             
-            cv2.imwrite(filepath, self.latest_frame)
+            cv2.imwrite(filepath, frame_to_save)
             logger.info(f"Captured/Saved Image: {filepath}")
             return True, filepath
         
@@ -282,6 +286,7 @@ class WeightComplianceCamera:
             
             # Apply Image Adjustments (Zoom, Brightness, Rotation, Square)
             frame = self.apply_filters(frame)
+            clean_view = frame.copy() # Save clean copy BEFORE drawing
                 
             # Run detection based on mode
             current_mode = getattr(self, 'current_mode', 'feet')
@@ -312,6 +317,7 @@ class WeightComplianceCamera:
             
             with self.lock:
                 self.latest_frame = annotated_frame
+                self.latest_clean_frame = clean_view
                 # Preserve existing status fields but ensure real_time_bp persists if valid
                 current_bp = self.compliance_status.get('real_time_bp', None)
                 

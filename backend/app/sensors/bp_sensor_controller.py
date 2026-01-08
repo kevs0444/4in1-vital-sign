@@ -41,9 +41,11 @@ class BPSensorController:
         
         self.cap = None
         self.is_running = False
+        self.ai_enabled = True # Default to AI enabled
         self.lock = threading.Lock()
         self.latest_frame = None
-        self.camera_index = CameraConfig.get_index('bp') if CameraConfig.get_index('bp') is not None else 0  # Confirmed: BP is Index 0
+        self.latest_clean_frame = None # Store clean frame for capture
+        self.camera_index = CameraConfig.get_index('bp') if CameraConfig.get_index('bp') is not None else 0
         
         logger.info(f"🩸 BPSensorController initialized with index: {self.camera_index}")
 
@@ -170,9 +172,14 @@ class BPSensorController:
             logger.info(f"🩸 BP Camera Index updated to: {index}")
             self.camera_index = index
 
-    def start(self, camera_index=None, camera_name=None):
+    def start(self, camera_index=None, camera_name=None, enable_ai=True):
         """Start the BP camera and detection loop."""
         
+        # Update AI state
+        self.ai_enabled = enable_ai
+        if not self.ai_enabled:
+            logger.info("🩸 BP Camera starting in RAW mode (AI Disabled)")
+
         # Resolve name if present
         if camera_name:
              idx = CameraConfig.get_index_by_name(camera_name)
@@ -334,6 +341,7 @@ class BPSensorController:
             
             # Apply filters
             frame = self._apply_zoom(frame)
+            clean_view = frame.copy() # Clean copy for capture
             annotated_frame = frame.copy()
             h, w = frame.shape[:2]
             
@@ -346,14 +354,18 @@ class BPSensorController:
                           (255, 255, 255), 1)
             
             # Run detection
-            if self.bp_yolo:
+            if self.ai_enabled and self.bp_yolo:
                 self._run_detection(frame, annotated_frame)
+            elif not self.ai_enabled:
+                cv2.putText(annotated_frame, "RAW VIDEO (No AI)", (10, 30), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             else:
                 cv2.putText(annotated_frame, "AI Model Not Loaded", (10, 30), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             
             with self.lock:
                 self.latest_frame = annotated_frame
+                self.latest_clean_frame = clean_view
                 self.bp_status["timestamp"] = time.time()
                 self.bp_status["is_running"] = True
             
@@ -573,7 +585,10 @@ class BPSensorController:
     def capture_image(self, class_name):
         """Capture the current frame and save to disk."""
         with self.lock:
-            if self.latest_frame is None:
+            # Prefer clean frame if available
+            frame_to_save = self.latest_clean_frame if self.latest_clean_frame is not None else self.latest_frame
+
+            if frame_to_save is None:
                 return False, "No frame available"
             
             save_dir = r"C:\Users\VitalSign\Pictures\Camera Roll"
@@ -585,7 +600,7 @@ class BPSensorController:
             filename = f"{class_name}_{timestamp}.jpg"
             filepath = os.path.join(class_dir, filename)
             
-            cv2.imwrite(filepath, self.latest_frame)
+            cv2.imwrite(filepath, frame_to_save)
             logger.info(f"[BP] Captured/Saved Image: {filepath}")
             return True, filepath
 

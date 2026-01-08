@@ -75,40 +75,14 @@ class Max30102Manager:
                 self.live_data['stable_hr'] = None
                 print("\n⚠️⚠️⚠️ [NOTIFY USER] FINGER REMOVED ⚠️⚠️⚠️\n", flush=True)
 
-        # IR Value "MAX30102_IR_VALUE:12345" - PRIMARY FINGER DETECTION WITH DEBOUNCE
+        # IR Value "MAX30102_IR_VALUE:12345" - Just log the value, DO NOT detect finger here
+        # Arduino is the SINGLE SOURCE OF TRUTH for finger detection via FINGER_DETECTED/REMOVED messages
         elif data.startswith("MAX30102_IR_VALUE:"):
             try:
                 parts = data.split(":")
                 val = int(parts[1])
                 self.live_data['ir_value'] = val
-
-                # Initialize debounce counters if not present
-                if not hasattr(self, "ir_detection_counter"):
-                    self.ir_detection_counter = 0
-                if not hasattr(self, "ir_removal_counter"):
-                    self.ir_removal_counter = 0
-
-                FINGER_THRESHOLD = 70000
-
-                if val > FINGER_THRESHOLD:
-                    self.ir_detection_counter += 1
-                    self.ir_removal_counter = 0
-                else:
-                    self.ir_removal_counter += 1
-                    self.ir_detection_counter = 0
-
-                # Fast Detect: 2 consecutive frames > threshold
-                if self.ir_detection_counter >= 2 and not self.finger_detected:
-                    self.finger_detected = True
-                    self.live_data['finger_detected'] = True
-                    print("👆 FINGER DETECTED (IR debounced)", flush=True)
-
-                # Slow Remove: 3 consecutive frames < threshold to prevent false negatives
-                # Lower than Arduino's 5 to ensure backend detects it before stream stops
-                if self.ir_removal_counter >= 3 and self.finger_detected:
-                    self.finger_detected = False
-                    self.live_data['finger_detected'] = False
-                    print("✋ FINGER REMOVED (IR debounced)", flush=True)
+                # No debounce logic here - Arduino handles it
             except:
                 pass
 

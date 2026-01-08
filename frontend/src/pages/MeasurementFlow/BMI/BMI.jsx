@@ -238,9 +238,9 @@ export default function BMI() {
         setStatusMessage(`Scanning... ${remaining}s`);
 
         if (currentElapsed >= totalDuration) {
-          const sum = heightReadingsRef.current.reduce((a, b) => a + b, 0);
-          const avg = sum / heightReadingsRef.current.length;
-          const final = avg.toFixed(1);
+          // Use LAST reading instead of average (User Request)
+          const lastValue = heightReadingsRef.current[heightReadingsRef.current.length - 1];
+          const final = lastValue.toFixed(1);
 
           // LOCK immediately
           savedHeightRef.current = final;
