@@ -379,8 +379,8 @@ export default function BloodPressure() {
 
       // Removed "Stable" check to avoid "Holding" message at start.
 
-      // Default Smart Scan
-      return { text: 'Smart Scan', class: 'active', description: 'Auto-detecting digits...' };
+      // Default
+      return { text: 'Ready to Measure', class: 'active', description: 'Waiting for button press...' };
     }
 
     return {
@@ -397,7 +397,7 @@ export default function BloodPressure() {
 
   const startCameraMode = async (forceIndex = null, forceName = null) => {
     setIsCameraMode(true);
-    setStatusMessage("Starting BP camera...");
+    setStatusMessage("Initializing Blood Pressure System...");
 
     // Explicit camera names for robust backend lookups (with prefixes)
     const CAMERA_NAMES = {
@@ -430,10 +430,10 @@ export default function BloodPressure() {
           camera_name: camName
         })
       });
-      setStatusMessage("Position the digital BP monitor in the frame");
+      setStatusMessage("Please prepare the Blood Pressure Monitor");
     } catch (err) {
       console.error("BP Camera start error:", err);
-      setStatusMessage("❌ BP Camera failed to start");
+      setStatusMessage("❌ Monitor Connection Failed");
     }
   };
 
@@ -454,7 +454,7 @@ export default function BloodPressure() {
     }
 
     setIsLiveReading(true);
-    setStatusMessage("👁️ Watching Monitor...");
+    setStatusMessage("System Ready - Waiting for Input...");
 
     // Reset Stability
     stableCountRef.current = 0;
@@ -553,7 +553,7 @@ export default function BloodPressure() {
   const captureAndAnalyze = async () => {
     try {
       setIsAnalyzing(true);
-      setStatusMessage("🧠 Cloud AI Reading Display...");
+      setStatusMessage("Processing Measurement..."); // More realistic
 
       const response = await cameraAPI.analyzeBP();
       console.log("BP Analysis Result:", response);

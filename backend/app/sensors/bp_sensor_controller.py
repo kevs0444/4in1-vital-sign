@@ -204,6 +204,9 @@ class BPSensorController:
             self.last_smooth_bp = 0
             self.trend_state = "Stable ⏸️"
             self.stable_frames_count = 0
+            self.result_confirmed = False  # NEW: Prevent re-triggering result
+            self.ignore_start_until = 0    # NEW: Cooldown for manual interrupts
+            
             # Ensure settings match user request
             self.zoom_factor = 1.4  # Default 1.4x zoom per user preference (Updated to 1.4x for better digit visibility)
             self.rotation = 0
@@ -292,7 +295,14 @@ class BPSensorController:
                     line = self.arduino.readline().decode('utf-8', errors='ignore').strip()
                     if line:
                         print(f"📥 [BP Arduino] {line}")
+                        
+                        # MANUAL START DETECTION
                         if "MANUAL_START" in line:
+                            # CRITICAL: Ignore if we just finished a measurement (to avoid restart loops)
+                            if time.time() < getattr(self, 'ignore_start_until', 0):
+                                logger.info("🛑 Ignoring MANUAL_START (Cooldown/Auto-Off Phase)")
+                                continue
+
                             logger.info("👆 PHYSICAL BUTTON PRESSED (Detected via Serial)")
                             with self.lock:
                                 self.start_command_sent = True
@@ -422,6 +432,10 @@ class BPSensorController:
     
     def _run_detection(self, frame, annotated_frame):
         """Run YOLO detection and parse BP values."""
+        # Stop processing if we already have a confirmed result
+        if getattr(self, 'result_confirmed', False):
+             return
+
         # Lower confidence to 0.25 to catch more digits
         # agnostic_nms=True helps prevent multiple classes (e.g. 1 and 7) on same spot
         results = self.bp_yolo(frame, conf=0.25, verbose=False, agnostic_nms=True)
@@ -564,27 +578,29 @@ class BPSensorController:
                 else:
                     smooth_val = val
                 
-                # Safety: Reject single-digit drops
-                if smooth_val < 10 and self.last_smooth_bp > 10:
+                # Safety: Reject single-digit drops only if we were previously high
+                if smooth_val < 10 and self.last_smooth_bp > 50:
                     smooth_val = self.last_smooth_bp
                 
-                # Safety: Ignore unrealistic low values
-                if smooth_val < 30:
-                    return  # Ignore noise
+                # Safety: Allow detecting low numbers (single digits) for inflation start
+                # Only ignore 0 or negative
+                if smooth_val < 1:
+                    return 
                 
                 # Trend detection
-                if smooth_val > self.last_smooth_bp + 1:
+                if smooth_val > self.last_smooth_bp:
                     inst_trend = "Inflating ⬆️"
-                    if smooth_val > 40: # Valid inflation
+                    # Count inflation as valid if we see numbers rising
+                    if smooth_val > 5: 
                         self.has_inflated = True
                     if should_send:
                         print(f"📈 [BP] Inflating... {smooth_val} mmHg")
                         self.send_command(f"INFLATING:{smooth_val}", auto_connect=True)
                         self.last_serial_update = current_time
                         
-                elif smooth_val < self.last_smooth_bp - 1:
+                elif smooth_val < self.last_smooth_bp:
                     inst_trend = "Deflating ⬇️"
-                    if smooth_val > 40:
+                    if smooth_val > 5:
                          self.has_inflated = True
                     if should_send:
                         print(f"📉 [BP] Deflating... {smooth_val} mmHg")
@@ -647,15 +663,33 @@ class BPSensorController:
             # Send result to LCD
             self.send_command(f"RESULT:{sys_str}/{dia_str}", auto_connect=True)
             
+            # New Step: Prevent re-entry immediately
+            self.result_confirmed = True
+            
             # AUTO-TURN OFF LOGIC
             if getattr(self, 'mode', 'regular') == 'regular':
-                logger.info("[BP] Regular Mode: Auto-stopping after result.")
+                logger.info("[BP] Regular Mode: Result found. Stopping hardware immediately, delayed backend stop.")
+                
+                # 0. BLOCK RE-START SIGNALS
+                # The Arduino might report 'MANUAL_START' again when we press the button to turn it OFF.
+                # We must ignore that signal for a few seconds.
+                self.ignore_start_until = time.time() + 10.0 
+                
+                # 1. Stop Hardware Immediately (Pump off)
                 self.send_command("done", auto_connect=True)
-                self.start_command_sent = False # Reset immediately
-                self.is_running = False 
-                self.bp_status["is_running"] = False
+                self.start_command_sent = False # Reset flag so stop() doesn't toggle it again
+                self.has_inflated = False       # CRITICAL: Prevent stop() from firing 'done' again
+                
+                # 2. Keep Backend Alive briefly so Frontend can poll the result
+                def delayed_stop():
+                    logger.info("[BP] 🛑 Executing delayed auto-stop...")
+                    self.stop()
+                    
+                threading.Timer(4.0, delayed_stop).start()
+                
             else:
                 logger.info("[BP] Maintenance Mode: Keeping camera/device ON after result.")
+                self.result_confirmed = False # In maintenance, we allow it to continue
             
             return
 
