@@ -108,7 +108,10 @@ export default function BMI() {
           startWeightMeasurement(); // Recursive retry
           return;
         }
-        setStatusMessage("Failed to start weight sensor.");
+        console.warn("⚠️ Start Weight API failed/timed out. Proceeding to poll status...");
+        setRetryCount(0);
+        setCurrentPhase(PHASE.WEIGHT);
+        setStatusMessage("Step on the scale and stand still...");
         return;
       }
       // Success -> Enter Phase
@@ -133,7 +136,10 @@ export default function BMI() {
           startHeightMeasurement();
           return;
         }
-        setStatusMessage("Failed to start height sensor.");
+        console.warn("⚠️ Start Height API failed/timed out. Proceeding to poll status...");
+        setRetryCount(0);
+        setCurrentPhase(PHASE.HEIGHT);
+        setStatusMessage("Look straight ahead...");
         return;
       }
       setRetryCount(0);

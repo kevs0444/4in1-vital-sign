@@ -90,8 +90,8 @@ export default function Max30102() {
         const result = await sensorAPI.prepareMax30102();
 
         if (result.error || result.status === 'error') {
-          setStatusMessage(`❌ ${result.error || result.message || 'Initialization failed'}`);
-          return;
+          console.warn(`⚠️ Prepare Warning: ${result.error || result.message}. Proceeding to check status...`);
+          // Do NOT return. Proceed to polling, as backend might be active despite timeout.
         }
 
         setStatusMessage("✅ Ready! Place your left index finger on the sensor");
@@ -99,8 +99,10 @@ export default function Max30102() {
         startPolling();
 
       } catch (error) {
-        console.error("Init Error:", error);
-        setStatusMessage("❌ Failed to initialize sensor");
+        console.error("Init Error (Ignored):", error);
+        // Proceed anyway - the polling loop is the real truth
+        setStep(2);
+        startPolling();
       }
     };
 

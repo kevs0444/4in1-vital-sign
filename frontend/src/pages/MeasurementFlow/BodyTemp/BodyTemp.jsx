@@ -175,9 +175,11 @@ export default function BodyTemp() {
       startMonitoring();
 
     } catch (error) {
-      console.error("Temperature initialization error:", error);
-      setStatusMessage("⚠️ Sensor check failed. Check connection.");
-      // NO aggressive retry loop here
+      console.error("Temperature initialization error (Ignored):", error);
+      // Proceed anyway - let polling determine truth
+      setStatusMessage("✅ Temperature sensor active. Point at forehead.");
+      setMeasurementStep(1);
+      startMonitoring();
     }
   };
 

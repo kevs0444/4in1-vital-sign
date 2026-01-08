@@ -384,7 +384,8 @@ const Maintenance = () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         index: cameraConfig.bp_index,
-                        enable_ai: enableAI
+                        enable_ai: enableAI,
+                        mode: 'maintenance'
                     })
                 });
                 await fetch(`${API_BASE}/bp/set_settings`, {

@@ -37,6 +37,7 @@ void setup() {
 }
 
 void loop() {
+  // 1. Check for Serial Commands from PC (Python)
   if (Serial.available() > 0) {
     command = Serial.readStringUntil('\n');
     command.trim();
@@ -55,19 +56,38 @@ void loop() {
       String res = command.substring(7); // Remove "RESULT:"
       showStatus("BP Result:", res.c_str());
     }
+    else if (command.startsWith("INFLATING:")) {
+      String val = command.substring(10);
+      showStatus("Inflating...", (val + " mmHg").c_str());
+    }
+    else if (command.startsWith("DEFLATING:")) {
+      String val = command.substring(10);
+      showStatus("Deflating...", (val + " mmHg").c_str());
+    }
     else if (command.startsWith("STATUS:")) {
-       String stat = command.substring(7); // Remove "STATUS:"
+       String stat = command.substring(7);
        showStatus("Status:", stat.c_str());
     }
-    else if (command.startsWith("LIVE:")) {
-       String val = command.substring(5); // Remove "LIVE:"
-       // Show live systolic updating on second line, changing only the number
-       // Assuming line 1 is "Measuring..." or similar
-       lcd.setCursor(0, 1);
-       lcd.print("Val:            "); // Clear line slightly
-       lcd.setCursor(5, 1);
-       lcd.print(val + " mmHg"); 
+    else if (command.startsWith("ERROR")) {
+       showStatus("Error Detected", "Check Cuff");
     }
+  }
+
+  // 2. Monitor Physical Button (Active LOW)
+  // If the user presses the physical button on the BP monitor, this pin goes LOW.
+  // We report this to the PC so the UI knows a measurement has started manually.
+  // Note: We only check if we are in INPUT mode (High Impedance) to avoid reading our own output.
+  // (pinMode is set to INPUT in setup and after simulateButtonTap)
+  if (digitalRead(buttonPin) == LOW) {
+     delay(50); // Debounce
+     if (digitalRead(buttonPin) == LOW) {
+        Serial.println("MANUAL_START");
+        showStatus("Manual Start", "Monitoring...");
+        
+        // Wait until button is released to prevent spamming
+        while(digitalRead(buttonPin) == LOW) { delay(10); } 
+        delay(100);
+     }
   }
 }
 

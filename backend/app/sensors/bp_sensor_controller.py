@@ -172,8 +172,9 @@ class BPSensorController:
             logger.info(f"🩸 BP Camera Index updated to: {index}")
             self.camera_index = index
 
-    def start(self, camera_index=None, camera_name=None, enable_ai=True):
+    def start(self, camera_index=None, camera_name=None, enable_ai=True, mode='regular'):
         """Start the BP camera and detection loop."""
+        self.mode = mode # Store mode
         
         # Update AI state
         self.ai_enabled = enable_ai
@@ -191,7 +192,7 @@ class BPSensorController:
         # DISABLED: User wants manual button press on the physical device.
         # self.send_command("start")
 
-        if camera_index is not None:
+        if self.camera_index is not None:
             self.camera_index = camera_index
             
         if self.is_running:
@@ -204,7 +205,7 @@ class BPSensorController:
             self.trend_state = "Stable ⏸️"
             self.stable_frames_count = 0
             # Ensure settings match user request
-            self.zoom_factor = 1.4  # Default 1.4x zoom per user preference
+            self.zoom_factor = 1.4  # Default 1.4x zoom per user preference (Updated to 1.4x for better digit visibility)
             self.rotation = 0
             
             # Robust Camera Opening
@@ -251,15 +252,23 @@ class BPSensorController:
         except Exception as e:
             logger.error(f"[BP] Start error: {e}")
             return False, str(e)
-    
+            
     def stop(self):
         """Stop the BP camera."""
         # Send "done" command to Arduino (Turn OFF) ONLY if connected
-        # Connecting just to stop causes a RESET which turns IT ON!
+        # CONDITIONAL TOGGLE: Only press button if we believe the device is ON.
+        # We assume it's ON if we sent a start command, detected a manual start, 
+        # or saw inflation valid data.
         if self.arduino and self.arduino.is_open:
-            self.send_command("done")
-        else:
-            print("ℹ️ [BP] Arduino not connected, skipping shutdown command")
+            if self.start_command_sent or self.has_inflated:
+                logger.info("[BP] Device appears active - Sending shutdown toggle")
+                self.send_command("done")
+                # Important: Reset flag so we don't toggle again if called multiple times
+                self.start_command_sent = False
+            else:
+                logger.info("[BP] Skipping shutdown toggle - Device appears idle/already off")
+            
+            # We don't close the connection to avoid resets, but we stop the loop
         
         self.is_running = False
         self.bp_status["is_running"] = False
@@ -271,9 +280,32 @@ class BPSensorController:
             self.cap = None
         
         logger.info("[BP] Camera stopped")
-        print("🔌 BP Camera & Arduino stopped - Ready for new measurement")
+        print("🔌 BP Camera stopped - Ready for new measurement")
         return True, "BP Camera stopped"
     
+    def _serial_listener(self):
+        """Continuously read from Arduino Serial to catch MANUAL_START."""
+        logger.info("[BP] 🎧 Serial Listener Started")
+        while self.is_running and self.arduino and self.arduino.is_open:
+            try:
+                if self.arduino.in_waiting > 0:
+                    line = self.arduino.readline().decode('utf-8', errors='ignore').strip()
+                    if line:
+                        print(f"📥 [BP Arduino] {line}")
+                        if "MANUAL_START" in line:
+                            logger.info("👆 PHYSICAL BUTTON PRESSED (Detected via Serial)")
+                            with self.lock:
+                                self.start_command_sent = True
+                                self.trend_state = "Inflating ⬆️" # Anticipate inflation
+                                self.bp_status["trend"] = "Starting..."
+                        
+            except Exception as e:
+                logger.error(f"[BP] Serial Read Error: {e}")
+                time.sleep(1)
+            
+            time.sleep(0.05)
+        logger.info("[BP] 🎧 Serial Listener Stopped")
+
     def get_status(self):
         """Get the current BP status for frontend polling."""
         with self.lock:
@@ -322,13 +354,26 @@ class BPSensorController:
     
     def _process_loop(self):
         """Main processing loop for BP detection."""
+        # Try connecting to Arduino for LCD/Buttons
+        self._connect_arduino()
+        if self.arduino and self.arduino.is_open:
+            # Start listener thread
+            threading.Thread(target=self._serial_listener, daemon=True).start()
+
         # Lazy load YOLO model
         if not self.bp_yolo:
             try:
                 from ultralytics import YOLO
-                yolo_path = os.path.join(os.path.dirname(__file__), '../../ai_camera/models/bp.pt')
-                self.bp_yolo = YOLO(yolo_path)
-                logger.info(f"[BP] Loaded YOLO model from: {yolo_path}")
+                # Use absolute path to ensure we find it
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # backend/
+                yolo_path = os.path.join(base_dir, 'ai_camera', 'models', 'bp.pt')
+                
+                if os.path.exists(yolo_path):
+                    self.bp_yolo = YOLO(yolo_path)
+                    logger.info(f"[BP] ✅ Loaded YOLO model from: {yolo_path}")
+                else:
+                    logger.error(f"[BP] ❌ Model not found at: {yolo_path}")
+                    self.bp_yolo = None
             except Exception as e:
                 logger.error(f"[BP] Failed to load YOLO: {e}")
                 self.bp_yolo = None
@@ -356,11 +401,15 @@ class BPSensorController:
             # Run detection
             if self.ai_enabled and self.bp_yolo:
                 self._run_detection(frame, annotated_frame)
+                # Visual Indicator for AI
+                cv2.circle(annotated_frame, (30, 30), 10, (0, 255, 0), -1) 
+                cv2.putText(annotated_frame, "AI ACTIVE", (50, 35), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             elif not self.ai_enabled:
-                cv2.putText(annotated_frame, "RAW VIDEO (No AI)", (10, 30), 
+                cv2.putText(annotated_frame, "RAW VIDEO (AI OFF)", (10, 30), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             else:
-                cv2.putText(annotated_frame, "AI Model Not Loaded", (10, 30), 
+                cv2.putText(annotated_frame, "AI Model Missing", (10, 30), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             
             with self.lock:
@@ -373,15 +422,18 @@ class BPSensorController:
     
     def _run_detection(self, frame, annotated_frame):
         """Run YOLO detection and parse BP values."""
-        results = self.bp_yolo(frame, conf=0.5, verbose=False)
+        # Lower confidence to 0.25 to catch more digits
+        # agnostic_nms=True helps prevent multiple classes (e.g. 1 and 7) on same spot
+        results = self.bp_yolo(frame, conf=0.25, verbose=False, agnostic_nms=True)
         
-        detected_digits = []
+        raw_detections = []
         error_detected = False
         
         if results and len(results[0].boxes) > 0:
             for box in results[0].boxes:
                 cls_id = int(box.cls[0])
                 label = results[0].names[cls_id]
+                conf = float(box.conf[0])
                 
                 if label.lower() == 'error':
                     if not error_detected:
@@ -393,48 +445,109 @@ class BPSensorController:
                     continue
                 
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
-                center_x = (x1 + x2) / 2
-                center_y = (y1 + y2) / 2
-                
-                # Draw box
-                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(annotated_frame, label, (x1, y1 - 5), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                
-                detected_digits.append({"val": label, "cx": center_x, "cy": center_y})
+                raw_detections.append({
+                    "label": label,
+                    "conf": conf,
+                    "box": [x1, y1, x2, y2],
+                    "area": (x2 - x1) * (y2 - y1)
+                })
+
+        # --- NON-MAXIMUM SUPPRESSION (FILTER OVERLAPS) ---
+        # Sort by confidence (highest first)
+        raw_detections.sort(key=lambda x: x['conf'], reverse=True)
+        
+        final_digits = []
+        
+        def calculate_iou(boxA, boxB):
+            # determine the (x, y)-coordinates of the intersection rectangle
+            xA = max(boxA[0], boxB[0])
+            yA = max(boxA[1], boxB[1])
+            xB = min(boxA[2], boxB[2])
+            yB = min(boxA[3], boxB[3])
             
-            # Parse digits
-            # PRIORITY: If error detected, show it immediately
-            # PRIORITY: If error detected, show it immediately
-            # BUT only if we are actually running or have seen numbers.
-            # Ignore "Ghost Errors" on blank screen or noise.
-            if error_detected:
-                if self.start_command_sent: # Only care if we actually started
-                     logger.warning("⚠️ BP Monitor ERROR Symbol Detected!")
-                     self._update_status("--", "--", "Error ⚠️", True)
-                     
-                     # Report Error (don't force connect if not already)
-                     self.send_command("STATUS:ERROR", auto_connect=False)
-                     
-                     # Safety: Turn off if error detected to reset state (don't force connect)
-                     self.send_command("done", auto_connect=False)
-                else:
-                    # Ignore error if we haven't even started (likely noise)
-                    pass
-            elif len(detected_digits) > 0:
-                self._parse_digits(detected_digits, error_detected)
+            # compute the area of intersection rectangle
+            interArea = max(0, xB - xA) * max(0, yB - yA)
+            
+            # compute the area of both the prediction and ground-truth rectangles
+            boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+            boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
+            
+            # compute the intersection over union by taking the intersection
+            # area and dividing it by the sum of prediction + ground-truth
+            # areas - the interesection area
+            iou = interArea / float(boxAArea + boxBArea - interArea)
+            return iou
+
+        for det in raw_detections:
+            is_overlap = False
+            for kept in final_digits:
+                # If IoU > 0.4, consider it the same digit
+                if calculate_iou(det['box'], kept['box']) > 0.4:
+                    is_overlap = True
+                    break
+            
+            if not is_overlap:
+                final_digits.append(det)
+
+        # ------------------------------------------------
+        
+        detected_digits = []
+        
+        # Draw and Process Final Digits
+        for d in final_digits:
+             x1, y1, x2, y2 = d['box']
+             label = d['label']
+             center_x = (x1 + x2) / 2
+             center_y = (y1 + y2) / 2
+             
+             # Draw box
+             cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+             cv2.putText(annotated_frame, label, (x1, y1 - 5), 
+                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+             
+             detected_digits.append({"val": label, "cx": center_x, "cy": center_y})
+
+        # Parse digits
+        # PRIORITY: If error detected, show it immediately
+        if error_detected:
+             logger.warning("⚠️ BP Monitor ERROR Symbol Detected!")
+             self._update_status("--", "--", "Error ⚠️", True)
+             self.send_command("ERROR", auto_connect=True)
+             # Safety: Turn off if error detected to reset state (don't force connect)
+             self.send_command("done", auto_connect=True)
+             
+        elif len(detected_digits) > 0:
+            self._parse_digits(detected_digits, error_detected)
     
+    def _is_startup_pattern(self, val_str):
+        """Check if value is likely the '888' startup check."""
+        return val_str and all(c == '8' for c in val_str) and len(val_str) >= 2
+
     def _parse_digits(self, detected_digits, error_detected):
         """Parse detected digits into systolic/diastolic values."""
         min_y = min(d['cy'] for d in detected_digits)
         max_y = max(d['cy'] for d in detected_digits)
         vertical_spread = max_y - min_y
         
+        # Throttling counter for Serial updates
+        current_time = time.time()
+        if not hasattr(self, 'last_serial_update'):
+             self.last_serial_update = 0
+             
+        should_send = (current_time - self.last_serial_update) > 1.0 # 1 sec throttle
+        
         if vertical_spread < 50:
             # Single row - Pumping/Deflating
             detected_digits.sort(key=lambda k: k['cx'])
             sys_str = "".join([d['val'] for d in detected_digits])
             dia_str = ""
+            
+            # HANDLE STARTUP PATTERN (888)
+            if self._is_startup_pattern(sys_str):
+                # detected '888' -> The monitor is initializing
+                self.trend_state = "Starting..."
+                self._update_status("--", "--", "Starting ⏳", False)
+                return
             
             try:
                 val = int(sys_str)
@@ -455,21 +568,28 @@ class BPSensorController:
                 if smooth_val < 10 and self.last_smooth_bp > 10:
                     smooth_val = self.last_smooth_bp
                 
-                # Safety: Ignore unrealistic low values (noise/glare)
-                # BP values usually start higher or at 0. Glitches are often small numbers.
-                # Increased threshold from 5 to 30 to prevent "Automatic On" ghosting
+                # Safety: Ignore unrealistic low values
                 if smooth_val < 30:
                     return  # Ignore noise
                 
-                # Trend detection with persistence
+                # Trend detection
                 if smooth_val > self.last_smooth_bp + 1:
                     inst_trend = "Inflating ⬆️"
                     if smooth_val > 40: # Valid inflation
                         self.has_inflated = True
+                    if should_send:
+                        print(f"📈 [BP] Inflating... {smooth_val} mmHg")
+                        self.send_command(f"INFLATING:{smooth_val}", auto_connect=True)
+                        self.last_serial_update = current_time
+                        
                 elif smooth_val < self.last_smooth_bp - 1:
                     inst_trend = "Deflating ⬇️"
                     if smooth_val > 40:
                          self.has_inflated = True
+                    if should_send:
+                        print(f"📉 [BP] Deflating... {smooth_val} mmHg")
+                        self.send_command(f"DEFLATING:{smooth_val}", auto_connect=True)
+                        self.last_serial_update = current_time
                 else:
                     inst_trend = "Stable"
                 
@@ -484,19 +604,10 @@ class BPSensorController:
                 self.last_smooth_bp = smooth_val
                 sys_str = str(smooth_val)
                 
-                # Send live reading AND status to Arduino LCD
-                # DISABLED: To prevent "Reset" loops, we do NOT send live strings to Arduino.
-                # The user watches the BP Monitor screen. We only touch Arduino to STOP it.
-                # self.send_command(f"LIVE:{sys_str}|{status_text}", auto_connect=False)
-                
-                # Detect Physical Button Usage (Real activity)
                 if not self.start_command_sent and smooth_val > 40 and self.has_inflated:
-                     # If we see valid numbers AND have seen inflation -> Physical Button
-                     if "Measuring" not in self.trend_state: # Avoid spamming while stable
+                     if "Measuring" not in self.trend_state:
                          print(f"👆 Physical Button usage detected! (Readings appeared: {smooth_val})")
-                         # Do NOT connect. Stay passive.
-                            
-                         self.start_command_sent = True # Treat as started so we don't log again
+                         self.start_command_sent = True 
 
             except ValueError:
                 pass
@@ -506,7 +617,7 @@ class BPSensorController:
             self._log_reading(sys_str, dia_str, trend)
             
         else:
-            # Double row - Result
+            # Result
             mid_y = (min_y + max_y) / 2
             top_row = [d for d in detected_digits if d['cy'] < mid_y]
             bottom_row = [d for d in detected_digits if d['cy'] >= mid_y]
@@ -517,35 +628,36 @@ class BPSensorController:
             sys_str = "".join([d['val'] for d in top_row])
             dia_str = "".join([d['val'] for d in bottom_row])
             
+            # HANDLE STARTUP PATTERN (888/888)
+            if self._is_startup_pattern(sys_str) or self._is_startup_pattern(dia_str):
+                 self.trend_state = "Starting..."
+                 self._update_status("--", "--", "Starting ⏳", False)
+                 return
+            
             trend = "Error ⚠️" if error_detected else "Deflating ⬇️"
             self._update_status(sys_str, dia_str, trend, error_detected)
             self._log_reading(sys_str, dia_str, trend)
             
-            # CONFIRM RESULT LOGIC
-            # Only confirm if we have seen valid inflation activity OR if we explicitly started via screen
-            # This prevents confirming "Static" numbers from a previous session on startup
             if not self.has_inflated and not self.start_command_sent:
-                 # We see a result (e.g. 116/75) but we never saw it inflate/deflate.
-                 # This is likely a previous result on the screen. IGNORE IT.
-                 return
+                 return # Ignore stale
 
-            # Verification Logic could go here (e.g., must see result for X frames)
-            # Currently assuming detection of 2 rows is final result
-            
-            # Send result to Arduino (even if firmware needs update to handle it)
-            # FORCE CONNECTION NOW? NO! 
-            # Connecting causes a RESET which turns the device ON again.
-            # We must be purely PASSIVE. Do not control the hardware.
-            # Let the device timeout or user turn it off.
-            logger.info(f"✅ BP Result Confirmed: {sys_str}/{dia_str} - Stopping Camera.")
+            logger.info(f"✅ BP Result Confirmed: {sys_str}/{dia_str}")
             print(f"✅ BP Result Confirmed: {sys_str}/{dia_str}")
             
-            # self.send_command("done", auto_connect=True) # DISABLED to prevent loop
+            # Send result to LCD
+            self.send_command(f"RESULT:{sys_str}/{dia_str}", auto_connect=True)
             
-            # STOP the loop immediately
-            self.is_running = False 
-            self.bp_status["is_running"] = False
-            return # Exit loop iteration
+            # AUTO-TURN OFF LOGIC
+            if getattr(self, 'mode', 'regular') == 'regular':
+                logger.info("[BP] Regular Mode: Auto-stopping after result.")
+                self.send_command("done", auto_connect=True)
+                self.start_command_sent = False # Reset immediately
+                self.is_running = False 
+                self.bp_status["is_running"] = False
+            else:
+                logger.info("[BP] Maintenance Mode: Keeping camera/device ON after result.")
+            
+            return
 
     def _update_status(self, systolic, diastolic, trend, error):
         """Update the BP status dictionary."""
@@ -606,3 +718,4 @@ class BPSensorController:
 
 # Singleton instance
 bp_sensor = BPSensorController()
+

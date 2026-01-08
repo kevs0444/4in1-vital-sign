@@ -177,7 +177,7 @@ export default function BloodPressure() {
       if (measurementStep === 0) {
         speak("Blood Pressure Measurement. Get ready to measure your blood pressure.");
       } else if (measurementStep === 1) {
-        speak("Step 1. Ready. Press the physical button on your blood pressure monitor to begin.");
+        speak("Step 1. Ready. Please push the red button to start measuring blood pressure.");
       } else if (measurementStep === 2) {
         speak("Step 2. Measuring. Blood pressure measurement in progress.");
       } else if (measurementStep === 3) {
@@ -499,20 +499,13 @@ export default function BloodPressure() {
 
           if (newSys && newSys !== '--' && newSys.length >= 1 && !isStartupPattern(newSys)) {
 
-            // --- QUICK DELAY LOGIC (500ms) ---
-            if (!detectionStartTimeRef.current) {
-              detectionStartTimeRef.current = Date.now();
-            }
+            // --- QUICK DELAY LOGIC REMOVED FOR RESPONSIVENESS ---
+            // We want instant feedback during inflation/deflation
+            setStatusMessage("Reading...");
 
-            // Wait only 500ms before showing to filter quick glitches
-            if (Date.now() - detectionStartTimeRef.current < 500) {
-              setStatusMessage("Detecting...");
-              return;
-            }
-            // -----------------------------
-
-            // If Diastolic is empty, it's PUMPING mode (Single Value)
-            if (!newDia || newDia === "") {
+            // If Diastolic is empty/placeholder, it's PUMPING mode (Single Value)
+            // Backend sends "--" for empty diastolic, so check for that too.
+            if (!newDia || newDia === "" || newDia === "--") {
               setSystolic(newSys);
               setDiastolic("--"); // explicit placeholder
 
