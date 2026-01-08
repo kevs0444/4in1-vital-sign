@@ -161,9 +161,10 @@ export default function BloodPressure() {
 
   // Sync inactivity with measurement
   useEffect(() => {
-    // Disable inactivity timeout while reading/pumping
-    setIsInactivityEnabled(!isLiveReading);
-  }, [isLiveReading, setIsInactivityEnabled]);
+    // We strictly control inactivity via signalActivity() in the poll loop
+    // so we keep the timer ENABLED (true) so it CAN timeout if idle.
+    setIsInactivityEnabled(true);
+  }, [setIsInactivityEnabled]);
   useEffect(() => {
     // If measuring/analyzing, DISABLE inactivity (enabled = false)
     // If NOT measuring, ENABLE inactivity (enabled = true)
@@ -474,8 +475,19 @@ export default function BloodPressure() {
         if (data && data.is_running) {
           const { systolic: newSys, diastolic: newDia, error, trend } = data;
 
-          // Signal active usage
-          signalActivity();
+          // Signal active usage ONLY if actually measuring (Inflating/Deflating)
+          // This prevents timeout during measurement, but allows it if just waiting
+          if (trend && (trend.includes("Inflating") || trend.includes("Deflating") || trend.includes("Measuring"))) {
+            signalActivity();
+
+            // AUTO-DETECT PHYSICAL INTERACTION
+            // If user pressed physical button, advance UI to Step 2
+            if (measurementStep === 1) {
+              console.log("🚀 Physical Start Detected via Trend!");
+              setMeasurementStep(2);
+              setBpMeasuring(true);
+            }
+          }
 
           // Update Trend State
           if (trend) setStatusTrend(trend);

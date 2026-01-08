@@ -491,3 +491,28 @@
     font-size: 1rem;
   }
 }
+
+/* Toggle Select All Button */
+.checklist-toggle-btn {
+  margin-top: 15px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 10px 30px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+  box-shadow: 0 4px 10px rgba(108, 117, 125, 0.2);
+}
+
+.checklist-toggle-btn:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(108, 117, 125, 0.3);
+}
+
+.checklist-toggle-btn:active {
+  transform: translateY(0);
+}

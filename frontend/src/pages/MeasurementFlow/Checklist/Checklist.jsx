@@ -132,6 +132,20 @@ export default function Checklist() {
 
         <div className="d-flex flex-column gap-3 align-items-center">
           <button
+            className="checklist-toggle-btn"
+            style={{ marginBottom: '10px' }}
+            onClick={() => {
+              if (selectedItems.length === processes.length) {
+                setSelectedItems([]);
+              } else {
+                setSelectedItems(processes.map(p => p.id));
+              }
+            }}
+          >
+            {selectedItems.length === processes.length ? "Deselect All" : "Select All"}
+          </button>
+
+          <button
             className="start-button"
             onClick={handleStart}
             disabled={selectedItems.length === 0}

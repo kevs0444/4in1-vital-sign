@@ -226,8 +226,8 @@ export default function Max30102() {
             noFingerCounterRef.current = 0;
           }
         } else {
-          // Waiting phase (step 2) or any other case - signal activity
-          signalActivity();
+          // Waiting phase (step 2) or any other case - DO NOT signal activity
+          // This allows inactivity timer to count down if user is just staring at 'Waiting for Finger'
         }
         // NOTE: When step === 4 (complete), we ignore finger removed events
 
