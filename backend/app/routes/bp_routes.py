@@ -70,6 +70,14 @@ def stop_bp_camera():
     success, message = bp_sensor.stop()
     return jsonify({"success": success, "message": message})
 
+@bp_routes.route('/reset_for_retry', methods=['POST'])
+def reset_bp_for_retry():
+    """Reset the BP system for a retry measurement after an error.
+    Turns off the hardware, resets all state, and prepares for a new measurement.
+    """
+    success, message = bp_sensor.reset_for_retry()
+    return jsonify({"success": success, "message": message})
+
 @bp_routes.route('/status', methods=['GET'])
 def get_bp_status():
     """Get real-time BP reading status."""

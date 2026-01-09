@@ -105,6 +105,7 @@ export default function BloodPressure() {
 
   // Polling for Real-Time BP
   const [isLiveReading, setIsLiveReading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true); // New Loading State
   const pollInterval = useRef(null);
   const detectionStartTimeRef = useRef(null); // For 2s delay logic
 
@@ -145,12 +146,20 @@ export default function BloodPressure() {
     detectionStartTimeRef.current = null;
     lastReadingRef.current = { sys: null, dia: null };
 
-    // Stop and restart BP camera
-    await stopCameraMode();
-    await new Promise(r => setTimeout(r, 500)); // Brief pause
-    await startLiveReading();
+    setStatusMessage("🔄 Resetting BP device...");
 
-    setStatusMessage("🔄 Retrying measurement...");
+    try {
+      // Call backend to turn off BP and reset state
+      await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/reset_for_retry`, {
+        method: 'POST'
+      });
+      console.log("✅ BP system reset");
+    } catch (e) {
+      console.error("Reset error:", e);
+    }
+
+    setStatusMessage("✅ Ready - Press the red button to try again");
+    speak("Device reset. Please press the red button on the BP monitor to try again.");
   };
 
   // Clean up on unmount
@@ -178,6 +187,9 @@ export default function BloodPressure() {
 
   // Voice Instructions
   useEffect(() => {
+    // Suppress step instructions if error modal is open to prevent overriding error speech
+    if (showErrorModal) return;
+
     const timer = setTimeout(() => {
       const isLast = isLastStep('bloodpressure', location.state?.checklist);
       if (measurementStep === 0) {
@@ -195,7 +207,7 @@ export default function BloodPressure() {
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [measurementStep, location.state?.checklist]);
+  }, [measurementStep, location.state?.checklist, showErrorModal]);
 
   const initializeBloodPressureSensor = async () => {
     try {
@@ -254,6 +266,13 @@ export default function BloodPressure() {
   // Stability Checking Refs
   const stableCountRef = useRef(0);
   const lastReadingRef = useRef({ sys: null, dia: null });
+  const hasSpokenErrorRef = useRef(false);
+  const showErrorModalRef = useRef(false); // Fix for Stale Closure
+
+  // Sync state to Ref
+  useEffect(() => {
+    showErrorModalRef.current = showErrorModal;
+  }, [showErrorModal]);
 
   const startMeasurement = async () => {
     try {
@@ -376,6 +395,9 @@ export default function BloodPressure() {
 
     // LIVE READING STATES
     if (isLiveReading) {
+      if (isInitializing) {
+        return { text: 'Initializing ⏳', class: 'warning', description: 'Starting AI & Camera...' };
+      }
       if (statusTrend.includes("Inflating")) {
         return { text: 'Inflating ⬆️', class: 'warning', description: 'Pressure is rising...' };
       }
@@ -455,12 +477,13 @@ export default function BloodPressure() {
 
   const startLiveReading = async (forceIndex = null, forceName = null) => {
     // 1. Start BP Camera Backend if not running
+    setIsInitializing(true); // START LOADING
     if (!isCameraMode) {
       await startCameraMode(forceIndex, forceName);
     }
 
     setIsLiveReading(true);
-    setStatusMessage("System Ready - Waiting for Input...");
+    setStatusMessage("⏳ Initializing AI & Camera...");
 
     // Reset Stability
     stableCountRef.current = 0;
@@ -478,12 +501,25 @@ export default function BloodPressure() {
 
         // New BP controller returns flat structure: { systolic, diastolic, trend, error, is_running }
         if (data && data.is_running) {
+          if (isInitializing) {
+            setIsInitializing(false);
+            setStatusMessage("System Ready - Waiting for Input...");
+          }
           const { systolic: newSys, diastolic: newDia, error, trend } = data;
 
-          // Signal active usage ONLY if actually measuring (Inflating/Deflating)
-          // This prevents timeout during measurement, but allows it if just waiting
-          if (trend && (trend.includes("Inflating") || trend.includes("Deflating") || trend.includes("Measuring"))) {
+          // PRIORITY: Check for active measurement (Inflating/Deflating/Starting)
+          // If measuring, this takes priority over any stale error state
+          const isMeasuring = trend && (trend.includes("Inflating") || trend.includes("Deflating") || trend.includes("Measuring") || trend.includes("Starting"));
+
+          if (isMeasuring) {
             signalActivity();
+
+            // AUTO-CLOSE ERROR MODAL when new measurement starts
+            if (showErrorModalRef.current) {
+              console.log("🔄 Measurement activity detected - closing error modal");
+              setShowErrorModal(false);
+              showErrorModalRef.current = false;
+            }
 
             // AUTO-DETECT PHYSICAL INTERACTION
             // If user pressed physical button, advance UI to Step 2
@@ -492,22 +528,44 @@ export default function BloodPressure() {
               setMeasurementStep(2);
               setBpMeasuring(true);
             }
+
+            // Update Trend State (only when measuring, not when error)
+            setStatusTrend(trend);
           }
+          // ERROR Detection - ONLY if NOT currently measuring
+          else if (error && !isMeasuring) {
+            // ONLY Show Modal if not already shown
+            if (!showErrorModalRef.current) {
+              setStatusTrend("Error ⚠️");
+              setSystolic("--");
+              setDiastolic("--");
+              setStatusMessage("⚠️ Monitor Error - Press red button to retry");
+              setShowErrorModal(true);
 
-          // Update Trend State
-          if (trend) setStatusTrend(trend);
+              // Prevent repeating speech
+              if (!hasSpokenErrorRef.current) {
+                speak("Error detected. Please check the cuff and press the red button to try again.");
+                hasSpokenErrorRef.current = true;
+              }
 
-          // 0. Error Detection (Priority) - Show popup
-          if (error) {
-            setStatusTrend("Error ⚠️"); // Force UI to show Error Badge
-            setSystolic("--");
-            setDiastolic("--");
-            setStatusMessage("⚠️ Monitor Error Symbol Detected");
-            setShowErrorModal(true); // Show error popup
-            speak("Error detected. Please check the cuff is wrapped properly and try again.");
-            stableCountRef.current = 0; // Reset stability
-            detectionStartTimeRef.current = null;
-            return; // Skip the rest
+              // Reset states
+              stableCountRef.current = 0;
+              detectionStartTimeRef.current = null;
+              lastReadingRef.current = { sys: null, dia: null };
+              setMeasurementStep(1);
+              setBpMeasuring(false);
+              setBpComplete(false);
+              setMeasurementComplete(false);
+            }
+            return;
+          }
+          // If NO error, initiate recovery
+          else if (!error && showErrorModalRef.current) {
+            console.log("✅ Error state cleared by backend - closing modal");
+            setShowErrorModal(false);
+            showErrorModalRef.current = false;
+            setStatusMessage("✅ Monitor Ready - Press Button");
+            hasSpokenErrorRef.current = false; // Reset speech flag
           }
 
           // 1. Update Display if valid (accept any detected number)
@@ -564,7 +622,7 @@ export default function BloodPressure() {
       } catch (err) {
         console.error("Polling error", err);
       }
-    }, 100); // 10Hz polling for smoother sync
+    }, 500); // 500ms polling as requested
   };
 
   const captureAndAnalyze = async () => {
@@ -877,16 +935,15 @@ export default function BloodPressure() {
               The blood pressure monitor detected an error. Please ensure the cuff is
               wrapped properly around your arm.
             </p>
-            <p className="exit-modal-message" style={{ fontWeight: 'bold', marginTop: '10px' }}>
-              👆 Press the <strong>physical button on BP monitor twice</strong> to retry.
+            <p className="exit-modal-message" style={{ fontWeight: 'bold', marginTop: '10px', fontSize: '1.1rem' }}>
+              👉 Click the physical button to start measurement again.
             </p>
             <div className="exit-modal-buttons">
               <button
-                className="exit-modal-button primary"
-                onClick={() => setShowErrorModal(false)}
-                style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}
+                className="exit-modal-button secondary"
+                onClick={retryMeasurement}
               >
-                OK, I'll Retry
+                Reset System
               </button>
             </div>
           </motion.div>

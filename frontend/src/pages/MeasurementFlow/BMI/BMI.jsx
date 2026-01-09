@@ -67,6 +67,9 @@ export default function BMI() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const isMountedRef = useRef(true);
+  const isInitializedRef = useRef(false); // Prevent double-init
+  const isStartingWeightRef = useRef(false); // Guard against overlapping weight start
+  const isStartingHeightRef = useRef(false); // Guard against overlapping height start
   const savedWeightRef = useRef(null);
   const savedHeightRef = useRef(null);
 
@@ -99,22 +102,26 @@ export default function BMI() {
   // ============================================================
 
   const startWeightMeasurement = useCallback(async () => {
+    // GUARD: Prevent overlapping calls
+    if (isStartingWeightRef.current) {
+      console.log("⚠️ startWeightMeasurement already in progress, skipping.");
+      return;
+    }
     if (savedWeightRef.current) return;
+
+    isStartingWeightRef.current = true;
 
     try {
       const res = await sensorAPI.startWeight();
       if (res.error) {
         if (retryCount < MAX_RETRIES) {
           setRetryCount(c => c + 1);
+          isStartingWeightRef.current = false; // Reset for retry
           await sleep(1000);
-          startWeightMeasurement(); // Recursive retry
+          startWeightMeasurement();
           return;
         }
         console.warn("⚠️ Start Weight API failed/timed out. Proceeding to poll status...");
-        setRetryCount(0);
-        setCurrentPhase(PHASE.WEIGHT);
-        setStatusMessage("Step on the scale and stand still...");
-        return;
       }
       // Success -> Enter Phase
       setRetryCount(0);
@@ -122,33 +129,41 @@ export default function BMI() {
       setStatusMessage("Step on the scale and stand still...");
     } catch (e) {
       console.error("Start weight exception:", e);
+    } finally {
+      isStartingWeightRef.current = false;
     }
   }, [retryCount]);
 
   const startHeightMeasurement = useCallback(async () => {
+    // GUARD: Prevent overlapping calls
+    if (isStartingHeightRef.current) {
+      console.log("⚠️ startHeightMeasurement already in progress, skipping.");
+      return;
+    }
     if (!savedWeightRef.current) return;
     if (savedHeightRef.current) return;
+
+    isStartingHeightRef.current = true;
 
     try {
       const res = await sensorAPI.startHeight();
       if (res.error) {
         if (retryCount < MAX_RETRIES) {
           setRetryCount(c => c + 1);
+          isStartingHeightRef.current = false; // Reset for retry
           await sleep(1000);
           startHeightMeasurement();
           return;
         }
         console.warn("⚠️ Start Height API failed/timed out. Proceeding to poll status...");
-        setRetryCount(0);
-        setCurrentPhase(PHASE.HEIGHT);
-        setStatusMessage("Look straight ahead...");
-        return;
       }
       setRetryCount(0);
       setCurrentPhase(PHASE.HEIGHT);
       setStatusMessage("Initializing height sensor...");
     } catch (e) {
       console.error("Start height exception:", e);
+    } finally {
+      isStartingHeightRef.current = false;
     }
   }, [retryCount]);
 
@@ -433,26 +448,44 @@ export default function BMI() {
   // ============================================================
   const waitForSystemReady = useCallback(async () => {
     let attempts = 0;
+    let startedWeight = false; // Local flag to prevent multiple starts
     const interval = setInterval(async () => {
       if (!isMountedRef.current) { clearInterval(interval); return; }
+      if (startedWeight) return; // Already started, skip
+
       try {
         const status = await sensorAPI.getSystemStatus();
         if (status && status.auto_tare_completed) {
           clearInterval(interval);
+          startedWeight = true;
           startWeightMeasurement();
         } else {
           attempts++;
           if (attempts > 60) { // 12s timeout
             clearInterval(interval);
+            startedWeight = true;
             startWeightMeasurement();
           }
         }
       } catch (e) { console.error("Sys check error:", e); }
-    }, 100); // UNIFORM 100ms polling
+    }, 200); // Slower polling to reduce spam (was 100ms)
+
+    return interval; // Return for cleanup
   }, [startWeightMeasurement]);
 
+  const systemCheckIntervalRef = useRef(null);
+
   useEffect(() => {
+    // Prevent double-init
+    if (isInitializedRef.current) {
+      console.log("⚠️ BMI already initialized, skipping duplicate init");
+      return;
+    }
+    isInitializedRef.current = true;
     isMountedRef.current = true;
+    isStartingWeightRef.current = false;
+    isStartingHeightRef.current = false;
+
     setIsInactivityEnabled(true);
 
     const init = async () => {
@@ -460,13 +493,25 @@ export default function BMI() {
       setStatusMessage("Calibrating sensors... Ensure scale is empty.");
       setSavedWeight(null);
       setSavedHeight(null);
+      savedWeightRef.current = null;
+      savedHeightRef.current = null;
       await sleep(500);
-      waitForSystemReady();
+      systemCheckIntervalRef.current = waitForSystemReady();
     };
     init();
 
     return () => {
+      console.log("🧹 BMI cleanup - stopping all sensors");
       isMountedRef.current = false;
+      isInitializedRef.current = false;
+      isStartingWeightRef.current = false;
+      isStartingHeightRef.current = false;
+
+      if (systemCheckIntervalRef.current) {
+        clearInterval(systemCheckIntervalRef.current);
+        systemCheckIntervalRef.current = null;
+      }
+
       sensorAPI.shutdownWeight().catch(e => console.error("Cleanup weight error", e));
       sensorAPI.shutdownHeight().catch(e => console.error("Cleanup height error", e));
     };

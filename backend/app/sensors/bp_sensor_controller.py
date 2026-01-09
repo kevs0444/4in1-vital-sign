@@ -85,6 +85,8 @@ class BPSensorController:
         # Validation Flags
         self.has_inflated = False # Must detect inflation before confirming result
         self.stable_result_timer = 0
+        self.result_sent_to_lcd = False # Prevent duplicate LCD result
+        self.device_is_on = False # Track if BP device is currently ON to prevent duplicate toggles
         
         # DELAYED CONNECTION REMOVED: User requested to connect only on BP phase.
         # Check backend/app/sensors/bp_sensor_controller.py start() method for connection logic.
@@ -217,6 +219,9 @@ class BPSensorController:
                 "timestamp": 0
             }
             
+            # Reset LCD result flag
+            self.result_sent_to_lcd = False
+            
             # Ensure settings match user request
             self.zoom_factor = 1.4  # Default 1.4x zoom per user preference (Updated to 1.4x for better digit visibility)
             self.rotation = 0
@@ -258,7 +263,16 @@ class BPSensorController:
             
             self.is_running = True
             self.bp_status["is_running"] = True
+            
+            # Reset error detection state for new session
+            self.error_frame_count = 0
+            self.error_handled = False
+            
             threading.Thread(target=self._process_loop, daemon=True).start()
+            
+            # Send LCD message to show "Blood Pressure Ready"
+            self.send_command("LCD_BP_READY", auto_connect=True)
+            
             logger.info("[BP] 🩸 BP Camera started successfully")
             return True, "BP Camera started"
             
@@ -268,20 +282,15 @@ class BPSensorController:
             
     def stop(self):
         """Stop the BP camera."""
-        # Send "done" command to Arduino (Turn OFF) ONLY if connected
-        # CONDITIONAL TOGGLE: Only press button if we believe the device is ON.
-        # We assume it's ON if we sent a start command, detected a manual start, 
-        # or saw inflation valid data.
+        # Send "done" command to Arduino (Turn OFF) ONLY if device is ON
+        # CRITICAL: Only toggle if device_is_on to prevent accidental turn-on
         if self.arduino and self.arduino.is_open:
-            if self.start_command_sent or self.has_inflated:
-                logger.info("[BP] Device appears active - Sending shutdown toggle")
+            if self.device_is_on:
+                logger.info("[BP] Device is ON - Sending shutdown toggle")
                 self.send_command("done")
-                # Important: Reset flag so we don't toggle again if called multiple times
-                self.start_command_sent = False
+                self.device_is_on = False
             else:
-                logger.info("[BP] Skipping shutdown toggle - Device appears idle/already off")
-            
-            # We don't close the connection to avoid resets, but we stop the loop
+                logger.info("[BP] Skipping shutdown toggle - Device is already OFF")
         
         self.is_running = False
         self.bp_status["is_running"] = False
@@ -292,9 +301,68 @@ class BPSensorController:
             self.cap.release()
             self.cap = None
         
+        # Send LCD message to show "System Ready" (idle state)
+        self.send_command("LCD_IDLE", auto_connect=True)
+        
         logger.info("[BP] Camera stopped")
         print("🔌 BP Camera stopped - Ready for new measurement")
         return True, "BP Camera stopped"
+    
+    def _turn_off_hardware(self):
+        """Turn off the BP hardware device (used during error recovery)."""
+        logger.info("[BP] 🔌 Turning OFF BP hardware for error recovery...")
+        
+        # Use explicit OFF command (not toggle) to ensure device turns off
+        if self.arduino and self.arduino.is_open:
+            self.send_command("OFF", auto_connect=True)
+            self.device_is_on = False
+            logger.info("[BP] Hardware OFF command sent")
+            # Wait briefly to allow device to respond and turn off
+            time.sleep(0.5)
+        else:
+            logger.info("[BP] Arduino not connected - skipping toggle")
+        
+        # Reset hardware state flags
+        self.start_command_sent = False
+        self.has_inflated = False
+        self.result_confirmed = False
+        self.result_sent_to_lcd = False  # Allow new result to show on LCD
+        
+        # Reset detection state
+        self.bp_history = []
+        self.last_smooth_bp = 0
+        self.stable_frames_count = 0
+        self.trend_state = "Stable ⏸️"
+        
+        logger.info("[BP] Hardware turned OFF - Ready for retry")
+    
+    def reset_for_retry(self):
+        """Reset the BP system for a retry measurement after an error.
+        Turns off the hardware and resets state. User presses physical button to restart.
+        """
+        logger.info("[BP] 🔄 Resetting for retry measurement...")
+        
+        # 0. Suppress echoes and visual noise during reset (Crucial)
+        future_time = time.time() + 5.0
+        self.ignore_start_until = future_time
+        self.ignore_error_until = future_time
+        
+        # 1. Turn off the hardware
+        self._turn_off_hardware()
+        
+        # 2. Reset status for frontend
+        with self.lock:
+            self.bp_status = {
+                "systolic": "--",
+                "diastolic": "--",
+                "trend": "Ready",
+                "error": False,
+                "is_running": self.is_running,
+                "timestamp": time.time()
+            }
+        
+        logger.info("[BP] ✅ Reset complete - Waiting for user to press physical button")
+        return True, "BP system reset - Press physical button to restart"
     
     def _serial_listener(self):
         """Continuously read from Arduino Serial to catch MANUAL_START."""
@@ -318,6 +386,14 @@ class BPSensorController:
                                 self.start_command_sent = True
                                 self.trend_state = "Inflating ⬆️" # Anticipate inflation
                                 self.bp_status["trend"] = "Starting..."
+                                
+                                # CRITICAL: CLEAR ERROR STATUS IMMEDIATELY
+                                self.bp_status["error"] = False
+                                self.error_handled = False
+                                self.error_frame_count = 0
+                                
+                                # Ignore visual ERROR detection for 5s (Screen lag)
+                                self.ignore_error_until = time.time() + 5.0
                         
             except Exception as e:
                 logger.error(f"[BP] Serial Read Error: {e}")
@@ -377,8 +453,11 @@ class BPSensorController:
         # Try connecting to Arduino for LCD/Buttons
         self._connect_arduino()
         if self.arduino and self.arduino.is_open:
+            logger.info(f"[BP] Arduino connected on {self.arduino.port} - Starting serial listener")
             # Start listener thread
             threading.Thread(target=self._serial_listener, daemon=True).start()
+        else:
+            logger.warning("[BP] Arduino NOT connected - Physical button detection disabled")
 
         # Lazy load YOLO model
         if not self.bp_yolo:
@@ -460,8 +539,9 @@ class BPSensorController:
                 conf = float(box.conf[0])
                 
                 if label.lower() == 'error':
-                    if not error_detected:
-                        logger.warning("⚠️ BP Monitor ERROR Symbol Detected!")
+                    # Ignore error if we recently restarted (screen lag)
+                    if time.time() < getattr(self, 'ignore_error_until', 0):
+                         continue
                     error_detected = True
                     continue
                 
@@ -532,15 +612,52 @@ class BPSensorController:
              detected_digits.append({"val": label, "cx": center_x, "cy": center_y})
 
         # Parse digits
-        # PRIORITY: If error detected, show it immediately
+        # PRIORITY: If error detected, use debounced detection (5 frames)
         if error_detected:
-             logger.warning("⚠️ BP Monitor ERROR Symbol Detected!")
-             self._update_status("--", "--", "Error ⚠️", True)
-             self.send_command("ERROR", auto_connect=True)
-             # Safety: Turn off if error detected to reset state (don't force connect)
-             self.send_command("done", auto_connect=True)
+             # Initialize counter if not exists
+             if not hasattr(self, 'error_frame_count'):
+                  self.error_frame_count = 0
+             if not hasattr(self, 'error_handled'):
+                  self.error_handled = False
              
-        elif len(detected_digits) > 0:
+             # If we already handled this error, just return (no spam)
+             if self.error_handled:
+                  return
+             
+             # Increment counter
+             self.error_frame_count += 1
+             
+             # Act on first error detection (changed from 5 to 1 for instant response)
+             if self.error_frame_count >= 1:
+                  logger.warning("⚠️ BP Monitor ERROR Detected")
+                  self._update_status("--", "--", "Error ⚠️", True)
+                  self.send_command("ERROR", auto_connect=True)
+                  
+                  # Wait for LCD to update before toggling hardware
+                  # This prevents serial command flooding and ensures the user sees the error
+                  time.sleep(1.0)
+                  
+                  # 0. BLOCK RE-START SIGNALS (Crucial: Avoid reacting to the button tap we are about to make)
+                  # Mimic success logic: ignore serial inputs for a few seconds
+                  # Reduced to 2.5s to allow user to press button quickly after seeing error
+                  self.ignore_start_until = time.time() + 2.5
+                  
+                  # Turn OFF the BP device when error is detected
+                  self._turn_off_hardware()
+                  
+                  # Mark as handled to prevent further detections (will be reset on MANUAL_START)
+                  self.error_handled = True
+                  
+                  # NOTE: We DO NOT auto-reset to "Ready" anymore.
+                  # The "Error" state persists until the user presses the physical button (MANUAL_START).
+             return
+              
+        else:
+             # Reset error counter if no error detected
+             if hasattr(self, 'error_frame_count'):
+                  self.error_frame_count = 0
+        
+        if len(detected_digits) > 0:
             self._parse_digits(detected_digits, error_detected)
     
     def _is_startup_pattern(self, val_str):
@@ -603,6 +720,10 @@ class BPSensorController:
                     # Count inflation as valid if we see numbers rising
                     if smooth_val > 5: 
                         self.has_inflated = True
+                        self.device_is_on = True  # Device is ON when measuring
+                        # Reset error handling flag - user is retrying
+                        if hasattr(self, 'error_handled'):
+                            self.error_handled = False
                     if should_send:
                         print(f"📈 [BP] Inflating... {smooth_val} mmHg")
                         self.send_command(f"INFLATING:{smooth_val}", auto_connect=True)
@@ -612,6 +733,7 @@ class BPSensorController:
                     inst_trend = "Deflating ⬇️"
                     if smooth_val > 5:
                          self.has_inflated = True
+                         self.device_is_on = True  # Device is ON when measuring
                     if should_send:
                         print(f"📉 [BP] Deflating... {smooth_val} mmHg")
                         self.send_command(f"DEFLATING:{smooth_val}", auto_connect=True)
@@ -638,6 +760,15 @@ class BPSensorController:
             except ValueError:
                 pass
             
+            # STICKY ERROR LOGIC:
+            # If we were in Error mode, stay there unless we see explicit Inflation or Startup.
+            # This prevents flickering/clearing error on noise.
+            if self.bp_status["error"]:
+                if "Inflating" in self.trend_state or "Starting" in self.trend_state:
+                     error_detected = False
+                else:
+                     error_detected = True
+            
             trend = "Error ⚠️" if error_detected else self.trend_state
             self._update_status(sys_str, dia_str, trend, error_detected)
             self._log_reading(sys_str, dia_str, trend)
@@ -660,6 +791,13 @@ class BPSensorController:
                  self._update_status("--", "--", "Starting ⏳", False)
                  return
             
+            # STICKY ERROR LOGIC (Result Block):
+            if self.bp_status["error"]:
+                 if "Inflating" in self.trend_state or "Starting" in self.trend_state:
+                      error_detected = False
+                 else:
+                      error_detected = True
+
             trend = "Error ⚠️" if error_detected else "Deflating ⬇️"
             self._update_status(sys_str, dia_str, trend, error_detected)
             self._log_reading(sys_str, dia_str, trend)
@@ -670,8 +808,10 @@ class BPSensorController:
             logger.info(f"✅ BP Result Confirmed: {sys_str}/{dia_str}")
             print(f"✅ BP Result Confirmed: {sys_str}/{dia_str}")
             
-            # Send result to LCD
-            self.send_command(f"RESULT:{sys_str}/{dia_str}", auto_connect=True)
+            # Send result to LCD ONLY ONCE
+            if not self.result_sent_to_lcd:
+                self.send_command(f"RESULT:{sys_str}/{dia_str}", auto_connect=True)
+                self.result_sent_to_lcd = True
             
             # New Step: Prevent re-entry immediately
             self.result_confirmed = True
@@ -687,6 +827,7 @@ class BPSensorController:
                 
                 # 1. Stop Hardware Immediately (Pump off)
                 self.send_command("done", auto_connect=True)
+                self.device_is_on = False   # CRITICAL: Mark device as OFF so stop() doesn't toggle it again
                 self.start_command_sent = False # Reset flag so stop() doesn't toggle it again
                 self.has_inflated = False       # CRITICAL: Prevent stop() from firing 'done' again
                 

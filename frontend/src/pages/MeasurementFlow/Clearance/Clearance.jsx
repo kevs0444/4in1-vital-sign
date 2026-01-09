@@ -1,727 +1,138 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useInactivity } from "../../../components/InactivityWrapper/InactivityWrapper";
 import "./Clearance.css";
 import "../main-components-measurement.css";
-import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
-import { speak, stopSpeaking } from "../../../utils/speech";
 import { isLocalDevice } from "../../../utils/network";
 
 const API_BASE = '/api';
 
 export default function Clearance() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const { setIsInactivityEnabled, signalActivity } = useInactivity();
+    const { setIsInactivityEnabled } = useInactivity();
 
-    // BLOCK REMOTE ACCESS
-    useEffect(() => {
-        if (!isLocalDevice()) {
-            navigate('/login', { replace: true });
-        }
-    }, [navigate]);
+    // --- STATE ---
+    const [feedUrl, setFeedUrl] = useState(null);
+    const [isReady, setIsReady] = useState(false);
 
-    const [step, setStep] = useState(1); // 1: Footwear, 2: Wearables, 3: Complete
-    const [statusMessage, setStatusMessage] = useState("Initializing camera...");
-    const [detectionStatus, setDetectionStatus] = useState("Waiting...");
-    const [isCompliant, setIsCompliant] = useState(false);
-    const [retryCount, setRetryCount] = useState(0);
-    const [showRetryModal, setShowRetryModal] = useState(false);
-
-    // Checks state
-    const [footwearCleared, setFootwearCleared] = useState(false);
-    const [wearablesCleared, setWearablesCleared] = useState(false);
-
-    const pollerRef = useRef(null);
-    const checkIntervalRef = useRef(null);
-    const complianceTimerRef = useRef(null);
     const isMountedRef = useRef(true);
 
-    // State to track which video feed to display - default to camera 1 (feet) for immediate display
-    const [videoFeedUrl, setVideoFeedUrl] = useState(`${API_BASE}/camera/video_feed`);
-
-    // Loading state for camera transitions
-    const [isCameraLoading, setIsCameraLoading] = useState(true);
-    const [isVisible, setIsVisible] = useState(false);
-
-    // Camera Config State - UPDATED based on user testing:
-    // Index 0 = Weight Compliance Camera (Feet/Platform) ✅
-    // Index 1 = Blood Pressure Camera (BP Monitor)
-    // Index 2 = Wearables Compliance Camera (Body)
-    const [cameraConfig, setCameraConfig] = useState({
-        weight_index: 0,     // VERIFIED: Shows feet/platform
-        wearables_index: 2,  // Wearables camera (body)
-        bp_index: 1          // BP Monitor camera
-    });
-
-    // Explicit camera names for robust backend lookups
-    // These must match the EXACT friendly names set in Windows Registry (including prefix)
-    const CAMERA_NAMES = {
-        weight: "0 - Weight Compliance Camera",
-        wearables: "1 - Wearables Compliance Camera",
-        bp: "2 - Blood Pressure Camera"
-    };
-
-    // Stream timestamp state to prevent re-fetching on every render
-    const [streamTimestamp, setStreamTimestamp] = useState(Date.now());
-
-    // Initialize
+    // --- INITIALIZATION ---
     useEffect(() => {
-        isMountedRef.current = true;
-        setIsInactivityEnabled(true);
-        const timer = setTimeout(() => setIsVisible(true), 100);
+        if (!isLocalDevice()) navigate('/login', { replace: true });
 
-        // Fetch Camera Config FIRST, then start check
-        const init = async () => {
-            try {
-                // VERIFIED: Weight camera = Index 0
-                console.log("📷 Starting Clearance with VERIFIED index 0 (Weight Camera)...");
-                startFootwearCheck(0);
-            } catch (e) {
-                console.error("Config fetch failed", e);
-                startFootwearCheck(0);
-            }
+        isMountedRef.current = true;
+        setIsInactivityEnabled(false);
+        startClearance();
+
+        const cleanup = () => {
+            isMountedRef.current = false;
+            stopClearance();
+            setIsInactivityEnabled(true);
         };
 
-        init();
-
+        window.addEventListener('beforeunload', cleanup);
         return () => {
-            isMountedRef.current = false;
-            clearTimeout(timer);
-            // Cleanup: Stop camera, polling, and speech when leaving the page
-            stopCamera();
-            stopSpeaking();
-            if (pollerRef.current) clearInterval(pollerRef.current);
-            if (checkIntervalRef.current) clearTimeout(checkIntervalRef.current);
-            if (complianceTimerRef.current) clearTimeout(complianceTimerRef.current);
+            cleanup();
+            window.removeEventListener('beforeunload', cleanup);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // ... (existing voice effect)
-
-    const stopCamera = async () => {
-        try {
-            // Stop both camera controllers to be safe
-            // ADDED TIMEOUT: Don't let a stuck stop prevent a new start
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), 3000);
-
-            await Promise.all([
-                fetch(`${API_BASE}/camera/stop`, { method: 'POST', signal: controller.signal }).catch(e => console.warn("Stop cam timeout/err", e)),
-                fetch(`${API_BASE}/aux/stop`, { method: 'POST', signal: controller.signal }).catch(e => console.warn("Stop aux timeout/err", e))
-            ]);
-            clearTimeout(id);
-        } catch (e) {
-            console.error("Error stopping camera:", e);
-        }
-    };
-
-    /* ============================================================
-       CAMERA CONTROL - OPTIMIZED
-       ============================================================ */
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    const startFootwearCheck = async (forceIndex = null, forceName = null) => {
-        setStep(1);
-        setIsCompliant(false);
-        setIsCameraLoading(true);
-
-        // FORCE RESET: Stop any existing camera streams to prevent conflicts (esp after AFK)
-        // This handles cases where backend might think camera is still running
-        await stopCamera();
-        await sleep(800);
-
-        // Reset Timers CRITICAL
-        if (complianceTimerRef.current) clearTimeout(complianceTimerRef.current);
-        complianceTimerRef.current = null;
-        if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
-
-        // Prefer name, then index, then config, then fallback
-        const camName = forceName || CAMERA_NAMES.weight;
-        const camIndex = forceIndex !== null ? forceIndex : cameraConfig.weight_index;
-
-        try {
-            setStatusMessage("Initializing feet camera...");
-
-            // Add Timeout to prevent infinite hanging
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-            await fetch(`${API_BASE}/camera/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    index: camIndex,
-                    camera_name: camName,
-                    mode: 'feet',
-                    settings: {
-                        rotation: 180,
-                        zoom: 1.3,
-                        square_crop: true
-                    }
-                }),
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            // Use the camera video feed for feet
-            setVideoFeedUrl(`${API_BASE}/camera/video_feed`);
-            setStreamTimestamp(Date.now()); // Update timestamp ONLY on start
-            setIsCameraLoading(false); // Hide loading
-
-            // Immediate status update without sleep
-            setStatusMessage("Scanning for footwear...");
-            console.log("✅ Feet camera started (Optimized)");
-            setDetectionStatus("Waiting..."); // Force reset detection status
-
-            // CRITICAL: Reset speech tracking for fresh voice prompts
-            lastSpokenRef.current = "";
-            setFootwearCleared(false);
-            setIsCompliant(false);
-
-            if (pollerRef.current) clearInterval(pollerRef.current);
-
-            setTimeout(() => {
-                startPolling('feet');
-            }, 500);
-
-        } catch (e) {
-            console.error("Error starting feet camera:", e);
-            setStatusMessage("Camera initialization failed. Retrying...");
-
-            // Auto-retry once if it was a timeout or error
-            if (!forceName) { // Prevent infinite recursion by checking if we already retried (logic could be better but this works for now)
-                console.log("🔄 Auto-retrying camera start...");
-                await sleep(2000);
-                // Retry with explicit index just in case
-                startFootwearCheck(camIndex, camName);
-            } else {
-                setStatusMessage("Camera error. Please check hardware.");
-                setIsCameraLoading(false);
-            }
-        }
-    };
-
-    const startWearablesCheck = async () => {
-        setStep(2);
-        setIsCompliant(false);
-        setIsCameraLoading(true);
-
-        // Reset Timers
-        if (checkIntervalRef.current) clearTimeout(checkIntervalRef.current);
-        checkIntervalRef.current = null;
-
-        try {
-            setStatusMessage("Switching to wearables camera...");
-
-            // FIX: Stop previous camera explicitly and wait to prevent "too fast" error
-            await stopCamera();
-            await sleep(800);
-
-            // Wearables = Index 2
-            const camIndex = 2; // Wearables = Index 2
-
-            // SINGLE CALL OPTIMIZATION:
-            await fetch(`${API_BASE}/camera/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    index: camIndex,
-                    mode: 'body',
-                    settings: {
-                        rotation: 180,
-                        zoom: 1.0,
-                        square_crop: true
-                    }
-                })
-            });
-
-            // Use the same /camera video feed
-            setVideoFeedUrl(`${API_BASE}/camera/video_feed`);
-            setStreamTimestamp(Date.now()); // Update timestamp ONLY on start
-            setIsCameraLoading(false);
-
-            // Only speak AFTER camera is ready and showing
-            setStatusMessage("Scanning for wearables...");
-            console.log("✅ Wearables camera started (Optimized)");
-            setDetectionStatus("Waiting..."); // Force reset
-
-            // CRITICAL: Reset speech tracking for fresh voice prompts
-            lastSpokenRef.current = "";
-            setWearablesCleared(false);
-            setIsCompliant(false);
-
-            setTimeout(() => {
-                if (!isMountedRef.current) return;
-                speakOnce("Now checking for wearables. Please look at the screen.");
-                startPolling('body');
-            }, 500);
-
-        } catch (e) {
-            console.error("Error starting wearables camera:", e);
-            setStatusMessage("Camera error. Please check hardware.");
-            setIsCameraLoading(false);
-        }
-    };
-    const lastSpokenRef = useRef(""); // To prevent repetitive speech
-    const lastSpeechTimeRef = useRef(0); // To prevent rapid-fire speech
-
-    const speakOnce = (text) => {
-        const now = Date.now();
-        const timeSinceLast = now - lastSpeechTimeRef.current;
-
-        // Prevent repeating the same text (already handled)
-        // AND prevent speaking ANY new text if it's been less than 1.5 seconds, 
-        // effectively throttling speech to avoid "glitching" or cutting off.
-        // Exception: high priority messages can be handled separately if needed, but 1.5s is usually fine.
-        if (lastSpokenRef.current !== text && timeSinceLast > 1500) {
-            if (!isMountedRef.current) return;
-            console.log("🗣️ Speaking:", text);
-            speak(text);
-            lastSpokenRef.current = text;
-            lastSpeechTimeRef.current = now;
-        }
-    };
-
-    const startPolling = (expectedType) => {
-        if (!isMountedRef.current) return;
-        if (pollerRef.current) clearInterval(pollerRef.current);
-
-        pollerRef.current = setInterval(async () => {
-            if (!isMountedRef.current) {
-                if (pollerRef.current) clearInterval(pollerRef.current);
-                return;
-            }
-            try {
-                // CACHE BUSTER: Add timestamp to prevent caching of status
-                const res = await fetch(`${API_BASE}/camera/status?_=${Date.now()}`);
-                const data = await res.json();
-
-                // Ensure data is valid JSON
-                const safeData = data || {};
-
-                const msg = (safeData.message || "").toLowerCase();
-
-                // SIGNAL ACTIVITY: If AI detects something (User presence), reset inactivity timer
-                // Ignore 'waiting' or 'bg' (background/empty)
-                if (msg && !msg.includes('waiting') && msg.trim() !== 'bg') {
-                    signalActivity();
-                }
-
-                // Update detection status badge
-                setDetectionStatus(msg);
-
-                if (expectedType === 'feet') {
-                    // Logic: Check for barefeet/socks compliance (Socks are VALID)
-                    // Strict check to avoid matching "invalid" as "valid"
-                    const isInvalid = msg.includes('invalid') || msg.includes('footwear') || msg.includes('shoes');
-                    // Ensure 'valid' is standalone or part of a success message, NOT part of 'invalid'
-                    // STRICT UPDATE: Only 'barefeet' or 'socks' are valid. Generic 'valid' or 'ready' are removed to ensure specific detection.
-                    const isValidSignal = msg.includes('barefeet') || msg.includes('socks');
-                    const isWaiting = msg.includes('waiting');
-
-                    if (isValidSignal && !isInvalid) {
-                        // SITUATION 1: VALID (User is ready)
-                        // Fasten process: If they are valid immediately, just confirm and hold.
-
-                        if (lastSpokenRef.current !== 'valid_hold') {
-                            speakOnce("Perfect. Hold still.");
-                            lastSpokenRef.current = 'valid_hold';
-                        }
-
-                        // Current frame is compliant
-                        if (!complianceTimerRef.current) {
-                            // Start 3-second timer if not already running
-                            setStatusMessage("Valid! Hold position for 3 seconds...");
-                            complianceTimerRef.current = setTimeout(() => {
-                                // Success action after 3 seconds
-                                setIsCompliant(true);
-                                setFootwearCleared(true);
-                                setStatusMessage("Footwear cleared! Proceeding...");
-
-                                // STOP POLLING IMMEDIATELY to prevent speech glitches during transition
-                                if (pollerRef.current) clearInterval(pollerRef.current);
-
-                                // Proceed to next step
-                                setTimeout(() => {
-                                    if (isMountedRef.current) {
-                                        // Pass the config index explicitly if needed, but the function reads from state now
-                                        startWearablesCheck();
-                                        lastSpokenRef.current = ""; // Reset speech tracking
-                                    }
-                                }, 1500);
-
-                                // Clear timer reference
-                                complianceTimerRef.current = null;
-                            }, 3000); // 3 seconds wait time
-                        }
-                    } else if (isInvalid) {
-                        // SITUATION 2: INVALID (Footwear detected)
-                        setIsCompliant(false);
-                        setStatusMessage("INVALID: Footwear Detected. Please remove.");
-
-                        if (complianceTimerRef.current) {
-                            clearTimeout(complianceTimerRef.current);
-                            complianceTimerRef.current = null;
-                        }
-
-                        if (lastSpokenRef.current !== 'shoes') {
-                            speakOnce("Footwear detected. Please remove it to proceed to wearables check.");
-                            lastSpokenRef.current = 'shoes';
-                        }
-                    } else if (isWaiting) {
-                        // SITUATION 3: WAITING (Ambient/Empty)
-                        // If checking... reset timer
-                        if (complianceTimerRef.current) {
-                            clearTimeout(complianceTimerRef.current);
-                            complianceTimerRef.current = null;
-                            setStatusMessage("Checking...");
-                        }
-
-                        // Dynamic "Waiting" Speech: If we see nothing for a while?
-                        // For now, let's just prompt once if we haven't said anything yet or if state changed back to waiting
-                        if (lastSpokenRef.current === 'shoes' || lastSpokenRef.current === 'valid_hold') {
-                            // Reset speech generic state so we can warn again if they step off?
-                            // lastSpokenRef.current = 'waiting'; 
-                        }
-
-                        // If we haven't said anything at all yet (skipped intro), and we are waiting...
-                        if (lastSpokenRef.current === "") {
-                            // Let's give it a moment (e.g. 2s) before nagging? 
-                            // Or just say it once.
-                            // Speak it once to initiate interaction if nothing is happening.
-                            speakOnce("Please stand on the platform for clearance.");
-                            lastSpokenRef.current = "waiting_prompt";
-                        }
-                    }
-                } else if (expectedType === 'body') {
-                    // Enhanced Wearables Check
-                    // FIRST: Check if the status indicates VALID/CLEAR (no wearables)
-                    // Enhanced Wearables Check
-                    // FIRST: Check if the status indicates VALID/CLEAR (no wearables)
-                    // CRITICAL FIX: Ensure 'valid' check does NOT match 'invalid'
-                    const isBodyClear = (msg.includes('valid') && !msg.includes('invalid')) ||
-                        msg.includes('clear') ||
-                        msg.includes('compliant') ||
-                        (msg.trim() === 'bg'); // strict background check
-
-                    if (isBodyClear) {
-                        // SAFE / CLEARED - Start 2-second timer to confirm
-                        if (!checkIntervalRef.current) {
-                            setStatusMessage("Checking... Hold still for 2 seconds.");
-                            checkIntervalRef.current = setTimeout(() => {
-                                if (!isMountedRef.current) return;
-                                // After 2 seconds of no wearables, mark as cleared
-                                setIsCompliant(true);
-                                setWearablesCleared(true);
-                                setStatusMessage("No wearables detected. You are cleared.");
-
-                                // STOP POLLING IMMEDIATELY
-                                if (pollerRef.current) clearInterval(pollerRef.current);
-
-                                if (lastSpokenRef.current !== 'clear') {
-                                    speakOnce("You are compliant. Proceeding to measurement.");
-                                    lastSpokenRef.current = 'clear';
-                                }
-
-                                // Proceed after brief delay
-                                setTimeout(() => {
-                                    if (isMountedRef.current) handleCompletion();
-                                }, 1000);
-                                checkIntervalRef.current = null;
-                            }, 2000); // 2 second validation wait
-                        }
-                    } else {
-                        // DETECTED SOMETHING - Check for specific items
-                        // Use word boundaries to avoid false positives (e.g., "valID" matching "id")
-                        // DETECTED SOMETHING - Check for specific items
-                        // Support MULTIPLE detected items (e.g. watch AND bag)
-                        let detectedList = [];
-                        if (msg.includes('watch')) detectedList.push('watch');
-                        if (msg.includes('bag') || msg.includes('backpack')) detectedList.push('bag');
-                        if (msg.includes('cap') || msg.includes('hat')) detectedList.push('cap');
-                        if (msg.includes('id lace') || msg.includes('id_lace') || msg.includes('lanyard')) detectedList.push('ID lace');
-
-                        setIsCompliant(false);
-
-                        // If concrete items found, list them. Otherwise fallback to generic.
-                        let warningMsg = "";
-                        let speechText = "";
-
-                        if (detectedList.length > 0) {
-                            // Smart Grammar Formatting for Speech
-                            // 1 item: "cap"
-                            // 2 items: "cap and bag"
-                            // 3+ items: "cap, bag, and watch"
-                            let itemsStr = "";
-                            if (detectedList.length === 1) {
-                                itemsStr = detectedList[0];
-                            } else if (detectedList.length === 2) {
-                                itemsStr = detectedList.join(' and ');
-                            } else {
-                                itemsStr = detectedList.slice(0, -1).join(', ') + ', and ' + detectedList[detectedList.length - 1];
-                            }
-
-                            warningMsg = `Detected: ${itemsStr.toUpperCase()}. Please remove.`;
-                            speechText = `Please remove your ${itemsStr}.`;
-                        } else {
-                            // Generic invalid state
-                            warningMsg = `Detected: Wearables. Please remove.`;
-                            speechText = "Please remove any detected wearables.";
-                        }
-
-                        setStatusMessage(warningMsg);
-
-                        // Smart Speech Feedback
-                        // REPEAT LOGIC: If the user hasn't removed the item after ~3 seconds, repeat the instruction.
-                        const now = Date.now();
-                        if (speechText && lastSpokenRef.current === speechText) {
-                            // Check if 3 seconds have passed since last speech
-                            if (now - lastSpeechTimeRef.current > 3000) {
-                                console.log("↻ Repeating instruction due to non-compliance");
-                                lastSpokenRef.current = ""; // Reset to force 'speakOnce' to trigger again
-                            }
-                        }
-
-                        // Use the combined speech text as the key to prevent repetition
-                        if (speechText && lastSpokenRef.current !== speechText) {
-                            speakOnce(speechText);
-                            // speakOnce sets the ref and updates timestamp
-                            // lastSpokenRef.current = speechText; 
-                        }
-
-                        if (checkIntervalRef.current) {
-                            clearTimeout(checkIntervalRef.current);
-                            checkIntervalRef.current = null;
-                        }
-                    }
-                }
-
-                // Reset retry count on success
-                setRetryCount(0);
-            } catch (e) {
-                console.error("Polling error:", e);
-                setRetryCount(prev => {
-                    const newCount = prev + 1;
-                    if (newCount > 8) { // ~4 seconds of failure
-                        setShowRetryModal(true);
-                        if (pollerRef.current) clearInterval(pollerRef.current);
-                        return 0;
-                    }
-                    return newCount;
-                });
-            }
-        }, 500);
-    };
-
-    // WATCHDOG: If stuck on "Waiting..." for too long (e.g. 6s), restart camera/logic
-    // This handles cases where backend overlay is active (green) but API status lags.
-    // ENHANCED: Also triggers if stuck on "checking" or empty status too long
+    // Auto-ready after 2 seconds (camera only mode - no AI validation)
     useEffect(() => {
-        let watchdogTimer;
-        // Only run if not loading
-        if (isCameraLoading) return;
+        const timer = setTimeout(() => {
+            if (isMountedRef.current) {
+                setIsReady(true);
+            }
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, []);
 
-        const isStuckStatus = detectionStatus === 'Waiting...'
-            || detectionStatus === 'Waiting'
-            || detectionStatus === ''
-            || detectionStatus === 'checking'
-            || detectionStatus.toLowerCase() === 'bg';
-
-        if (isStuckStatus) {
-            watchdogTimer = setTimeout(() => {
-                console.log("🐶 Watchdog: Stuck on '", detectionStatus, "' for 8s - Auto-restarting...");
-                if (step === 1) startFootwearCheck(0);
-                else if (step === 2) startWearablesCheck();
-            }, 8000); // 8 seconds tolerance (was 6s, give a bit more time)
+    // --- API CALLS ---
+    const startClearance = async () => {
+        try {
+            await fetch(`${API_BASE}/clearance/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            setFeedUrl(`${API_BASE}/clearance/stream?t=${Date.now()}`);
+        } catch (e) {
+            console.error("Clearance start failed", e);
         }
-        return () => clearTimeout(watchdogTimer);
-    }, [detectionStatus, isCameraLoading, step]); // detectionStatus resets timer on change
-
-    const handleCompletion = async () => {
-        setStep(3);
-
-        // Stop Everything Immediately
-        if (pollerRef.current) clearInterval(pollerRef.current);
-        if (checkIntervalRef.current) clearTimeout(checkIntervalRef.current);
-        await stopCamera(); // Ensure await
-        stopSpeaking();
-
-        setStatusMessage("✅ Clearance Complete! Proceeding to BMI...");
-
-        // Navigate directly to BMI after brief delay
-        setTimeout(() => {
-            console.log("✅ Navigating to: /measure/bmi");
-            navigate('/measure/bmi', { state: location.state });
-        }, 1500);
     };
 
-    const handleContinue = () => {
-        // Stop camera and speech before navigating
-        stopCamera();
-        stopSpeaking();
-        if (pollerRef.current) clearInterval(pollerRef.current);
-
-        // Navigate directly to BMI
-        navigate('/measure/bmi', { state: location.state });
+    const stopClearance = () => {
+        try {
+            navigator.sendBeacon(`${API_BASE}/clearance/stop`);
+        } catch (e) { }
     };
 
-    const handleExit = () => {
-        // Stop everything before exiting
-        stopCamera();
-        stopSpeaking();
-        if (pollerRef.current) clearInterval(pollerRef.current);
-        navigate('/login');
+    const handleNext = () => {
+        stopClearance();
+        navigate('/measure/bmi');
     };
 
     return (
-        <motion.div
-            className="container-fluid d-flex justify-content-center align-items-center min-vh-100 max-vh-100 p-0 measurement-container overflow-hidden"
-            style={{ maxHeight: '100vh' }}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.5 }}
-        >
-            {showRetryModal && (
-                <div className="exit-modal-overlay" onClick={() => { }}>
-                    <motion.div
-                        className="exit-modal-content"
-                        initial={{ opacity: 0, scale: 0.8, y: 50 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                    >
-                        <div className="exit-modal-icon" style={{ background: '#ffebee', color: '#f44336' }}><span>📡</span></div>
-                        <h2 className="exit-modal-title">Connection Issue</h2>
-                        <p className="exit-modal-message">Camera visual feed is lagging or disconnected.</p>
-                        <div className="exit-modal-buttons">
-                            <button className="exit-modal-button primary" onClick={() => {
-                                setShowRetryModal(false);
-                                setRetryCount(0);
-                                if (step === 1) startFootwearCheck();
-                                else startWearablesCheck();
-                            }}>
-                                Try Again
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-
-            <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
-
-                {/* Header */}
-                <div className="text-center mb-4">
-                    <h1 className="measurement-title">Pre-Measurement <span className="measurement-title-accent">Clearance</span></h1>
-                    <p className="measurement-subtitle">{statusMessage}</p>
-                </div>
-
-                <div className="row g-4 justify-content-center">
-
-                    {/* Camera Feed */}
-                    <div className="col-12 col-lg-8">
-                        <div className="clearance-camera-container">
-                            {/* Loading Overlay - Red/Gray/White Theme */}
-                            {isCameraLoading && (
-                                <div style={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    background: 'linear-gradient(135deg, rgba(30,30,30,0.95) 0%, rgba(50,50,50,0.95) 100%)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    zIndex: 10,
-                                    borderRadius: '16px',
-                                    border: '2px solid #dc2626'
-                                }}>
-                                    <div style={{
-                                        width: '60px',
-                                        height: '60px',
-                                        border: '4px solid rgba(255,255,255,0.2)',
-                                        borderTop: '4px solid #dc2626',
-                                        borderRadius: '50%',
-                                        animation: 'spin 1s linear infinite'
-                                    }}></div>
-                                    <p style={{
-                                        color: 'white',
-                                        marginTop: '1.5rem',
-                                        fontSize: '1.1rem',
-                                        fontWeight: '500'
-                                    }}>
-                                        {step === 1 ? 'Initializing Feet Camera...' : 'Switching to Wearables Camera...'}
-                                    </p>
-                                    <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                                        Please wait...
-                                    </p>
-                                </div>
-                            )}
-
-                            <img
-                                key={`${videoFeedUrl}?t=${streamTimestamp}`}
-                                src={`${videoFeedUrl}?t=${streamTimestamp}`}
-                                alt="Camera Feed"
-                                className="clearance-feed"
-                                style={{ opacity: isCameraLoading ? 0.3 : 1 }}
-                            />
-
-                            <div className="clearance-overlay">
-                                <div className={`clearance-status-badge ${isCompliant ? 'success' : detectionStatus.toLowerCase().includes('invalid') || detectionStatus.toLowerCase().includes('remove') ? 'error' : 'warning'}`}>
-                                    {isCompliant ? '✅ Compliant' : detectionStatus.toLowerCase().includes('invalid') || detectionStatus.toLowerCase().includes('remove') ? '❌ Invalid' : '⚠️ Checking...'} : {detectionStatus}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Checklist Side Panel */}
-                    <div className="col-12 col-lg-4">
-                        <div className="instruction-card h-100">
-                            <h3 className="instruction-title mb-4">Requirements</h3>
-
-                            <div className="instruction-list">
-                                <div className={`instruction-item ${footwearCleared ? 'completed' : step === 1 ? 'active' : ''}`}>
-                                    <div className="instruction-check">{footwearCleared ? '✓' : '1'}</div>
-                                    <div>
-                                        <strong>Footwear Check</strong>
-                                        <div className="small text-muted">Remove footwear</div>
-                                    </div>
-                                </div>
-
-                                <div className={`instruction-item ${wearablesCleared ? 'completed' : step === 2 ? 'active' : ''}`}>
-                                    <div className="instruction-check">{wearablesCleared ? '✓' : '2'}</div>
-                                    <div>
-                                        <strong>Wearables Check</strong>
-                                        <div className="small text-muted">Remove watches/bags</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-4 pt-4 border-top">
-                                <p className="small text-muted">
-                                    AI is verifying your readiness. Please follow the instructions on screen.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                {/* Action Buttons */}
-                <div className="measurement-navigation mt-5">
-                    <button className="measurement-back-arrow me-3" onClick={handleExit} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>
-                        Exit
-                    </button>
-                    <button
-                        className="measurement-button"
-                        onClick={handleContinue}
-                        disabled={step < 3} // Only enable when complete
-                    >
-                        {step === 3 ? "Continue to Measurement" : "Scanning..."}
-                    </button>
-                </div>
-
+        <div className="d-flex flex-column vh-100 bg-white overflow-hidden">
+            {/* Compact Header */}
+            <div className="py-3 text-center border-bottom">
+                <h2 className="fw-bold text-dark mb-0">
+                    Pre-Measurement <span style={{ color: '#dc3545' }}>Clearance</span>
+                </h2>
+                <small className="text-muted">Camera preview - AI detection disabled</small>
             </div>
-        </motion.div>
+
+            {/* Camera View - Fixed Height, No Scroll */}
+            <div className="flex-grow-1 d-flex align-items-center justify-content-center p-3" style={{ minHeight: 0 }}>
+                <div className="position-relative" style={{
+                    width: '100%',
+                    maxWidth: '400px',
+                    aspectRatio: '1/2', /* 480x960 stitched = 1:2 */
+                    background: '#000',
+                    borderRadius: '16px',
+                    overflow: 'hidden'
+                }}>
+                    {/* The Single Stitched Feed */}
+                    {feedUrl ? (
+                        <img src={feedUrl} className="w-100 h-100" style={{ objectFit: 'contain' }} alt="Unified Feed" />
+                    ) : (
+                        <div className="w-100 h-100 d-flex align-items-center justify-content-center text-white">
+                            <div className="spinner-border text-danger me-2"></div> Loading...
+                        </div>
+                    )}
+
+                    {/* Top Overlay (Body) */}
+                    <div className="position-absolute top-0 start-0 w-100 p-2" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)' }}>
+                        <div className="d-flex justify-content-between align-items-center">
+                            <span className="badge bg-danger">👕 Body</span>
+                            <span className="badge bg-secondary">📷 Camera Only</span>
+                        </div>
+                    </div>
+
+                    {/* Center Divider */}
+                    <div className="position-absolute w-100" style={{ top: '50%', borderTop: '2px dashed rgba(255,255,255,0.4)' }}></div>
+
+                    {/* Bottom Overlay (Feet) */}
+                    <div className="position-absolute bottom-0 start-0 w-100 p-2" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)' }}>
+                        <div className="d-flex justify-content-between align-items-center">
+                            <span className="badge bg-danger">👟 Feet</span>
+                            <span className="badge bg-secondary">📷 Camera Only</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Compact Footer */}
+            <div className="py-3 bg-light text-center border-top">
+                <button
+                    onClick={handleNext}
+                    disabled={!isReady}
+                    className={`btn btn-lg px-5 py-2 rounded-pill fw-bold ${isReady ? 'btn-success' : 'btn-secondary'}`}
+                >
+                    {isReady ? "✅ CONTINUE" : "Loading Cameras..."}
+                </button>
+            </div>
+        </div>
     );
 }

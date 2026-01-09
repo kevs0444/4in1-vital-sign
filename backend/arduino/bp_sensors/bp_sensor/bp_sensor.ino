@@ -47,6 +47,12 @@ void loop() {
       showStatus("DEVICE ON", "Measuring...");
       Serial.println("Button pressed - Device turning ON...");
     }
+    else if (command.equalsIgnoreCase("OFF")) {
+      // Explicit OFF command - tap button to turn device off
+      simulateButtonTap();
+      showStatus("DEVICE OFF", "Error Recovery");
+      Serial.println("OFF command - Device turning OFF...");
+    }
     else if (command.equalsIgnoreCase("done")) {
       simulateButtonTap();
       showStatus("DEVICE OFF", "Goodbye");
@@ -69,7 +75,13 @@ void loop() {
        showStatus("Status:", stat.c_str());
     }
     else if (command.startsWith("ERROR")) {
-       showStatus("Error Detected", "Check Cuff");
+       showStatus("Error Detected", "Press Btn Again");
+    }
+    else if (command.equalsIgnoreCase("LCD_IDLE")) {
+       showStatus("System Ready", "Waiting...");
+    }
+    else if (command.equalsIgnoreCase("LCD_BP_READY")) {
+       showStatus("Blood Pressure", "Ready...");
     }
   }
 

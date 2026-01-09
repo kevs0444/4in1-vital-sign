@@ -1,7 +1,15 @@
 from flask import Blueprint, jsonify
 import os
 import logging
-from app.sensors.weight_compliance_camera import weight_compliance_camera as camera_manager
+
+# LEGACY: Disabled - Module deleted as part of Unified Clearance refactor
+# from app.sensors.weight_compliance_camera import weight_compliance_camera as camera_manager
+
+# Stub to prevent crashes - this feature requires a dedicated BP camera manager
+class StubCameraManager:
+    def get_frame(self):
+        return None
+camera_manager = StubCameraManager()
 
 bp_ai_camera_bp = Blueprint('bp_ai_camera', __name__)
 

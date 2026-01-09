@@ -93,19 +93,25 @@ def create_app():
     app.register_blueprint(bp_ai_camera_bp, url_prefix='/api/bp-camera')
     app.register_blueprint(bp_ai_camera_bp, url_prefix='/bp-camera', name='bp_camera_alias')
 
+    # NEW: Unified Clearance Route
+    from app.routes.clearance_routes import clearance_bp
+    app.register_blueprint(clearance_bp, url_prefix='/api/clearance')
+    app.register_blueprint(clearance_bp, url_prefix='/clearance', name='clearance_alias')
+
     # NEW: Dedicated BP Sensor Controller Routes
     from app.routes.bp_routes import bp_routes
     app.register_blueprint(bp_routes)  # Already has url_prefix='/api/bp'
     app.register_blueprint(bp_routes, url_prefix='/bp', name='bp_alias')
 
     # Wearables Camera Routes (Camera Index 1 - for watch, bag, cap, ID detection)
-    from app.routes.wearables_camera import wearables_routes
-    app.register_blueprint(wearables_routes)  # Already has url_prefix='/api/wearables'
-    app.register_blueprint(wearables_routes, url_prefix='/wearables', name='wearables_alias')
+    # Wearables Camera Routes - DEPRECATED (Now unified in camera_routes)
+    # from app.routes.wearables_camera import wearables_routes
+    # app.register_blueprint(wearables_routes)
+    # app.register_blueprint(wearables_routes, url_prefix='/wearables', name='wearables_alias')
     
     # Backwards compatibility: Also register at /api/aux for existing frontend calls
-    app.register_blueprint(wearables_routes, url_prefix='/api/aux', name='wearables_aux_compat')
-    app.register_blueprint(wearables_routes, url_prefix='/aux', name='aux_alias')
+    # app.register_blueprint(wearables_routes, url_prefix='/api/aux', name='wearables_aux_compat')
+    # app.register_blueprint(wearables_routes, url_prefix='/aux', name='aux_alias')
 
     from app.routes.measurement_routes import measurement_bp
     app.register_blueprint(measurement_bp, url_prefix='/api/measurements')
