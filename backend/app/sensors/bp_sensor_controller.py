@@ -88,9 +88,13 @@ class BPSensorController:
         self.result_sent_to_lcd = False # Prevent duplicate LCD result
         self.device_is_on = False # Track if BP device is currently ON to prevent duplicate toggles
         
-        # DELAYED CONNECTION REMOVED: User requested to connect only on BP phase.
-        # Check backend/app/sensors/bp_sensor_controller.py start() method for connection logic.
-        # threading.Timer(10.0, self._connect_arduino).start()
+        
+        # Page State for Button Security
+        self.on_bp_page = False
+        self.last_illegal_press_time = 0 # Track timestamp of unauthorized presses
+        
+        # Start persistent Serial Listener for hardware policing
+        threading.Thread(target=self._serial_listener, daemon=True).start()
         
         logger.info("🩸 BPSensorController initialized")
     
@@ -153,6 +157,10 @@ class BPSensorController:
                     print(f"🔌 [BP] Cannot send '{cmd}' - Arduino not connected")
                     return False
             
+            # PRIORITY: If shutting down ("done" or "OFF"), send immediately!
+            # The Arduino is responsible for updating the LCD *after* it toggles the hardware.
+            # This ensures the device turns off as fast as possible.
+            
             full_cmd = f"{cmd}\n"
             self.arduino.write(full_cmd.encode('utf-8'))
             print(f"📤 [BP LCD] Sent: {cmd}")
@@ -177,6 +185,7 @@ class BPSensorController:
     def start(self, camera_index=None, camera_name=None, enable_ai=True, mode='regular'):
         """Start the BP camera and detection loop."""
         self.mode = mode # Store mode
+        self.on_bp_page = True # Allow physical button
         
         # Update AI state
         self.ai_enabled = enable_ai
@@ -262,6 +271,7 @@ class BPSensorController:
                 return False, "Failed to open camera"
             
             self.is_running = True
+            self.on_bp_page = True # CRITICAL: Mark as authorized BP page
             self.bp_status["is_running"] = True
             
             # Reset error detection state for new session
@@ -296,6 +306,7 @@ class BPSensorController:
         self.bp_status["is_running"] = False
         self.start_command_sent = False  # Reset for next measurement
         self.has_inflated = False # Reset inflation flag
+        self.on_bp_page = False # Disallow physical button
         
         if self.cap:
             self.cap.release()
@@ -366,8 +377,14 @@ class BPSensorController:
     
     def _serial_listener(self):
         """Continuously read from Arduino Serial to catch MANUAL_START."""
-        logger.info("[BP] 🎧 Serial Listener Started")
-        while self.is_running and self.arduino and self.arduino.is_open:
+        logger.info("[BP] 🎧 Persistent Serial Listener Started")
+        while True: # Run forever to police hardware button
+            # 1. Ensure Connected
+            if not self.arduino or not self.arduino.is_open:
+                 self._connect_arduino()
+                 time.sleep(2)
+                 continue
+
             try:
                 if self.arduino.in_waiting > 0:
                     line = self.arduino.readline().decode('utf-8', errors='ignore').strip()
@@ -381,7 +398,41 @@ class BPSensorController:
                                 logger.info("🛑 Ignoring MANUAL_START (Cooldown/Auto-Off Phase)")
                                 continue
 
-                            logger.info("👆 PHYSICAL BUTTON PRESSED (Detected via Serial)")
+                            # SECURITY CHECK: If not on BP page, just ignore (Software Lock)
+                            # We do NOT turn it off physically to avoid toggle loops or confusion.
+                            # We simply ignore the signal in the software.
+                            if not getattr(self, 'on_bp_page', False):
+                                # Hardware Note: Arduino is tapped in parallel. Button press turns it ON.
+                                # User REQUEST: Wait 8s (Long delay for robustness/User preference).
+                                logger.warning("⛔ Illegal Start. Waiting 8.0s, then Forcing OFF (unless user aborts).")
+                                self.last_illegal_press_time = time.time() # Trigger frontend alert
+                                
+                                # Wait 8.0 seconds
+                                time.sleep(8.0)
+                                
+                                # CHECK FOR MANUAL CORRECTION (User pressed button during the 8s wait?)
+                                # If the user manually turned it OFF, we see 'MANUAL_START' in the buffer.
+                                # If we send 'done' now, we would turn it back ON. So we ABORT.
+                                if self.arduino.in_waiting > 0:
+                                    try:
+                                        buffer_data = self.arduino.read(self.arduino.in_waiting).decode('utf-8', errors='ignore')
+                                        if "MANUAL_START" in buffer_data:
+                                            logger.info("✋ User manually toggled device. Aborting Auto-OFF to prevent re-activation.")
+                                            # Reset cooldown slightly
+                                            self.ignore_start_until = time.time() + 1.0
+                                            continue
+                                    except Exception as e:
+                                        logger.error(f"Error reading buffer check: {e}")
+
+                                # CRITICAL: Block the echo from the 'done' command (simulated press)
+                                self.ignore_start_until = time.time() + 1.0
+                                
+                                # SINGLE OFF COMMAND
+                                self.arduino.flush() # Ensure wire is clear
+                                self.send_command("done") # Toggle OFF
+                                continue
+
+                            logger.info("👆 PHYSICAL BUTTON PRESSED - BP Phase Active (Allowed)")
                             with self.lock:
                                 self.start_command_sent = True
                                 self.trend_state = "Inflating ⬆️" # Anticipate inflation
@@ -450,14 +501,9 @@ class BPSensorController:
     
     def _process_loop(self):
         """Main processing loop for BP detection."""
-        # Try connecting to Arduino for LCD/Buttons
-        self._connect_arduino()
-        if self.arduino and self.arduino.is_open:
-            logger.info(f"[BP] Arduino connected on {self.arduino.port} - Starting serial listener")
-            # Start listener thread
-            threading.Thread(target=self._serial_listener, daemon=True).start()
-        else:
-            logger.warning("[BP] Arduino NOT connected - Physical button detection disabled")
+        # Note: Serial Listener is now persistent and started in __init__
+        # We don't start it here anymore.
+
 
         # Lazy load YOLO model
         if not self.bp_yolo:
@@ -823,7 +869,8 @@ class BPSensorController:
                 # 0. BLOCK RE-START SIGNALS
                 # The Arduino might report 'MANUAL_START' again when we press the button to turn it OFF.
                 # We must ignore that signal for a few seconds.
-                self.ignore_start_until = time.time() + 10.0 
+                # User REQUEST: Reduce to 2.5s so we don't ignore legitimate illegal presses on next page.
+                self.ignore_start_until = time.time() + 2.5 
                 
                 # 1. Stop Hardware Immediately (Pump off)
                 self.send_command("done", auto_connect=True)

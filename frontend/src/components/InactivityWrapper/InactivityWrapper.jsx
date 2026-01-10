@@ -4,6 +4,7 @@ import './InactivityWrapper.css';
 import juanSadIcon from '../../assets/icons/juan-sad-icon.png';
 import { isLocalDevice } from '../../utils/network';
 import { sensorAPI, cameraAPI } from '../../utils/api';
+import { speak, reinitSpeech } from '../../utils/speech';
 
 // Create Context
 const InactivityContext = createContext({
@@ -31,6 +32,10 @@ const InactivityWrapper = ({ children }) => {
     const location = useLocation();
     const [showWarning, setShowWarning] = useState(false);
     const [isInactivityEnabled, setIsInactivityEnabled] = useState(true);
+
+    // Global BP Alert State
+    const [showIllegalAlert, setShowIllegalAlert] = useState(false);
+    const lastIllegalTimeRef = useRef(Date.now() / 1000); // Only track events happening AFTER this mount
 
     // Dynamic Timeout State
     const [timeoutConfig, setTimeoutConfig] = useState({
@@ -167,6 +172,40 @@ const InactivityWrapper = ({ children }) => {
         startTimers();
     }, [isInactivityEnabled, startTimers]);
 
+    // POLL FOR ILLEGAL BP USAGE (Global)
+    useEffect(() => {
+        const checkIllegalBP = async () => {
+            // EXCLUDE REMOTE DEVICES (Admin/Dashboard viewers don't need this alert)
+            if (!isLocalDevice()) return;
+
+            // Don't check if we are ON the BP page (Authorized)
+            if (location.pathname.includes('blood-pressure') || location.pathname.includes('BloodPressure')) return;
+
+            try {
+                const res = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/check_illegal_press`);
+                const data = await res.json();
+
+                if (data.timestamp && data.timestamp > lastIllegalTimeRef.current) {
+                    console.warn("🚨 Illegal BP Press Detected!");
+                    lastIllegalTimeRef.current = data.timestamp;
+                    setShowIllegalAlert(true);
+
+                    // Voice Warning (Re-init to ensure sound)
+                    reinitSpeech(true);
+                    speak("Please do not use the blood pressure monitor right now.");
+
+                    // Auto-hide after 4s (Backend waits 8s persistently)
+                    setTimeout(() => setShowIllegalAlert(false), 4000);
+                }
+            } catch (err) {
+                // Silent fail
+            }
+        };
+
+        const interval = setInterval(checkIllegalBP, 1500);
+        return () => clearInterval(interval);
+    }, [location.pathname]);
+
     // Determine if we should show the overlay
     const canShowWarning = () => {
         if (!showWarning) return false;
@@ -178,6 +217,27 @@ const InactivityWrapper = ({ children }) => {
     return (
         <InactivityContext.Provider value={{ isInactivityEnabled, setIsInactivityEnabled, signalActivity, setCustomTimeout }}>
             {children}
+            {/* ILLEGAL BP USAGE ALERT */}
+            {showIllegalAlert && (
+                <div className="inactivity-overlay" style={{ background: 'rgba(255,0,0,0.3)', zIndex: 9999 }}>
+                    <div className="inactivity-modal" style={{ border: '3px solid #ff4444' }}>
+                        <div className="inactivity-icon-container" style={{ background: '#ffdddd' }}>
+                            <span style={{ fontSize: '3rem' }}>⚠️</span>
+                        </div>
+                        <h2 className="inactivity-title" style={{ color: '#cc0000' }}>Device Activation Detected</h2>
+                        <p className="inactivity-subtitle">
+                            Please do NOT press the BP Monitor button when not on the measurement screen.
+                        </p>
+                        <p className="inactivity-subtitle" style={{ fontWeight: 'bold', marginTop: '10px' }}>
+                            (Device stays ON due to hardware restriction)
+                        </p>
+                        <p className="inactivity-subtitle">
+                            Please Login and navigate to Blood Pressure to measure properly.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {canShowWarning() && (
                 <div className="inactivity-overlay" onClick={handleActivity}>
                     <div className="inactivity-modal">

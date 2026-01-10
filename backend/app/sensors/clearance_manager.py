@@ -2,6 +2,10 @@ import cv2
 import numpy as np
 import threading
 import time
+import logging
+from app.utils.camera_config import CameraConfig
+
+logger = logging.getLogger(__name__)
 
 class ClearanceManager:
     """
@@ -22,7 +26,7 @@ class ClearanceManager:
 
     def start_clearance(self):
         """Starts cameras (no AI models)."""
-        print("🚀 [ClearanceManager] Starting cameras (No AI)...")
+        logger.info("🚀 [ClearanceManager] Starting cameras (No AI)...")
         self.is_active = True
         
         # Start Threads
@@ -30,7 +34,7 @@ class ClearanceManager:
         threading.Thread(target=self._run_body_camera, daemon=True).start()
 
     def stop_clearance(self):
-        print("🛑 [ClearanceManager] Stopping cameras...")
+        logger.info("🛑 [ClearanceManager] Stopping cameras...")
         self.is_active = False
         time.sleep(0.5)
         if self.cap_feet: 
@@ -61,22 +65,33 @@ class ClearanceManager:
         return frame[y1:y1+size, x1:x1+size]
 
     def _run_feet_camera(self):
-        """Feet camera - Index 0, rotation=180, zoom=1.3, square_crop=True"""
+        """Feet camera - Weight Compliance Camera"""
+        # Resolve Index using robust config
+        idx = CameraConfig.get_index_by_name("Weight Compliance Camera")
+        if idx is None:
+            idx = CameraConfig.get_index('weight')
+            if idx is None:
+                 idx = 1 # Fallback based on known order
+        
+        logger.info(f"🦶 Feet Camera (Weight) using Index: {idx}")
+
         cap = None
         backends = [cv2.CAP_DSHOW, cv2.CAP_ANY, cv2.CAP_MSMF]
         
         for backend in backends:
-            cap = cv2.VideoCapture(0, backend)
+            cap = cv2.VideoCapture(idx, backend)
             if cap.isOpened():
                 ret, test_frame = cap.read()
                 if ret and test_frame is not None:
-                    print(f"✅ Feet camera opened with backend {backend}")
-                    break
+                    # Verify we didn't just open a black screen
+                    if test_frame.size > 0:
+                        logger.info(f"✅ Feet camera opened at Index {idx} with backend {backend}")
+                        break
                 cap.release()
                 cap = None
         
         if cap is None or not cap.isOpened():
-            print("❌ Feet camera failed to open on all backends!")
+            logger.error(f"❌ Feet camera failed to open at Index {idx}")
             return
         
         # Optimize
@@ -106,22 +121,32 @@ class ClearanceManager:
             time.sleep(0.03)
 
     def _run_body_camera(self):
-        """Body camera - Index 2, rotation=180, zoom=1.0, square_crop=True"""
+        """Body camera - Wearables Compliance Camera"""
+        # Resolve Index using robust config
+        idx = CameraConfig.get_index_by_name("Wearables Compliance Camera")
+        if idx is None:
+            idx = CameraConfig.get_index('wearables')
+            if idx is None:
+                 idx = 2 # Fallback based on known order
+        
+        logger.info(f"👕 Body Camera (Wearables) using Index: {idx}")
+
         cap = None
         backends = [cv2.CAP_DSHOW, cv2.CAP_ANY, cv2.CAP_MSMF]
         
         for backend in backends:
-            cap = cv2.VideoCapture(2, backend)
+            cap = cv2.VideoCapture(idx, backend)
             if cap.isOpened():
                 ret, test_frame = cap.read()
                 if ret and test_frame is not None:
-                    print(f"✅ Body camera opened with backend {backend}")
-                    break
+                     if test_frame.size > 0:
+                        logger.info(f"✅ Body camera opened at Index {idx} with backend {backend}")
+                        break
                 cap.release()
                 cap = None
         
         if cap is None or not cap.isOpened():
-            print("❌ Body camera failed to open on all backends!")
+            logger.error(f"❌ Body camera failed to open at Index {idx}")
             return
         
         # Optimize with MJPG codec

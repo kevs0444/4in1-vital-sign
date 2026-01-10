@@ -118,3 +118,10 @@ def capture_bp_image():
     if success:
         return jsonify({"success": True, "filepath": result})
     return jsonify({"success": False, "message": result}), 500
+
+@bp_routes.route('/check_illegal_press', methods=['GET'])
+def check_illegal_press():
+    """Check if an unauthorized physical button press occurred recently."""
+    # Use getattr to be safe if __init__ didn't update
+    timestamp = getattr(bp_sensor, 'last_illegal_press_time', 0)
+    return jsonify({"timestamp": timestamp})

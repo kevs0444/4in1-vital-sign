@@ -82,7 +82,10 @@ const getPreferredVoice = () => {
 
 export const speak = (text) => {
     // DISABLE SPEECH ON REMOTE DEVICES (Mini PC acts as Kiosk with speech)
-    if (!isLocalDevice()) return;
+    if (!isLocalDevice()) {
+        console.warn("Speech skipped: Remote device detected");
+        return;
+    }
 
     if (!text || typeof text !== 'string') return;
 
