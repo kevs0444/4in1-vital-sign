@@ -9,12 +9,15 @@ logger = logging.getLogger(__name__)
 
 class ClearanceManager:
     """
-    Simplified ClearanceManager - Camera only, no AI processing.
-    Runs dual cameras (feet/body) and stitches their feeds.
+    ClearanceManager - Sequential scanning (Feet -> Body).
+    1. Feet: Camera Index 2 (Weight) - Rotated 180, Zoom 1.4x, Square
+    2. Body: Camera Index 1 (Wearables) - Rotated 180, Square
     """
     def __init__(self):
         self.lock = threading.Lock()
         self.is_active = False
+        self.current_stage = 'idle'
+        self.run_id = 0 # To track active sessions
         
         # Frames
         self.feet_frame = None
@@ -24,19 +27,44 @@ class ClearanceManager:
         self.cap_feet = None
         self.cap_body = None
 
-    def start_clearance(self):
-        """Starts cameras (no AI models)."""
-        logger.info("🚀 [ClearanceManager] Starting cameras (No AI)...")
-        self.is_active = True
-        
-        # Start Threads
-        threading.Thread(target=self._run_feet_camera, daemon=True).start()
-        threading.Thread(target=self._run_body_camera, daemon=True).start()
+        # Status
+        self.feet_status = {"message": "Initializing...", "is_compliant": False, "violations": []}
+        self.body_status = {"message": "Waiting...", "is_compliant": False, "violations": []}
 
-    def stop_clearance(self):
-        logger.info("🛑 [ClearanceManager] Stopping cameras...")
-        self.is_active = False
+    def start_clearance(self):
+        """Starts Stage 1: Feet Scanning."""
+        logger.info("🚀 [ClearanceManager] Starting Stage 1: Feet Scan")
+        self._stop_streams()
+        
+        with self.lock:
+            self.run_id += 1
+            self.is_active = True
+            self.current_stage = 'feet'
+            self.feet_status = {"message": "Initializing...", "is_compliant": False, "violations": []}
+            self.body_status = {"message": "Waiting...", "is_compliant": False, "violations": []}
+        
+        self._load_model('feet')
+        threading.Thread(target=self._run_feet_camera, args=(self.run_id,), daemon=True).start()
+
+    def start_body_scan(self):
+        """Switches to Stage 2: Body Scanning."""
+        logger.info("🚀 [ClearanceManager] Switching to Stage 2: Body Scan")
+        
+        # Stop Feet Camera
+        self.is_active = False # Signal feet thread to stop
         time.sleep(0.5)
+        
+        with self.lock:
+            self.run_id += 1
+            self.current_stage = 'body'
+            self.is_active = True
+        
+        self._load_model('body')
+        threading.Thread(target=self._run_body_camera, args=(self.run_id,), daemon=True).start()
+
+    def _stop_streams(self):
+        self.is_active = False
+        time.sleep(0.5) # Increased wait to ensure cameras release
         if self.cap_feet: 
             self.cap_feet.release()
             self.cap_feet = None
@@ -44,10 +72,101 @@ class ClearanceManager:
             self.cap_body.release()
             self.cap_body = None
 
+    def _load_model(self, stage):
+        try:
+            from ultralytics import YOLO
+            import os
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            
+            if stage == 'feet':
+                path = os.path.join(base_dir, 'ai_camera', 'models', 'weight.pt')
+                if os.path.exists(path):
+                    self.feet_model = YOLO(path)
+                    logger.info(f"✅ Loaded Feet Model: {path}")
+                else:
+                    self.feet_model = None
+            elif stage == 'body':
+                path = os.path.join(base_dir, 'ai_camera', 'models', 'wearables.pt')
+                if os.path.exists(path):
+                    self.body_model = YOLO(path)
+                    logger.info(f"✅ Loaded Body Model: {path}")
+                else:
+                    self.body_model = None
+        except Exception as e:
+            logger.error(f"❌ Model Load Error: {e}")
+
+    def stop_clearance(self):
+        logger.info("🛑 [ClearanceManager] Stopping all...")
+        self._stop_streams()
+        self.current_stage = None
+
+    def _run_detection(self, model, frame, label_prefix):
+        """Runs YOLO detection and returns annotated frame + compliance status."""
+        if model is None:
+            return frame, True, "AI Disabled", []
+            
+        try:
+            # Run inference
+            results = model(frame, verbose=False, conf=0.4)
+            annotated_frame = results[0].plot()
+            names = results[0].names
+            boxes = results[0].boxes
+            
+            violations = []
+            allowed_count = 0
+            detected_labels = []            
+
+            for box in boxes:
+                cls_id = int(box.cls[0])
+                label = names.get(cls_id, 'unknown').lower()
+                detected_labels.append(label)
+                
+                if label_prefix == "FEET":
+                    # FEET LOGIC:
+                    # Must be allowed (barefeet/socks)
+                    if label in ['barefeet', 'barefoot', 'socks', 'sock', 'feet', 'foot']:
+                        allowed_count += 1
+                    else:
+                        # Anything else is a violation (shoes, etc)
+                        violations.append(label)
+                else:
+                    # BODY LOGIC:
+                    # Any detection is a violation
+                    violations.append(label)
+
+            # --- COMPLIANCE LOGIC ---
+            if label_prefix == "FEET":
+                # Compliant IF: 0 Violations AND >0 Allowed items
+                if len(violations) == 0 and allowed_count > 0:
+                    is_compliant = True
+                    found_item = detected_labels[0].upper() if detected_labels else "FEET"
+                    status_msg = f"✅ CLEAR ({found_item})"
+                elif len(violations) > 0:
+                    is_compliant = False
+                    unique_v = list(set(violations))
+                    status_msg = f"❌ DETECTED: {', '.join(unique_v).upper()}"
+                else:
+                    is_compliant = False
+                    status_msg = "⚠️ PLEASE STAND ON SCALE"
+
+            else:
+                # BODY Logic (Standard)
+                if len(violations) == 0:
+                    is_compliant = True
+                    status_msg = "✅ CLEAR"
+                else:
+                    is_compliant = False
+                    unique_v = list(set(violations))
+                    status_msg = f"❌ DETECTED: {', '.join(unique_v).upper()}"
+
+            return annotated_frame, is_compliant, status_msg, violations
+            
+        except Exception as e:
+            logger.error(f"Detection Error: {e}")
+            return frame, False, "AI Error", []
+
     def _apply_zoom(self, frame, zoom_factor):
-        """Apply center zoom to frame."""
-        if zoom_factor <= 1.0:
-            return frame
+        if zoom_factor <= 1.0: return frame
         h, w = frame.shape[:2]
         new_w = int(w / zoom_factor)
         new_h = int(h / zoom_factor)
@@ -57,157 +176,135 @@ class ClearanceManager:
         return cv2.resize(cropped, (w, h))
 
     def _apply_square_crop(self, frame):
-        """Crop frame to center square."""
         h, w = frame.shape[:2]
         size = min(h, w)
         x1 = (w - size) // 2
         y1 = (h - size) // 2
         return frame[y1:y1+size, x1:x1+size]
 
-    def _run_feet_camera(self):
-        """Feet camera - Weight Compliance Camera"""
-        # Resolve Index using robust config
-        idx = CameraConfig.get_index_by_name("Weight Compliance Camera")
-        if idx is None:
-            idx = CameraConfig.get_index('weight')
-            if idx is None:
-                 idx = 1 # Fallback based on known order
+    def _run_feet_camera(self, my_run_id):
+        """Feet Camera - Using Index 2 (Scale)"""
+        idx = 2 
+        logger.info(f"🦶 Feet Camera: Starting at Index {idx} (Run {my_run_id})")
         
-        logger.info(f"🦶 Feet Camera (Weight) using Index: {idx}")
-
-        cap = None
-        backends = [cv2.CAP_DSHOW, cv2.CAP_ANY, cv2.CAP_MSMF]
+        cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+             cap = cv2.VideoCapture(idx, cv2.CAP_ANY)
         
-        for backend in backends:
-            cap = cv2.VideoCapture(idx, backend)
-            if cap.isOpened():
-                ret, test_frame = cap.read()
-                if ret and test_frame is not None:
-                    # Verify we didn't just open a black screen
-                    if test_frame.size > 0:
-                        logger.info(f"✅ Feet camera opened at Index {idx} with backend {backend}")
-                        break
-                cap.release()
-                cap = None
-        
-        if cap is None or not cap.isOpened():
-            logger.error(f"❌ Feet camera failed to open at Index {idx}")
+        if not cap.isOpened():
+            logger.error(f"❌ Feet Camera failed at Index {idx}")
+            if self.run_id == my_run_id:
+                self.feet_status = {"message": "CAMERA ERROR - REFRESH", "is_compliant": False, "violations": []}
             return
-        
-        # Optimize
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M','J','P','G'))
+
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        cap.set(cv2.CAP_PROP_FPS, 15)
+        cap.set(cv2.CAP_PROP_FPS, 30)
         self.cap_feet = cap
         
-        while self.is_active:
+        while self.is_active and self.current_stage == 'feet':
+            if self.run_id != my_run_id: break # Stale thread check
+
             ret, frame = cap.read()
             if not ret: 
                 time.sleep(0.1)
                 continue
             
-            # Apply Settings: Rotate 180, Zoom 1.3, Square Crop
+            # Processing
             frame = cv2.rotate(frame, cv2.ROTATE_180)
-            frame = self._apply_zoom(frame, 1.3)
+            frame = self._apply_zoom(frame, 1.4)
             frame = self._apply_square_crop(frame)
             frame = cv2.resize(frame, (480, 480))
             
-            # Add label overlay
-            cv2.putText(frame, "FEET CAMERA", (10, 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-
+            # Detection
+            model = getattr(self, 'feet_model', None)
+            frame, is_compliant, msg, violations = self._run_detection(model, frame, "FEET")
+            
+            # Update Status (Thread Safe enough for dict assignment)
+            if self.run_id == my_run_id:
+                self.feet_status = {"message": msg, "is_compliant": is_compliant, "violations": violations}
+            
+            cv2.putText(frame, "STEP 1: FEET SCAN", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
             self.feet_frame = frame
-            time.sleep(0.03)
+            time.sleep(0.01) # Slightly faster loop
 
-    def _run_body_camera(self):
-        """Body camera - Wearables Compliance Camera"""
-        # Resolve Index using robust config
-        idx = CameraConfig.get_index_by_name("Wearables Compliance Camera")
-        if idx is None:
-            idx = CameraConfig.get_index('wearables')
-            if idx is None:
-                 idx = 2 # Fallback based on known order
-        
-        logger.info(f"👕 Body Camera (Wearables) using Index: {idx}")
+        cap.release()
+        logger.info(f"🦶 Feet Camera Stopped (Run {my_run_id})")
 
-        cap = None
-        backends = [cv2.CAP_DSHOW, cv2.CAP_ANY, cv2.CAP_MSMF]
+    def _run_body_camera(self, my_run_id):
+        """Body Camera - Using Index 1 (Wearables)"""
+        idx = 1
+        logger.info(f"👕 Body Camera: Starting at Index {idx} (Run {my_run_id})")
         
-        for backend in backends:
-            cap = cv2.VideoCapture(idx, backend)
-            if cap.isOpened():
-                ret, test_frame = cap.read()
-                if ret and test_frame is not None:
-                     if test_frame.size > 0:
-                        logger.info(f"✅ Body camera opened at Index {idx} with backend {backend}")
-                        break
-                cap.release()
-                cap = None
-        
-        if cap is None or not cap.isOpened():
-            logger.error(f"❌ Body camera failed to open at Index {idx}")
+        cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+             cap = cv2.VideoCapture(idx, cv2.CAP_ANY)
+             
+        if not cap.isOpened():
+            logger.error(f"❌ Body Camera failed at Index {idx}")
+            if self.run_id == my_run_id:
+                self.body_status = {"message": "CAMERA ERROR - REFRESH", "is_compliant": False, "violations": []}
             return
-        
-        # Optimize with MJPG codec
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M','J','P','G'))
+
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        cap.set(cv2.CAP_PROP_FPS, 15)
+        cap.set(cv2.CAP_PROP_FPS, 30)
         self.cap_body = cap
         
-        while self.is_active:
+        while self.is_active and self.current_stage == 'body':
+            if self.run_id != my_run_id: break
+
             ret, frame = cap.read()
-            if not ret:
+            if not ret: 
                 time.sleep(0.1)
                 continue
             
-            # Apply Settings: Rotate 180, Square Crop (no zoom)
             frame = cv2.rotate(frame, cv2.ROTATE_180)
             frame = self._apply_square_crop(frame)
             frame = cv2.resize(frame, (480, 480))
             
-            # Add label overlay
-            cv2.putText(frame, "BODY CAMERA", (10, 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-                 
+            model = getattr(self, 'body_model', None)
+            frame, is_compliant, msg, violations = self._run_detection(model, frame, "BODY")
+            
+            if self.run_id == my_run_id:
+                self.body_status = {"message": msg, "is_compliant": is_compliant, "violations": violations}
+            
+            cv2.putText(frame, "STEP 2: BODY SCAN", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
             self.body_frame = frame
-            time.sleep(0.03)
+            time.sleep(0.01)
+
+        cap.release()
+        logger.info(f"👕 Body Camera Stopped (Run {my_run_id})")
 
     def get_stitched_frame(self):
-        """Yields combined MJPEG stream of both cameras (body on top, feet on bottom)."""
+        """Returns the SINGLE active frame based on stage."""
         placeholder = np.zeros((480, 480, 3), dtype=np.uint8)
-        cv2.putText(placeholder, "NO SIGNAL", (150, 240), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 100, 100), 2)
+        cv2.putText(placeholder, "LOADING...", (100, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         
         while True:
-            if not self.is_active:
-                time.sleep(0.5)
-                ret, jpeg = cv2.imencode('.jpg', placeholder)
-                yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
-                continue
-
-            top = self.body_frame if self.body_frame is not None else placeholder
-            bottom = self.feet_frame if self.feet_frame is not None else placeholder
+            # If not active, or no frame yet, show placeholder
+            frame = placeholder
             
-            # Ensure size matches
-            if top.shape[:2] != (480, 480): 
-                top = cv2.resize(top, (480, 480))
-            if bottom.shape[:2] != (480, 480): 
-                bottom = cv2.resize(bottom, (480, 480))
+            if self.is_active:
+                if self.current_stage == 'feet' and self.feet_frame is not None:
+                    frame = self.feet_frame
+                elif self.current_stage == 'body' and self.body_frame is not None:
+                    frame = self.body_frame
             
-            combined = np.vstack((top, bottom))
-            ret, jpeg = cv2.imencode('.jpg', combined)
+            # Always yield something to keep stream alive
+            ret, jpeg = cv2.imencode('.jpg', frame)
             if ret:
                 yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
+            time.sleep(0.05)
             
-            time.sleep(0.06)
+    def _yield_frame(self, img):
+         pass 
 
     def get_status(self):
-        """Returns camera status - always returns 'ready' since no AI validation."""
         return {
-            "feet": {"message": "Camera Ready", "is_compliant": True},
-            "body": {"message": "Camera Ready", "is_compliant": True}
+            "stage": getattr(self, 'current_stage', 'idle'),
+            "feet": getattr(self, 'feet_status', {}),
+            "body": getattr(self, 'body_status', {})
         }
 
 clearance_manager = ClearanceManager()

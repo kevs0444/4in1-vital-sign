@@ -70,8 +70,8 @@ if __name__ == '__main__':
     print("🚀 STARTING HEALTH MONITORING SYSTEM BACKEND")
     print("="*50)
     
-    # Pre-initialize before starting server
-    pre_initialize_ai_and_cameras()
+    # Pre-initialize function is DISABLED per user request (moved to Clearance page)
+    # pre_initialize_ai_and_cameras()
     
     print("\n📍 API available at: http://127.0.0.1:5000")
     print("🔌 WebSocket available at: ws://127.0.0.1:5000")

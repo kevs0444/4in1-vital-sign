@@ -19,6 +19,14 @@ def stop_clearance():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@clearance_bp.route('/switch_to_body', methods=['POST'])
+def switch_to_body():
+    try:
+        clearance_manager.start_body_scan()
+        return jsonify({"message": "Switched to Body Scan"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @clearance_bp.route('/stream')
 def stream_clearance():
     return Response(clearance_manager.get_stitched_frame(),

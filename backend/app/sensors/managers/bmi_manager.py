@@ -158,6 +158,9 @@ class BMIManager:
         if not self.serial.is_connected:
             return {"status": "error", "message": "Not connected to Arduino"}
             
+        # Add delay to allow serial port to settle
+        time.sleep(0.5)
+            
         # Ensure weight sensor is powered up before starting
         self.serial.send_command("POWER_UP_WEIGHT")
         time.sleep(1.0) # Wait for sensor power up

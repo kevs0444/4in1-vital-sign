@@ -10,7 +10,7 @@ import respiratoryIcon from "../../../assets/icons/respiratory-icon.png";
 import { sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/checklistNavigation";
 import { isLocalDevice } from "../../../utils/network";
-import { speak, SPEECH_MESSAGES } from "../../../utils/speech";
+import { speak, stopSpeaking, SPEECH_MESSAGES } from "../../../utils/speech";
 import step3Icon from "../../../assets/icons/measurement-step3.png";
 import step1Icon from "../../../assets/icons/max30102-step1.png";
 import step2Icon from "../../../assets/icons/max30102-step2.png";
@@ -112,6 +112,7 @@ export default function Max30102() {
       isMountedRef.current = false;
       stopPolling();
       stopTimer();
+      stopSpeaking(); // <--- ADDED: Stop speech on exit
       sensorAPI.shutdownMax30102().catch(e => console.error("Cleanup error:", e));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,6 +255,7 @@ export default function Max30102() {
         if (next <= 0) {
           stopTimer(); // Stop counting
           stopPolling(); // Stop data collection
+          stopSpeaking(); // Silence any measuring prompts
 
           // 🛡️ SUPER LOCK: Set ref immediately to block any parallel polling
           measurementCompleteRef.current = true;
@@ -303,6 +305,7 @@ export default function Max30102() {
     setStep(4);
     stopPolling(); // Stop data collection immediately
     stopTimer();   // Ensure timer is dead
+    stopSpeaking(); // Ensure silence before final announcement
 
     console.log("🏁 Completion Triggered - SENSOR LOCKED");
     setStatusMessage("✅ Measurement complete!");
@@ -337,6 +340,7 @@ export default function Max30102() {
 
   // ========== NAVIGATION ==========
   const handleContinue = (hr, spo2, rr) => {
+    stopSpeaking(); // Ensure we stop talking before leaving
     const results = {
       heartRate: hr || finalResults.heartRate,
       spo2: spo2 || finalResults.spo2,
@@ -356,6 +360,7 @@ export default function Max30102() {
 
   const handleExit = () => setShowExitModal(true);
   const confirmExit = async () => {
+    stopSpeaking();
     try { await sensorAPI.reset(); } catch (e) { }
     setShowExitModal(false);
     navigate("/login");

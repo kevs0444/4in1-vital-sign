@@ -43,7 +43,8 @@ export default function Checklist() {
     return () => clearTimeout(timer);
   }, []);
 
-  const toggleItem = (id) => {
+  const toggleItem = (id, e) => {
+    if (e) e.stopPropagation(); // Prevent propagation bubbling
     setSelectedItems(prev => {
       if (prev.includes(id)) {
         return prev.filter(item => item !== id);
@@ -116,7 +117,7 @@ export default function Checklist() {
             <div key={process.id} className="col-12 col-md-6">
               <div
                 className={`checklist-item h-100 ${selectedItems.includes(process.id) ? 'selected' : ''}`}
-                onClick={() => toggleItem(process.id)}
+                onClick={(e) => toggleItem(process.id, e)}
               >
                 <div className="item-icon">
                   <img src={process.icon} alt={`${process.name} Icon`} className="icon-image" />
@@ -134,7 +135,8 @@ export default function Checklist() {
           <button
             className="checklist-toggle-btn"
             style={{ marginBottom: '10px' }}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (selectedItems.length === processes.length) {
                 setSelectedItems([]);
               } else {
