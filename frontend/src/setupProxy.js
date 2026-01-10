@@ -9,7 +9,7 @@ module.exports = function (app) {
 
     // API Proxy
     app.use(
-        ['/api', '/admin'],
+        ['/api', '/admin', '/clearance'],
         createProxyMiddleware({
             target: 'http://127.0.0.1:5000',
             changeOrigin: true,

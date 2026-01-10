@@ -13,211 +13,240 @@ export default function Clearance() {
     const location = useLocation();
     const { setIsInactivityEnabled } = useInactivity();
 
-    // --- STATE ---
     const [feedUrl, setFeedUrl] = useState(null);
     const [isReady, setIsReady] = useState(false);
-    const [step, setStep] = useState('feet'); // 'feet' | 'body' | 'done'
+    const [step, setStep] = useState('feet');
+    const [cameraError, setCameraError] = useState(false);
+    const [displayMessage, setDisplayMessage] = useState("Initializing...");
+    const [isCompliant, setIsCompliant] = useState(false);
 
-    const [status, setStatus] = useState({
-        feet: { message: "Initializing...", is_compliant: false, violations: [] },
-        body: { message: "Waiting...", is_compliant: false, violations: [] }
-    });
-
+    // Use refs for state that doesn't need to trigger re-renders or is used in intervals
     const isMountedRef = useRef(true);
-    const lastSpokenRef = useRef("");
-    const lastSpokenTimeRef = useRef(0);
     const complianceFrameCount = useRef(0);
-    const holdStillSpokenRef = useRef(false); // Track if we said "Hold Still" for current cycle
+    const holdStillSpokenRef = useRef(false);
+    const lastSpokenTimeRef = useRef(0);
+    const pollIntervalRef = useRef(null);
+    const consecutiveErrorsRef = useRef(0);
 
-    // --- INITIALIZATION ---
+    // cleanup function to ensure everything is stopped properly
+    const cleanup = () => {
+        isMountedRef.current = false;
+        setFeedUrl(null); // Force browser to drop connection
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+        stopSpeaking();
+        setIsInactivityEnabled(true);
+        // We do NOT stop the backend here automatically to prevent race conditions during navigation
+        // The backend stop should only be called explicitly when needed
+    };
+
+    // Start clearance on mount
     useEffect(() => {
-        if (!isLocalDevice()) navigate('/login', { replace: true });
+        if (!isLocalDevice()) {
+            navigate('/login', { replace: true });
+            return;
+        }
+
+        // Reset all refs FIRST before anything else (critical for 6th try+)
+        complianceFrameCount.current = 0;
+        holdStillSpokenRef.current = false;
+        lastSpokenTimeRef.current = 0;
+        consecutiveErrorsRef.current = 0;
 
         isMountedRef.current = true;
         setIsInactivityEnabled(false);
-        startClearance();
+        setCameraError(false);
 
-        const interval = setInterval(async () => {
-            if (!isMountedRef.current) return;
-            try {
-                const res = await fetch(`${API_BASE}/clearance/status`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setStatus(data);
+        // Start the clearance process and immediately poll
+        const initClearance = async () => {
+            await startClearance();
 
-                    if (isMountedRef.current) {
-                        // --- STABILITY & FLOW LOGIC ---
-                        if (data.stage === 'feet') {
-                            if (data.feet && data.feet.is_compliant) {
-                                complianceFrameCount.current += 1;
+            // Small delay to let backend camera thread initialize
+            await new Promise(r => setTimeout(r, 500));
 
-                                // 1. Speak "Hold Still" at start of compliance
-                                if (complianceFrameCount.current === 1 && !holdStillSpokenRef.current) {
-                                    speak("Correct. Hold still.");
-                                    holdStillSpokenRef.current = true;
-                                }
-
-                                // 2. Proceed after ~2.5 seconds (count 3 at 1000ms interval = 2s wait from count 1)
-                                if (complianceFrameCount.current >= 3) {
-                                    console.log("✅ Feet Stable! Switching...");
-                                    complianceFrameCount.current = 0;
-                                    holdStillSpokenRef.current = false;
-                                    await switchToBody();
-                                }
-                            } else {
-                                // Reset if violation appears
-                                complianceFrameCount.current = 0;
-                                holdStillSpokenRef.current = false;
-                                handleSpeech(data); // Handle violation speech
-                            }
-                        }
-                        else if (data.stage === 'body') {
-                            if (data.body && data.body.is_compliant) {
-                                complianceFrameCount.current += 1;
-
-                                if (complianceFrameCount.current === 1 && !holdStillSpokenRef.current) {
-                                    speak("Clear. Hold still.");
-                                    holdStillSpokenRef.current = true;
-                                }
-
-                                if (complianceFrameCount.current >= 3) {
-                                    console.log("✅ Body Stable! Auto-Navigating...");
-                                    setIsReady(true);
-                                    setStep('done');
-
-                                    speak("You are clear. Proceeding.");
-                                    try { navigator.sendBeacon(`${API_BASE}/clearance/stop`); } catch (e) { }
-                                    navigate('/measure/bmi', { state: location.state });
-                                }
-                            } else {
-                                complianceFrameCount.current = 0;
-                                holdStillSpokenRef.current = false;
-                                setIsReady(false);
-                                handleSpeech(data); // Handle violation speech
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error("Status Poll Error", e);
+            // Poll immediately (don't wait 1s for first poll)
+            if (isMountedRef.current) {
+                pollStatus();
             }
-        }, 1000);
 
-        const cleanup = () => {
-            isMountedRef.current = false;
-            clearInterval(interval);
-            stopClearance();
-            stopSpeaking();
-            setIsInactivityEnabled(true);
+            // Then continue polling every 1s
+            if (isMountedRef.current) {
+                pollIntervalRef.current = setInterval(pollStatus, 1000);
+            }
         };
 
-        window.addEventListener('beforeunload', cleanup);
-        return () => {
-            cleanup();
-            window.removeEventListener('beforeunload', cleanup);
-        };
+        initClearance();
+
+        return cleanup;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // --- ALERT SPEECH LOGIC (Violations Only) ---
-    const handleSpeech = (data) => {
+    const pollStatus = async () => {
+        if (!isMountedRef.current) return;
+
+        try {
+            // Use explicit /api prefix to match backend
+            const res = await fetch(`${API_BASE}/clearance/status`);
+
+            if (!res.ok) {
+                console.warn(`📊 Status Poll Failed: ${res.status}`);
+                consecutiveErrorsRef.current++;
+                if (consecutiveErrorsRef.current > 10) setCameraError(true);
+                return;
+            }
+
+            const data = await res.json();
+            consecutiveErrorsRef.current = 0; // Reset error counter on success
+
+            // Log status for debugging
+            // console.log("📊 Status:", data.stage, data.feet?.message || data.body?.message);
+
+            const currentStage = data.stage;
+            const stageData = currentStage === 'feet' ? data.feet : data.body;
+            const message = stageData?.message || "Initializing...";
+            const compliant = stageData?.is_compliant || false;
+
+            if (!isMountedRef.current) return;
+
+            // Update display state
+            setDisplayMessage(message);
+            setIsCompliant(compliant);
+            setStep(currentStage);
+
+            // Check for explicit backend errors
+            if (message.includes("ERROR")) {
+                console.error("Backend reported error:", message);
+                setCameraError(true);
+                return;
+            }
+
+            // Handle compliance logic
+            if (compliant) {
+                complianceFrameCount.current += 1;
+
+                // Speak "Hold still" on first compliance
+                if (complianceFrameCount.current === 1 && !holdStillSpokenRef.current) {
+                    speak(currentStage === 'feet' ? "Correct. Hold still." : "Clear. Hold still.");
+                    holdStillSpokenRef.current = true;
+                }
+
+                // After 3 compliant frames (approx 3 seconds), proceed
+                if (complianceFrameCount.current >= 3) {
+                    complianceFrameCount.current = 0;
+                    holdStillSpokenRef.current = false;
+
+                    if (currentStage === 'feet') {
+                        // Switch to body scan
+                        await switchToBody();
+                    } else if (currentStage === 'body') {
+                        // All done - navigate to BMI
+                        completeClearance();
+                    }
+                }
+            } else {
+                // Not compliant - reset counters
+                complianceFrameCount.current = 0;
+                holdStillSpokenRef.current = false;
+
+                // Speak warnings if needed
+                handleViolationSpeech(stageData?.violations || [], currentStage);
+            }
+
+        } catch (e) {
+            console.error("Status Poll Network Error:", e);
+            consecutiveErrorsRef.current++;
+            if (consecutiveErrorsRef.current > 10) setCameraError(true);
+        }
+    };
+
+    const handleViolationSpeech = (violations, stage) => {
         const now = Date.now();
-        // Don't spam violation alerts if we just said something recently
+        // Don't speak too often - separate by 3.5 seconds
         if (now - lastSpokenTimeRef.current < 3500) return;
 
-        let messageToSpeak = "";
-
-        if (data.stage === 'feet') {
-            if (data.feet && !data.feet.is_compliant) {
-                const violations = data.feet.violations || [];
-                if (violations.some(v => v.includes('shoe') || v.includes('footwear') || v.includes('sneaker') || v.includes('boot'))) {
-                    messageToSpeak = "Please remove your footwear.";
-                } else if (violations.length > 0) {
-                    messageToSpeak = "Please remove your shoes.";
-                }
-                else if (data.feet.message && data.feet.message.includes("STAND ON SCALE")) {
-                    messageToSpeak = "Please stand on the scale.";
-                }
-            }
-        }
-        else if (data.stage === 'body') {
-            if (data.body && !data.body.is_compliant) {
-                const violations = data.body.violations || [];
-                const items = [...new Set(violations)];
-
-                if (items.length > 0) {
-                    let itemList = "";
-                    if (items.length === 1) {
-                        itemList = items[0];
-                    } else if (items.length === 2) {
-                        itemList = `${items[0]} and ${items[1]}`;
-                    } else {
-                        const last = items.pop();
-                        itemList = `${items.join(', ')}, and ${last}`;
-                    }
-                    messageToSpeak = `Please remove your ${itemList}.`;
-                }
-            }
-        }
-
-        if (messageToSpeak && isMountedRef.current) {
-            console.log("🗣️ Speaking Alert:", messageToSpeak);
-            speak(messageToSpeak);
-            lastSpokenRef.current = messageToSpeak;
+        if (violations.length > 0) {
+            const items = [...new Set(violations)].join(" and ");
+            speak(`Please remove your ${items}.`);
+            lastSpokenTimeRef.current = now;
+        } else if (stage === 'feet' && displayMessage.includes("STAND ON SCALE")) {
+            speak("Please stand on the scale.");
             lastSpokenTimeRef.current = now;
         }
     };
 
-
-    // --- API CALLS ---
     const startClearance = async () => {
+        setCameraError(false);
+        setDisplayMessage("Initializing...");
+
         try {
             await fetch(`${API_BASE}/clearance/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
+            // Force reload image by updating query param
             setFeedUrl(`${API_BASE}/clearance/stream?t=${Date.now()}`);
             setStep('feet');
-            setTimeout(() => speak("Please perform the clearance check. Step 1. Weight Compliance."), 500);
+
+            // Give a moment before speaking instructions
+            setTimeout(() => {
+                if (isMountedRef.current) speak("Please perform the clearance check. Step 1. Weight Compliance.");
+            }, 500);
+
         } catch (e) {
             console.error("Clearance start failed", e);
+            setCameraError(true);
         }
     };
 
     const switchToBody = async () => {
         try {
-            speak("Feet Clear. Step 2. Wearables Check. Please look at the camera.");
+            speak("Feet Clear. Step 2. Wearables Check.");
             await fetch(`${API_BASE}/clearance/switch_to_body`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
             setStep('body');
+            // Reset compliance for next stage
+            complianceFrameCount.current = 0;
         } catch (e) {
             console.error("Switch failed", e);
         }
-    }
-
-    const stopClearance = () => {
-        try {
-            navigator.sendBeacon(`${API_BASE}/clearance/stop`);
-        } catch (e) { }
     };
 
-    const handleNext = () => {
-        stopClearance();
-        stopSpeaking();
+    const completeClearance = async () => {
+        setIsReady(true);
+        speak("You are clear. Proceeding.");
+
+        // Stop the cameras
+        try {
+            await fetch(`${API_BASE}/clearance/stop`, { method: 'POST' });
+        } catch (e) { }
+
         navigate('/measure/bmi', { state: location.state });
     };
 
-    // UI Helpers
-    const getStatusMessage = () => {
-        if (complianceFrameCount.current > 0) {
-            return "⏳ HOLD STILL...";
-        }
-        if (step === 'feet') return `👟 FEET: ${status.feet?.message || 'Scanning...'}`;
-        if (step === 'body') return `👕 BODY: ${status.body?.message || 'Scanning...'}`;
-        return "✅ ALL CLEAR";
-    }
+    const handleRetry = () => {
+        setCameraError(false);
+        consecutiveErrorsRef.current = 0;
+        complianceFrameCount.current = 0;
+        startClearance();
+    };
+
+    const handleManualContinue = () => {
+        completeClearance();
+    };
+
+    const getStatusBadge = () => {
+        if (complianceFrameCount.current > 0) return { text: "⏳ HOLD STILL...", class: "bg-warning" };
+        if (cameraError) return { text: "⚠️ CAMERA ERROR", class: "bg-danger" };
+        if (isCompliant) return { text: `✅ ${displayMessage}`, class: "bg-success" };
+        if (step === 'feet') return { text: `👟 ${displayMessage}`, class: "bg-danger" };
+        return { text: `👕 ${displayMessage}`, class: "bg-danger" };
+    };
+
+    const badge = getStatusBadge();
 
     return (
         <div className="d-flex flex-column vh-100 bg-white overflow-hidden">
@@ -226,7 +255,7 @@ export default function Clearance() {
                     Pre-Measurement <span style={{ color: '#dc3545' }}>Clearance</span>
                 </h2>
                 <small className="text-muted">
-                    {step === 'feet' ? "Please stand on the platform (Feet Scan)" : "Checking for wearables (Body Scan)"}
+                    {step === 'feet' ? "Step 1: Feet Scan" : step === 'body' ? "Step 2: Body Scan" : "Complete"}
                 </small>
             </div>
 
@@ -240,7 +269,15 @@ export default function Clearance() {
                     overflow: 'hidden',
                     boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
                 }}>
-                    {feedUrl ? (
+                    {cameraError ? (
+                        <div className="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white bg-dark">
+                            <h4 className="text-danger">Camera Connection Issue</h4>
+                            <p className="text-center px-4">Camera failed to initialize or connection lost.</p>
+                            <button onClick={handleRetry} className="btn btn-outline-light mt-3 px-4">
+                                🔄 Retry Camera
+                            </button>
+                        </div>
+                    ) : feedUrl ? (
                         <img src={feedUrl} className="w-100 h-100" style={{ objectFit: 'contain' }} alt="Live Feed" />
                     ) : (
                         <div className="w-100 h-100 d-flex align-items-center justify-content-center text-white">
@@ -248,25 +285,25 @@ export default function Clearance() {
                         </div>
                     )}
 
-                    <div className="position-absolute bottom-0 start-0 w-100 p-3" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }}>
-                        <div className="d-flex justify-content-center">
-                            <span className={`badge px-4 py-2 rounded-pill fs-5 ${(step === 'feet' && status.feet?.is_compliant) || (step === 'body' && status.body?.is_compliant)
-                                    ? 'bg-success' : 'bg-danger'
-                                }`}>
-                                {getStatusMessage()}
-                            </span>
+                    {!cameraError && (
+                        <div className="position-absolute bottom-0 start-0 w-100 p-3"
+                            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }}>
+                            <div className="d-flex justify-content-center">
+                                <span className={`badge px-4 py-2 rounded-pill fs-5 ${badge.class}`}>
+                                    {badge.text}
+                                </span>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
             <div className="py-3 bg-light text-center border-top">
                 <button
-                    onClick={handleNext}
-                    disabled={!isReady}
+                    onClick={handleManualContinue}
                     className={`btn btn-lg px-5 py-2 rounded-pill fw-bold ${isReady ? 'btn-success' : 'btn-secondary'}`}
                 >
-                    {isReady ? "✅ CONTINUE" : "Processing..."}
+                    {isReady ? "✅ CONTINUE" : "Skip / Continue"}
                 </button>
             </div>
         </div>

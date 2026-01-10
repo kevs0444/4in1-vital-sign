@@ -455,7 +455,8 @@ export default function BMI() {
 
       try {
         const status = await sensorAPI.getSystemStatus();
-        if (status && status.auto_tare_completed) {
+        // FIXED: Check for weight_ready OR auto_tare to prevent deadlock if initial tare msg missed
+        if (status && (status.auto_tare_completed || status.weight_ready)) {
           clearInterval(interval);
           startedWeight = true;
           startWeightMeasurement();
@@ -464,7 +465,7 @@ export default function BMI() {
           if (attempts > 60) { // 12s timeout
             clearInterval(interval);
             startedWeight = true;
-            startWeightMeasurement();
+            startWeightMeasurement(); // Force start anyway
           }
         }
       } catch (e) { console.error("Sys check error:", e); }
@@ -495,7 +496,8 @@ export default function BMI() {
       setSavedHeight(null);
       savedWeightRef.current = null;
       savedHeightRef.current = null;
-      await sleep(500);
+      // Longer delay to let system settle after clearance cleanup
+      await sleep(1500);
       systemCheckIntervalRef.current = waitForSystemReady();
     };
     init();
