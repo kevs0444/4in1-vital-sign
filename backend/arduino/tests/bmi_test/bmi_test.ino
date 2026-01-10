@@ -16,7 +16,7 @@ const int HX711_sck = 5;
 HX711_ADC LoadCell(HX711_dout, HX711_sck);
 
 // Calibration Factor (User Provided)
-float calibrationFactor = 21165.89; 
+float calibrationFactor = 21333.55; 
 
 // --- HEIGHT SENSOR ---
 TFLI2C heightSensor;

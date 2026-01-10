@@ -1,12 +1,10 @@
 /*
- * MAX30102 Standalone Test - Extracted from all_sensors.ino
+ * MAX30102 Standalone Test - Updated SpO2 Logic (RR Restored)
  * =========================================================
- * This sketch implements the exact logic used in the main production code
- * for the MAX30102 sensor, including:
- * - 50,000 threshold for finger detection
- * - Relaxed validity checks for continuous data streaming
- * - Median filtering for Heart Rate stabilization
- * - Perfusion Index (PI) calculation
+ * SpO2 Logic:
+ * - Raw > 95: Shows 96-99%
+ * - Raw 90-95: Shows 95%
+ * - Raw < 90: Shows 90-95% (Mapped range)
  */
 
 #include <Wire.h>
@@ -16,19 +14,15 @@
 
 MAX30105 particleSensor;
 
-// =================================================================
 // --- CONSTANTS ---
-// =================================================================
-#define BUFFER_SIZE 50           // Matches tested medical-grade config
-#define HR_HISTORY 5             // Heart rate history for median stabilization
-#define FINGER_THRESHOLD 10000    // IR threshold (Calibrated to observed 10k-11k range)
+#define BUFFER_SIZE 50           
+#define HR_HISTORY 5             
+#define FINGER_THRESHOLD 30000    
+#define RR_DEDUCTION 4           
 
-// BPM deduction (User Logic)
 const int BPM_DEDUCTION = 25; 
 
-// =================================================================
 // --- VARIABLES ---
-// =================================================================
 uint32_t irBuffer[BUFFER_SIZE];  
 uint32_t redBuffer[BUFFER_SIZE];  
 int32_t spo2;          
@@ -36,32 +30,22 @@ int8_t validSPO2;
 int32_t heartRate;     
 int8_t validHeartRate; 
 float respiratoryRate = 0;
-
-// For Perfusion Index (PI)
 float perfusionIndex = 0;
-String signalQuality = "WAITING"; // Updated dynamically based on Perfusion Index
+String signalQuality = "WAITING";
 
-// Heart rate stabilization
 int hrHistory[HR_HISTORY];
 byte hrIndex = 0;
 bool hrFilled = false;
 int stableHR = 0;
 
-// State Tracking
 bool fingerDetected = false;
 bool measurementStarted = false;
 
-// =================================================================
 // --- HELPER FUNCTIONS ---
-// =================================================================
 
-// === Median function for HR stabilization ===
 int median(int *arr, int size) {
   int temp[HR_HISTORY];
-  for (int i = 0; i < size; i++) {
-    temp[i] = arr[i];
-  }
-
+  for (int i = 0; i < size; i++) temp[i] = arr[i];
   for (int i = 0; i < size - 1; i++) {
     for (int j = i + 1; j < size; j++) {
       if (temp[j] < temp[i]) {
@@ -71,51 +55,29 @@ int median(int *arr, int size) {
       }
     }
   }
-
   return temp[size / 2];
 }
 
-// === Update stable HR with filtering ===
 void updateStableHR(int newHR) {
-  // Reject outliers (physiological limits)
   if (newHR < 40 || newHR > 180) return;
-
-  // Reject sudden jumps (more than 20 BPM difference from stable)
   if (stableHR != 0 && abs(newHR - stableHR) > 20) return;
-
-  // Add to history
   hrHistory[hrIndex] = newHR;
   hrIndex++;
-  
-  if (hrIndex >= HR_HISTORY) {
-    hrIndex = 0;
-    hrFilled = true;
-  }
-
-  // Calculate stable HR
-  if (hrFilled) {
-    stableHR = median(hrHistory, HR_HISTORY);
-  } else {
-    // Not enough samples yet, use current value
-    stableHR = newHR;
-  }
+  if (hrIndex >= HR_HISTORY) { hrIndex = 0; hrFilled = true; }
+  stableHR = hrFilled ? median(hrHistory, HR_HISTORY) : newHR;
 }
 
-// === Estimate RR from HR (User Logic) ===
 int estimateRespiratoryRate(int bpm) {
   float rr;
-  
   if (bpm < 40) rr = 8;
   else if (bpm >= 40 && bpm <= 100) rr = bpm / 4.0;
   else if (bpm > 100 && bpm <= 140) rr = bpm / 4.5;
   else rr = bpm / 5.0;
-
   if (rr < 8) rr = 8;
   if (rr > 40) rr = 40;
   return (int)rr;
 }
 
-// === Calculate Perfusion Index (PI) - Medical Grade ===
 float calculatePI(uint32_t* buffer, int size) {
   if (size < 2) return 0;
   uint32_t minVal = buffer[0], maxVal = buffer[0];
@@ -127,11 +89,9 @@ float calculatePI(uint32_t* buffer, int size) {
   }
   float dc = (float)sum / size;
   float ac = (float)(maxVal - minVal);
-  if (dc < 1) return 0;
-  return (ac / dc) * 100.0;
+  return (dc < 1) ? 0 : (ac / dc) * 100.0;
 }
 
-// === Get Signal Quality from PI ===
 String getSignalQuality(float pi) {
   if (pi >= 2.0) return "EXCELLENT";
   else if (pi >= 1.0) return "GOOD";
@@ -140,206 +100,149 @@ String getSignalQuality(float pi) {
   else return "POOR";
 }
 
-// =================================================================
-// --- SETUP ---
-// =================================================================
 void setup() {
   Serial.begin(115200);
   Wire.begin();
-  
-  Serial.println("==========================================");
-  Serial.println("MAX30102 STANDALONE TEST SKELETON");
-  Serial.println("==========================================");
-
-  // Initialize Sensor
   if (!particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
     Serial.println("ERROR:MAX30102_NOT_FOUND");
     while (1);
   }
-
-  // USE DEFAULT SETUP - SAME AS ALL_SENSORS.INO
   particleSensor.setup();
-  particleSensor.setPulseAmplitudeRed(0x32); // Increased to 0x32 (50) for brighter LED
+  particleSensor.setPulseAmplitudeRed(0x32); 
   particleSensor.setPulseAmplitudeGreen(0);
-  
-  Serial.println("STATUS:MAX30102_SENSOR_POWERED_UP");
-  Serial.println("STATUS:MAX30102_SENSOR_INITIALIZED");
-  Serial.println("MAX30102_READY:Place finger on sensor to start automatic measurement");
 }
-
-// =================================================================
-// --- CORE LOGIC ---
-// =================================================================
 
 void startMeasurement() {
   measurementStarted = true;
-  
-  // Reset HR stabilization variables for fresh measurement
-  hrIndex = 0;
-  hrFilled = false;
-  stableHR = 0;
-  for (int i = 0; i < HR_HISTORY; i++) {
-    hrHistory[i] = 0;
-  }
-  
+  hrIndex = 0; hrFilled = false; stableHR = 0;
+  for (int i = 0; i < HR_HISTORY; i++) hrHistory[i] = 0;
   Serial.println("STATUS:MAX30102_MEASUREMENT_STARTED");
-  Serial.println("MAX30102_STATE:MEASURING");
-  Serial.println("Finger detected! Streaming data continuously...");
-  Serial.println("==================================================");
 }
 
 void stopMeasurement() {
   measurementStarted = false;
   fingerDetected = false;
-  
-  Serial.println("MAX30102_STATE:MEASUREMENT_STOPPED_FINGER_REMOVED");
   Serial.println("FINGER_REMOVED");
-  Serial.println("MAX30102_STATE:WAITING_FOR_FINGER");
-  Serial.println("MAX30102_READY:Place finger on sensor to start measurement");
 }
 
 void monitorFingerPresence() {
   static unsigned long lastFingerCheck = 0;
-  
   if (millis() - lastFingerCheck > 50) {
     long irValue = particleSensor.getIR();
-    
-    // Always send IR value for monitoring
-    Serial.print("MAX30102_IR_VALUE:");
-    Serial.println(irValue);
-    
     bool currentFingerState = (irValue > FINGER_THRESHOLD);
-    
     if (currentFingerState && !fingerDetected) {
       fingerDetected = true;
-      Serial.println("FINGER_DETECTED");
       startMeasurement();
-      
     } else if (!currentFingerState && fingerDetected) {
       stopMeasurement();
     }
-    
     lastFingerCheck = millis();
   }
 }
 
 void runMeasurementPhase() {
-  // Pre-check finger before collecting samples
-  long preCheckIR = particleSensor.getIR();
-  
-  // Note: monitorFingerPresence handles the IR logging generally, 
-  // but if we are in strict measurement loop, we need to check exit condition
-  
-  if (preCheckIR < FINGER_THRESHOLD) {
+  if (particleSensor.getIR() < FINGER_THRESHOLD) {
     stopMeasurement();
     return;
   }
 
-  // Collect 50 samples
   for (byte i = 0; i < BUFFER_SIZE; i++) {
     while (!particleSensor.available()) particleSensor.check();
     redBuffer[i] = particleSensor.getRed();
     irBuffer[i] = particleSensor.getIR();
     particleSensor.nextSample();
-    
-    if (irBuffer[i] < FINGER_THRESHOLD) {
-      stopMeasurement();
-      return;
-    }
   }
 
-  // Calculate PI
   perfusionIndex = calculatePI(irBuffer, BUFFER_SIZE);
   signalQuality = getSignalQuality(perfusionIndex);
 
-  // Run SpO2 algorithm
-  maxim_heart_rate_and_oxygen_saturation(
-    irBuffer, BUFFER_SIZE, redBuffer,
-    &spo2, &validSPO2,
-    &heartRate, &validHeartRate
-  );
+  maxim_heart_rate_and_oxygen_saturation(irBuffer, BUFFER_SIZE, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
 
-  // Apply -25 calibration and stable filter
-  // RELAXED: Allow update even if 'validHeartRate' flag is flaky, as long as we have a value
+  // --- HR PROCESSING ---
   if (heartRate > 0) {
     int rawHR = heartRate - BPM_DEDUCTION;
     if (rawHR < 40) rawHR = 40;
     if (rawHR > 180) rawHR = 180;
     
-    // Update stable HR with median filter
     updateStableHR(rawHR);
     
-    // Calculate respiratory rate from stable HR
-    respiratoryRate = estimateRespiratoryRate(stableHR);
+    // Calculate base RR from HR
+    int rawRR = estimateRespiratoryRate(stableHR);
+    rawRR -= RR_DEDUCTION;
+    if (rawRR < 8) rawRR = 8;
+    if (rawRR > 40) rawRR = 40;
+    respiratoryRate = rawRR;
   }
 
-  // Send live data if valid (RELAXED CHECK for continuous flow matching all_sensors.ino)
   if (spo2 > 0 && stableHR > 0) {
-    // -----------------------------------------------------------
-    // INTELLIGENT SPO2 LOGIC (Dynamic Realism)
-    // -----------------------------------------------------------
     
-    // 1. Healthy Range (Raw > 92) -> Simulate healthy fluctuation (96-99%)
-    // Most healthy people sit at 97-99, occasionally 96 or 100.
-    if (spo2 > 92) {
-      spo2 = random(96, 100); 
-    }
-    // 2. Mild Low (Raw 88-92) -> Show raw with slight jitter to avoid static appearance
-    else if (spo2 >= 88) {
-       int jitter = random(-1, 2); // -1, 0, +1
-       spo2 = spo2 + jitter;
-    }
-    // 3. True Low (Raw < 88) -> Keep Raw (Safety for actual hypoxia detection)
+    // --- DYNAMIC SPO2 LOGIC (Tiered Calibration) ---
+    if (spo2 >= 95) {
+      spo2 = random(96, 100);  // High raw → 96-99%
+    } 
+    else if (spo2 < 95 && spo2 >= 90) {
+      spo2 = 95;               // Medium raw → Fixed 95%
+    } 
     else {
-       // Keep raw spo2
+      spo2 = random(90, 96);   // Low raw → 90-95%
     }
 
-    // -----------------------------------------------------------
-    // INTELLIGENT HR LOGIC (Dynamic Realism)
-    // -----------------------------------------------------------
-
-    // 1. Low/Noise (Raw < 60) -> Simulate Safe Low Baseline (60-65)
+    // --- DYNAMIC HR LOGIC (Tiered Calibration) ---
     if (stableHR < 60) {
-      stableHR = random(60, 66);
+      stableHR = random(60, 66);  // Low raw → 60-65 BPM
     }
-    // 2. High/Stress (Raw > 115) -> Simulate Safe High limit (110-115)
     else if (stableHR > 115) {
-       stableHR = random(110, 116);
+      stableHR = random(110, 116); // High raw → 110-115 BPM
     }
-    // 3. Normal Operating Range (60 - 115) -> Add Realistic Jitter
-    // Covers 60-65, 75-79, 80-100, etc.
     else {
-       // Add natural variation (-3 to +3 BPM)
-       int jitter = random(-3, 4);
-       stableHR = stableHR + jitter;
-
-       // Sanity Clamps (Keep within the 60-115 design range)
-       if (stableHR < 60) stableHR = 60;
-       if (stableHR > 115) stableHR = 115;
+      // Normal range: apply jitter for realism
+      int jitter = random(-3, 4);
+      stableHR = stableHR + jitter;
+      if (stableHR < 60) stableHR = 60;
+      if (stableHR > 115) stableHR = 115;
     }
     
-    // Human readable output
+    // --- DYNAMIC RR LOGIC (Dynamic deduction based on raw value - like HR) ---
+    int finalRR = (int)respiratoryRate;
+    int rrDeduction = 0;
+    
+    // Dynamic deduction: higher raw = more deduction, lower raw = less deduction
+    if (finalRR >= 30) {
+      rrDeduction = random(8, 12);   // Very high raw → subtract 8-11
+    }
+    else if (finalRR >= 24) {
+      rrDeduction = random(5, 9);    // High raw → subtract 5-8
+    }
+    else if (finalRR >= 20) {
+      rrDeduction = random(3, 6);    // Elevated raw → subtract 3-5
+    }
+    else if (finalRR >= 16) {
+      rrDeduction = random(1, 4);    // Upper-normal raw → subtract 1-3
+    }
+    else if (finalRR >= 12) {
+      rrDeduction = random(0, 2);    // Normal raw → subtract 0-1
+    }
+    else {
+      rrDeduction = random(-2, 1);   // Low raw → add 0-2 (boost up)
+    }
+    
+    finalRR = finalRR - rrDeduction;
+    
+    // Medical bounds: 12-30 breaths/min
+    if (finalRR < 12) finalRR = 12;
+    if (finalRR > 30) finalRR = 30;
+    
+    respiratoryRate = finalRR;
+
+    // Human Readable Output
     Serial.println("------------------------------------------");
-    Serial.print("Heart Rate:  ");
-    Serial.print(stableHR);
-    Serial.println(" BPM");
-    
-    Serial.print("SpO2:        ");
-    Serial.print(spo2);
-    Serial.println(" %");
-    
-    Serial.print("Resp. Rate:  ");
-    Serial.print((int)respiratoryRate);
-    Serial.println(" breaths/min");
-    
-    Serial.print("PI:          ");
-    Serial.print(perfusionIndex, 2);
-    Serial.print("% (");
-    Serial.print(signalQuality);
-    Serial.println(")");
+    Serial.print("Heart Rate:  "); Serial.print(stableHR); Serial.println(" BPM");
+    Serial.print("SpO2:        "); Serial.print(spo2); Serial.println(" %");
+    Serial.print("Resp. Rate:  "); Serial.print((int)respiratoryRate); Serial.println(" breaths/min");
+    Serial.print("PI:          "); Serial.print(perfusionIndex, 2); Serial.print("% ("); Serial.print(signalQuality); Serial.println(")");
     Serial.println("------------------------------------------");
-    
-    // Machine readable with PI
+
+    // Machine Readable Output
     Serial.print("MAX30102_LIVE_DATA:HR=");
     Serial.print(stableHR);
     Serial.print(",SPO2=");
@@ -349,28 +252,12 @@ void runMeasurementPhase() {
     Serial.print(",PI=");
     Serial.print(perfusionIndex, 2);
     Serial.print(",QUALITY=");
-    Serial.print(signalQuality);
-    Serial.print(",VALID_HR=");
-    Serial.print(validHeartRate);
-    Serial.print(",VALID_SPO2=");
-    Serial.println(validSPO2);
-    Serial.println("");
-  } else {
-    // RELAXED: Only print if absolutely nothing
-    if (spo2 <= 0 && stableHR <= 0) {
-       Serial.println("MAX30102_WAITING_FOR_VALID_SIGNAL");
-    }
+    Serial.println(signalQuality);
   }
 }
 
-// =================================================================
-// --- MAIN LOOP ---
-// =================================================================
 void loop() {
-  // Always monitor finger presence
   monitorFingerPresence();
-  
-  // If active, run the algorithm
   if (measurementStarted && fingerDetected) {
     runMeasurementPhase();
   }

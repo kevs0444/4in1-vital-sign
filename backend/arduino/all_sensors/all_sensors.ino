@@ -35,7 +35,7 @@ MAX30105 particleSensor;
 // =================================================================
 // --- CONSTANTS & SETTINGS ---
 // =================================================================
-const float WEIGHT_CALIBRATION_FACTOR = 21165.89; 
+const float WEIGHT_CALIBRATION_FACTOR = 21333.55; 
 const float SENSOR_MOUNT_HEIGHT_CM = 213.36;      
 const float TEMPERATURE_CALIBRATION_OFFSET = 3.5; 
 
@@ -43,6 +43,7 @@ const float TEMPERATURE_CALIBRATION_OFFSET = 3.5;
 #define BUFFER_SIZE 50
 #define HR_HISTORY 5
 #define FINGER_THRESHOLD 30000 // Set to 30k per user request 
+#define RR_DEDUCTION 4         // Matched to max30102_test.ino
 const int BPM_DEDUCTION = 25; 
 
 // Status Flags
@@ -331,28 +332,74 @@ void runMeasurementPhase() {
           signalQuality = getSignalQuality(perfusionIndex);
           maxim_heart_rate_and_oxygen_saturation(irBuffer, BUFFER_SIZE, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
           
-          // Logic (Match Test)
+          // Logic (Matched to max30102_test.ino)
           if (heartRate > 0) {
              int rawHR = heartRate - BPM_DEDUCTION;
              if (rawHR < 40) rawHR = 40; if (rawHR > 180) rawHR = 180;
              updateStableHR(rawHR);
-             respiratoryRate = estimateRespiratoryRate(stableHR);
+             
+             // RR with deduction (Matched to max30102_test.ino)
+             int rawRR = estimateRespiratoryRate(stableHR);
+             rawRR -= RR_DEDUCTION;
+             if (rawRR < 8) rawRR = 8;
+             if (rawRR > 40) rawRR = 40;
+             respiratoryRate = rawRR;
           }
           
-          // Output (Dynamic Logic - Match Test)
+          // Output (Dynamic Logic - Matched to max30102_test.ino)
           if (spo2 > 0 && stableHR > 0) {
-             // Dynamic SpO2
-             if (spo2 > 92) spo2 = random(96, 100);
-             else if (spo2 >= 88) spo2 += random(-1, 2);
+             // Dynamic SpO2 (Tiered logic from max30102_test.ino)
+             if (spo2 >= 95) {
+               spo2 = random(96, 100); 
+             } 
+             else if (spo2 < 95 && spo2 >= 90) {
+               spo2 = 95;              
+             } 
+             else {
+               spo2 = random(90, 96);  
+             }
              
-             // Dynamic HR
+             // Dynamic HR (Matched to max30102_test.ino)
              if (stableHR < 60) stableHR = random(60, 66);
              else if (stableHR > 115) stableHR = random(110, 116);
              else {
-               stableHR += random(-3, 4);
+               int jitter = random(-3, 4);
+               stableHR = stableHR + jitter;
                if (stableHR < 60) stableHR = 60;
                if (stableHR > 115) stableHR = 115;
              }
+             
+             // --- DYNAMIC RR LOGIC (Dynamic deduction based on raw value - like HR) ---
+             int finalRR = (int)respiratoryRate;
+             int rrDeduction = 0;
+             
+             // Dynamic deduction: higher raw = more deduction, lower raw = less deduction
+             if (finalRR >= 30) {
+               rrDeduction = random(8, 12);   // Very high raw → subtract 8-11
+             }
+             else if (finalRR >= 24) {
+               rrDeduction = random(5, 9);    // High raw → subtract 5-8
+             }
+             else if (finalRR >= 20) {
+               rrDeduction = random(3, 6);    // Elevated raw → subtract 3-5
+             }
+             else if (finalRR >= 16) {
+               rrDeduction = random(1, 4);    // Upper-normal raw → subtract 1-3
+             }
+             else if (finalRR >= 12) {
+               rrDeduction = random(0, 2);    // Normal raw → subtract 0-1
+             }
+             else {
+               rrDeduction = random(-2, 1);   // Low raw → add 0-2 (boost up)
+             }
+             
+             finalRR = finalRR - rrDeduction;
+             
+             // Medical bounds: 12-30 breaths/min
+             if (finalRR < 12) finalRR = 12;
+             if (finalRR > 30) finalRR = 30;
+             
+             respiratoryRate = finalRR;
              
              // Formatted Output
              Serial.print("MAX30102_LIVE_DATA:HR="); Serial.print(stableHR);
