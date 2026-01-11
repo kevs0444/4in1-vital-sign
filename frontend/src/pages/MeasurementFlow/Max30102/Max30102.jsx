@@ -40,7 +40,8 @@ export default function Max30102() {
   // 4: Completed
   const [step, setStep] = useState(1);
   const [statusMessage, setStatusMessage] = useState("Initializing pulse oximeter...");
-  const [secondsRemaining, setSecondsRemaining] = useState(MEASUREMENT_DURATION); // Countdown
+  const [secondsRemaining, setSecondsRemaining] = useState(MEASUREMENT_DURATION); // Countdown for measurement
+  const [autoContinueCountdown, setAutoContinueCountdown] = useState(null); // Countdown for auto-continue
   const [isVisible, setIsVisible] = useState(false);
   const [fingerDetected, setFingerDetected] = useState(false);
 
@@ -335,7 +336,8 @@ export default function Max30102() {
       await sensorAPI.shutdownMax30102();
     } catch (e) { console.error(e); }
 
-    // Removed auto-continue setTimeout. User must click 'Continue' button.
+    // Start Auto-Continue Timer
+    setAutoContinueCountdown(5);
   };
 
   // ========== NAVIGATION ==========
@@ -357,6 +359,19 @@ export default function Max30102() {
     const nextPath = getNextStepPath('max30102', location.state?.checklist);
     navigate(nextPath, { state: vitalSignsData });
   };
+
+  // Auto-Continue Logic
+  useEffect(() => {
+    if (autoContinueCountdown !== null && autoContinueCountdown > 0) {
+      const timer = setTimeout(() => setAutoContinueCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (autoContinueCountdown === 0) {
+      // Auto-continue when countdown hits 0
+      handleContinue();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoContinueCountdown]);
+
 
   const handleExit = () => setShowExitModal(true);
   const confirmExit = async () => {
@@ -417,6 +432,17 @@ export default function Max30102() {
     }, 500);
     return () => clearTimeout(timer);
   }, [step, secondsRemaining, location.state?.checklist]);
+
+  const getButtonText = () => {
+    if (step === 4) {
+      return autoContinueCountdown !== null && autoContinueCountdown > 0
+        ? `Continue (${autoContinueCountdown})`
+        : "Continue";
+    }
+    if (step === 3) return "Measuring...";
+    if (step === 2) return "Waiting for Finger...";
+    return "Initializing...";
+  };
 
   // ========== RENDER ==========
   return (
@@ -577,7 +603,7 @@ export default function Max30102() {
         {/* Continue Button */}
         <div className="measurement-navigation mt-5">
           <button className="measurement-button" onClick={() => handleContinue()} disabled={step !== 4}>
-            {step === 4 ? "Continue" : (step === 3 ? "Measuring..." : (step === 2 ? "Waiting for Finger..." : "Initializing..."))}
+            {getButtonText()}
           </button>
         </div>
       </div>

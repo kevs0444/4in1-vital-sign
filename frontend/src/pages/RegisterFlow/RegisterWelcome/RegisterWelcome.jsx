@@ -1,18 +1,26 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Modal } from "react-bootstrap";
 import { motion } from "framer-motion";
 import "./RegisterWelcome.css";
 import logo from "../../../assets/images/welcome.png";
+import { speak, stopSpeaking } from "../../../utils/speech";
 
 export default function RegisterWelcome() {
   const navigate = useNavigate();
   const [showTerms, setShowTerms] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const hasSpokenRef = useRef(false);
 
   // Add viewport meta tag to prevent zooming
   useEffect(() => {
+    // Speak welcome message
+    if (!hasSpokenRef.current) {
+      speak("Welcome to 4 in Juan Registration. Please review the terms and click Start Registration to begin.");
+      hasSpokenRef.current = true;
+    }
+
     // Create or update viewport meta tag
     let viewport = document.querySelector('meta[name="viewport"]');
     if (!viewport) {
@@ -53,6 +61,7 @@ export default function RegisterWelcome() {
     document.addEventListener('gestureend', preventZoom, { passive: false });
 
     return () => {
+      stopSpeaking();
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);

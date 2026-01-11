@@ -42,7 +42,7 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, 
 print("🧠 Training XGBoost Model...")
 model = xgb.XGBClassifier(
     objective='multi:softprob',
-    num_class=3,
+    num_class=5,
     n_estimators=100,
     learning_rate=0.1,
     max_depth=6, # Slightly deeper to learn age groups
@@ -56,7 +56,7 @@ print("🔍 Evaluating Model...")
 predictions = model.predict(X_test)
 accuracy = accuracy_score(y_test, predictions)
 print(f"🏆 Model Accuracy: {accuracy * 100:.2f}%")
-print(classification_report(y_test, predictions, target_names=['Low Risk', 'Moderate Risk', 'High Risk']))
+print(classification_report(y_test, predictions, target_names=['Normal', 'Mild Risk', 'Moderate Risk', 'High Risk', 'Critical Risk']))
 
 # 5. Save
 print("💾 Saving all AI assets...")

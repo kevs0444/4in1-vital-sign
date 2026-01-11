@@ -34,7 +34,8 @@ export default function BodyTemp() {
   const [isReady, setIsReady] = useState(false);
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
-  const [countdown, setCountdown] = useState(0);
+  const [countdown, setCountdown] = useState(0); // Measurement Countdown
+  const [autoContinueCountdown, setAutoContinueCountdown] = useState(null); // Auto-continue Countdown
   const [showExitModal, setShowExitModal] = useState(false);
 
   // Interactive state variables
@@ -346,6 +347,9 @@ export default function BodyTemp() {
 
     // CRITICAL: Explicitly shutdown sensor to prevent interference
     sensorAPI.shutdownTemperature().catch(e => console.error("Temp shutdown error:", e));
+
+    // Start Auto-Continue Countdown
+    setAutoContinueCountdown(5);
   };
 
   const resetMeasurement = () => {
@@ -353,6 +357,7 @@ export default function BodyTemp() {
     setTempMeasuring(false);
     setProgress(0);
     stopCountdown();
+    setAutoContinueCountdown(null);
   };
 
   const handleRetry = () => {
@@ -394,6 +399,18 @@ export default function BodyTemp() {
       state: vitalSignsData,
     });
   };
+
+  // Auto-Continue Logic
+  useEffect(() => {
+    if (autoContinueCountdown !== null && autoContinueCountdown > 0) {
+      const timer = setTimeout(() => setAutoContinueCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (autoContinueCountdown === 0) {
+      handleContinue();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoContinueCountdown]);
+
 
   const getTemperatureStatus = (temp) => {
     if (!temp || temp === "--.-") return {
@@ -469,7 +486,8 @@ export default function BodyTemp() {
 
     if (measurementComplete) {
       const isLast = isLastStep('bodytemp', location.state?.checklist);
-      return isLast ? "Continue to Result" : "Continue to Next Step";
+      const base = isLast ? "Continue to Result" : "Continue to Next Step";
+      return autoContinueCountdown !== null && autoContinueCountdown > 0 ? `${base} (${autoContinueCountdown})` : base;
     }
 
     return "Start Temperature Measurement";
@@ -661,8 +679,7 @@ export default function BodyTemp() {
             <div className="exit-modal-buttons">
               <button
                 className="exit-modal-button secondary"
-                onClick={() => setShowExitModal(false)}
-              >
+                onClick={() => setShowExitModal(false)}>
                 Cancel
               </button>
               <button

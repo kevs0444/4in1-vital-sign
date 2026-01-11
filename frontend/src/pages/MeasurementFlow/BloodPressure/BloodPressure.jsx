@@ -43,6 +43,7 @@ export default function BloodPressure() {
   const [bpMeasuring, setBpMeasuring] = useState(false);
   const [bpComplete, setBpComplete] = useState(false);
   const [measurementStep, setMeasurementStep] = useState(1); // Start at step 1: Ready for measurement
+  const [autoContinueTimer, setAutoContinueTimer] = useState(10); // Auto-continue timer (10s)
 
   const MAX_RETRIES = 3;
 
@@ -136,8 +137,10 @@ export default function BloodPressure() {
     setShowErrorModal(false);
 
     // Reset all states
+    // Reset all states
     setSystolic("");
     setDiastolic("");
+    setAutoContinueTimer(10); // Reset timer
     setStatusTrend("Smart Scan");
     setMeasurementComplete(false);
     setBpComplete(false);
@@ -175,15 +178,11 @@ export default function BloodPressure() {
 
   // Sync inactivity with measurement
   useEffect(() => {
-    // We strictly control inactivity via signalActivity() in the poll loop
-    // so we keep the timer ENABLED (true) so it CAN timeout if idle.
-    setIsInactivityEnabled(true);
-  }, [setIsInactivityEnabled]);
-  useEffect(() => {
-    // If measuring/analyzing, DISABLE inactivity (enabled = false)
-    // If NOT measuring, ENABLE inactivity (enabled = true)
-    setIsInactivityEnabled(!isMeasuring && !isAnalyzing);
-  }, [isMeasuring, isAnalyzing, setIsInactivityEnabled]);
+    // If measuring (Step 2), Analyzing, or actively reading BP, DISABLE inactivity
+    // This prevents standby resets during long measurements
+    const shouldDisableTimer = measurementStep === 2 || bpMeasuring || isAnalyzing || isLiveReading;
+    setIsInactivityEnabled(!shouldDisableTimer);
+  }, [measurementStep, bpMeasuring, isAnalyzing, isLiveReading, setIsInactivityEnabled]);
 
   // Voice Instructions
   useEffect(() => {
@@ -208,6 +207,26 @@ export default function BloodPressure() {
     }, 500);
     return () => clearTimeout(timer);
   }, [measurementStep, location.state?.checklist, showErrorModal]);
+
+  // AUTO-CONTINUE TIMER LOGIC
+  useEffect(() => {
+    let timerId;
+    // Only run if measurement is complete (Step 3) and not already navigating
+    if (measurementComplete && measurementStep === 3 && autoContinueTimer > 0) {
+      timerId = setInterval(() => {
+        setAutoContinueTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerId);
+            handleContinue(); // Auto-trigger continue
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [measurementComplete, measurementStep]);
 
   const initializeBloodPressureSensor = async () => {
     try {
@@ -500,123 +519,137 @@ export default function BloodPressure() {
         const data = await res.json();
 
         // New BP controller returns flat structure: { systolic, diastolic, trend, error, is_running }
-        if (data && data.is_running) {
-          if (isInitializing) {
-            setIsInitializing(false);
-            setStatusMessage("System Ready - Waiting for Input...");
-          }
-          const { systolic: newSys, diastolic: newDia, error, trend } = data;
+        if (data) {
+          if (data.is_running) {
+            if (isInitializing) {
+              setIsInitializing(false);
+              setStatusMessage("System Ready - Waiting for Input...");
+            }
+            const { systolic: newSys, diastolic: newDia, error, trend } = data;
 
-          // PRIORITY: Check for active measurement (Inflating/Deflating/Starting)
-          // If measuring, this takes priority over any stale error state
-          const isMeasuring = trend && (trend.includes("Inflating") || trend.includes("Deflating") || trend.includes("Measuring") || trend.includes("Starting"));
+            // PRIORITY: Check for active measurement (Inflating/Deflating/Starting)
+            // If measuring, this takes priority over any stale error state
+            const isMeasuring = trend && (trend.includes("Inflating") || trend.includes("Deflating") || trend.includes("Measuring") || trend.includes("Starting"));
 
-          if (isMeasuring) {
-            signalActivity();
+            if (isMeasuring) {
+              signalActivity();
 
-            // AUTO-CLOSE ERROR MODAL when new measurement starts
-            if (showErrorModalRef.current) {
-              console.log("🔄 Measurement activity detected - closing error modal");
+              // AUTO-CLOSE ERROR MODAL when new measurement starts
+              if (showErrorModalRef.current) {
+                console.log("🔄 Measurement activity detected - closing error modal");
+                setShowErrorModal(false);
+                showErrorModalRef.current = false;
+              }
+
+              // AUTO-DETECT PHYSICAL INTERACTION
+              // If user pressed physical button, advance UI to Step 2
+              if (measurementStep === 1) {
+                console.log("🚀 Physical Start Detected via Trend!");
+                setMeasurementStep(2);
+                setBpMeasuring(true);
+              }
+
+              // Update Trend State (only when measuring, not when error)
+              setStatusTrend(trend);
+            }
+            // ERROR Detection - ONLY if NOT currently measuring
+            else if (error && !isMeasuring) {
+              // ONLY Show Modal if not already shown
+              if (!showErrorModalRef.current) {
+                setStatusTrend("Error ⚠️");
+                setSystolic("--");
+                setDiastolic("--");
+                setStatusMessage("⚠️ Monitor Error - Press red button to retry");
+                setShowErrorModal(true);
+
+                // Prevent repeating speech
+                if (!hasSpokenErrorRef.current) {
+                  speak("Error detected. Please check the cuff and press the red button to try again.");
+                  hasSpokenErrorRef.current = true;
+                }
+
+                // Reset states
+                stableCountRef.current = 0;
+                detectionStartTimeRef.current = null;
+                lastReadingRef.current = { sys: null, dia: null };
+                setMeasurementStep(1);
+                setBpMeasuring(false);
+                setBpComplete(false);
+                setMeasurementComplete(false);
+              }
+              return;
+            }
+            // If NO error, initiate recovery
+            else if (!error && showErrorModalRef.current) {
+              console.log("✅ Error state cleared by backend - closing modal");
               setShowErrorModal(false);
               showErrorModalRef.current = false;
+              setStatusMessage("✅ Monitor Ready - Press Button");
+              hasSpokenErrorRef.current = false; // Reset speech flag
             }
 
-            // AUTO-DETECT PHYSICAL INTERACTION
-            // If user pressed physical button, advance UI to Step 2
-            if (measurementStep === 1) {
-              console.log("🚀 Physical Start Detected via Trend!");
-              setMeasurementStep(2);
-              setBpMeasuring(true);
-            }
+            // 1. Update Display if valid (accept any detected number)
+            // Filter out 888/88/8 patterns - these are monitor startup self-test displays
+            const isStartupPattern = (val) => val && /^8+$/.test(val);
 
-            // Update Trend State (only when measuring, not when error)
-            setStatusTrend(trend);
-          }
-          // ERROR Detection - ONLY if NOT currently measuring
-          else if (error && !isMeasuring) {
-            // ONLY Show Modal if not already shown
-            if (!showErrorModalRef.current) {
-              setStatusTrend("Error ⚠️");
-              setSystolic("--");
-              setDiastolic("--");
-              setStatusMessage("⚠️ Monitor Error - Press red button to retry");
-              setShowErrorModal(true);
+            if (newSys && newSys !== '--' && newSys.length >= 1 && !isStartupPattern(newSys)) {
 
-              // Prevent repeating speech
-              if (!hasSpokenErrorRef.current) {
-                speak("Error detected. Please check the cuff and press the red button to try again.");
-                hasSpokenErrorRef.current = true;
-              }
+              // --- QUICK DELAY LOGIC REMOVED FOR RESPONSIVENESS ---
+              // We want instant feedback during inflation/deflation
+              setStatusMessage("Reading...");
 
-              // Reset states
-              stableCountRef.current = 0;
-              detectionStartTimeRef.current = null;
-              lastReadingRef.current = { sys: null, dia: null };
-              setMeasurementStep(1);
-              setBpMeasuring(false);
-              setBpComplete(false);
-              setMeasurementComplete(false);
-            }
-            return;
-          }
-          // If NO error, initiate recovery
-          else if (!error && showErrorModalRef.current) {
-            console.log("✅ Error state cleared by backend - closing modal");
-            setShowErrorModal(false);
-            showErrorModalRef.current = false;
-            setStatusMessage("✅ Monitor Ready - Press Button");
-            hasSpokenErrorRef.current = false; // Reset speech flag
-          }
+              // If Diastolic is empty/placeholder, it's PUMPING mode (Single Value)
+              // Backend sends "--" for empty diastolic, so check for that too.
+              if (!newDia || newDia === "" || newDia === "--") {
+                setSystolic(newSys);
+                setDiastolic("--"); // explicit placeholder
 
-          // 1. Update Display if valid (accept any detected number)
-          // Filter out 888/88/8 patterns - these are monitor startup self-test displays
-          const isStartupPattern = (val) => val && /^8+$/.test(val);
-
-          if (newSys && newSys !== '--' && newSys.length >= 1 && !isStartupPattern(newSys)) {
-
-            // --- QUICK DELAY LOGIC REMOVED FOR RESPONSIVENESS ---
-            // We want instant feedback during inflation/deflation
-            setStatusMessage("Reading...");
-
-            // If Diastolic is empty/placeholder, it's PUMPING mode (Single Value)
-            // Backend sends "--" for empty diastolic, so check for that too.
-            if (!newDia || newDia === "" || newDia === "--") {
-              setSystolic(newSys);
-              setDiastolic("--"); // explicit placeholder
-
-              // Reset stability because we are pumping, not done
-              stableCountRef.current = 0;
-              // Use backend trend for accurate status (Inflating or Deflating)
-              setStatusMessage(`${trend || 'Measuring'}... ${newSys} mmHg`);
-
-              lastReadingRef.current = { sys: newSys, dia: "" };
-            }
-            // If Diastolic is present, it's RESULT mode (Dual Value)
-            else if (newDia.length >= 2) {
-              setSystolic(newSys);
-              setDiastolic(newDia);
-
-              // Stability Check (Only if we have BOTH values)
-              if (newSys === lastReadingRef.current.sys && newDia === lastReadingRef.current.dia) {
-                stableCountRef.current += 1;
-                // Stability: 2 checks = ~2 seconds (polling at 1Hz)
-                setStatusMessage(`Verifying Result... ${Math.round((stableCountRef.current / 2) * 100)}%`);
-
-                if (stableCountRef.current >= 2) {
-                  setStatusMessage("✅ Result Confirmed!");
-                  confirmReading();
-                }
-              } else {
-                // Changing result
+                // Reset stability because we are pumping, not done
                 stableCountRef.current = 0;
-                setStatusMessage(`Reading: ${newSys}/${newDia}`);
-              }
+                // Use backend trend for accurate status (Inflating or Deflating)
+                setStatusMessage(`${trend || 'Measuring'}... ${newSys} mmHg`);
 
-              lastReadingRef.current = { sys: newSys, dia: newDia };
+                lastReadingRef.current = { sys: newSys, dia: "" };
+              }
+              // If Diastolic is present, it's RESULT mode (Dual Value)
+              else if (newDia.length >= 2) {
+                setSystolic(newSys);
+                setDiastolic(newDia);
+
+                // Stability Check (Only if we have BOTH values)
+                if (newSys === lastReadingRef.current.sys && newDia === lastReadingRef.current.dia) {
+                  stableCountRef.current += 1;
+                  // Stability: 2 checks = ~2 seconds (polling at 1Hz)
+                  setStatusMessage(`Verifying Result... ${Math.round((stableCountRef.current / 2) * 100)}%`);
+
+                  if (stableCountRef.current >= 2) {
+                    setStatusMessage("✅ Result Confirmed!");
+                    confirmReading();
+                  }
+                } else {
+                  // Changing result
+                  stableCountRef.current = 0;
+                  setStatusMessage(`Reading: ${newSys}/${newDia}`);
+                }
+
+                lastReadingRef.current = { sys: newSys, dia: newDia };
+              }
+            } else if (!newSys || newSys === '--') {
+              // Only reset if truly no data
+              detectionStartTimeRef.current = null;
             }
-          } else if (!newSys || newSys === '--') {
-            // Only reset if truly no data
-            detectionStartTimeRef.current = null;
+          } else {
+            // Backend is NOT running (is_running: false)
+            // If we are supposed to be live reading, we need to restart the backend
+            if (isLiveReading && isCameraMode && !isInitializing) {
+              console.warn("⚠️ Backend reported not running. Attempting auto-restart...");
+              // Only restart if we haven't tried too recently (throttle)
+              const now = Date.now();
+              if (now - (window.lastRestartAttempt || 0) > 3000) {
+                window.lastRestartAttempt = now;
+                startCameraMode();
+              }
+            }
           }
         }
       } catch (err) {
@@ -676,7 +709,10 @@ export default function BloodPressure() {
 
   const getButtonText = () => {
     const isLast = isLastStep('bloodpressure', location.state?.checklist);
-    if (measurementStep === 3) return isLast ? "Continue to Result" : "Continue to Next Step";
+    if (measurementStep === 3) {
+      const baseText = isLast ? "Continue to Result" : "Continue to Next Step";
+      return `${baseText} (${autoContinueTimer})`;
+    }
     // Camera is auto-watching, user uses physical button
     return "Waiting for BP Monitor...";
   };
@@ -720,7 +756,7 @@ export default function BloodPressure() {
     <div
       className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container"
     >
-      <div className={`card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
+      <div className={`card border-0 shadow-lg p-3 p-md-4 mx-3 measurement-content ${isVisible ? 'visible' : ''}`}>
         {/* Progress bar for Step X of Y */}
         <div className="w-100 mb-4">
           <div className="measurement-progress-bar">
@@ -734,7 +770,7 @@ export default function BloodPressure() {
           </div>
         </div>
 
-        <div className="text-center mb-4">
+        <div className="text-center mb-2">
           <h1 className="measurement-title">Blood <span className="measurement-title-accent">Pressure</span></h1>
           <p className="measurement-subtitle">
             {statusMessage}
@@ -758,14 +794,14 @@ export default function BloodPressure() {
         </div>
 
         <div className="w-100">
-          <div className="row g-4 justify-content-center mb-4">
+          <div className="row g-4 justify-content-center mb-2">
             {/* Single Blood Pressure Display - Shows live reading and result */}
             <div className="col-12 col-md-8 col-lg-6">
-              <div className={`measurement-card w-100 ${bpMeasuring ? 'active' : ''} ${bpComplete ? 'completed' : ''}`} style={{ minHeight: '320px' }}>
+              <div className={`measurement-card w-100 ${bpMeasuring ? 'active' : ''} ${bpComplete ? 'completed' : ''}`} style={{ minHeight: '260px' }}>
 
                 <>
                   {/* STANDARD VIEW (ALWAYS VISIBLE) */}
-                  <div className="measurement-icon" style={{ width: '80px', height: '80px', marginBottom: '20px' }}>
+                  <div className="measurement-icon" style={{ width: '60px', height: '60px', marginBottom: '10px' }}>
                     <img src={bpIcon} alt="Blood Pressure Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   </div>
 
@@ -774,7 +810,7 @@ export default function BloodPressure() {
                   </h3>
 
                   <div className="measurement-value-container">
-                    <span className="measurement-value" style={{ fontSize: '3.5rem' }}>
+                    <span className="measurement-value" style={{ fontSize: '3rem' }}>
                       {displayValue}
                     </span>
                     <span className="measurement-unit">mmHg</span>
@@ -810,7 +846,7 @@ export default function BloodPressure() {
           </div>
 
           {/* INSTRUCTION DISPLAY - Simplified workflow */}
-          <div className="w-100 mt-4">
+          <div className="w-100 mt-2">
             <div className="row g-3 justify-content-center">
               {/* Step 1 Card - Ready for Measurement */}
               <div className="col-12 col-md-4">
@@ -862,7 +898,7 @@ export default function BloodPressure() {
           </div>
         </div>
 
-        <div className="measurement-navigation mt-5 d-flex flex-column align-items-center gap-3">
+        <div className="measurement-navigation mt-3 d-flex flex-column align-items-center gap-3">
           {measurementStep === 3 ? (
             <button
               className="measurement-button"
@@ -872,10 +908,28 @@ export default function BloodPressure() {
               {getButtonText()}
             </button>
           ) : (
-            <div className="text-center mt-3 p-4 rounded" style={{ background: 'rgba(255,255,255,0.05)', border: '1px dashed #666' }}>
-              <h4 className="mb-2">👉 Ready to Measure</h4>
-              <p className="text-white mb-0" style={{ fontSize: '1.2rem' }}>
-                Please press the <strong style={{ color: '#4facfe' }}>Physical Button</strong> on the BP Monitor to start.
+            <div className="hardware-instruction-box">
+              <div className="hardware-animation-container">
+                <svg
+                  className="hardware-arrow-svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4 12h16" />
+                  <path d="M13 5l7 7-7 7" />
+                </svg>
+              </div>
+
+              <h3 className="hardware-title-text">Ready to Measure</h3>
+
+              <p className="hardware-action-text">
+                Please press the
+                <span className="hardware-highlight">Physical Button</span>
+                on the right side of the machine to start.
               </p>
             </div>
           )}

@@ -76,12 +76,8 @@ const RegisterPersonalInfoRemote = () => {
                 age--;
             }
 
-            if (age < 12) {
-                setError("For medical accuracy, this system is restricted to users 12 years and older.");
-                return;
-            }
-            if (age >= 12 && age <= 15) {
-                setShowAgeWarningModal(true);
+            if (age < 16) {
+                setError("For medical accuracy, this system is restricted to users 16 years and older.");
                 return;
             }
             if (age > 99) {
@@ -237,7 +233,12 @@ const RegisterPersonalInfoRemote = () => {
                                     <input
                                         type="text"
                                         value={formData.firstName}
-                                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                        onChange={(e) => {
+                                            // Only allow letters and spaces, then auto-capitalize each word
+                                            const filtered = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                                            const capitalized = filtered.replace(/\b\w/g, char => char.toUpperCase());
+                                            setFormData({ ...formData, firstName: capitalized });
+                                        }}
                                         placeholder="Juan"
                                         style={{ width: '100%', padding: '16px', fontSize: '1.1rem', borderRadius: '12px', border: '2px solid #e2e8f0', outline: 'none' }}
                                         onFocus={(e) => e.target.style.borderColor = '#ef4444'}
@@ -249,7 +250,12 @@ const RegisterPersonalInfoRemote = () => {
                                     <input
                                         type="text"
                                         value={formData.middleName}
-                                        onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
+                                        onChange={(e) => {
+                                            // Only allow letters and spaces, then auto-capitalize each word
+                                            const filtered = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                                            const capitalized = filtered.replace(/\b\w/g, char => char.toUpperCase());
+                                            setFormData({ ...formData, middleName: capitalized });
+                                        }}
                                         placeholder="Santos"
                                         style={{ width: '100%', padding: '16px', fontSize: '1.1rem', borderRadius: '12px', border: '2px solid #e2e8f0', outline: 'none' }}
                                         onFocus={(e) => e.target.style.borderColor = '#ef4444'}
@@ -263,7 +269,12 @@ const RegisterPersonalInfoRemote = () => {
                                     <input
                                         type="text"
                                         value={formData.lastName}
-                                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                        onChange={(e) => {
+                                            // Only allow letters and spaces, then auto-capitalize each word
+                                            const filtered = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                                            const capitalized = filtered.replace(/\b\w/g, char => char.toUpperCase());
+                                            setFormData({ ...formData, lastName: capitalized });
+                                        }}
                                         placeholder="Dela Cruz"
                                         style={{ width: '100%', padding: '16px', fontSize: '1.1rem', borderRadius: '12px', border: '2px solid #e2e8f0', outline: 'none' }}
                                         onFocus={(e) => e.target.style.borderColor = '#ef4444'}
@@ -359,7 +370,7 @@ const RegisterPersonalInfoRemote = () => {
                                     style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '2px solid #e2e8f0', background: 'white', fontSize: '1rem' }}
                                 >
                                     <option value="">Year</option>
-                                    {Array.from({ length: 125 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                    {Array.from({ length: 109 }, (_, i) => new Date().getFullYear() - 16 - i).map(y => (
                                         <option key={y} value={y}>{y}</option>
                                     ))}
                                 </select>

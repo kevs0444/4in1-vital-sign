@@ -1,5 +1,6 @@
-/* RegisterRoleRemote.css */
-.register-remote-container {
+/* RegisterRoleRemote.css - 2x2 Grid Layout for Remote/Mobile */
+
+.register-role-remote-container {
     min-height: 100vh;
     min-height: 100dvh;
     width: 100%;
@@ -8,16 +9,16 @@
     flex-direction: column;
     position: relative;
     padding-bottom: 100px;
-    /* Space for fixed bottom bar */
-    font-family: var(--font-primary);
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+/* Top Bar */
 .remote-top-bar {
     padding: 16px 20px;
     display: flex;
     align-items: center;
     background: white;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     z-index: 50;
     border-bottom: 1px solid #fee2e2;
     position: sticky;
@@ -40,7 +41,6 @@
     flex: 1;
     text-align: center;
     margin-right: 32px;
-    /* Balance the back button */
 }
 
 .header-title {
@@ -50,21 +50,22 @@
     margin: 0;
 }
 
+/* Content Area */
 .remote-content {
     flex: 1;
-    padding: 24px;
+    padding: 24px 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    /* No overflow-y: auto here, let window scroll */
+    gap: 20px;
 }
 
 .page-headline-group {
+    text-align: center;
     margin-bottom: 8px;
 }
 
 .page-headline {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 800;
     color: #1e293b;
     margin: 0 0 8px 0;
@@ -76,69 +77,148 @@
     font-size: 0.95rem;
 }
 
-/* Role Cards */
-.role-card-item {
-    background: white;
-    border-radius: 20px;
-    padding: 16px;
-    display: flex;
-    align-items: center;
+/* ============================================
+   2x2 GRID LAYOUT - Similar to Kiosk
+   ============================================ */
+.role-grid-2x2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.2s ease;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
 }
 
-.role-icon-box {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
+/* Individual Square Card */
+.role-card-square {
+    background: white;
+    border: 3px solid var(--role-border, #e2e8f0);
+    border-radius: 20px;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    aspect-ratio: 1 / 1;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.role-card-square:active {
+    transform: scale(0.97);
+}
+
+/* Selected State */
+.role-card-square.selected {
+    border-color: var(--role-color);
+    background: var(--role-bg);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+/* Icon Wrapper */
+.role-card-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid #f1f5f9;
+    padding: 10px;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-.role-icon-img {
-    width: 32px;
-    height: 32px;
+.role-card-square.selected .role-card-icon-wrapper {
+    border-color: var(--role-color);
+    transform: scale(1.05);
+}
+
+.role-card-icon-img {
+    width: 100%;
+    height: 100%;
     object-fit: contain;
+    filter: grayscale(0.8);
+    transition: filter 0.2s ease;
 }
 
-.role-text-content {
-    flex: 1;
+.role-card-square.selected .role-card-icon-img,
+.role-card-square:active .role-card-icon-img {
+    filter: grayscale(0);
 }
 
-.role-card-title {
-    margin: 0 0 4px 0;
-    font-size: 1.1rem;
+/* Card Text */
+.role-card-name {
+    font-size: 1rem;
     font-weight: 700;
     color: #1e293b;
+    margin: 0 0 4px 0;
+    transition: color 0.2s ease;
+}
+
+.role-card-square.selected .role-card-name {
+    color: var(--role-color);
 }
 
 .role-card-desc {
-    margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: #64748b;
+    margin: 0;
+    line-height: 1.3;
 }
 
-.selection-indicator {
+/* Selection Check Indicator (top-right corner) */
+.role-check-indicator {
+    position: absolute;
+    top: 12px;
+    right: 12px;
     width: 24px;
     height: 24px;
     border-radius: 50%;
+    background: #e2e8f0;
+    border: 2px solid #cbd5e1;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+}
+
+.role-card-square.selected .role-check-indicator {
+    background: var(--role-color);
+    border-color: var(--role-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.role-check-indicator svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Selection Confirmation */
+.selection-confirmation-remote {
+    text-align: center;
+    padding: 12px 20px;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    color: #475569;
+    transition: all 0.2s ease;
 }
 
 /* Bottom Action Bar */
 .remote-bottom-bar {
-    padding: 24px;
+    padding: 20px 24px;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
     background: white;
     border-top: 1px solid #f1f5f9;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
     position: fixed;
     bottom: 0;
     left: 0;
@@ -156,27 +236,149 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
-    font-family: var(--font-primary);
+    font-family: inherit;
 }
 
 .action-btn-primary:disabled {
     background: #cbd5e1 !important;
     box-shadow: none !important;
     cursor: not-allowed;
+    color: #94a3b8;
 }
 
+/* Exit Modal */
+.exit-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.exit-modal-content {
+    background: white;
+    border-radius: 24px;
+    padding: 32px 24px;
+    width: 100%;
+    max-width: 350px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+}
+
+.exit-modal-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.exit-modal-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #ef4444;
+    margin: 0 0 8px 0;
+}
+
+.exit-modal-message {
+    color: #64748b;
+    margin: 0 0 24px 0;
+    font-size: 0.95rem;
+}
+
+.exit-modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.exit-btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.exit-btn.secondary {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.exit-btn.primary {
+    background: #ef4444;
+    color: white;
+}
+
+.exit-btn:active {
+    transform: scale(0.97);
+}
+
+/* Responsive - Larger Screens */
 @media (min-width: 768px) {
-    .register-remote-container {
-        /* Center content on larger screens if desired, or keep full width */
+    .register-role-remote-container {
         max-width: 600px;
         margin: 0 auto;
         box-shadow: 0 0 50px rgba(0, 0, 0, 0.05);
-        min-height: 100vh;
     }
 
     .remote-bottom-bar {
         max-width: 600px;
         left: 50%;
         transform: translateX(-50%);
+    }
+
+    .role-grid-2x2 {
+        max-width: 100%;
+        gap: 20px;
+    }
+
+    .role-card-square {
+        padding: 24px 20px;
+    }
+
+    .role-card-icon-wrapper {
+        width: 80px;
+        height: 80px;
+        padding: 14px;
+    }
+
+    .role-card-name {
+        font-size: 1.1rem;
+    }
+
+    .role-card-desc {
+        font-size: 0.85rem;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 360px) {
+    .role-grid-2x2 {
+        gap: 12px;
+    }
+
+    .role-card-square {
+        padding: 16px 12px;
+    }
+
+    .role-card-icon-wrapper {
+        width: 50px;
+        height: 50px;
+        padding: 8px;
+    }
+
+    .role-card-name {
+        font-size: 0.9rem;
+    }
+
+    .role-card-desc {
+        font-size: 0.7rem;
     }
 }

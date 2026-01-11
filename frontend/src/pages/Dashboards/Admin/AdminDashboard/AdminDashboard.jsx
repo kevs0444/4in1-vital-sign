@@ -605,26 +605,67 @@ const AdminDashboard = () => {
                         <motion.div className="metric-card" whileHover={{ y: -5 }}>
                             <div className="metric-content">
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                    <span className="metric-label">System Status</span>
-                                    <Print style={{ fontSize: '1.2rem', color: printerStatus.status === 'ready' ? '#64748b' : '#dc2626' }} />
+                                    <span className="metric-label">Printer Status</span>
+                                    <Print style={{
+                                        fontSize: '1.2rem',
+                                        color: printerStatus.status === 'ready' ? '#10b981' :
+                                            printerStatus.status === 'warning' ? '#f59e0b' :
+                                                printerStatus.status === 'checking' ? '#64748b' : '#ef4444'
+                                    }} />
                                 </div>
-                                <span className="metric-value status-text" style={{ color: printerStatus.status === 'ready' ? '#1e293b' : printerStatus.status === 'warning' ? '#dc2626' : '#7f1d1d' }}>
-                                    {printerStatus.status === 'ready' ? 'ONLINE' : printerStatus.status === 'warning' ? 'WARNING' : 'OFFLINE'}
+                                <span className="metric-value status-text" style={{
+                                    color: printerStatus.status === 'ready' ? '#10b981' :
+                                        printerStatus.status === 'warning' ? '#f59e0b' :
+                                            printerStatus.status === 'checking' ? '#64748b' : '#ef4444',
+                                    fontWeight: '800',
+                                    fontSize: '1.5rem',
+                                    marginTop: '8px',
+                                    display: 'block'
+                                }}>
+                                    {printerStatus.status === 'ready' ? 'ONLINE' :
+                                        printerStatus.status === 'warning' ? 'ATTENTION' :
+                                            printerStatus.status === 'checking' ? 'CHECKING' : 'OFFLINE'}
                                 </span>
-                                <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
+                                    <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>
+                                        {printerStatus.printer_name || 'Generic Printer'}
+                                    </span>
+
                                     <span style={{
                                         display: 'inline-block',
-                                        padding: '2px 8px',
-                                        borderRadius: '12px',
-                                        backgroundColor: printerStatus.status === 'ready' ? '#f1f5f9' : printerStatus.status === 'warning' ? '#fee2e2' : '#fee2e2',
-                                        color: printerStatus.status === 'ready' ? '#475569' : printerStatus.status === 'warning' ? '#b91c1c' : '#991b1b',
-                                        fontWeight: '600'
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.75rem',
+                                        width: 'fit-content',
+                                        backgroundColor: printerStatus.status === 'ready' ? '#f0fdf4' :
+                                            printerStatus.status === 'warning' ? '#fffbeb' :
+                                                printerStatus.status === 'checking' ? '#f1f5f9' : '#fef2f2',
+                                        color: printerStatus.status === 'ready' ? '#166534' :
+                                            printerStatus.status === 'warning' ? '#92400e' :
+                                                printerStatus.status === 'checking' ? '#475569' : '#991b1b',
+                                        border: `1px solid ${printerStatus.status === 'ready' ? '#bbf7d0' :
+                                            printerStatus.status === 'warning' ? '#fde68a' :
+                                                printerStatus.status === 'checking' ? '#e2e8f0' : '#fecaca'}`
                                     }}>
                                         {printerStatus.message || 'Checking...'}
                                     </span>
                                 </div>
                             </div>
-                            <div className="status-indicator-ring"></div>
+                            <div className={`status-indicator-ring`}
+                                style={{
+                                    borderColor: printerStatus.status === 'ready' ? '#10b981' :
+                                        printerStatus.status === 'warning' ? '#f59e0b' :
+                                            printerStatus.status === 'checking' ? '#cbd5e1' : '#ef4444',
+                                    opacity: 0.1,
+                                    position: 'absolute',
+                                    right: '-20px',
+                                    bottom: '-20px',
+                                    width: '100px',
+                                    height: '100px',
+                                    borderRadius: '50%',
+                                    border: '10px solid'
+                                }}></div>
                         </motion.div>
 
                         <motion.div className="metric-card" whileHover={{ y: -5 }}>

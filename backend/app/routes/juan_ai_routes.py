@@ -120,12 +120,13 @@ def predict_risk():
             input_scaled = scaler.transform(input_data)
             
             # Predict Probabilities (returns array like [[0.8, 0.15, 0.05]])
-            # Class 0=Low, 1=Moderate, 2=High
+            # Predict Probabilities (returns array like [[0.8, 0.15, ...]])
+            # Class 0=Normal, 1=Mild, 2=Moderate, 3=High, 4=Critical
             probs = risk_model.predict_proba(input_scaled)[0]
             
             # Calculate a blended "Score" from 0-100 based on probabilities
-            # (Low*0 + Mod*50 + High*100)
-            risk_score = (probs[0] * 0) + (probs[1] * 50) + (probs[2] * 100)
+            # Weighted average centers: Normal(10), Mild(30), Mod(50), High(70), Critical(90)
+            risk_score = (probs[0] * 10) + (probs[1] * 30) + (probs[2] * 50) + (probs[3] * 70) + (probs[4] * 90)
             risk_score = int(round(risk_score))  # Convert to whole number integer
 
             # --- POST-PROCESSING: KEY VITALS RISK BOOSTER ---
@@ -134,50 +135,59 @@ def predict_risk():
             # We must force-boost the score if any provided metric is critical.
             
             # BP Booster
-            if (systolic >= 140 or diastolic >= 90):
-                # Stage 2 Hypertension: Moderate-High (45+)
-                risk_score = max(risk_score, 45.0)
-            elif (systolic >= 130 or diastolic >= 80):
-                 # Stage 1 Hypertension: Moderate (30+)
+            if (systolic >= 180 or diastolic >= 120):
+                # Hypertensive Crisis: 40 Points
+                risk_score = max(risk_score, 40.0)
+            elif (systolic >= 140 or diastolic >= 90):
+                # Stage 2 Hypertension: 30 Points
                 risk_score = max(risk_score, 30.0)
+            elif (systolic >= 130 or diastolic >= 80):
+                 # Stage 1 Hypertension: 20 Points
+                risk_score = max(risk_score, 20.0)
             elif (systolic >= 120 and diastolic < 80):
-                 # Elevated: Mild Risk (15+)
+                 # Elevated: 15 Points
+                risk_score = max(risk_score, 15.0)
+            elif (systolic < 90 and diastolic < 60):
+                # Hypotension: 15 Points
                 risk_score = max(risk_score, 15.0)
 
-            if (systolic >= 180 or diastolic >= 120):
-                # Hypertensive Crisis: Critical (80+)
-                risk_score = max(risk_score, 80.0)
-
             # SpO2 Booster
-            if (spo2 < 95):
-                risk_score = max(risk_score, 55.0)
-            if (spo2 < 90):
-                 risk_score = max(risk_score, 85.0)
+            if (spo2 <= 89):
+                 # Critical: 40 Points
+                risk_score = max(risk_score, 40.0)
+            elif (spo2 <= 94):
+                # Low: 15 Points
+                risk_score = max(risk_score, 15.0)
 
             # Heart Rate Booster
-            if (hr > 120 or hr < 50):
-                 risk_score = max(risk_score, 50.0)
+            if (hr > 120):
+                 # Critical: 40 Points
+                 risk_score = max(risk_score, 40.0)
             elif (hr > 100 or hr < 60):
-                 risk_score = max(risk_score, 25.0)
+                 # Low/Elevated: 15 Points
+                 risk_score = max(risk_score, 15.0)
 
-            # Temp Booster - High
+            # Temp Booster
             if (temp > 38.0):
-                 risk_score = max(risk_score, 50.0)
-            elif (temp > 37.5):
-                 # Low grade fever: Moderate (25+)
-                 risk_score = max(risk_score, 25.0)
+                 # Critical: 40 Points
+                 risk_score = max(risk_score, 40.0)
+            elif (temp >= 37.3):
+                 # Slight Fever: 15 Points
+                 risk_score = max(risk_score, 15.0)
+            elif (temp < 35.0):
+                 # Hypothermia (Implicit Critical): 40 Points
+                 risk_score = max(risk_score, 40.0)
 
-            # Temp Booster - Low (Hypothermia)
-            if (temp < 35.0):
-                 # Moderate-Severe Hypothermia: High Risk (55+)
-                 risk_score = max(risk_score, 55.0)
-            elif (temp < 36.0):
-                 # Mild Hypothermia: Moderate Risk (30+)
-                 risk_score = max(risk_score, 30.0)
+            # RR Booster
+            if (rr > 24):
+                risk_score = max(risk_score, 40.0)
+            elif (rr >= 21 or rr < 12):
+                risk_score = max(risk_score, 15.0)
 
-            if risk_score < 20: risk_level = "Low Risk"
-            elif risk_score < 50: risk_level = "Moderate Risk"
-            elif risk_score < 75: risk_level = "High Risk"
+            if risk_score < 20: risk_level = "Normal"
+            elif risk_score < 40: risk_level = "Mild Risk"
+            elif risk_score < 60: risk_level = "Moderate Risk"
+            elif risk_score < 80: risk_level = "High Risk"
             else: risk_level = "Critical Risk"
             
             print(f"✅ Juan AI Prediction Complete!")

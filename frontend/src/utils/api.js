@@ -547,6 +547,20 @@ export const changeUserPassword = async (userId, passwordData) => {
   }
 };
 
+// Update user RFID tag
+export const updateUserRfid = async (userId, rfidTag) => {
+  try {
+    console.log(`📟 Updating RFID for user: ${userId}`);
+    return await fetchWithTimeout(`${API_URL}/users/${userId}/rfid`, {
+      method: 'PUT',
+      body: JSON.stringify({ rfid_tag: rfidTag }),
+    }, TIMEOUTS.MEDIUM);
+  } catch (error) {
+    console.error('Update RFID API error:', error);
+    throw error;
+  }
+};
+
 // ==================== MEASUREMENT DATA FUNCTIONS ====================
 
 // Save measurement results

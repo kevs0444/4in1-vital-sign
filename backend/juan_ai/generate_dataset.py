@@ -88,34 +88,58 @@ def generate_health_data(num_samples=50000):
         # --- CALCULATE RISK SCORE ---
         current_risk_score = 0
         
-        if bmi < 18.5 or (25 <= bmi <= 29.9): current_risk_score += 15
-        elif bmi >= 30: current_risk_score += 30
+        if bmi < 18.5: current_risk_score += 15 # Underweight
+        elif 25.0 <= bmi <= 29.9: current_risk_score += 15 # Overweight
+        elif bmi >= 30.0: current_risk_score += 40 # Obese (Critical)
 
-        if 37.3 <= temp <= 38.0: current_risk_score += 15
-        elif temp > 38.0 or temp < 35.0: current_risk_score += 30
-        
-        if hr < 60 or (101 <= hr <= 120): current_risk_score += 15
-        elif hr > 120: current_risk_score += 30
+        if 37.3 <= temp <= 38.0: current_risk_score += 15 # Slight Fever
+        elif temp > 38.0: current_risk_score += 40 # Critical
+        elif temp < 35.0: current_risk_score += 40 # Low/Hypothermia (Implicit Critical)
 
-        if spo2 <= 89: current_risk_score += 40
-        elif 90 <= spo2 <= 94: current_risk_score += 15
-        
-        if rr < 12 or (21 <= rr <= 24): current_risk_score += 15
-        elif rr > 24: current_risk_score += 30
+        if hr < 60: current_risk_score += 15 # Low
+        elif 101 <= hr <= 120: current_risk_score += 15 # Elevated
+        elif hr > 120: current_risk_score += 40 # Critical
 
-        if systolic >= 140 or diastolic >= 90: current_risk_score += 30
-        elif systolic >= 130 or diastolic >= 80: current_risk_score += 15
+        if spo2 <= 89: current_risk_score += 40 # Critical
+        elif 90 <= spo2 <= 94: current_risk_score += 15 # Low/Warning
+
+        if rr < 12: current_risk_score += 15 # Low
+        elif 21 <= rr <= 24: current_risk_score += 15 # Elevated
+        elif rr > 24: current_risk_score += 40 # Critical
+
+        # BP Logic based on Image Categories & User Scores
+        # Normal: Sys < 120 AND Dia < 80
+        # Elevated: Sys 120-129 AND Dia < 80 -> Score 15
+        # Stage 1: Sys 130-139 OR Dia 80-89 -> Score 20
+        # Stage 2: Sys >= 140 OR Dia >= 90 -> Score 30
+        # Crisis: Sys > 180 OR Dia > 120 -> Score 40 (User specified Critical/Crisis = 40)
         
+        bp_score = 0
+        if systolic > 180 or diastolic > 120: bp_score = 40 # Crisis
+        elif systolic >= 140 or diastolic >= 90: bp_score = 30 # Stage 2
+        elif (130 <= systolic <= 139) or (80 <= diastolic <= 89): bp_score = 20 # Stage 1
+        elif (120 <= systolic <= 129) and diastolic < 80: bp_score = 15 # Elevated
+        elif systolic < 90 and diastolic < 60: bp_score = 15 # Hypotension (Low)
+        
+        current_risk_score += bp_score
+
         if age_group == 3: # Senior penalty
             current_risk_score += 5
             if current_risk_score > 20: current_risk_score += 5
 
         total_risk_score = min(100, current_risk_score)
         
-        # Labeling
-        if total_risk_score < 20: risk_label = 0
-        elif total_risk_score < 50: risk_label = 1 # Moderate
-        else: risk_label = 2 # High
+        # Labeling - MORE SPECIFIC (5 Tiers)
+        if total_risk_score < 20: 
+            risk_label = 0 # Normal
+        elif total_risk_score < 40: 
+            risk_label = 1 # Mild Risk
+        elif total_risk_score < 60: 
+            risk_label = 2 # Moderate Risk
+        elif total_risk_score < 80: 
+            risk_label = 3 # High Risk
+        else: 
+            risk_label = 4 # Critical Risk
 
         data.append([
             age, age_group, gender, bmi, temp, spo2, hr, systolic, diastolic, rr, total_risk_score, risk_label

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
@@ -10,15 +10,22 @@ import femaleIcon from "../../../assets/icons/female-icon.png";
 import nurseJuanIcon from "../../../assets/icons/nurse-juan-icon.png";
 import doctorJuanIcon from "../../../assets/icons/doctor-juan-icon.png";
 import { isLocalDevice } from "../../../utils/network";
+import { speak, stopSpeaking } from "../../../utils/speech";
 
 export default function RegisterRole() {
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState(null);
   const [touchFeedback, setTouchFeedback] = useState(null);
   const [showExitModal, setShowExitModal] = useState(false);
+  const hasSpokenRef = useRef(false);
 
   // Add viewport meta tag to prevent zooming
   useEffect(() => {
+    if (!hasSpokenRef.current) {
+      speak("Please select your category: Employee, Student, Nurse, or Doctor.");
+      hasSpokenRef.current = true;
+    }
+
     // Create or update viewport meta tag
     let viewport = document.querySelector('meta[name="viewport"]');
     if (!viewport) {

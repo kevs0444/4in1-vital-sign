@@ -151,3 +151,57 @@ def change_password(user_id):
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         session.close()
+
+
+@user_bp.route('/<user_id>/rfid', methods=['PUT', 'OPTIONS'])
+def update_user_rfid(user_id):
+    """Update user RFID tag"""
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+    
+    session = SessionLocal()
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No JSON data provided'}), 400
+
+        rfid_tag = data.get('rfid_tag', '').strip()
+        
+        if not rfid_tag:
+            return jsonify({'success': False, 'message': 'RFID tag is required'}), 400
+        
+        # Validate RFID format (basic validation - alphanumeric, min 4 chars)
+        if len(rfid_tag) < 4:
+            return jsonify({'success': False, 'message': 'RFID tag must be at least 4 characters'}), 400
+
+        user = session.query(User).filter(User.user_id == user_id).first()
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        # Check if RFID tag is already in use by another user
+        existing = session.query(User).filter(
+            User.rfid_tag == rfid_tag, 
+            User.user_id != user_id
+        ).first()
+        
+        if existing:
+            return jsonify({'success': False, 'message': 'This RFID tag is already linked to another account'}), 400
+
+        # Update RFID tag
+        user.rfid_tag = rfid_tag
+        session.commit()
+
+        print(f"✅ RFID updated for user {user_id}: {rfid_tag}")
+
+        return jsonify({
+            'success': True,
+            'message': 'RFID tag linked successfully',
+            'rfid_tag': rfid_tag
+        })
+    except Exception as e:
+        print(f"Error updating RFID: {e}")
+        session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        session.close()
+

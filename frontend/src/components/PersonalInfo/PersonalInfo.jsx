@@ -1,6 +1,6 @@
 // frontend/src/components/PersonalInfo/PersonalInfo.jsx
 // Reusable Personal Info Tab Component for all dashboards
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
     Person,
@@ -16,9 +16,13 @@ import {
     Wc,
     School,
     CheckCircle,
-    Error as ErrorIcon
+    Error as ErrorIcon,
+    Nfc,
+    Link as LinkIcon,
+    Sensors
 } from '@mui/icons-material';
-import { getUserProfile, updateUserProfile, changeUserPassword } from '../../utils/api';
+import { getUserProfile, updateUserProfile, changeUserPassword, updateUserRfid } from '../../utils/api';
+import { isLocalDevice } from '../../utils/network';
 import './PersonalInfo.css';
 
 const PersonalInfo = ({ userId, onProfileUpdate, onShowToast }) => {
@@ -44,6 +48,26 @@ const PersonalInfo = ({ userId, onProfileUpdate, onShowToast }) => {
     });
     const [passwordLoading, setPasswordLoading] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState({ text: '', type: '' });
+
+    // RFID Linking State
+    const [isLinkingRfid, setIsLinkingRfid] = useState(false);
+    const [rfidInput, setRfidInput] = useState('');
+    const [rfidLoading, setRfidLoading] = useState(false);
+    const [rfidError, setRfidError] = useState('');
+    const [rfidScanStatus, setRfidScanStatus] = useState('waiting'); // 'waiting', 'scanning', 'success'
+
+    // RFID Scanner refs (for keyboard-emulated RFID readers)
+    const rfidDataRef = useRef('');
+    const rfidTimeoutRef = useRef(null);
+    const isLocal = isLocalDevice();
+
+    // Suffix Selector State
+    const [showSuffixModal, setShowSuffixModal] = useState(false);
+    const suffixOptions = [
+        'None', 'Jr.', 'Sr.', 'I', 'II', 'III', 'IV', 'V',
+        'VI', 'VII', 'VIII', 'IX', 'X', 'MD', 'PhD', 'DDS',
+        'DVM', 'JD', 'Esq.', 'CPA'
+    ];
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -245,6 +269,101 @@ const PersonalInfo = ({ userId, onProfileUpdate, onShowToast }) => {
         }
     };
 
+    // Handle RFID Linking (accepts optional rfidTag parameter for scanner input)
+    const handleLinkRfid = async (scannedRfid = null) => {
+        setRfidError('');
+
+        // Use scanned RFID or manual input
+        const rfidToLink = scannedRfid || rfidInput.trim();
+
+        if (!rfidToLink) {
+            setRfidError('Please tap your RFID card or enter the tag number');
+            return;
+        }
+        if (rfidToLink.length < 4) {
+            setRfidError('RFID tag must be at least 4 characters');
+            return;
+        }
+
+        try {
+            setRfidLoading(true);
+            setRfidScanStatus('success');
+            const response = await updateUserRfid(userId, rfidToLink);
+
+            if (response.success) {
+                // Update local profile state
+                setProfile(prev => ({ ...prev, rfid_tag: response.rfid_tag }));
+                setIsLinkingRfid(false);
+                setRfidInput('');
+                setRfidScanStatus('waiting');
+
+                if (onShowToast) {
+                    onShowToast('success', 'RFID Linked!', 'Your RFID card has been successfully linked to your account.');
+                }
+
+                // Refresh profile data
+                fetchProfile();
+            } else {
+                setRfidError(response.message || 'Failed to link RFID');
+                setRfidScanStatus('waiting');
+            }
+        } catch (error) {
+            console.error('Error linking RFID:', error);
+            setRfidError(error.message || 'Connection error. Please try again.');
+            setRfidScanStatus('waiting');
+        } finally {
+            setRfidLoading(false);
+        }
+    };
+
+    // RFID Scanner Keyboard Listener (for local kiosk only)
+    useEffect(() => {
+        if (!isLinkingRfid || !isLocal) return;
+
+        const handleKeyDown = (e) => {
+            // Ignore if typing in input field manually
+            if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+
+            // RFID readers typically end with Enter
+            if (e.key === 'Enter' && rfidDataRef.current.length >= 5) {
+                const scannedCode = rfidDataRef.current.replace(/\D/g, ''); // Extract numbers only
+                console.log('📟 RFID Scanned:', scannedCode);
+                rfidDataRef.current = '';
+                setRfidScanStatus('success');
+                handleLinkRfid(scannedCode);
+                return;
+            }
+
+            // Accumulate keystrokes (RFID readers type fast)
+            if (e.key.length === 1) {
+                rfidDataRef.current += e.key;
+                setRfidScanStatus('scanning');
+
+                // Auto-process after timeout (in case Enter not sent)
+                if (rfidDataRef.current.length >= 8) {
+                    clearTimeout(rfidTimeoutRef.current);
+                    rfidTimeoutRef.current = setTimeout(() => {
+                        if (rfidDataRef.current.length >= 8) {
+                            const scannedCode = rfidDataRef.current.replace(/\D/g, '');
+                            console.log('📟 RFID Scanned (timeout):', scannedCode);
+                            rfidDataRef.current = '';
+                            handleLinkRfid(scannedCode);
+                        }
+                    }, 100);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            if (rfidTimeoutRef.current) clearTimeout(rfidTimeoutRef.current);
+            rfidDataRef.current = '';
+            setRfidScanStatus('waiting');
+        };
+    }, [isLinkingRfid, isLocal, userId]);
+
     if (loading) {
         return (
             <div className="personal-info-loading">
@@ -362,12 +481,16 @@ const PersonalInfo = ({ userId, onProfileUpdate, onShowToast }) => {
                     <div className="profile-field">
                         <label>Suffix</label>
                         {isEditing ? (
-                            <input
-                                type="text"
-                                value={editedProfile.suffix || ''}
-                                onChange={(e) => handleInputChange('suffix', e.target.value)}
-                                placeholder="Jr., Sr., III, etc."
-                            />
+                            <button
+                                type="button"
+                                className="suffix-selector-btn"
+                                onClick={() => setShowSuffixModal(true)}
+                            >
+                                <span>{editedProfile.suffix || 'None'}</span>
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                    <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
                         ) : (
                             <span className="field-value">{profile.suffix || 'N/A'}</span>
                         )}
@@ -676,8 +799,40 @@ const PersonalInfo = ({ userId, onProfileUpdate, onShowToast }) => {
                         <span className="info-value">{profile.user_id}</span>
                     </div>
                     <div className="account-info-item">
-                        <span className="info-label">RFID Tag</span>
-                        <span className="info-value">{profile.rfid_tag || 'Not Linked'}</span>
+                        <span className="info-label">
+                            <Nfc style={{ fontSize: '1rem', marginRight: '4px', verticalAlign: 'middle' }} />
+                            RFID Tag
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span className="info-value" style={{
+                                color: profile.rfid_tag ? '#10b981' : '#94a3b8',
+                                fontWeight: profile.rfid_tag ? '600' : '400'
+                            }}>
+                                {profile.rfid_tag || 'Not Linked'}
+                            </span>
+                            {!profile.rfid_tag && (
+                                <button
+                                    className="link-rfid-btn"
+                                    onClick={() => setIsLinkingRfid(true)}
+                                    style={{
+                                        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        padding: '6px 12px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}
+                                >
+                                    <LinkIcon style={{ fontSize: '0.9rem' }} />
+                                    Link RFID
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="account-info-item">
                         <span className="info-label">Account Status</span>
@@ -697,6 +852,334 @@ const PersonalInfo = ({ userId, onProfileUpdate, onShowToast }) => {
                     </div>
                 </div>
             </div>
+
+            {/* RFID Linking Modal */}
+            {isLinkingRfid && (
+                <div
+                    className="rfid-modal-overlay"
+                    onClick={() => { setIsLinkingRfid(false); setRfidInput(''); setRfidError(''); setRfidScanStatus('waiting'); }}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 2000,
+                        padding: '20px'
+                    }}
+                >
+                    <motion.div
+                        className="rfid-modal-content"
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: '#ffffff',
+                            borderRadius: '20px',
+                            width: '100%',
+                            maxWidth: '420px',
+                            padding: '28px',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                        }}
+                    >
+                        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                            <div style={{
+                                width: '80px',
+                                height: '80px',
+                                margin: '0 auto 16px',
+                                background: rfidScanStatus === 'scanning'
+                                    ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+                                    : rfidScanStatus === 'success'
+                                        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                                        : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.3s ease',
+                                animation: rfidScanStatus === 'scanning' ? 'pulse 1s infinite' : 'none'
+                            }}>
+                                {rfidScanStatus === 'success' ? (
+                                    <CheckCircle style={{ fontSize: '2.5rem', color: 'white' }} />
+                                ) : (
+                                    <Nfc style={{ fontSize: '2.5rem', color: 'white' }} />
+                                )}
+                            </div>
+                            <h2 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '8px' }}>
+                                {rfidScanStatus === 'success' ? 'RFID Detected!' : 'Link Your RFID Card'}
+                            </h2>
+
+                            {/* Local Device - Show tap instruction */}
+                            {isLocal && (
+                                <div style={{ marginTop: '12px' }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        padding: '12px 16px',
+                                        background: rfidScanStatus === 'scanning' ? '#dcfce7' : '#f0f9ff',
+                                        borderRadius: '10px',
+                                        marginBottom: '8px'
+                                    }}>
+                                        <Sensors style={{
+                                            fontSize: '1.3rem',
+                                            color: rfidScanStatus === 'scanning' ? '#16a34a' : '#2563eb',
+                                            animation: rfidScanStatus !== 'success' ? 'pulse 1.5s infinite' : 'none'
+                                        }} />
+                                        <span style={{
+                                            color: rfidScanStatus === 'scanning' ? '#16a34a' : '#2563eb',
+                                            fontWeight: '600'
+                                        }}>
+                                            {rfidScanStatus === 'scanning'
+                                                ? 'Reading card...'
+                                                : rfidScanStatus === 'success'
+                                                    ? 'Card detected! Linking...'
+                                                    : 'Tap your RFID card on the reader'}
+                                        </span>
+                                    </div>
+                                    <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                                        Hold your RFID card near the scanner to automatically link it
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Remote Device - Show manual input instruction */}
+                            {!isLocal && (
+                                <p style={{ fontSize: '0.95rem', color: '#64748b' }}>
+                                    Enter your RFID tag number or visit the kiosk to tap your card.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Manual Input Option */}
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{
+                                display: 'block',
+                                fontSize: '0.9rem',
+                                fontWeight: '600',
+                                color: '#334155',
+                                marginBottom: '8px'
+                            }}>
+                                {isLocal ? 'Or enter manually:' : 'RFID Tag Number'}
+                            </label>
+                            <input
+                                type="text"
+                                value={rfidInput}
+                                onChange={(e) => { setRfidInput(e.target.value); setRfidError(''); }}
+                                placeholder="e.g., 12345678"
+                                style={{
+                                    width: '100%',
+                                    padding: '14px 16px',
+                                    fontSize: '1rem',
+                                    borderRadius: '10px',
+                                    border: rfidError ? '2px solid #ef4444' : '2px solid #e2e8f0',
+                                    outline: 'none',
+                                    transition: 'border-color 0.2s'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                                onBlur={(e) => e.target.style.borderColor = rfidError ? '#ef4444' : '#e2e8f0'}
+                            />
+                            {rfidError && (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    marginTop: '8px',
+                                    color: '#ef4444',
+                                    fontSize: '0.85rem'
+                                }}>
+                                    <ErrorIcon style={{ fontSize: '1rem' }} />
+                                    {rfidError}
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button
+                                onClick={() => { setIsLinkingRfid(false); setRfidInput(''); setRfidError(''); setRfidScanStatus('waiting'); }}
+                                style={{
+                                    flex: 1,
+                                    padding: '14px',
+                                    background: '#f1f5f9',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    fontSize: '1rem',
+                                    fontWeight: '600',
+                                    color: '#475569',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleLinkRfid()}
+                                disabled={rfidLoading || !rfidInput.trim()}
+                                style={{
+                                    flex: 1,
+                                    padding: '14px',
+                                    background: (!rfidInput.trim() && !rfidLoading)
+                                        ? '#94a3b8'
+                                        : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    fontSize: '1rem',
+                                    fontWeight: '600',
+                                    color: 'white',
+                                    cursor: (rfidLoading || !rfidInput.trim()) ? 'not-allowed' : 'pointer',
+                                    opacity: rfidLoading ? 0.7 : 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                {rfidLoading ? (
+                                    <>
+                                        <span className="btn-spinner"></span>
+                                        Linking...
+                                    </>
+                                ) : (
+                                    <>
+                                        <LinkIcon style={{ fontSize: '1.1rem' }} />
+                                        Link Manually
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Suffix Selector Modal */}
+            {showSuffixModal && (
+                <div
+                    className="suffix-modal-overlay"
+                    onClick={() => setShowSuffixModal(false)}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 2000,
+                        padding: '20px'
+                    }}
+                >
+                    <motion.div
+                        className="suffix-modal-content"
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: '#ffffff',
+                            borderRadius: '20px',
+                            width: '100%',
+                            maxWidth: '380px',
+                            padding: '24px',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                        }}
+                    >
+                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                            <h2 style={{ fontSize: '1.3rem', color: '#1e293b', marginBottom: '6px', fontWeight: '700' }}>
+                                Select Suffix
+                            </h2>
+                            <p style={{ fontSize: '0.9rem', color: '#64748b', margin: 0 }}>
+                                Choose your name suffix (optional)
+                            </p>
+                        </div>
+
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(4, 1fr)',
+                            gap: '10px',
+                            maxHeight: '300px',
+                            overflowY: 'auto',
+                            padding: '4px'
+                        }}>
+                            {suffixOptions.map((suffix) => {
+                                const currentSuffix = editedProfile.suffix || 'None';
+                                const isSelected = (suffix === 'None' && !editedProfile.suffix) ||
+                                    (suffix === currentSuffix);
+                                return (
+                                    <button
+                                        key={suffix}
+                                        onClick={() => {
+                                            handleInputChange('suffix', suffix === 'None' ? '' : suffix);
+                                            setShowSuffixModal(false);
+                                        }}
+                                        style={{
+                                            padding: '12px 8px',
+                                            borderRadius: '12px',
+                                            border: isSelected ? '2px solid #dc2626' : '2px solid #e2e8f0',
+                                            background: isSelected
+                                                ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
+                                                : 'white',
+                                            color: isSelected ? 'white' : '#475569',
+                                            fontSize: '0.9rem',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '4px'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isSelected) {
+                                                e.target.style.borderColor = '#dc2626';
+                                                e.target.style.background = '#fef2f2';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isSelected) {
+                                                e.target.style.borderColor = '#e2e8f0';
+                                                e.target.style.background = 'white';
+                                            }
+                                        }}
+                                    >
+                                        {isSelected && suffix === (editedProfile.suffix || 'None') && (
+                                            <CheckCircle style={{ fontSize: '0.9rem' }} />
+                                        )}
+                                        {suffix}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <button
+                            onClick={() => setShowSuffixModal(false)}
+                            style={{
+                                width: '100%',
+                                marginTop: '16px',
+                                padding: '14px',
+                                background: '#f1f5f9',
+                                border: 'none',
+                                borderRadius: '12px',
+                                fontSize: '1rem',
+                                fontWeight: '600',
+                                color: '#475569',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => e.target.style.background = '#e2e8f0'}
+                            onMouseLeave={(e) => e.target.style.background = '#f1f5f9'}
+                        >
+                            Cancel
+                        </button>
+                    </motion.div>
+                </div>
+            )}
         </motion.div>
     );
 };

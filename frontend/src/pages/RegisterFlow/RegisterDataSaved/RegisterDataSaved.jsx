@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Check } from '@mui/icons-material';
 import "./RegisterDataSaved.css";
+import { speak, stopSpeaking } from "../../../utils/speech";
 
 // Enhanced registerUser function with proper error handling
 const registerUser = async (userData) => {
@@ -249,6 +250,26 @@ export default function RegisterDataSaved() {
       clearInterval(countdownInterval);
     };
   }, [registrationStatus, isDuplicate, saveRegistrationToDatabase, handleContinue, registrationData.personalInfo]);
+
+  // Voice Feedback - Guarded
+  const hasSpokenRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasSpokenRef.current) {
+      if (registrationStatus === 'success') {
+        const isPending = ['Doctor', 'Nurse'].includes(mapUserTypeToRole(registrationData.userType));
+        if (isPending) {
+          speak("Registration submitted. Your account is pending administrator approval.");
+        } else {
+          speak("Registration complete. Your account has been successfully created.");
+        }
+        hasSpokenRef.current = true;
+      } else if (registrationStatus === 'error') {
+        speak("Registration failed. Please try again or contact support.");
+        hasSpokenRef.current = true;
+      }
+    }
+  }, [registrationStatus, registrationData.userType]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Just now";

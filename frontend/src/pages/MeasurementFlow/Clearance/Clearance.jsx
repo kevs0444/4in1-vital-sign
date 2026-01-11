@@ -238,73 +238,171 @@ export default function Clearance() {
         completeClearance();
     };
 
-    const getStatusBadge = () => {
-        if (complianceFrameCount.current > 0) return { text: "⏳ HOLD STILL...", class: "bg-warning" };
-        if (cameraError) return { text: "⚠️ CAMERA ERROR", class: "bg-danger" };
-        if (isCompliant) return { text: `✅ ${displayMessage}`, class: "bg-success" };
-        if (step === 'feet') return { text: `👟 ${displayMessage}`, class: "bg-danger" };
-        return { text: `👕 ${displayMessage}`, class: "bg-danger" };
+    const handleGoBack = async () => {
+        try {
+            await fetch(`${API_BASE}/clearance/stop`, { method: 'POST' });
+        } catch (e) { }
+        navigate(-1);
     };
 
-    const badge = getStatusBadge();
+    // Get footwear status
+    const getFootwearStatus = () => {
+        if (step === 'body') {
+            return { icon: '✓', status: 'success', message: 'Clear' };
+        }
+        if (isCompliant && step === 'feet') {
+            return { icon: '✓', status: 'success', message: 'Barefoot detected' };
+        }
+        if (displayMessage.includes("shoes") || displayMessage.includes("slippers") || displayMessage.includes("Footwear")) {
+            return { icon: '✕', status: 'error', message: 'Remove shoes/slippers' };
+        }
+        if (displayMessage.includes("STAND ON SCALE")) {
+            return { icon: '?', status: 'pending', message: 'Waiting...' };
+        }
+        return { icon: '?', status: 'pending', message: 'Checking...' };
+    };
+
+    // Get wearables status
+    const getWearablesStatus = () => {
+        if (step === 'feet') {
+            return { icon: '?', status: 'pending', message: 'Waiting...' };
+        }
+        if (isCompliant && step === 'body') {
+            return { icon: '✓', status: 'success', message: 'No items detected' };
+        }
+        if (displayMessage.includes("bag") || displayMessage.includes("watch") || displayMessage.includes("Wearables")) {
+            return { icon: '✕', status: 'error', message: 'Remove accessories' };
+        }
+        return { icon: '?', status: 'pending', message: 'Checking...' };
+    };
+
+    const footwearStatus = getFootwearStatus();
+    const wearablesStatus = getWearablesStatus();
+
+    // Determine warning banner content
+    const getWarningBanner = () => {
+        if (cameraError) {
+            return { show: true, text: 'CAMERA CONNECTION ERROR', icon: '⚠️' };
+        }
+        if (complianceFrameCount.current > 0) {
+            return { show: true, text: 'HOLD STILL...', icon: '⏳' };
+        }
+        if (displayMessage.includes("STAND ON SCALE")) {
+            return { show: true, text: 'PLEASE STAND ON SCALE', icon: '⚠️' };
+        }
+        if (!isCompliant && step === 'feet') {
+            return { show: true, text: displayMessage.toUpperCase(), icon: '⚠️' };
+        }
+        if (!isCompliant && step === 'body') {
+            return { show: true, text: displayMessage.toUpperCase(), icon: '⚠️' };
+        }
+        if (isCompliant) {
+            return { show: false, text: '', icon: '' };
+        }
+        return { show: false, text: '', icon: '' };
+    };
+
+    const warningBanner = getWarningBanner();
 
     return (
-        <div className="d-flex flex-column vh-100 bg-white overflow-hidden">
-            <div className="py-3 text-center border-bottom">
-                <h2 className="fw-bold text-dark mb-0">
-                    Pre-Measurement <span style={{ color: '#dc3545' }}>Clearance</span>
-                </h2>
-                <small className="text-muted">
-                    {step === 'feet' ? "Step 1: Feet Scan" : step === 'body' ? "Step 2: Body Scan" : "Complete"}
-                </small>
-            </div>
+        <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 measurement-container">
+            <div className="card border-0 shadow-lg p-4 p-md-5 mx-3 measurement-content visible">
 
-            <div className="flex-grow-1 d-flex align-items-center justify-content-center p-3" style={{ minHeight: 0 }}>
-                <div className="position-relative" style={{
-                    width: '100%',
-                    maxWidth: '640px',
-                    aspectRatio: '4/3',
-                    background: '#000',
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
-                }}>
-                    {cameraError ? (
-                        <div className="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white bg-dark">
-                            <h4 className="text-danger">Camera Connection Issue</h4>
-                            <p className="text-center px-4">Camera failed to initialize or connection lost.</p>
-                            <button onClick={handleRetry} className="btn btn-outline-light mt-3 px-4">
-                                🔄 Retry Camera
-                            </button>
-                        </div>
-                    ) : feedUrl ? (
-                        <img src={feedUrl} className="w-100 h-100" style={{ objectFit: 'contain' }} alt="Live Feed" />
-                    ) : (
-                        <div className="w-100 h-100 d-flex align-items-center justify-content-center text-white">
-                            <div className="spinner-border text-danger me-2"></div> Loading...
-                        </div>
-                    )}
+                {/* Header */}
+                <div className="w-100 mb-4 text-center">
+                    <div className="d-flex justify-content-between align-items-center w-100 mb-2" style={{ position: 'relative' }}>
+                        <button className="measurement-back-arrow" onClick={handleGoBack} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)' }}>←</button>
+                        <h2 className="measurement-title mx-auto mb-0">
+                            Pre-Measurement <span className="measurement-title-accent">Check</span>
+                        </h2>
+                    </div>
 
-                    {!cameraError && (
-                        <div className="position-absolute bottom-0 start-0 w-100 p-3"
-                            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }}>
-                            <div className="d-flex justify-content-center">
-                                <span className={`badge px-4 py-2 rounded-pill fs-5 ${badge.class}`}>
-                                    {badge.text}
+                    <p className="measurement-subtitle">
+                        Please stand on the scale and face the camera
+                    </p>
+                </div>
+
+                {/* Main Content */}
+                <div className="clearance-content w-100 d-flex flex-column align-items-center">
+                    {/* Camera Feed */}
+                    <div className="clearance-camera-container mb-4" style={{ maxWidth: '100%' }}>
+                        {cameraError ? (
+                            <div className="clearance-camera-error">
+                                <h4>Camera Connection Issue</h4>
+                                <p>Camera failed to initialize or connection lost.</p>
+                                <button onClick={handleRetry} className="clearance-retry-btn">
+                                    🔄 Retry Camera
+                                </button>
+                            </div>
+                        ) : feedUrl ? (
+                            <>
+                                <img
+                                    src={feedUrl}
+                                    className="clearance-feed"
+                                    alt="Live Feed"
+                                    style={{ width: '100%', borderRadius: '15px' }}
+                                />
+                                {/* Live Badge */}
+                                <div className="clearance-live-badge">
+                                    <div className="live-indicator"></div>
+                                    <span className="live-text">LIVE</span>
+                                </div>
+                                {/* Step Label */}
+                                <span className="clearance-step-label">
+                                    {step === 'feet' ? '1: FEET SCAN' : '2: BODY SCAN'}
                                 </span>
+                            </>
+                        ) : (
+                            <div className="clearance-camera-loading">
+                                <div className="spinner"></div>
+                                <span>Loading...</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Status Cards */}
+                    <div className="row w-100 justify-content-center mb-3 g-3">
+                        <div className="col-12 col-md-6">
+                            <div className="clearance-status-card w-100">
+                                <div className={`status-icon ${footwearStatus.status}`}>
+                                    {footwearStatus.icon}
+                                </div>
+                                <div className="status-info">
+                                    <span className="status-label">Footwear</span>
+                                    <span className="status-message">{footwearStatus.message}</span>
+                                </div>
                             </div>
                         </div>
-                    )}
-                </div>
-            </div>
+                        <div className="col-12 col-md-6">
+                            <div className="clearance-status-card w-100">
+                                <div className={`status-icon ${wearablesStatus.status}`}>
+                                    {wearablesStatus.icon}
+                                </div>
+                                <div className="status-info">
+                                    <span className="status-label">Wearables</span>
+                                    <span className="status-message">{wearablesStatus.message}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-            <div className="py-3 bg-light text-center border-top">
-                <button
-                    onClick={handleManualContinue}
-                    className={`btn btn-lg px-5 py-2 rounded-pill fw-bold ${isReady ? 'btn-success' : 'btn-secondary'}`}
-                >
-                    {isReady ? "✅ CONTINUE" : "Skip / Continue"}
-                </button>
+                    {/* Warning Banner */}
+                    {warningBanner.show && (
+                        <div className="clearance-warning-banner w-100 mb-3">
+                            <span className="warning-icon">{warningBanner.icon}</span>
+                            <span className="warning-text">{warningBanner.text}</span>
+                        </div>
+                    )}
+
+                    {/* Info Box */}
+                    <div className="clearance-info-box w-100">
+                        <span className="info-icon">⚠️</span>
+                        <p className="info-text">
+                            Please ensure you are barefoot (or wearing socks) and remove all bags, watches, ID laces, caps, and accessories before proceeding.
+                        </p>
+                    </div>
+                </div>
+
             </div>
         </div>
     );

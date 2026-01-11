@@ -66,6 +66,9 @@ export default function BMI() {
   const [unstableMsg, setUnstableMsg] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+  // Countdown State
+  const [countdown, setCountdown] = useState(null);
+
   const isMountedRef = useRef(true);
   const isInitializedRef = useRef(false); // Prevent double-init
   const isStartingWeightRef = useRef(false); // Guard against overlapping weight start
@@ -552,10 +555,24 @@ export default function BMI() {
     return (parseFloat(savedWeight) / (h * h)).toFixed(1);
   }, [savedWeight, savedHeight]);
 
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
     const data = { ...location.state, weight: parseFloat(savedWeight), height: parseFloat(savedHeight), bmi: calculateBMI() };
     navigate(getNextStepPath('bmi', location.state?.checklist), { state: data });
-  };
+  }, [location.state, savedWeight, savedHeight, calculateBMI, navigate]);
+
+  // Auto-Continue Timer Logic
+  useEffect(() => {
+    if (currentPhase === PHASE.COMPLETE && countdown === null) {
+      setCountdown(5);
+    }
+
+    if (countdown !== null && countdown > 0) {
+      const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0) {
+      handleContinue();
+    }
+  }, [currentPhase, countdown, handleContinue]);
 
   const handleExit = () => { setShowExitModal(true); };
   const confirmExit = async () => {
@@ -571,7 +588,7 @@ export default function BMI() {
 
   // UPDATED: Show any non-zero reading for visual feedback, even if below validation threshold
   const DISPLAY_THRESHOLD_WEIGHT = 0.1;
-  const DISPLAY_THRESHOLD_HEIGHT = 1.0;
+  const DISPLAY_THRESHOLD_HEIGHT = 91.44; // 3 feet in cm
 
   const formattedWeight = savedWeight || (liveWeight && liveWeight >= DISPLAY_THRESHOLD_WEIGHT ? liveWeight.toFixed(1) : "--.--");
   const formattedHeight = savedHeight || (liveHeight && liveHeight >= DISPLAY_THRESHOLD_HEIGHT ? liveHeight.toFixed(1) : "--.--");
@@ -590,7 +607,9 @@ export default function BMI() {
   const isMeasuring = currentPhase === PHASE.WEIGHT || currentPhase === PHASE.HEIGHT;
 
   const getButtonText = () => {
-    if (currentPhase === PHASE.COMPLETE) return "Continue";
+    if (currentPhase === PHASE.COMPLETE) {
+      return countdown !== null && countdown > 0 ? `Continue (${countdown})` : "Continue";
+    }
     if (currentPhase === PHASE.WEIGHT) return "Scanning Weight...";
     if (currentPhase === PHASE.HEIGHT) return "Scanning Height...";
     if (currentPhase === PHASE.CALIBRATING) return "Calibrating...";
@@ -725,7 +744,7 @@ export default function BMI() {
               {unstableMsg}
             </p>
             <div className="exit-modal-buttons mt-4">
-              <button className="exit-modal-button secondary" onClick={handleExit}>Cancel</button>
+              <button className="exit-modal-button secondary" onClick={() => { setShowUnstableModal(false); handleExit(); }}>Cancel</button>
               <button className="exit-modal-button primary" onClick={handleUnstableContinue}>Continue</button>
             </div>
           </motion.div>

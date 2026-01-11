@@ -179,7 +179,8 @@ const InactivityWrapper = ({ children }) => {
             if (!isLocalDevice()) return;
 
             // Don't check if we are ON the BP page (Authorized)
-            if (location.pathname.includes('blood-pressure') || location.pathname.includes('BloodPressure')) return;
+            const path = location.pathname.toLowerCase();
+            if (path.includes('bloodpressure') || path.includes('blood-pressure')) return;
 
             try {
                 const res = await fetch(`${window.location.protocol}//${window.location.hostname}:5000/api/bp/check_illegal_press`);

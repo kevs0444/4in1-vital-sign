@@ -8,6 +8,7 @@ import ageImage from "../../../assets/images/age.png";
 import maleIcon from "../../../assets/icons/male-icon.png";
 import femaleIcon from "../../../assets/icons/female-icon.png";
 import { isLocalDevice } from "../../../utils/network";
+import { speak, stopSpeaking } from "../../../utils/speech";
 
 const getDynamicApiUrl = () => {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
@@ -214,13 +215,26 @@ export default function RegisterPersonalInfo() {
     };
   }, []);
 
+  // Track spoken steps to prevent looping
+  const lastSpokenStepRef = useRef(-1);
+
   useEffect(() => {
     setErrorMessage(""); // Clear errors on step change
     setFieldErrors({ firstName: false, lastName: false });
-    if (currentStep === 0) {
-      setShowSymbols(false); // Ensure alphabet layout for name step
-      setIsShift(true); // Auto-shift for first name
-      setActiveInput("first"); // Ensure first name is active
+
+    // Voice Instructions - Guarded against re-renders
+    if (lastSpokenStepRef.current !== currentStep) {
+      if (currentStep === 0) {
+        speak("Please enter your first, middle, and last name.");
+        setShowSymbols(false); // Ensure alphabet layout for name step
+        setIsShift(true); // Auto-shift for first name
+        setActiveInput("first"); // Ensure first name is active
+      } else if (currentStep === 1) {
+        speak("Please select your month, day, and year of birth.");
+      } else if (currentStep === 2) {
+        speak("Please select your biological sex.");
+      }
+      lastSpokenStepRef.current = currentStep;
     }
   }, [currentStep]);
 
@@ -277,12 +291,8 @@ export default function RegisterPersonalInfo() {
       const ageNumber = parseInt(formData.age, 10);
 
       // Tiered Safety Logic
-      if (ageNumber < 12) {
-        setErrorMessage("For medical accuracy, this system is restricted to users 12 years and older.");
-        return;
-      }
-      if (ageNumber >= 12 && ageNumber <= 15) {
-        setShowAgeWarningModal(true);
+      if (ageNumber < 16) {
+        setErrorMessage("For medical accuracy, this system is restricted to users 16 years and older.");
         return;
       }
 
@@ -781,8 +791,8 @@ export default function RegisterPersonalInfo() {
                           <label className="birthday-label">Year</label>
                           <div className="birthday-scroll year-scroll" ref={yearScrollRef}>
                             {Array.from({ length: 100 }, (_, i) => {
-                              // Minimum age 5 years: Start year is Current - 5
-                              const year = (new Date().getFullYear() - 5) - i;
+                              // Minimum age 16 years: Start year is Current - 16
+                              const year = (new Date().getFullYear() - 16) - i;
                               return (
                                 <div
                                   key={year}
@@ -950,10 +960,10 @@ export default function RegisterPersonalInfo() {
         className="exit-modal"
       >
         <Modal.Header closeButton style={{ borderBottom: 'none', padding: '20px 25px 10px' }}>
-          <Modal.Title style={{ fontWeight: '700', color: '#ea580c' }}>Medical Supervision</Modal.Title>
+          <Modal.Title style={{ fontWeight: '700', color: '#ea580c' }}>Age Restriction</Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ padding: '10px 25px 20px', fontSize: '1.2rem', color: '#333' }}>
-          <p>For users aged <strong>12 to 15</strong>, please ask for assistance from medical staff to ensure accurate sensor readings (e.g., blood pressure cuff fitting).</p>
+          <p>This system is designed for users <strong>16 years of age and older</strong>. For younger users, please consult with medical staff for appropriate health monitoring alternatives.</p>
         </Modal.Body>
         <Modal.Footer style={{ borderTop: 'none', padding: '0 25px 25px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
           <Button
@@ -970,10 +980,10 @@ export default function RegisterPersonalInfo() {
               flex: 1
             }}
           >
-            Cancel
+            Go Back
           </Button>
           <Button
-            variant="primary" // Changed to primary/orange typically
+            variant="primary"
             onClick={() => {
               setShowAgeWarningModal(false);
               setCurrentStep(2); // Proceed to Sex selection

@@ -8,6 +8,7 @@ import "./TapIDCardStyles.css";
 import tapIdImage from "../../../assets/icons/tap-id-icon.png";
 import { isLocalDevice } from '../../../utils/network';
 import { validateEmail, validateIDNumber, validatePassword } from '../../../utils/validators';
+import { speak, stopSpeaking } from "../../../utils/speech";
 
 const getDynamicApiUrl = () => {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
@@ -239,21 +240,33 @@ export default function RegisterTapID() {
     return roleSettings.label;
   };
 
+  // Track spoken steps to prevent looping
+  const lastSpokenStepRef = useRef(-1);
+
   // Auto-focus email input when reaching contact step
   useEffect(() => {
     setErrorMessage(""); // Clear errors on step change
 
-    // Auto-focus email input when on contact info step (step 1)
-    if (currentStep === 1) {
-      setActiveInput("email"); // Set email as active input for virtual keyboard
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        if (emailInputRef.current) {
-          emailInputRef.current.focus();
-        }
-      }, 100);
+    // Voice Instructions - Guarded against re-renders
+    if (lastSpokenStepRef.current !== currentStep) {
+      if (currentStep === 0) {
+        speak(`Please enter your ${roleSettings.label}.`);
+      } else if (currentStep === 1) {
+        speak("Please enter your email address and create a password.");
+
+        setActiveInput("email"); // Set email as active input for virtual keyboard
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+          if (emailInputRef.current) {
+            emailInputRef.current.focus();
+          }
+        }, 100);
+      } else if (currentStep === 2) {
+        speak("Please tap your ID card on the scanner.");
+      }
+      lastSpokenStepRef.current = currentStep;
     }
-  }, [currentStep]);
+  }, [currentStep, roleSettings.label]);
 
   // Process RFID scan data
   const processRfidScan = async (rfidData) => {

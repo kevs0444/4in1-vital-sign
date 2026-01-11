@@ -215,6 +215,9 @@ export default function Sharing() {
           <div className="receipt-title">Vital Sign Kiosk</div>
           <div className="receipt-subtitle">Health Measurement Report</div>
           <div className="receipt-date">{new Date().toLocaleString()}</div>
+          <div className="receipt-id" style={{ fontSize: '12px', marginTop: '4px' }}>
+            ID: {userData.measurement_id || userData.id || "N/A"}
+          </div>
         </div>
 
         <div className="receipt-user-info">
