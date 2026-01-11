@@ -19,6 +19,14 @@ logging.basicConfig(
 )
 
 logging.getLogger('werkzeug').setLevel(logging.INFO)
+
+# Filter out the noisy /api/bp/check_illegal_press polling logs
+class EndpointFilter(logging.Filter):
+    def filter(self, record):
+        return "/api/bp/check_illegal_press" not in record.getMessage()
+
+logging.getLogger("werkzeug").addFilter(EndpointFilter())
+
 logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
 
 from app import create_app

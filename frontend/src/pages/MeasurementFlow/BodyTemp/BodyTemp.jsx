@@ -12,6 +12,7 @@ import { speak } from "../../../utils/speech";
 import step1Icon from "../../../assets/icons/bodytemp-step1.png";
 import step2Icon from "../../../assets/icons/bodytemp-step2.png";
 import step3Icon from "../../../assets/icons/measurement-step3.png";
+import { getTemperatureStatus as getTempStatusUtil } from "../../../utils/healthStatus";
 
 export default function BodyTemp() {
   const navigate = useNavigate();
@@ -413,39 +414,22 @@ export default function BodyTemp() {
 
 
   const getTemperatureStatus = (temp) => {
-    if (!temp || temp === "--.-") return {
-      text: "Not measured",
-      class: "pending",
-      description: "Temperature not measured yet"
-    };
+    // Adapter for centralized utility
+    const status = getTempStatusUtil(temp);
 
-    const tempValue = parseFloat(temp);
-
-    if (tempValue >= 35.0 && tempValue <= 37.2) {
-      return {
-        text: "Normal",
-        class: "complete",
-        description: "Your body temperature is within normal range"
-      };
-    } else if (tempValue >= 37.3 && tempValue <= 38.0) {
-      return {
-        text: "Slight fever",
-        class: "warning",
-        description: "Your body temperature indicates a slight fever"
-      };
-    } else if (tempValue > 38.0) {
-      return {
-        text: "Critical",
-        class: "error",
-        description: "Your body temperature is in the critical range"
-      };
+    let cssClass = "pending";
+    if (status.label === "Hypothermia" || status.label === "Critical") {
+      cssClass = "error";
+    } else if (status.label === "Slight fever") {
+      cssClass = "warning";
+    } else if (status.label === "Normal") {
+      cssClass = "complete";
     }
 
-    // For temperatures below 35.0, show as default/unknown
     return {
-      text: "Invalid",
-      class: "pending",
-      description: "Temperature reading is outside normal range"
+      text: status.label,
+      class: cssClass,
+      description: status.description
     };
   };
 

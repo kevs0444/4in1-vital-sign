@@ -92,29 +92,49 @@ def format_receipt(data):
     # Recommendations (Medical Actions)
     if data.get('suggestions'):
         lines.append(BOLD_ON + "SUGGESTED ACTIONS" + BOLD_OFF + "\n")
-        for i, item in enumerate(data.get('suggestions', [])):
-            lines.append(f"- {item}\n")
+        suggestions = data.get('suggestions', [])
+        # Handle both string and list formats
+        if isinstance(suggestions, str):
+            lines.append(f"- {suggestions}\n")
+        else:
+            for item in suggestions:
+                lines.append(f"- {item}\n")
         lines.append("\n")
 
     # Preventive Strategies
     if data.get('preventions'):
         lines.append(BOLD_ON + "PREVENTIVE STRATEGIES" + BOLD_OFF + "\n")
-        for i, item in enumerate(data.get('preventions', [])):
-            lines.append(f"- {item}\n")
+        preventions = data.get('preventions', [])
+        # Handle both string and list formats
+        if isinstance(preventions, str):
+            lines.append(f"- {preventions}\n")
+        else:
+            for item in preventions:
+                lines.append(f"- {item}\n")
         lines.append("\n")
 
     # Wellness Tips
     if data.get('wellnessTips'):
         lines.append(BOLD_ON + "WELLNESS TIPS" + BOLD_OFF + "\n")
-        for i, item in enumerate(data.get('wellnessTips', [])):
-            lines.append(f"- {item}\n")
+        tips = data.get('wellnessTips', [])
+        # Handle both string and list formats
+        if isinstance(tips, str):
+            lines.append(f"- {tips}\n")
+        else:
+            for item in tips:
+                lines.append(f"- {item}\n")
         lines.append("\n")
 
     # Provider Guidance
     if data.get('providerGuidance'):
         lines.append(BOLD_ON + "PROVIDER GUIDANCE" + BOLD_OFF + "\n")
-        for i, item in enumerate(data.get('providerGuidance', [])):
-            lines.append(f"{item}\n")
+        guidance = data.get('providerGuidance', [])
+        # Handle both string and list formats
+        if isinstance(guidance, str):
+            lines.append(f"{guidance}\n")
+        else:
+            for item in guidance:
+                lines.append(f"{item}\n")
         lines.append("\n")
 
     lines.append(line('=') + "\n")

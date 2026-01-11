@@ -68,15 +68,15 @@ def get_health_report_template(user_data):
         try:
             s, d = int(sys), int(dia)
             # Hypertensive Crisis
-            if s > 180 or d > 120: return "Hypertensive Crisis", "danger" # Dark Red in frontend, mapped to danger
-            # Hypertension Stage 2
-            if s >= 140 or d >= 90: return "Hypertension Stage 2", "danger"
-            # Hypertension Stage 1
-            if s >= 130 or d >= 80: return "Hypertension Stage 1", "warning"
+            if s > 180 or d > 120: return "Hypertensive Crisis", "danger"
+            # Stage 2 Hypertension
+            if s >= 140 or d >= 90: return "Stage 2 Hypertension", "danger"
+            # Stage 1 Hypertension
+            if s >= 130 or d >= 80: return "Stage 1 Hypertension", "warning"
             # Elevated
             if s >= 120 and d < 80: return "Elevated", "warning"
             # Hypotension
-            if s < 90 or d < 60: return "Hypotension (Low)", "info"
+            if s < 90 or d < 60: return "Hypotension", "info"
             # Normal
             return "Normal", "good"
         except: return "Unknown", "neutral"
@@ -93,8 +93,8 @@ def get_health_report_template(user_data):
     def get_spo2_status(spo2):
         try:
             val = float(spo2)
-            if val < 90: return "Critical", "danger"
-            if val < 95: return "Low", "warning"
+            if val <= 89: return "Critical", "danger"
+            if val <= 94: return "Low", "warning"
             return "Normal", "good"
         except: return "Unknown", "neutral"
         
@@ -110,10 +110,10 @@ def get_health_report_template(user_data):
     def get_temp_status(temp):
         try:
             val = float(temp)
-            if val < 35.0: return "Low", "info"
+            if val < 35.0: return "Hypothermia", "danger"
             if val <= 37.2: return "Normal", "good"
             if val <= 38.0: return "Slight Fever", "warning"
-            return "Critical", "danger"
+            return "Critical Fever", "danger"
         except: return "Unknown", "neutral"
 
     # --- Build Vitals List ---

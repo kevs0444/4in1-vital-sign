@@ -10,6 +10,7 @@ import { getNextStepPath, getProgressInfo, isLastStep } from "../../../utils/che
 import { isLocalDevice } from "../../../utils/network";
 import { speak } from "../../../utils/speech";
 import step3Icon from "../../../assets/icons/measurement-step3.png";
+import { getBloodPressureStatus as getBloodPressureStatusUtil } from "../../../utils/healthStatus";
 
 export default function BloodPressure() {
   const navigate = useNavigate();
@@ -323,59 +324,24 @@ export default function BloodPressure() {
       };
     }
 
-    const systolicValue = parseInt(sys);
-    const diastolicValue = parseInt(dia);
+    // Use centralized utility
+    // lazy load if not imported, but better to import at top.
+    // For now, I will assume I add import at top.
+    const status = getBloodPressureStatusUtil(sys, dia);
 
-    if (isNaN(systolicValue) || isNaN(diastolicValue)) {
-      return { text: "Invalid", class: "active", description: "Waiting for valid reading..." };
+    let cssClass = "active";
+    if (status.label.includes("Crisis") || status.label.includes("Stage 2")) {
+      cssClass = "error";
+    } else if (status.label.includes("Stage 1") || status.label.includes("Elevated") || status.label.includes("Hypotension")) {
+      cssClass = "warning";
+    } else if (status.label === "Normal") {
+      cssClass = "complete";
     }
 
-    // BP Categories based on medical standards:
-    // Hypertensive Crisis: Sys > 180 OR Dia > 120
-    if (systolicValue > 180 || diastolicValue > 120) {
-      return {
-        text: "Hypertensive Crisis",
-        class: "error",
-        description: "⚠️ EMERGENCY: Seek immediate medical attention!"
-      };
-    }
-    // Hypertension Stage 2: Sys >= 140 OR Dia >= 90
-    if (systolicValue >= 140 || diastolicValue >= 90) {
-      return {
-        text: "Hypertension Stage 2",
-        class: "error",
-        description: "High blood pressure - Consult a doctor"
-      };
-    }
-    // Hypertension Stage 1: Sys 130-139 OR Dia 80-89
-    if (systolicValue >= 130 || diastolicValue >= 80) {
-      return {
-        text: "Hypertension Stage 1",
-        class: "warning",
-        description: "Blood pressure is elevated"
-      };
-    }
-    // Elevated: Sys 120-129 AND Dia < 80
-    if (systolicValue >= 120 && diastolicValue < 80) {
-      return {
-        text: "Elevated",
-        class: "warning",
-        description: "Blood pressure is slightly elevated"
-      };
-    }
-    // Hypotension (Low): Sys < 90 OR Dia < 60
-    if (systolicValue < 90 || diastolicValue < 60) {
-      return {
-        text: "Hypotension (Low)",
-        class: "warning",
-        description: "Blood pressure is lower than normal"
-      };
-    }
-    // Normal: Sys < 120 AND Dia < 80
     return {
-      text: "Normal",
-      class: "complete",
-      description: "Blood pressure is within normal range"
+      text: status.label,
+      class: cssClass,
+      description: status.description
     };
   };
 
@@ -619,10 +585,10 @@ export default function BloodPressure() {
                 // Stability Check (Only if we have BOTH values)
                 if (newSys === lastReadingRef.current.sys && newDia === lastReadingRef.current.dia) {
                   stableCountRef.current += 1;
-                  // Stability: 2 checks = ~2 seconds (polling at 1Hz)
-                  setStatusMessage(`Verifying Result... ${Math.round((stableCountRef.current / 2) * 100)}%`);
+                  // Stability: 4 checks = ~2 seconds (polling at 500ms)
+                  setStatusMessage(`Verifying Result... ${Math.round((stableCountRef.current / 4) * 100)}%`);
 
-                  if (stableCountRef.current >= 2) {
+                  if (stableCountRef.current >= 4) {
                     setStatusMessage("✅ Result Confirmed!");
                     confirmReading();
                   }

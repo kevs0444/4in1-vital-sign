@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Result.css";
-import { speak, reinitSpeech } from "../../../utils/speech";
+import { speak } from "../../../utils/speech";
+import {
+  getHeartRateStatus as getHeartRateStatusUtil,
+  getSPO2Status as getSPO2StatusUtil,
+  getRespiratoryStatus as getRespiratoryStatusUtil,
+  getBloodPressureStatus as getBloodPressureStatusUtil
+} from "../../../utils/healthStatus";
 
 export default function Result() {
   const navigate = useNavigate();
@@ -20,405 +26,103 @@ export default function Result() {
     guidance: false
   });
 
-  // Function to get risk class
-  const getRiskClass = (level) => {
-    if (level < 20) return 'low-risk';
-    if (level < 50) return 'moderate-risk';
-    if (level < 75) return 'high-risk';
-    return 'critical-risk';
-  };
-
-  useEffect(() => {
-    console.log("📍 Location state received in Result:", location.state);
-
-    if (location.state) {
-      console.log("✅ Setting user data in Result:", location.state);
-      setUserData(location.state);
-
-      // Start analysis immediately since AILoading already happened
-      console.log("🔍 Starting analysis with data:", location.state);
-      analyzeHealthData(location.state);
-    } else {
-      console.log("❌ No data received - trying to get from session storage");
-
-      // Try to get data from session storage as fallback
-      const storedData = sessionStorage.getItem('vitalSignsData');
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        console.log("📦 Using data from session storage:", parsedData);
-        setUserData(parsedData);
-        analyzeHealthData(parsedData);
-      } else {
-        console.warn("⚠️ No measurement data available - user will see empty values");
-        // Don't use fake sample data - show real state (empty)
-        setUserData({});
-      }
-    }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, navigate]);
-
-  // Effect to update HTML class for scrollbar colors
-  useEffect(() => {
-    if (riskLevel > 0) {
-      const riskClass = getRiskClass(riskLevel);
-      document.documentElement.classList.add(riskClass);
-    }
-
-    // Cleanup function to remove class when component unmounts
-    return () => {
-      document.documentElement.classList.remove('low-risk', 'moderate-risk', 'high-risk', 'critical-risk');
-    };
-  }, [riskLevel]);
-
-  // Voice announcement when results are ready
-  useEffect(() => {
-    if (riskLevel > 0 && riskCategory) {
-      reinitSpeech();
-      // Announce results are ready without revealing percentage for privacy
-      setTimeout(() => {
-        speak("Your health assessment results are now ready. Please review the screen for your personalized recommendations.");
-      }, 500);
-    }
-  }, [riskLevel, riskCategory]);
-
-  const analyzeHealthData = (data) => {
-    console.log("🔍 Analyzing health data:", data);
-
-    // --- 1. CHECK FOR JUAN AI BRAIN DATA ---
-    if (data.aiAnalysis && data.aiAnalysis.success) {
-      console.log("🧠 Using Juan AI Brain Results!");
-      const ai = data.aiAnalysis;
-
-      setRiskLevel(Math.round(ai.risk_score));
-      setRiskCategory(ai.risk_level);
-
-      // Parse the AI recommendations (which come as strings) into arrays for the UI
-      // We wrap them in arrays because our UI expects lists
-      setSuggestions([ai.recommendations.medical_action]);
-      setPreventions([ai.recommendations.preventive_strategy]);
-      setWellnessTips([ai.recommendations.wellness_tips]);
-      setProviderGuidance([ai.recommendations.provider_guidance]);
-
-      return;
-    }
-
-    // --- 2. FALLBACK: LOCAL LOGIC (If AI Server Failed) ---
-    console.log("⚠️ No AI Data found. Using Local Fallback Logic.");
-
-    let riskScore = 0;
-    const calculatedSuggestions = [];
-    const calculatedPreventions = [];
-    // We will calculate wellness tips using the old helper function for fallback
-    const calculatedWellness = getImprovementTips(data);
-    const calculatedGuidance = [];
-
-    // BMI Analysis
-    const bmi = calculateBMI(data);
-    console.log("📊 BMI calculated:", bmi);
-    if (bmi) {
-      if (bmi < 18.5) {
-        riskScore += 15;
-        calculatedSuggestions.push("Consider nutritional counseling for healthy weight gain");
-        calculatedPreventions.push("Focus on balanced nutrition with adequate calories");
-      } else if (bmi >= 25 && bmi < 30) {
-        riskScore += 20;
-        calculatedSuggestions.push("Monitor weight trends and maintain active lifestyle");
-        calculatedPreventions.push("Combine cardio and strength training exercises");
-      } else if (bmi >= 30) {
-        riskScore += 35;
-        calculatedSuggestions.push("Consult healthcare provider for comprehensive weight management");
-        calculatedPreventions.push("Consider working with dietitian for personalized plan");
-      }
-    }
-
-    // Body Temperature Analysis
-    const temperature = data.temperature;
-    console.log("🌡️ Temperature:", temperature);
-    if (temperature && temperature !== 'N/A') {
-      const tempNum = parseFloat(temperature);
-      if (!isNaN(tempNum)) {
-        if (tempNum < 36.0) {
-          riskScore += 20;
-          calculatedSuggestions.push("Low body temperature detected - monitor for hypothermia symptoms");
-          calculatedPreventions.push("Keep warm and monitor temperature regularly");
-        } else if (tempNum > 37.5) {
-          riskScore += 25;
-          calculatedSuggestions.push("Elevated temperature detected - monitor for fever symptoms");
-          calculatedPreventions.push("Stay hydrated and rest adequately");
-        }
-      }
-    }
-
-    // Heart Rate Analysis
-    if (data.heartRate && data.heartRate !== 'N/A') {
-      console.log("💓 Heart Rate:", data.heartRate);
-      const hrNum = parseFloat(data.heartRate);
-      if (!isNaN(hrNum)) {
-        if (hrNum < 60) {
-          riskScore += 25;
-          calculatedSuggestions.push("Low heart rate detected - consider cardiology consultation if symptomatic");
-          calculatedPreventions.push("Monitor for dizziness or fatigue during activities");
-        } else if (hrNum > 100) {
-          riskScore += 30;
-          calculatedSuggestions.push("Elevated heart rate detected - assess stress and activity levels");
-          calculatedPreventions.push("Practice relaxation techniques and limit stimulants");
-        }
-      }
-    }
-
-    // Blood Oxygen Analysis
-    if (data.spo2 && data.spo2 !== 'N/A') {
-      console.log("🫁 SPO2:", data.spo2);
-      const spo2Num = parseFloat(data.spo2);
-      if (!isNaN(spo2Num)) {
-        if (spo2Num < 95 && spo2Num >= 92) {
-          riskScore += 35;
-          calculatedSuggestions.push("Mildly low oxygen saturation - monitor during physical activity");
-          calculatedPreventions.push("Practice deep breathing exercises regularly");
-        } else if (spo2Num < 92) {
-          riskScore += 60;
-          calculatedSuggestions.push("Significantly low oxygen level - urgent medical evaluation recommended");
-          calculatedPreventions.push("Avoid strenuous activities and seek immediate care if symptoms worsen");
-        }
-      }
-    }
-
-    // Blood Pressure Analysis
-    if (data.systolic && data.diastolic) {
-      console.log("🩸 Blood Pressure:", `${data.systolic}/${data.diastolic}`);
-      const systolicNum = parseFloat(data.systolic);
-      const diastolicNum = parseFloat(data.diastolic);
-
-      if (!isNaN(systolicNum) && !isNaN(diastolicNum)) {
-        if (systolicNum >= 180 || diastolicNum >= 120) {
-          riskScore += 60;
-          calculatedSuggestions.push("Hypertensive crisis detected - seek immediate medical attention");
-          calculatedPreventions.push("Emergency evaluation required for blood pressure management");
-        } else if (systolicNum >= 140 || diastolicNum >= 90) {
-          riskScore += 40;
-          calculatedSuggestions.push("Stage 2 hypertension - consult healthcare provider urgently");
-          calculatedPreventions.push("Monitor blood pressure regularly and follow medical advice");
-        } else if (systolicNum >= 130 || diastolicNum >= 80) {
-          riskScore += 30;
-          calculatedSuggestions.push("Stage 1 hypertension - lifestyle modifications recommended");
-          calculatedPreventions.push("Reduce sodium intake to less than 2,300mg daily");
-        } else if (systolicNum >= 120) {
-          riskScore += 15;
-          calculatedSuggestions.push("Elevated blood pressure - monitor regularly");
-          calculatedPreventions.push("Maintain healthy diet and exercise routine");
-        }
-      }
-    }
-
-    // Respiratory Rate Analysis
-    if (data.respiratoryRate && data.respiratoryRate !== 'N/A') {
-      console.log("🌬️ Respiratory Rate:", data.respiratoryRate);
-      const rrNum = parseFloat(data.respiratoryRate);
-      if (!isNaN(rrNum)) {
-        if (rrNum < 12) {
-          riskScore += 20;
-          calculatedSuggestions.push("Low respiratory rate detected - monitor for breathing difficulties");
-          calculatedPreventions.push("Practice paced breathing exercises");
-        } else if (rrNum > 20) {
-          riskScore += 25;
-          calculatedSuggestions.push("Elevated respiratory rate - assess for anxiety or respiratory issues");
-          calculatedPreventions.push("Focus on slow, deep breathing techniques");
-        }
-      }
-    }
-
-    // Age and Demographic Factors (Fallback)
-    if (data.age && data.age > 50) {
-      riskScore += 10;
-      calculatedSuggestions.push("Regular health screenings recommended for age group");
-      calculatedPreventions.push("Maintain active lifestyle and balanced nutrition");
-    }
-
-    // Cap risk score
-    riskScore = Math.min(riskScore, 100);
-    const aiConfidenceVariation = Math.random() * 10 - 5;
-    riskScore = Math.max(0, Math.min(100, riskScore + aiConfidenceVariation));
-
-    // Determine risk category
-    let category = "";
-    if (riskScore < 20) {
-      category = "Low Risk";
-      if (calculatedSuggestions.length === 0) {
-        calculatedSuggestions.push("Maintain current healthy lifestyle habits");
-        calculatedPreventions.push("Continue regular health monitoring and preventive care");
-      }
-    } else if (riskScore < 50) {
-      category = "Moderate Risk";
-    } else if (riskScore < 75) {
-      category = "High Risk";
-    } else {
-      category = "Critical Risk";
-    }
-
-    console.log("🎯 Final Risk Score (Fallback):", Math.round(riskScore));
-
-    setRiskLevel(Math.round(riskScore));
-    setRiskCategory(category);
-    setSuggestions(calculatedSuggestions);
-    setPreventions(calculatedPreventions);
-    setWellnessTips(calculatedWellness);
-
-    // Fallback Guidance Logic
-    if (riskScore < 20) calculatedGuidance.push("Routine health maintenance recommended. Schedule annual check-up within 6 months.");
-    else if (riskScore < 50) calculatedGuidance.push("Consult primary care physician for comprehensive evaluation within 2-4 weeks.");
-    else if (riskScore < 75) calculatedGuidance.push("Urgent medical consultation advised. Schedule appointment within 1-2 weeks.");
-    else calculatedGuidance.push("Immediate medical attention recommended. Consider emergency evaluation if symptoms present.");
-
-    setProviderGuidance(calculatedGuidance);
-  };
-
-  // Modified helper to accept data argument
-  const getImprovementTips = (currentData) => {
-    // If no data passed, use state data
-    const dataToUse = currentData || userData;
-    const tips = [];
-
-    // Check if dataToUse is valid before accessing properties
-    if (!dataToUse) return tips;
-
-    const bmi = calculateBMI(dataToUse);
-    if (bmi >= 25) {
-      tips.push("Aim for 150 minutes of moderate-intensity exercise weekly");
-      tips.push("Incorporate fiber-rich foods and lean proteins in daily meals");
-      tips.push("Monitor portion sizes and maintain food diary for awareness");
-    }
-
-    if (dataToUse.heartRate && (dataToUse.heartRate < 60 || dataToUse.heartRate > 100)) {
-      tips.push("Practice mindfulness meditation for 10 minutes daily");
-      tips.push("Gradually increase physical activity to improve cardiovascular fitness");
-      tips.push("Limit caffeine intake to 200mg daily and avoid before bedtime");
-    }
-
-    if (dataToUse.spo2 && dataToUse.spo2 < 95) {
-      tips.push("Perform diaphragmatic breathing exercises morning and evening");
-      tips.push("Ensure proper ventilation in living and sleeping areas");
-      tips.push("Consider indoor air quality assessment if symptoms persist");
-    }
-
-    if (dataToUse.systolic && dataToUse.diastolic) {
-      const bpStatus = getBloodPressureStatus(dataToUse.systolic, dataToUse.diastolic);
-      if (bpStatus.status !== 'Normal') {
-        tips.push("Reduce sodium intake to less than 2,300mg daily");
-        tips.push("Incorporate potassium-rich foods like bananas and leafy greens");
-        tips.push("Practice stress management techniques like deep breathing");
-      }
-    }
-
-    // General wellness tips
-    tips.push("Maintain consistent sleep schedule of 7-9 hours nightly");
-    tips.push("Stay hydrated with 2-3 liters of water daily based on activity level");
-    tips.push("Incorporate stress-reduction activities like walking or yoga");
-    tips.push("Schedule regular health screenings based on age and risk factors");
-
-    return tips.slice(0, 6);
-  };
-
   const getRiskGradient = (level) => {
-    if (level < 20) return "linear-gradient(135deg, #10b981 0%, #34d399 100%)";
-    if (level < 50) return "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)";
-    if (level < 75) return "linear-gradient(135deg, #ef4444 0%, #f87171 100%)";
-    return "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)";
+    if (level < 20) return "linear-gradient(135deg, #10b981 0%, #34d399 100%)"; // Green (Normal)
+    if (level < 50) return "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)"; // Orange/Yellow (Moderate)
+    if (level < 75) return "linear-gradient(135deg, #f97316 0%, #fb923c 100%)"; // Dark Orange (High)
+    return "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"; // Red (Critical)
   };
-
-
 
   const getRiskGlow = (level) => {
     if (level < 20) return "0 0 40px rgba(16, 185, 129, 0.4)";
     if (level < 50) return "0 0 40px rgba(245, 158, 11, 0.4)";
-    if (level < 75) return "0 0 40px rgba(239, 68, 68, 0.4)";
+    if (level < 75) return "0 0 40px rgba(249, 115, 22, 0.4)";
     return "0 0 50px rgba(220, 38, 38, 0.6)";
   };
+
+  // --- UPDATED VITAL SIGN STATUS HELPERS (Strict User Thresholds) ---
 
   const getBMICategory = (bmi) => {
     if (!bmi) return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
     if (bmi < 18.5) return { status: 'Underweight', color: '#3b82f6', range: '< 18.5' };
     if (bmi < 25) return { status: 'Normal', color: '#10b981', range: '18.5 - 24.9' };
-    if (bmi < 30) return { status: 'Overweight', color: '#f59e0b', range: '25 - 29.9' };
-    return { status: 'Obese', color: '#ef4444', range: '≥ 30' };
+    if (bmi < 30) return { status: 'Overweight', color: '#f59e0b', range: '25.0 - 29.9' };
+    return { status: 'Obese', color: '#dc2626', range: '≥ 30.0' };
   };
 
   const getTemperatureStatus = (temp) => {
     if (!temp || temp === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
     const tempNum = parseFloat(temp);
     if (isNaN(tempNum)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
-    // Categories: 35.0-37.2 Normal, 37.3-38.0 Slight fever, Above 38.0 Critical
-    if (tempNum < 35.0) return { status: 'Low', color: '#3b82f6', range: '< 35.0°C' };
+
+    // <35.0 = Low/Hypothermia (Critical)
+    if (tempNum < 35.0) return { status: 'Hypothermia', color: '#dc2626', range: '< 35.0°C' };
+    // 35.0 - 37.2 = Normal
     if (tempNum <= 37.2) return { status: 'Normal', color: '#10b981', range: '35.0 - 37.2°C' };
+    // 37.3 - 38.0 = Slight Fever
     if (tempNum <= 38.0) return { status: 'Slight Fever', color: '#f59e0b', range: '37.3 - 38.0°C' };
-    return { status: 'Critical', color: '#dc2626', range: '> 38.0°C' };
+    // >38.0 = Critical
+    return { status: 'Critical Fever', color: '#dc2626', range: '> 38.0°C' };
   };
 
   const getHeartRateStatus = (hr) => {
-    if (!hr || hr === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
-    const hrNum = parseFloat(hr);
-    if (isNaN(hrNum)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
-    // Categories: Below 60 Low, 60-100 Normal, 101-120 Elevated, Above 120 Critical
-    if (hrNum < 60) return { status: 'Low', color: '#3b82f6', range: '< 60 BPM' };
-    if (hrNum <= 100) return { status: 'Normal', color: '#10b981', range: '60 - 100 BPM' };
-    if (hrNum <= 120) return { status: 'Elevated', color: '#f59e0b', range: '101 - 120 BPM' };
-    return { status: 'Critical', color: '#dc2626', range: '> 120 BPM' };
+    const s = getHeartRateStatusUtil(hr);
+    return { status: s.label, color: s.color, range: s.range, description: s.description };
   };
 
   const getSPO2Status = (spo2) => {
-    if (!spo2 || spo2 === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
-    const spo2Num = parseFloat(spo2);
-    if (isNaN(spo2Num)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
-    // Categories: 89 below Critical, 90-94 Low (Needs monitoring), 95-100 Normal
-    if (spo2Num < 90) return { status: 'Critical', color: '#dc2626', range: '< 90%' };
-    if (spo2Num < 95) return { status: 'Low', color: '#f59e0b', range: '90 - 94%' };
-    return { status: 'Normal', color: '#10b981', range: '95 - 100%' };
+    const s = getSPO2StatusUtil(spo2);
+    return { status: s.label, color: s.color, range: s.range, description: s.description };
   };
 
   const getRespiratoryStatus = (rr) => {
-    if (!rr || rr === 'N/A') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
-    const rrNum = parseFloat(rr);
-    if (isNaN(rrNum)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
-    // Categories: Below 12 Low, 12-20 Normal, 21-24 Elevated, Above 24 Critical
-    if (rrNum < 12) return { status: 'Low', color: '#3b82f6', range: '< 12/min' };
-    if (rrNum <= 20) return { status: 'Normal', color: '#10b981', range: '12 - 20/min' };
-    if (rrNum <= 24) return { status: 'Elevated', color: '#f59e0b', range: '21 - 24/min' };
-    return { status: 'Critical', color: '#dc2626', range: '> 24/min' };
+    const s = getRespiratoryStatusUtil(rr);
+    return { status: s.label, color: s.color, range: s.range, description: s.description };
   };
 
   const getBloodPressureStatus = (sys, dia) => {
-    if (!sys || !dia || sys === '--' || dia === '--') return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
-    const systolicValue = parseFloat(sys);
-    const diastolicValue = parseFloat(dia);
-
-    if (isNaN(systolicValue) || isNaN(diastolicValue)) return { status: 'Invalid', color: '#6b7280', range: 'N/A' };
-
-    // BP Categories based on medical standards:
-    // Hypertensive Crisis: Sys > 180 OR Dia > 120
-    if (systolicValue > 180 || diastolicValue > 120) {
-      return { status: 'Hypertensive Crisis', color: '#7f1d1d', range: '> 180/120 mmHg' };
-    }
-    // Hypertension Stage 2: Sys >= 140 OR Dia >= 90
-    if (systolicValue >= 140 || diastolicValue >= 90) {
-      return { status: 'Hypertension Stage 2', color: '#dc2626', range: '≥ 140/90 mmHg' };
-    }
-    // Hypertension Stage 1: Sys 130-139 OR Dia 80-89
-    if (systolicValue >= 130 || diastolicValue >= 80) {
-      return { status: 'Hypertension Stage 1', color: '#f59e0b', range: '130-139/80-89 mmHg' };
-    }
-    // Elevated: Sys 120-129 AND Dia < 80
-    if (systolicValue >= 120 && diastolicValue < 80) {
-      return { status: 'Elevated', color: '#fbbf24', range: '120-129/<80 mmHg' };
-    }
-    // Hypotension (Low): Sys < 90 OR Dia < 60
-    if (systolicValue < 90 || diastolicValue < 60) {
-      return { status: 'Hypotension (Low)', color: '#3b82f6', range: '< 90/60 mmHg' };
-    }
-    // Normal: Sys < 120 AND Dia < 80
-    return { status: 'Normal', color: '#10b981', range: '< 120/80 mmHg' };
+    const s = getBloodPressureStatusUtil(sys, dia);
+    return { status: s.label, color: s.color, range: s.range, description: s.description };
   };
 
+  useEffect(() => {
+    // 1. Try to get data from Navigation State (Primary)
+    let data = location.state;
 
+    // 2. Fallback: Try Session Storage
+    if (!data) {
+      const stored = sessionStorage.getItem('vitalSignsData');
+      if (stored) {
+        try {
+          data = JSON.parse(stored);
+        } catch (e) {
+          console.error("Failed to parse stored vital signs", e);
+        }
+      }
+    }
+
+    if (data) {
+      console.log("📊 Result Page Received Data:", data);
+      setUserData(data);
+
+      // Extract AI Results
+      if (data.riskLevel !== undefined) setRiskLevel(data.riskLevel);
+      if (data.riskCategory) setRiskCategory(data.riskCategory);
+
+      // Extract Recommendations (if present from AI)
+      if (data.resultRecommendations) {
+        const recs = data.resultRecommendations;
+        if (recs.medical_actions) setSuggestions(recs.medical_actions);
+        if (recs.preventive_strategies) setPreventions(recs.preventive_strategies);
+        if (recs.wellness_tips) setWellnessTips(recs.wellness_tips);
+        if (recs.provider_guidance) setProviderGuidance(recs.provider_guidance);
+      }
+
+      speak("Here are your health assessment results.");
+    } else {
+      console.warn("⚠️ No data found for Result page.");
+    }
+  }, [location.state]);
 
   const calculateBMI = (data) => {
     // If BMI is already calculated and passed, use it
@@ -449,12 +153,32 @@ export default function Result() {
       wellnessTips,
       providerGuidance,
 
-      // Ensure all measurement fields are included
+      // --- EXPERT DATASET PARAMETERS (Explicitly Requested) ---
+      age: userData.age,
+      // Calculate Age Group for consistency (0:18-24, 1:25-39, 2:40-59, 3:60+)
+      age_group: (() => {
+        const a = parseInt(userData.age || 30);
+        if (a >= 60) return 3;
+        if (a >= 40) return 2;
+        if (a >= 25) return 1;
+        return 0;
+      })(),
+      gender: userData.sex || 'Male',
       bmi: calculateBMI(userData),
+      temp: parseFloat(userData.temperature || 0),
+      spo2: parseFloat(userData.spo2 || 0),
+      hr: parseFloat(userData.heartRate || 0),
+      systolic: parseFloat(userData.systolic || 0),
+      diastolic: parseFloat(userData.diastolic || 0),
+      rr: parseFloat(userData.respiratoryRate || 0),
+      risk_score: riskLevel,
+      risk_label: riskCategory,
+
+      // Legacy/UI specific fields
       bloodPressure: userData.systolic && userData.diastolic ?
         `${userData.systolic}/${userData.diastolic}` : 'N/A',
 
-      // Add calculated fields for print
+      // UI Status Helpers
       bmiCategory: getBMICategory(calculateBMI(userData)).status,
       temperatureStatus: getTemperatureStatus(userData.temperature).status,
       heartRateStatus: getHeartRateStatus(userData.heartRate).status,
@@ -534,8 +258,22 @@ export default function Result() {
         <div className="mb-5 risk-score-section">
           <div className="card border-0 text-white mb-4 risk-score-card" style={{ background: getRiskGradient(riskLevel) }}>
             <div className="card-body p-4 text-center">
-              <div className="display-1 fw-bold mb-1">{riskLevel}%</div>
-              <div className="h3 mb-4">{riskCategory}</div>
+
+              <h2 className="display-1 fw-bold mb-0 risk-score-value">{riskLevel}%</h2>
+              <h3 className="h2 mb-3 risk-score-label">{riskCategory}</h3>
+
+              {/* Active Parameters Count */}
+              {userData.aiAnalysis?.confidence_metrics && (
+                <div style={{ fontSize: '0.9rem', opacity: 0.8, marginBottom: '20px' }}>
+                  <small>
+                    Analysis based on {userData.aiAnalysis.confidence_metrics.total_parameters_used ||
+                      (userData.aiAnalysis.confidence_metrics.active_sensors_count + 3)} parameters
+                    {userData.aiAnalysis.confidence_metrics.max_parameters &&
+                      ` of ${userData.aiAnalysis.confidence_metrics.max_parameters}`
+                    }
+                  </small>
+                </div>
+              )}
 
               <div className="risk-meter mb-2 position-relative" style={{ height: '30px', background: 'rgba(0,0,0,0.2)', borderRadius: '15px' }}>
                 <div

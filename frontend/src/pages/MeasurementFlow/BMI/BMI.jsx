@@ -13,6 +13,7 @@ import { sensorAPI } from "../../../utils/api";
 import { getNextStepPath, getProgressInfo } from "../../../utils/checklistNavigation";
 import { speak } from "../../../utils/speech";
 import { isLocalDevice } from "../../../utils/network";
+import { getBMICategory as getBMICategoryUtil } from "../../../utils/healthStatus";
 
 // ============================================================
 // BMI Measurement Component - V2 with Dynamic UI
@@ -595,12 +596,20 @@ export default function BMI() {
   const bmi = calculateBMI();
 
   const getBMICategory = (val) => {
-    if (!val) return { class: '', category: '' };
-    const v = parseFloat(val);
-    if (v < 18.5) return { class: 'warning', category: 'Underweight', description: 'Consider consulting a healthcare provider' };
-    if (v < 25) return { class: 'complete', category: 'Normal', description: 'Healthy weight range' };
-    if (v < 30) return { class: 'warning', category: 'Overweight', description: 'Consider lifestyle adjustments' };
-    return { class: 'error', category: 'Obese', description: 'Consult a healthcare provider' };
+    // Adapter for centralized utility
+    const status = getBMICategoryUtil(val);
+
+    let cssClass = '';
+    if (status.label === 'Normal') cssClass = 'complete';
+    else if (status.label === 'Overweight' || status.label === 'Underweight') cssClass = 'warning';
+    else if (status.label === 'Obese') cssClass = 'error';
+    else cssClass = 'pending'; // Fallback
+
+    return {
+      class: cssClass,
+      category: status.label,
+      description: status.description
+    };
   };
   const cat = getBMICategory(bmi);
   const info = getProgressInfo('bmi', location.state?.checklist);

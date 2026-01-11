@@ -218,6 +218,11 @@ class BPSensorController:
             self.result_confirmed = False  # NEW: Prevent re-triggering result
             self.ignore_start_until = 0    # NEW: Cooldown for manual interrupts
             
+            # Reset Stability Trackers
+            self.last_res_sys = None
+            self.last_res_dia = None
+            self.res_stable_start = 0
+            
             # CRITICAL: Reset Status for New User
             self.bp_status = {
                 "systolic": "--",
@@ -850,6 +855,24 @@ class BPSensorController:
             
             if not self.has_inflated and not self.start_command_sent:
                  return # Ignore stale
+
+            # --- STABILITY CHECK (2.0s) ---
+            # Initialize tracking vars if missing
+            if not hasattr(self, 'last_res_sys'): self.last_res_sys = None
+            if not hasattr(self, 'last_res_dia'): self.last_res_dia = None
+            if not hasattr(self, 'res_stable_start'): self.res_stable_start = 0
+            
+            # Check if values changed
+            if sys_str != self.last_res_sys or dia_str != self.last_res_dia:
+                self.last_res_sys = sys_str
+                self.last_res_dia = dia_str
+                self.res_stable_start = time.time()
+                return # Reset timer, wait for next frame
+            
+            # Check duration
+            if (time.time() - self.res_stable_start) < 2.0:
+                return # Wait for stability
+            # ------------------------------
 
             logger.info(f"✅ BP Result Confirmed: {sys_str}/{dia_str}")
             print(f"✅ BP Result Confirmed: {sys_str}/{dia_str}")

@@ -3,6 +3,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Sharing.css";
 import { speak, reinitSpeech, stopSpeaking } from "../../../utils/speech";
+import {
+  getBMICategory as getBMICategoryUtil,
+  getTemperatureStatus as getTemperatureStatusUtil,
+  getHeartRateStatus as getHeartRateStatusUtil,
+  getSPO2Status as getSPO2StatusUtil,
+  getRespiratoryStatus as getRespiratoryStatusUtil,
+  getBloodPressureStatus as getBloodPressureStatusUtil
+} from "../../../utils/healthStatus";
 
 const getDynamicApiUrl = () => {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
@@ -75,6 +83,65 @@ export default function Sharing() {
       handleReturnHome(true);
     }
   }, [autoRedirectTimer, handleReturnHome]);
+
+  // --- UPDATED RISK HELPERS (5 TIERS) ---
+  const getRiskClass = (level) => {
+    if (level < 20) return 'normal-risk';
+    if (level < 40) return 'mild-risk';
+    if (level < 60) return 'moderate-risk';
+    if (level < 80) return 'high-risk';
+    return 'critical-risk';
+  };
+
+  const getRiskGradient = (level) => {
+    if (level < 20) return "linear-gradient(135deg, #10b981 0%, #34d399 100%)";
+    if (level < 40) return "linear-gradient(135deg, #a3e635 0%, #bef264 100%)";
+    if (level < 60) return "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)";
+    if (level < 80) return "linear-gradient(135deg, #f97316 0%, #fb923c 100%)";
+    return "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)";
+  };
+
+  const getRiskGlow = (level) => {
+    if (level < 20) return "0 0 40px rgba(16, 185, 129, 0.4)";
+    if (level < 40) return "0 0 40px rgba(163, 230, 53, 0.4)";
+    if (level < 60) return "0 0 40px rgba(245, 158, 11, 0.4)";
+    if (level < 80) return "0 0 40px rgba(249, 115, 22, 0.4)";
+    return "0 0 50px rgba(220, 38, 38, 0.6)";
+  };
+
+  // --- STRICT VITAL STATUS HELPERS (Centralized) ---
+  // Using imported utilities locally imported via separate chunk
+  // For now I assume they are imported as imported in Result.jsx
+
+  const getBMICategory = (bmi) => {
+    const s = getBMICategoryUtil(bmi);
+    return { status: s.label, color: s.color };
+  };
+
+  const getTemperatureStatus = (temp) => {
+    const s = getTemperatureStatusUtil(temp);
+    return { status: s.label, color: s.color };
+  };
+
+  const getHeartRateStatus = (hr) => {
+    const s = getHeartRateStatusUtil(hr);
+    return { status: s.label, color: s.color };
+  };
+
+  const getSPO2Status = (spo2) => {
+    const s = getSPO2StatusUtil(spo2);
+    return { status: s.label, color: s.color };
+  };
+
+  const getRespiratoryStatus = (rr) => {
+    const s = getRespiratoryStatusUtil(rr);
+    return { status: s.label, color: s.color };
+  };
+
+  const getBloodPressureStatus = (sys, dia) => {
+    const s = getBloodPressureStatusUtil(sys, dia);
+    return { status: s.label, color: s.color };
+  };
 
   const confirmSkip = () => {
     setShowSkipModal(false);
@@ -238,106 +305,132 @@ export default function Sharing() {
         <div className="receipt-vitals">
           <div className="receipt-section-title">Measurements</div>
 
-          {/* BMI */}
+          {/* 1. BMI Group */}
           {(userData.weight || userData.height) && (
             <>
-              <div className="vital-row">
-                <span className="vital-label">Weight:</span>
-                <span className="vital-value">{formatValue(userData.weight, "kg")}</span>
-              </div>
-              <div className="vital-row">
-                <span className="vital-label">Height:</span>
-                <span className="vital-value">{formatValue(userData.height, "cm")}</span>
-              </div>
-              <div className="vital-row">
-                <span className="vital-label">BMI:</span>
-                <span className="vital-value">{formatValue(userData.bmi)}</span>
-              </div>
-            </>
-          )}
-
-          {/* Blood Pressure */}
-          {userData.systolic && (
-            <div className="vital-row">
-              <span className="vital-label">Blood Pressure:</span>
-              <span className="vital-value">{userData.systolic}/{userData.diastolic} mmHg</span>
-            </div>
-          )}
-
-          {/* Heart Rate & SpO2 */}
-          {(userData.heartRate || userData.spo2) && (
-            <>
-              <div className="vital-row">
-                <span className="vital-label">Heart Rate:</span>
-                <span className="vital-value">{formatValue(userData.heartRate, "bpm")}</span>
-              </div>
-              <div className="vital-row">
-                <span className="vital-label">SpO2:</span>
-                <span className="vital-value">{formatValue(userData.spo2, "%")}</span>
-              </div>
-              {userData.respiratoryRate && (
-                <div className="vital-row">
-                  <span className="vital-label">Respiratory Rate:</span>
-                  <span className="vital-value">{formatValue(userData.respiratoryRate, "/min")}</span>
+              {userData.weight && (
+                <div className="vital-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span className="vital-label">Weight:</span>
+                  <span className="vital-value">{formatValue(userData.weight, "kg")}</span>
+                </div>
+              )}
+              {userData.height && (
+                <div className="vital-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span className="vital-label">Height:</span>
+                  <span className="vital-value">{formatValue(userData.height, "cm")}</span>
+                </div>
+              )}
+              {userData.bmi && (
+                <div className="vital-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span className="vital-label">BMI:</span>
+                  <span className="vital-value">
+                    {formatValue(userData.bmi)} ({userData.bmiCategory || 'N/A'})
+                  </span>
                 </div>
               )}
             </>
           )}
 
-          {/* Temperature */}
+          {/* 2. Body Temp */}
           {userData.temperature && (
-            <div className="vital-row">
+            <div className="vital-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
               <span className="vital-label">Body Temp:</span>
-              <span className="vital-value">{formatValue(userData.temperature, "°C")}</span>
+              <span className="vital-value">
+                {formatValue(userData.temperature, "°C")} ({userData.temperatureStatus || 'N/A'})
+              </span>
+            </div>
+          )}
+
+          {/* 3. Heart Rate */}
+          {userData.heartRate && (
+            <div className="vital-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+              <span className="vital-label">Heart Rate:</span>
+              <span className="vital-value">
+                {formatValue(userData.heartRate, "bpm")} ({userData.heartRateStatus || 'N/A'})
+              </span>
+            </div>
+          )}
+
+          {/* 4. SpO2 */}
+          {userData.spo2 && (
+            <div className="vital-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+              <span className="vital-label">SpO2:</span>
+              <span className="vital-value">
+                {formatValue(userData.spo2, "%")} ({userData.spo2Status || 'N/A'})
+              </span>
+            </div>
+          )}
+
+          {/* 5. Respiratory Rate */}
+          {userData.respiratoryRate && (
+            <div className="vital-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+              <span className="vital-label">Respiratory Rate:</span>
+              <span className="vital-value">
+                {formatValue(userData.respiratoryRate, "/min")} ({userData.respiratoryStatus || 'N/A'})
+              </span>
+            </div>
+          )}
+
+          {/* 6. Blood Pressure */}
+          {userData.systolic && (
+            <div className="vital-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+              <span className="vital-label">Blood Pressure:</span>
+              <span className="vital-value">
+                {userData.systolic}/{userData.diastolic} mmHg ({userData.bloodPressureStatus || 'N/A'})
+              </span>
             </div>
           )}
         </div>
 
-        {/* AI Assessment Section for Visual Receipt */}
+        {/* AI Assessment Section - HORIZONTAL LAYOUT */}
         {(userData.riskLevel !== undefined || (userData.suggestions && userData.suggestions.length > 0)) && (
           <div className="receipt-vitals" style={{ marginTop: '10px', borderTop: '1px dashed #000', paddingTop: '10px' }}>
             <div className="receipt-section-title">AI Assessment</div>
 
             {userData.riskLevel !== undefined && (
-              <div className="receipt-row">
+              <div className="receipt-row" style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Risk Level:</span>
                 <strong>{userData.riskCategory} ({userData.riskLevel}%)</strong>
               </div>
             )}
 
-            {userData.suggestions && userData.suggestions[0] && (
+            {/* Suggestions (Horizontal) */}
+            {userData.suggestions && (
               <div style={{ marginTop: '5px' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>SUGGESTED ACTIONS:</div>
-                {userData.suggestions.map((s, i) => (
-                  <div key={i} style={{ fontSize: '10px', paddingLeft: '5px' }}>- {s}</div>
-                ))}
+                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>SUGGESTIONS:</div>
+                <div style={{ fontSize: '10px' }}>
+                  {Array.isArray(userData.suggestions) ? userData.suggestions.join(', ') : userData.suggestions}
+                </div>
               </div>
             )}
 
-            {userData.preventions && userData.preventions[0] && (
+            {/* Preventions (Horizontal) */}
+            {userData.preventions && (
               <div style={{ marginTop: '5px' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>PREVENTIVE STRATEGY:</div>
-                {userData.preventions.map((s, i) => (
-                  <div key={i} style={{ fontSize: '10px', paddingLeft: '5px' }}>- {s}</div>
-                ))}
+                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>PREVENTION:</div>
+                <div style={{ fontSize: '10px' }}>
+                  {Array.isArray(userData.preventions) ? userData.preventions.join(', ') : userData.preventions}
+                </div>
               </div>
             )}
 
-            {userData.wellnessTips && userData.wellnessTips[0] && (
+            {/* Wellness Tips (Horizontal) */}
+            {userData.wellnessTips && (
               <div style={{ marginTop: '5px' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '10px' }}>WELLNESS TIPS:</div>
-                {userData.wellnessTips.map((s, i) => (
-                  <div key={i} style={{ fontSize: '10px', paddingLeft: '5px' }}>- {s}</div>
-                ))}
+                <div style={{ fontSize: '10px' }}>
+                  {Array.isArray(userData.wellnessTips) ? userData.wellnessTips.join(', ') : userData.wellnessTips}
+                </div>
               </div>
             )}
 
-            {userData.providerGuidance && userData.providerGuidance[0] && (
+            {/* Guidance (Horizontal) */}
+            {userData.providerGuidance && (
               <div style={{ marginTop: '5px' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>GUIDANCE:</div>
-                {userData.providerGuidance.map((s, i) => (
-                  <div key={i} style={{ fontSize: '10px', paddingLeft: '5px' }}>{s}</div>
-                ))}
+                <div style={{ fontWeight: 'bold', fontSize: '10px' }}>FOR PROVIDER:</div>
+                <div style={{ fontSize: '10px' }}>
+                  {Array.isArray(userData.providerGuidance) ? userData.providerGuidance.join(', ') : userData.providerGuidance}
+                </div>
               </div>
             )}
           </div>

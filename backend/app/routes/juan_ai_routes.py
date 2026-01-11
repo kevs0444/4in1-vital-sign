@@ -56,35 +56,47 @@ def predict_risk():
         print("🔍 Juan AI Analysis Request:", data)
 
         # 1. Extract 9 Parameters from Frontend Data
-        # We need to match the EXACT order used in training
-        # Features: ['age', 'age_group', 'gender', 'bmi', 'temp', 'spo2', 'hr', 'systolic', 'diastolic', 'rr']
         
-        # --- SAFE DEFAULTS (IMPUTATION) ---
-        # If a user is "only using BP", we default other values to "Normal/Healthy".
-        # This isolates the risk prediction to ONLY the abnormal metrics the user actually measured.
-        
-        age = data.get('age') or 30 # Default to 30 if missing
-        gender_str = data.get('sex', 'Male') 
-        
-        bmi = data.get('bmi')
-        if not bmi or bmi == 0: bmi = 22.0 # Normal BMI
-        
-        temp = data.get('temperature')
-        if not temp or temp == 0: temp = 36.5 # Normal Temp
-        
-        spo2 = data.get('spo2')
-        if not spo2 or spo2 == 0: spo2 = 98 # Normal SpO2
-        
-        hr = data.get('heartRate')
-        if not hr or hr == 0: hr = 75 # Normal Heart Rate
-        
-        systolic = data.get('systolic')
-        diastolic = data.get('diastolic')
-        if not systolic or systolic == 0: systolic = 115 # Normal BP
-        if not diastolic or diastolic == 0: diastolic = 75 # Normal BP
+        HEALTHY_DEFAULTS = {
+            'bmi': 22.0, 'temp': 36.6, 'spo2': 98.0, 'hr': 75.0, 
+            'sys': 115.0, 'dia': 75.0, 'rr': 16.0
+        }
 
-        rr = data.get('respiratoryRate')
-        if not rr or rr == 0: rr = 16 # Normal Respiratory Rate
+        def get_val(key, default):
+            try:
+                val = data.get(key)
+                if val is None or val == "" or val == "N/A": return default
+                return float(val)
+            except: return default
+
+        age = int(data.get('age', 30))
+        gender_str = data.get('sex', 'Male')
+        
+        # --- PARTIAL DATA IMPUTATION LOGIC ---
+        # We assume Healthy Defaults for any sensor NOT measured.
+        # This isolates the risk prediction to ONLY the measured values.
+        # No need to retrain; the model sees "Perfect Health + High Fever" -> "High Risk".
+        
+        bmi = get_val('bmi', HEALTHY_DEFAULTS['bmi'])
+        temp = get_val('temperature', HEALTHY_DEFAULTS['temp'])
+        spo2 = get_val('spo2', HEALTHY_DEFAULTS['spo2'])
+        hr = get_val('heartRate', HEALTHY_DEFAULTS['hr'])
+        systolic = get_val('systolic', HEALTHY_DEFAULTS['sys'])
+        diastolic = get_val('diastolic', HEALTHY_DEFAULTS['dia'])
+        rr = get_val('respiratoryRate', HEALTHY_DEFAULTS['rr'])
+
+        # Identify imputed fields for logging
+        imputed_fields = []
+        if data.get('bmi') in [0, None, "", "N/A"]: imputed_fields.append("BMI")
+        if data.get('temperature') in [0, None, "", "N/A"]: imputed_fields.append("Temp")
+        if data.get('spo2') in [0, None, "", "N/A"]: imputed_fields.append("SpO2")
+        if data.get('heartRate') in [0, None, "", "N/A"]: imputed_fields.append("HR")
+        if data.get('systolic') in [0, None, "", "N/A"]: imputed_fields.append("BP")
+
+        if imputed_fields:
+            print(f"ℹ️  [Partial Data Mode] Using Healthy Defaults for: {', '.join(imputed_fields)}")
+        else:
+            print("✅ [Full Data Mode] All vital signs valid.")
 
         # Feature Engineering: Age Group
         if 18 <= age <= 24: age_group = 0
@@ -129,84 +141,133 @@ def predict_risk():
             risk_score = (probs[0] * 10) + (probs[1] * 30) + (probs[2] * 50) + (probs[3] * 70) + (probs[4] * 90)
             risk_score = int(round(risk_score))  # Convert to whole number integer
 
-            # --- POST-PROCESSING: KEY VITALS RISK BOOSTER ---
-            # If the user only provided partial data (e.g. only BP), the model might see 5 "Healthy" 
-            # imputed values and 1 "Bad" value, resulting in a low score.
-            # We must force-boost the score if any provided metric is critical.
+            # --- POST-PROCESSING: KEY VITALS RISK BOOSTER (SELECTIVE) ---
+            # ONLY apply boosters for fields that were actually measured (not imputed).
             
             # BP Booster
-            if (systolic >= 180 or diastolic >= 120):
-                # Hypertensive Crisis: 40 Points
-                risk_score = max(risk_score, 40.0)
-            elif (systolic >= 140 or diastolic >= 90):
-                # Stage 2 Hypertension: 30 Points
-                risk_score = max(risk_score, 30.0)
-            elif (systolic >= 130 or diastolic >= 80):
-                 # Stage 1 Hypertension: 20 Points
-                risk_score = max(risk_score, 20.0)
-            elif (systolic >= 120 and diastolic < 80):
-                 # Elevated: 15 Points
-                risk_score = max(risk_score, 15.0)
-            elif (systolic < 90 and diastolic < 60):
-                # Hypotension: 15 Points
-                risk_score = max(risk_score, 15.0)
+            if "BP" not in imputed_fields:
+                if (systolic >= 180 or diastolic >= 120):
+                    risk_score = max(risk_score, 40.0) # Hypertensive Crisis
+                elif (systolic >= 140 or diastolic >= 90):
+                    risk_score = max(risk_score, 30.0) # Stage 2
+                elif (systolic >= 130 or diastolic >= 80):
+                    risk_score = max(risk_score, 20.0) # Stage 1
+                elif (systolic >= 120 and diastolic < 80):
+                    risk_score = max(risk_score, 15.0) # Elevated
+                elif (systolic < 90 or diastolic < 60):
+                    risk_score = max(risk_score, 15.0) # Hypotension
 
             # SpO2 Booster
-            if (spo2 <= 89):
-                 # Critical: 40 Points
-                risk_score = max(risk_score, 40.0)
-            elif (spo2 <= 94):
-                # Low: 15 Points
-                risk_score = max(risk_score, 15.0)
+            if "SpO2" not in imputed_fields:
+                if (spo2 <= 89):
+                    risk_score = max(risk_score, 40.0) # Critical
+                elif (spo2 <= 94):
+                    risk_score = max(risk_score, 15.0) # Low
 
             # Heart Rate Booster
-            if (hr > 120):
-                 # Critical: 40 Points
-                 risk_score = max(risk_score, 40.0)
-            elif (hr > 100 or hr < 60):
-                 # Low/Elevated: 15 Points
-                 risk_score = max(risk_score, 15.0)
+            if "HR" not in imputed_fields:
+                if (hr > 120):
+                     risk_score = max(risk_score, 40.0) # Critical
+                elif (hr > 100 or hr < 60):
+                     risk_score = max(risk_score, 15.0) # Low/Elevated
 
             # Temp Booster
-            if (temp > 38.0):
-                 # Critical: 40 Points
-                 risk_score = max(risk_score, 40.0)
-            elif (temp >= 37.3):
-                 # Slight Fever: 15 Points
-                 risk_score = max(risk_score, 15.0)
-            elif (temp < 35.0):
-                 # Hypothermia (Implicit Critical): 40 Points
-                 risk_score = max(risk_score, 40.0)
+            if "Temp" not in imputed_fields:
+                if (temp > 38.0):
+                     risk_score = max(risk_score, 40.0) # Critical
+                elif (temp >= 37.3):
+                     risk_score = max(risk_score, 15.0) # Slight Fever
+                elif (temp < 35.0):
+                     risk_score = max(risk_score, 40.0) # Hypothermia
 
-            # RR Booster
-            if (rr > 24):
-                risk_score = max(risk_score, 40.0)
-            elif (rr >= 21 or rr < 12):
-                risk_score = max(risk_score, 15.0)
+            # RR Booster (Only if RR provided explicitly)
+            # RR is typically part of SpO2/HR sensors or manual
+            if data.get('respiratoryRate') not in [0, None, "", "N/A"]:
+                if (rr > 24):
+                    risk_score = max(risk_score, 40.0)
+                elif (rr >= 21 or rr < 12):
+                    risk_score = max(risk_score, 15.0)
 
-            if risk_score < 20: risk_level = "Normal"
-            elif risk_score < 40: risk_level = "Mild Risk"
-            elif risk_score < 60: risk_level = "Moderate Risk"
-            elif risk_score < 80: risk_level = "High Risk"
-            else: risk_level = "Critical Risk"
-            
-            print(f"✅ Juan AI Prediction Complete!")
-            print(f"   📊 Risk Score: {risk_score}%")
-            print(f"   🏷️ Risk Level: {risk_level}")
-        else:
-            # Fallback Logic if model isn't trained yet
-            print("⚠️ Model not loaded, using fallback logic")
-            risk_score = 50 # Default
-            risk_level = "Moderate Risk (Fallback)"
+            # BMI Booster
+            if "BMI" not in imputed_fields:
+                if (bmi >= 30):
+                    risk_score = max(risk_score, 40.0) # Obese
+                elif (bmi >= 25 or bmi < 18.5):
+                    risk_score = max(risk_score, 15.0) # Overweight / Underweight
 
+            # Age & Gender Factors (Always applicable as Profile Data)
+            if age >= 60: risk_score += 5
+            if age_group == 3: risk_score += 5 
+            if gender_numeric == 0: risk_score += 2
+
+
+            # Validate Risk Score limits
+        risk_score = min(100, max(0, risk_score))
         
+        # --- DATA QUALITY METRICS (THESIS VALIDATION) ---
+        # Calculate how "complete" the assessment is.
+        
+        # The 10 AI Model Parameters are:
+        # 1. Age (Profile - Always Included)
+        # 2. Age Group (Profile - Always Included)
+        # 3. Gender (Profile - Always Included)
+        # 4. BMI (Sensor)
+        # 5. Temp (Sensor)
+        # 6. SpO2 (Sensor)
+        # 7. HR (Sensor)
+        # 8. Systolic BP (Sensor - counts as "BP")
+        # 9. Diastolic BP (Sensor - counts as "BP")
+        # 10. RR (Sensor)
+        
+        # Profile parameters are ALWAYS included (3)
+        profile_params_count = 3  # Age, Age Group, Gender
+        
+        # Sensor categories: BMI, Temp, SpO2, HR, BP (sys+dia=1), RR
+        # Note: RR is derived from MAX30102, same as SpO2/HR
+        total_sensor_categories = 5  # BMI, Temp, SpO2/HR/RR (MAX30102), BP
+        
+        # Count how many sensor categories were measured (not imputed)
+        measured_sensors = total_sensor_categories - len(imputed_fields)
+        
+        # Total parameters used = Profile (3) + Measured Sensors
+        total_parameters_used = profile_params_count + measured_sensors
+        
+        # Max possible parameters = Profile (3) + All Sensors (5)
+        max_parameters = profile_params_count + total_sensor_categories
+        
+        data_quality_score = round((total_parameters_used / max_parameters) * 100, 1)
+        
+        confidence_metrics = {
+            'is_partial_data': len(imputed_fields) > 0,
+            'data_quality_score': data_quality_score,
+            'imputed_fields': imputed_fields,
+            'active_sensors_count': measured_sensors,  # Legacy: Just the sensor count
+            'total_parameters_used': total_parameters_used,  # New: Profile + Sensors
+            'max_parameters': max_parameters,  # New: Maximum possible
+            'profile_params': ['Age', 'Age Group', 'Gender'],  # Always included
+            'measured_sensors': [s for s in ['BMI', 'Temp', 'SpO2', 'HR', 'BP'] if s not in imputed_fields]
+        }
+        
+        print(f"📊 Confidence Metrics: {confidence_metrics}")
+
+        # Map Score to Risk Level Class (4 Tiers)
+        if risk_score < 20: risk_level = "Normal"
+        elif risk_score < 50: risk_level = "Moderate Risk"
+        elif risk_score < 75: risk_level = "High Risk"
+        else: risk_level = "Critical Risk"
+        
+        print(f"✅ Juan AI Prediction Complete!")
+        print(f"   📊 Risk Score: {risk_score}%")
+        print(f"   🏷️ Risk Level: {risk_level}")
+
         # --- STEP 2: GENERATE ADVICE (LANGUAGE BRAIN) ---
-        recommendations = generate_dynamic_advice(age, gender_str, risk_level, risk_score, data)
+        recommendations = generate_dynamic_advice(age, gender_str, age_group, risk_level, risk_score, data)
 
         return jsonify({
             'success': True,
             'risk_score': risk_score,
             'risk_level': risk_level,
+            'confidence_metrics': confidence_metrics, # New thesis-grade metadata
             'recommendations': recommendations
         })
 
@@ -216,32 +277,8 @@ def predict_risk():
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-def generate_dynamic_advice(age, gender, risk_level, score, vitals):
-    """
-    OFFLINE AI ENGINE (Rule-Based Expert System)
-    Constructs dynamic text advice based on specific vital sign combinations.
-    Does not require external APIs.
-    """
-    
-    # --- 1. GATHER CONTEXT ---
-    
-    # Parse Vitals
-    try:
-        bmi = float(vitals.get('bmi', 0))
-        temp = float(vitals.get('temperature', 0))
-        spo2 = float(vitals.get('spo2', 0))
-        hr = float(vitals.get('heartRate', 0))
-        sys = float(vitals.get('systolic', 0))
-        dia = float(vitals.get('diastolic', 0))
-        rr = float(vitals.get('respiratoryRate', 0))
-        age = int(age) if age else 30
-    except:
-        return get_fallback_advice(score)
 
-    is_senior = age >= 60
-    is_child = age < 18
-
-def generate_dynamic_advice(age, gender, risk_level, score, vitals):
+def generate_dynamic_advice(age, gender, age_group, risk_level, score, vitals):
     """
     HYBRID AI ENGINE
     1. Tries to use Google Gemini for high-quality, personalized text.
@@ -285,28 +322,35 @@ def generate_dynamic_advice(age, gender, risk_level, score, vitals):
                 print("⚠️ Juan AI: No models listed. Trying default 'gemini-1.5-flash'...")
                 model = genai.GenerativeModel('gemini-1.5-flash')
 
+            # Map age_group to text
+            age_group_map = {0: "Young Adult (18-24)", 1: "Adult (25-39)", 2: "Middle-Aged (40-59)", 3: "Senior (60+)"}
+            age_group_str = age_group_map.get(age_group, "Unknown")
+
             # Construct a rich prompt
             prompt = f"""
             You are "Juan AI", an advanced medical assistant.
             Patient: {age} year old {gender}.
+            Age Group: {age_group_str}
+            
             Current Vitals:
             - BMI: {vitals.get('bmi', 'N/A')}
             - Temp: {vitals.get('temperature', 'N/A')} C
             - SpO2: {vitals.get('spo2', 'N/A')}%
             - Heart Rate: {vitals.get('heartRate', 'N/A')} bpm
             - BP: {vitals.get('systolic', 'N/A')}/{vitals.get('diastolic', 'N/A')} mmHg
+            - Respiratory Rate: {vitals.get('respiratoryRate', 'N/A')} bpm
             
             Risk Assessment: {risk_level} (Score: {score}/100)
             
             Task: Provide 4 short, empathetic, professional sections of advice.
             Output must be VALID JSON with these exact keys:
-            "medical_action", "preventive_strategy", "wellness_tips", "provider_guidance"
+            "medical_actions", "preventive_strategies", "wellness_tips", "provider_guidance"
             
-            Content Guidelines:
-            - medical_action: Immediate recommended action (e.g. "Consult cardiologist").
-            - preventive_strategy: What to do this week.
-            - wellness_tips: Diet/Lifestyle.
-            - provider_guidance: A summary for the doctor.
+            Content Guidelines (CRITICAL: KEEP IT SHORT):
+            - medical_actions: List of immediate actions. MAX 6 WORDS per item. (e.g. "Consult cardiologist immediately", "Monitor BP daily").
+            - preventive_strategies: What to do this week. MAX 6 WORDS per item.
+            - wellness_tips: Diet/Lifestyle. MAX 6 WORDS per item.
+            - provider_guidance: Points for doctor. MAX 10 WORDS.
             """
             
             # Call API
@@ -326,101 +370,142 @@ def generate_dynamic_advice(age, gender, risk_level, score, vitals):
 
 def generate_offline_advice(age, gender, risk_level, score, vitals):
     """
-    ENHANCED OFFLINE BRAIN
-    Uses randomized templates to simulate 'Generative AI' locally.
-    This creates a dynamic feel without needing heavy local LLMs.
+    ENHANCED OFFLINE BRAIN (SMART DYNAMIC ENGINE)
+    Uses complex rule-based logic to simulate an intelligent medical assistant.
+    Generates varied, context-aware advice without external AI.
     """
     import random
     
-    medical_actions = []
-    strategies = []
-    wellness = []
-    guidance = []
-
-    # Parse Vitals Safely
+    # --- 1. PARSE & NORMALIZE ---
     try:
-        sys = float(vitals.get('systolic', 0))
-        dia = float(vitals.get('diastolic', 0))
-        spo2 = float(vitals.get('spo2', 0))
-        hr = float(vitals.get('heartRate', 0))
-        temp = float(vitals.get('temperature', 0))
-        bmi = float(vitals.get('bmi', 0))
+        sys = float(vitals.get('systolic', 0)); dia = float(vitals.get('diastolic', 0))
+        spo2 = float(vitals.get('spo2', 0)); hr = float(vitals.get('heartRate', 0))
+        temp = float(vitals.get('temperature', 0)); bmi = float(vitals.get('bmi', 0))
+        rr = float(vitals.get('respiratoryRate', 0))
     except:
-        sys=0; dia=0; spo2=0; hr=0; temp=0; bmi=0
+        sys=0; dia=0; spo2=0; hr=0; temp=0; bmi=0; rr=0
 
-    # --- 1. RANDOMIZED TEMPLATES (The "AI" Feel) ---
-    
-    # BP Logic
+    # Lists to populate
+    actions = []; strategies = []; tips = []; guide = []
+
+    # --- 2. INTELLIGENT RULE ENGINE ---
+
+    # A. Hypertension Logic
     if sys >= 140 or dia >= 90:
-        medical_actions.append(random.choice([
-            "Blood pressure is significantly elevated. Consult a doctor to rule out hypertension.",
-            "High blood pressure detected. Medical evaluation is strongly advised.",
-            "Your BP readings indicate Stage 2 Hypertension. Please see a physician."
+        actions.append(random.choice([
+            "Consult a doctor immediately regarding high blood pressure.",
+            "Urgent medical evaluation for hypertension is recommended.",
+            "Schedule an appointment to manage your blood pressure."
         ]))
         strategies.append(random.choice([
-            "Begin monitoring BP twice daily (morning and night).",
-            "Track your blood pressure daily for the next 7 days.",
-            "Keep a log of your BP readings to show your doctor."
+            "Measure BP daily at the same time.",
+            "Keep a 7-day blood pressure log.",
+            "Avoid caffeine and stress before measuring."
         ]))
-        wellness.append("Reduce sodium (salt) intake drastically.")
-    elif sys >= 120 or dia >= 80:
-        medical_actions.append("Blood pressure is slightly elevated.")
-        strategies.append("Monitor BP daily for one week.")
+        tips.append("Reduce sodium intake to <2300mg/day.")
+        guide.append(f"Pt presents with Stage 2 HTN ({int(sys)}/{int(dia)}).")
     
-    # SpO2 Logic
+    elif sys >= 120 or dia >= 80:
+        actions.append("Monitor blood pressure regularly.")
+        strategies.append("Check BP twice a week.")
+        tips.append("Limit alcohol and salty foods.")
+        guide.append("Pt shows elevated BP/Stage 1 signs.")
+
+    # B. Tachycardia / Bradycardia
+    if hr > 100:
+        actions.append("Heart rate is unusually high (Tachycardia).")
+        strategies.append("Monitor pulse after resting for 15 mins.")
+        tips.append("Reduce caffeine and stay hydrated.")
+        guide.append(f"Tachycardia detected ({int(hr)} bpm).")
+    elif 0 < hr < 60:
+        if "athlete" not in str(vitals).lower(): # Simple check
+            actions.append("Heart rate is lower than normal.")
+            guide.append(f"Bradycardia detected ({int(hr)} bpm).")
+
+    # C. Hypoxia (SpO2)
     if 0 < spo2 < 95:
-        medical_actions.append(random.choice([
-            "Oxygen saturation is below normal levels.",
-            "SpO2 levels are lower than expected.",
-            "Detected signs of potential hypoxia (low oxygen)."
+        actions.append(random.choice([
+            "Seek medical attention for low oxygen saturation.",
+            "SpO2 levels indicate potential hypoxia.",
+            "Consult a pulmonologist if shortness of breath occurs."
         ]))
         strategies.append("Practice deep breathing exercises.")
-    
-    # Heart Rate Logic
-    if hr > 100:
-        medical_actions.append("Tachycardia (fast heart rate) detected.")
-        strategies.append("Rest for 15 minutes and retake measurement.")
-        wellness.append("Practice stress-reduction techniques like meditation.")
-    elif 0 < hr < 60:
-         medical_actions.append("Bradycardia (slow heart rate) detected.")
+        guide.append(f"Hypoxia concern (SpO2: {int(spo2)}%).")
 
-    # BMI Logic
-    if bmi > 30:
-        wellness.append(random.choice([
-            "Focus on a calorie-controlled diet rich in vegetables.",
-            "Consider a structured weight management plan.",
-            "Aim for 150 minutes of moderate activity per week."
-        ]))
+    # D. Fever
+    if temp > 38.0:
+        actions.append("High fever detected. Seek medical care.")
+        strategies.append("Monitor temp every 4 hours.")
+        tips.append("Stay hydrated and rest.")
+        guide.append(f"Febrile ({temp}C). Rule out infection.")
+    elif temp > 37.5:
+        actions.append("Mild fever detected.")
+        strategies.append("Monitor for other symptoms.")
 
-    # High Risk Score Overrides
-    if score >= 75:
-        medical_actions.insert(0, random.choice([
-            "URGENT: Critical health parameters detected.",
-            "ATTENTION: Your aggregated risk score is high.",
-            "WARNING: Multiple vitals are out of safe ranges."
-        ]))
+    # E. Obesity / Weight
+    if bmi >= 30:
+        actions.append("Consult a nutritionist for weight management.")
+        strategies.append("Aim for a 5-10% weight reduction.")
+        tips.append("Prioritize whole foods over processed ones.")
+        guide.append(f"Obese Class (BMI {bmi}).")
+    elif 25 <= bmi < 30:
+        tips.append("Increase daily physical activity to 30 mins.")
+        # F. Respiratory Rate (RR)
+    if rr > 24:
+        actions.append("Respiratory rate is critically high.")
+        guide.append(f"Tachypnea ({int(rr)}/min).")
+    elif rr < 12 and rr > 0:
+        actions.append("Respiratory rate is low.")
+        guide.append(f"Bradypnea ({int(rr)}/min).")
+
+    # G. Age & Gender Context
+    if age > 60:
+        strategies.append("Ensure fall-prevention measures at home.")
+        if sys < 110: tips.append("Stand up slowly to prevent dizziness.")
     
-    # Defaults (Healthy User)
-    if not medical_actions: 
-        medical_actions.append(random.choice([
-            "Vital signs are within normal ranges.",
-            "No immediate medical concerns detected.",
-            "You appear to be in good health based on these metrics."
+    if gender.lower() == 'female' and age > 50:
+        tips.append("Consider calcium-rich foods for bone health.")
+    
+    guide.append(f"Patient is a {age}-year-old {gender.lower()}.")
+
+    # --- 3. COMBINATORIAL LOGIC (THE "SMART" PART) ---
+    
+    # High BP + Obese
+    if (sys >= 130 or dia >= 80) and bmi >= 30:
+        strategies.append("Weight loss may significantly lower your BP.")
+        tips.append("DASH diet is recommended for hypertension.")
+        guide.append("Co-morbid: HTN + Obesity.")
+
+    # Fever + High HR
+    if temp > 37.5 and hr > 100:
+        actions.append("Combination of Fever and High HR requires attention.")
+        guide.append("SIRS criteria potential (Fever + Tach).")
+
+    # --- 4. FALLBACKS & CLEANUP ---
+    
+    # If healthy (Normal Fallbacks)
+    if not actions:
+        actions.append(random.choice([
+            "Maintain current healthy lifestyle.",
+            "No immediate medical actions needed.",
+            "Vital signs are within normal limits."
         ]))
-    if not strategies: 
-        strategies.append(random.choice([
-            "Continue routine health monitoring.",
-            "Keep up your current health habits.",
-            "Maintain your regular check-up schedule."
-        ]))
-    if not wellness: 
-        wellness.append("Maintain a balanced diet and aim for 7-8 hours of sleep.")
-    if not guidance: 
-        guidance.append(f"Patient is currently stable (Risk Score: {score}).")
+        guide.append("Vitals WNL. Routine screening.")
+
+    if not strategies:
+        strategies.append("Continue annual health check-ups.")
+    
+    if not tips:
+        tips.append("Drink 8 glasses of water daily.")
+        tips.append("Aim for 7-8 hours of sleep.")
+
+    # Shuffle and Limit (Dynamic feel)
+    random.shuffle(strategies)
+    random.shuffle(tips)
 
     return {
-        "medical_action": " ".join(medical_actions),
-        "preventive_strategy": " ".join(strategies),
-        "wellness_tips": " ".join(wellness),
-        "provider_guidance": " ".join(guidance)
+        "medical_actions": actions[:3],
+        "preventive_strategies": strategies[:3],
+        "wellness_tips": tips[:3],
+        "provider_guidance": guide[:5]
     }

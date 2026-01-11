@@ -129,13 +129,20 @@ export default function AILoading() {
         setStatusMessage("Analysis complete! Redirecting to results...");
         speak("Analysis complete. Your health report is now ready.");
 
-        // Success! Navigate with the AI Analysis Results
+        // Success! Navigate with the AI Analysis Results merged with original Vitals
+        const finalResultState = {
+          ...location.state, // Preserve ALL original vitals (BP, Temp, etc.)
+          riskLevel: aiResult.risk_score,     // Map backend score to frontend prop
+          riskCategory: aiResult.risk_level,  // Map backend level to frontend prop
+          resultRecommendations: aiResult.recommendations, // Map backend recs
+          aiAnalysis: aiResult // Keep full object just in case
+        };
+
+        console.log("🚀 Navigating to Result with Merged State:", finalResultState);
+
         setTimeout(() => {
           navigate("/measure/result", {
-            state: {
-              ...location.state, // Original Vitals
-              aiAnalysis: aiResult // New AI Data (score, recommendations)
-            }
+            state: finalResultState
           });
         }, 2000);
 

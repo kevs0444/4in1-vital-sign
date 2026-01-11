@@ -15,6 +15,7 @@ import step3Icon from "../../../assets/icons/measurement-step3.png";
 import step1Icon from "../../../assets/icons/max30102-step1.png";
 import step2Icon from "../../../assets/icons/max30102-step2.png";
 import oximeterImage from "../../../assets/icons/oximeter-3d.png";
+import { getHeartRateStatus, getSPO2Status, getRespiratoryStatus } from "../../../utils/healthStatus";
 
 // ============================================================================
 // LOGIC: UNIFIED "FINGER INSERTED -> START"
@@ -389,25 +390,44 @@ export default function Max30102() {
   const getRemainingTime = () => secondsRemaining;
 
   const getStatusColor = (type, value) => {
-    if (value === '--') return "pending";
-    const num = parseInt(value);
-    switch (type) {
-      case "heartRate": return (num < 60) ? "warning" : (num > 100 ? "error" : "complete");
-      case "spo2": return (num < 95) ? "warning" : "complete";
-      case "respiratoryRate": return (num < 12) ? "warning" : (num > 20 ? "error" : "complete");
-      default: return "complete";
-    }
+    if (value === '--' || value === 'N/A') return "pending";
+
+    let status = null;
+    if (type === "heartRate") status = getHeartRateStatus(value);
+    else if (type === "spo2") status = getSPO2Status(value);
+    else if (type === "respiratoryRate") status = getRespiratoryStatus(value);
+
+    if (!status) return "pending";
+
+    // Map Utility Labels to Component Classes
+    // Critical -> error
+    // Elevated/Slight Fever -> warning
+    // Low -> pending (Blue, as per previous design) OR warning. 
+    //        Previous design used 'pending' for Low HR/RR. I will maintain this.
+    //        SpO2 Low (90-94) is 'Warning' in utility (Yellow/Orange), previously 'warning'.
+
+    if (status.label === "Critical" || status.label === "Hypertensive Crisis") return "error";
+    if (status.label === "Elevated" || status.label === "Slight fever" || status.label === "Hypertension Stage 1" || status.label === "Hypertension Stage 2") return "warning";
+
+    // SpO2 Low is 'Low' label but previously mapped to warning
+    if (type === "spo2" && status.label === "Low") return "warning";
+
+    if (status.label === "Low" || status.label === "Hypotension" || status.label === "Underweight") return "pending"; // Blueish
+
+    if (status.label === "Normal") return "complete";
+
+    return "complete";
   };
 
   const getStatusText = (type, value) => {
-    if (value === '--') return "Pending";
-    const num = parseInt(value);
-    switch (type) {
-      case "heartRate": return (num < 60) ? "Low" : (num > 100 ? "High" : "Normal");
-      case "spo2": return (num < 95) ? "Low" : "Normal";
-      case "respiratoryRate": return (num < 12) ? "Low" : (num > 20 ? "High" : "Normal");
-      default: return "Normal";
-    }
+    if (value === '--' || value === 'N/A') return "Pending";
+
+    let status = null;
+    if (type === "heartRate") status = getHeartRateStatus(value);
+    else if (type === "spo2") status = getSPO2Status(value);
+    else if (type === "respiratoryRate") status = getRespiratoryStatus(value);
+
+    return status ? status.label : "Normal";
   };
 
   const getSensorState = () => {
