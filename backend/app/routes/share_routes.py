@@ -475,6 +475,8 @@ def get_health_report_template(user_data):
     </html>
     """
 
+from app.websocket_events import broadcast_stats_update
+
 @share_bp.route('/email', methods=['POST'])
 def send_results_email():
     print("=" * 60)
@@ -497,6 +499,8 @@ def send_results_email():
         db = next(get_db())
         target_email = None
         user_found = False
+
+        # ... (Existing resolution logic) ...
 
         # 1. OPTION A: Look up by user_id if available (Most Reliable)
         if user_id:
@@ -552,6 +556,11 @@ def send_results_email():
         
         if send_email_func(target_email, subject, html_content):
             print(f"✅ Email sent successfully to {target_email}")
+            
+            # Record stat in DB (Assuming share_stats table exists or using a shared function)
+            # For now, we trust the frontend will refetch stats, but we MUST broadcast
+            broadcast_stats_update() # TRIGGER INSTANT UPDATE
+            
             return jsonify({'success': True, 'message': f'Report sent to {target_email}'}), 200
         else:
             return jsonify({'success': False, 'message': 'Failed to send email'}), 500

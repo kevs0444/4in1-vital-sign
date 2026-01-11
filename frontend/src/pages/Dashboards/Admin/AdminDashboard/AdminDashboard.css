@@ -222,7 +222,11 @@
 
 .table-actions {
     display: flex;
-    gap: 0.8rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    flex: 1;
+    justify-content: flex-end;
 }
 
 .search-bar {
@@ -230,9 +234,11 @@
     align-items: center;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    width: 300px;
+    padding: 0.6rem 1rem;
+    border-radius: 10px;
+    min-width: 180px;
+    max-width: 300px;
+    flex: 1 1 auto;
     transition: all 0.2s;
 }
 
@@ -246,6 +252,7 @@
     color: #94a3b8;
     font-size: 1.2rem;
     margin-right: 0.5rem;
+    flex-shrink: 0;
 }
 
 .search-bar input {
@@ -255,6 +262,49 @@
     font-size: 0.95rem;
     color: #334155;
     outline: none;
+    min-width: 0;
+}
+
+/* Role Filter Wrapper - Dynamic Layout */
+.role-filter-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+/* View Toggle */
+.view-toggle {
+    display: flex;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.view-toggle button {
+    padding: 0.6rem 0.75rem;
+    border: none;
+    background: white;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.view-toggle button:first-child {
+    border-right: 1px solid #e2e8f0;
+}
+
+.view-toggle button:hover {
+    background: #f8fafc;
+}
+
+.view-toggle button.active {
+    background: #fef2f2;
+    color: #dc2626;
 }
 
 .icon-btn {
@@ -263,20 +313,22 @@
     color: #64748b;
     width: 42px;
     height: 42px;
-    border-radius: 8px;
+    min-width: 42px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s;
+    flex-shrink: 0;
 }
 
 .icon-btn:hover {
     background: white;
-    border-color: #cbd5e1;
+    border-color: #dc2626;
     color: #dc2626;
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.15);
 }
 
 .table-container-wrapper {
@@ -438,6 +490,139 @@
     height: 6px;
     background: #ef4444;
     border-radius: 50%;
+}
+
+/* User Cards Grid (Card View) */
+.user-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+    padding: 1rem;
+}
+
+.user-card-item {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.user-card-item:hover {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-4px);
+}
+
+.user-card-skeleton {
+    padding: 1.25rem;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    height: 200px;
+}
+
+/* Action Button Styles */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1rem;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.action-btn.secondary {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.action-btn.secondary:hover {
+    background: #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Responsive Styles */
+.modal-overlay {
+    padding: 1rem;
+}
+
+.modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Status Modal Styles for Reset Confirmation */
+.status-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+    padding: 1rem;
+}
+
+.status-modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.status-modal-content.warning {
+    border-top: 5px solid #3b82f6;
+}
+
+@media (max-width: 480px) {
+    .modal-overlay {
+        padding: 0.5rem;
+    }
+
+    .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        max-height: 95vh;
+    }
+
+    .modal-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .close-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.5rem;
+    }
 }
 
 /* Scrollbar Styling */
@@ -944,5 +1129,556 @@
 
     100% {
         transform: rotate(360deg);
+    }
+}
+
+/* =====================================================
+   COMPREHENSIVE RESPONSIVE DESIGN SYSTEM
+   =====================================================
+   Breakpoints:
+   - Mobile Portrait:  max-width 480px
+   - Mobile Landscape: max-width 768px, landscape
+   - Tablet Portrait:  481px - 1024px, portrait
+   - Tablet Landscape: 768px - 1024px, landscape
+   - Laptop/Desktop:   min-width 1025px
+   ===================================================== */
+
+/* --- MOBILE PORTRAIT (< 480px) --- */
+@media (max-width: 480px) {
+
+    /* Summary Cards - Single Column */
+    .summary-cards {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .summary-card {
+        padding: 1.25rem;
+    }
+
+    .summary-value {
+        font-size: 2rem;
+    }
+
+    /* Metrics Grid - Single Column */
+    .metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .metric-card {
+        padding: 1.25rem;
+    }
+
+    .metric-value {
+        font-size: 1.5rem;
+    }
+
+    /* Analytics Grid - Single Column */
+    .analytics-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .analytics-card,
+    .distribution-card,
+    .trends-card,
+    .health-card,
+    .insights-card {
+        grid-column: span 1;
+        min-height: 280px;
+    }
+
+    /* Table Section */
+    .table-section {
+        border-radius: 12px;
+        max-height: none;
+    }
+
+    .table-header {
+        padding: 1rem;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .table-header h3 {
+        font-size: 1.1rem;
+        text-align: center;
+    }
+
+    .table-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    .search-bar {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .role-filter-wrapper {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+        width: 100%;
+    }
+
+    /* Table - Horizontal Scroll */
+    .table-container-wrapper {
+        max-height: 400px;
+    }
+
+    .users-table th,
+    .users-table td {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+
+    .user-name-cell {
+        gap: 0.5rem;
+    }
+
+    /* View Toggle & Filters */
+    .view-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .view-toggle button {
+        flex: 1;
+    }
+
+    /* User Cards Grid */
+    .user-cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+        padding: 0.5rem !important;
+    }
+
+    /* Charts */
+    .chart-card {
+        height: 260px;
+        padding: 1rem;
+    }
+
+    .chart-wrapper {
+        min-height: 180px;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    /* Role Badges */
+    .role-badge {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.7rem;
+    }
+
+    /* Icon Buttons */
+    .icon-btn {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+    }
+}
+
+/* --- MOBILE LANDSCAPE (max 768px, landscape) --- */
+@media (max-width: 768px) and (orientation: landscape) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .analytics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .distribution-card,
+    .trends-card,
+    .health-card,
+    .insights-card {
+        grid-column: span 1;
+        min-height: 250px;
+    }
+
+    .table-header {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .search-bar {
+        width: auto;
+        min-width: 200px;
+        flex: 1;
+    }
+
+    .user-cards-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .chart-card {
+        height: 240px;
+    }
+}
+
+/* --- SMALL TABLETS / LARGE PHONES (481px - 768px) --- */
+@media (min-width: 481px) and (max-width: 768px) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .analytics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .distribution-card,
+    .trends-card {
+        grid-column: span 2;
+    }
+
+    .health-card,
+    .insights-card {
+        grid-column: span 1;
+    }
+
+    .table-header {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .search-bar {
+        width: 100%;
+        order: -1;
+    }
+
+    .role-filter-wrapper {
+        flex-wrap: wrap !important;
+    }
+
+    .user-cards-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 1rem !important;
+    }
+
+    .chart-card {
+        height: 300px;
+    }
+}
+
+/* --- TABLET PORTRAIT (768px - 1024px, portrait) --- */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .analytics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+    }
+
+    .distribution-card {
+        grid-column: span 1;
+    }
+
+    .trends-card {
+        grid-column: span 2;
+    }
+
+    .health-card,
+    .insights-card {
+        grid-column: span 1;
+    }
+
+    .table-header {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .search-bar {
+        flex: 1;
+        min-width: 250px;
+    }
+
+    .user-cards-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .chart-card {
+        height: 320px;
+    }
+}
+
+/* --- TABLET LANDSCAPE (768px - 1024px, landscape) --- */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .analytics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+    }
+
+    .distribution-card {
+        grid-column: span 1;
+    }
+
+    .trends-card {
+        grid-column: span 2;
+    }
+
+    .health-card,
+    .insights-card {
+        grid-column: span 1;
+    }
+
+    .table-header {
+        flex-wrap: nowrap;
+    }
+
+    .search-bar {
+        width: 280px;
+    }
+
+    .user-cards-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    .chart-card {
+        height: 300px;
+    }
+}
+
+/* --- LAPTOP / DESKTOP (> 1024px) --- */
+@media (min-width: 1025px) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .analytics-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+
+    .distribution-card {
+        grid-column: span 1;
+    }
+
+    .trends-card {
+        grid-column: span 3;
+    }
+
+    .health-card,
+    .insights-card {
+        grid-column: span 2;
+    }
+
+    .search-bar {
+        width: 300px;
+    }
+
+    .user-cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+    }
+}
+
+/* --- LARGE DESKTOP (> 1400px) --- */
+@media (min-width: 1400px) {
+    .metrics-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .analytics-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* =====================================================
+   RESPONSIVE UTILITY CLASSES
+   ===================================================== */
+
+/* Hide on specific breakpoints */
+@media (max-width: 480px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 1024px) {
+    .hide-tablet {
+        display: none !important;
+    }
+}
+
+@media (min-width: 1025px) {
+    .hide-desktop {
+        display: none !important;
+    }
+}
+
+/* Show only on specific breakpoints */
+.show-mobile-only {
+    display: none !important;
+}
+
+@media (max-width: 480px) {
+    .show-mobile-only {
+        display: block !important;
+    }
+}
+
+.show-tablet-only {
+    display: none !important;
+}
+
+@media (min-width: 481px) and (max-width: 1024px) {
+    .show-tablet-only {
+        display: block !important;
+    }
+}
+
+.show-desktop-only {
+    display: none !important;
+}
+
+@media (min-width: 1025px) {
+    .show-desktop-only {
+        display: block !important;
+    }
+}
+
+/* Responsive Flex/Grid Helpers */
+.responsive-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+    .responsive-stack {
+        flex-direction: column;
+    }
+}
+
+.responsive-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+@media (max-width: 480px) {
+    .responsive-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .responsive-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 769px) {
+    .responsive-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+/* Touch-Friendly Sizing */
+@media (hover: none) and (pointer: coarse) {
+
+    .action-btn,
+    .icon-btn,
+    .nav-item,
+    button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .search-bar input {
+        min-height: 44px;
+    }
+
+    .role-select {
+        min-height: 44px;
+    }
+}
+
+/* Smooth Transitions for Layout Changes */
+.summary-cards,
+.metrics-grid,
+.analytics-grid,
+.user-cards-grid,
+.table-header,
+.table-actions {
+    transition: all 0.3s ease;
+}
+
+/* --- Kiosk / Large Screen Enhancements --- */
+/* Force 3-column layout for metrics on screens wide enough (Landscape Kiosk, Desktop) */
+@media (min-width: 1024px) {
+    .metrics-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    .analytics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* Portrait Mode Optimizations (Vertical Kiosk) */
+@media (orientation: portrait) and (min-width: 768px) {
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* Make the 3rd metric card span full width for better layout balance */
+    .metrics-grid>div:nth-child(3) {
+        grid-column: span 2;
+    }
+
+    /* Allow charts to be side-by-side in Portrait Kiosk (since 1080px is wide enough) */
+    .analytics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .chart-wrapper {
+        min-height: 350px;
+        /* Taller charts for portrait viewing */
     }
 }

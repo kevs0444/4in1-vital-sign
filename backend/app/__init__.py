@@ -53,8 +53,10 @@ def create_app():
     
     # Register blueprints with Dual Paths (API prefix + Root overlay)
     
+    # Register blueprints (Strictly API prefixes to avoid SPA routing conflicts)
+    
     app.register_blueprint(main_bp, url_prefix='/api')
-    app.register_blueprint(main_bp, url_prefix='/', name='main_alias') # Unique name required
+    # app.register_blueprint(main_bp, url_prefix='/', name='main_alias') # Conflict with SPA catch-all
 
     app.register_blueprint(sensor_bp, url_prefix='/api/sensor')
     app.register_blueprint(sensor_bp, url_prefix='/sensor', name='sensor_alias')
@@ -63,7 +65,7 @@ def create_app():
     app.register_blueprint(register_bp, url_prefix='/register', name='register_alias')
 
     app.register_blueprint(login_bp, url_prefix='/api/login')
-    app.register_blueprint(login_bp, url_prefix='/login', name='login_alias')
+    app.register_blueprint(login_bp, url_prefix='/login', name='login_alias') # Conflict with /login page
     
     from app.routes.forgot_password_routes import forgot_password_bp
     app.register_blueprint(forgot_password_bp, url_prefix='/api/auth')
@@ -79,7 +81,7 @@ def create_app():
 
     from app.routes.admin_routes import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
-    app.register_blueprint(admin_bp, url_prefix='/admin', name='admin_alias') 
+    app.register_blueprint(admin_bp, url_prefix='/admin', name='admin_alias')
 
     from app.routes.share_routes import share_bp
     app.register_blueprint(share_bp, url_prefix='/api/share')
@@ -101,17 +103,7 @@ def create_app():
     # NEW: Dedicated BP Sensor Controller Routes
     from app.routes.bp_routes import bp_routes
     app.register_blueprint(bp_routes)  # Already has url_prefix='/api/bp'
-    app.register_blueprint(bp_routes, url_prefix='/bp', name='bp_alias')
-
-    # Wearables Camera Routes (Camera Index 1 - for watch, bag, cap, ID detection)
-    # Wearables Camera Routes - DEPRECATED (Now unified in camera_routes)
-    # from app.routes.wearables_camera import wearables_routes
-    # app.register_blueprint(wearables_routes)
-    # app.register_blueprint(wearables_routes, url_prefix='/wearables', name='wearables_alias')
-    
-    # Backwards compatibility: Also register at /api/aux for existing frontend calls
-    # app.register_blueprint(wearables_routes, url_prefix='/api/aux', name='wearables_aux_compat')
-    # app.register_blueprint(wearables_routes, url_prefix='/aux', name='aux_alias')
+    app.register_blueprint(bp_routes, url_prefix='/bp', name='bp_alias') # bp_routes defines its own prefix
 
     from app.routes.measurement_routes import measurement_bp
     app.register_blueprint(measurement_bp, url_prefix='/api/measurements')

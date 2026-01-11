@@ -7,6 +7,7 @@ import { getMeasurementHistory, getPopulationAnalytics } from '../../../../utils
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod, MultiSelectDropdown } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
+import NoDataFound from '../../../../components/NoDataFound/NoDataFound';
 import { Assessment } from '@mui/icons-material';
 import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
 
@@ -462,7 +463,7 @@ const EmployeeDashboard = () => {
                                         return loading ? (
                                             <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Loading history...</td></tr>
                                         ) : processedHistory.length === 0 ? (
-                                            <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No measurements found. Visit a Kiosk to get started!</td></tr>
+                                            <NoDataFound type="measurements" compact={true} colSpan={11} />
                                         ) : (
                                             processedHistory.map((m) => (
                                                 <tr key={m.id}>

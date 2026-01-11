@@ -738,8 +738,10 @@ export const filterHistoryByTimePeriod = (history, timePeriod, customDateRange) 
         case 'annually':
             cutoffDate.setFullYear(now.getFullYear() - 1);
             break;
+        case 'all':
         default:
-            cutoffDate.setDate(now.getDate() - 7);
+            // Return all records without time filtering
+            return history.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     }
 
     return history.filter(h => new Date(h.created_at) >= cutoffDate)
@@ -1092,8 +1094,8 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                                 options={lineChartOptions}
                             />
                         ) : (
-                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
-                                No data available
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: '0.85rem', background: 'linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%)', borderRadius: '8px', fontWeight: '500' }}>
+                                📊 No data available
                             </div>
                         )}
                     </div>
@@ -1160,8 +1162,8 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                                 }}
                             />
                         ) : (
-                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
-                                No data available
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: '0.85rem', background: 'linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%)', borderRadius: '8px', fontWeight: '500' }}>
+                                📊 No data available
                             </div>
                         )}
                     </div>

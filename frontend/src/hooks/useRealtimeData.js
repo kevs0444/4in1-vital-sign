@@ -45,14 +45,14 @@ const initializeSocket = () => {
 
     globalSocket = io(socketUrl, {
         path: '/socket.io',
-        transports: ['polling', 'websocket'],
+        transports: ['polling', 'websocket'], // Use polling first for maximum compatibility with Proxies/Funnels
         secure: isSecure,
         rejectUnauthorized: false,
         reconnection: true,
         reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
         reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
         timeout: 20000,
+        enableLongPolling: true, // Ensure long polling is enabled
         autoConnect: true,
         rememberUpgrade: true
     });

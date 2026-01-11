@@ -153,6 +153,8 @@ def format_receipt(data):
     
     return "".join(lines)
 
+from app.websocket_events import broadcast_stats_update
+
 @print_bp.route('/receipt', methods=['POST'])
 def print_receipt():
     try:
@@ -164,6 +166,7 @@ def print_receipt():
             
         receipt_text = format_receipt(data)
         
+        # ... (Printing Logic) ...
         printer_name = win32print.GetDefaultPrinter()
         if not printer_name:
              return jsonify({'error': 'No default printer found'}), 500
@@ -180,6 +183,9 @@ def print_receipt():
                 win32print.EndDocPrinter(hPrinter)
         finally:
             win32print.ClosePrinter(hPrinter)
+            
+        # Broadcast update to refresh Print Count / Paper Status on Dashboard
+        broadcast_stats_update() # TRIGGER INSTANT UPDATE
             
         return jsonify({'success': True, 'message': 'Printed successfully'})
     except Exception as e:

@@ -191,7 +191,7 @@ export default function Clearance() {
 
             // Give a moment before speaking instructions
             setTimeout(() => {
-                if (isMountedRef.current) speak("Please perform the clearance check. Step 1. Weight Compliance.");
+                if (isMountedRef.current) speak("Pre Clearance Check. Step 1. Weight Compliance.");
             }, 500);
 
         } catch (e) {

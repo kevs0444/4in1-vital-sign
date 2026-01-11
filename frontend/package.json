@@ -13,7 +13,10 @@
     "bootstrap": "^5.3.8",
     "chart.js": "^4.5.1",
     "esc-pos-encoder": "^3.0.0",
+    "file-saver": "^2.0.5",
     "framer-motion": "^12.23.22",
+    "jspdf": "^4.0.0",
+    "jspdf-autotable": "^5.0.7",
     "node-thermal-printer": "^4.5.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.1",
@@ -24,7 +27,8 @@
     "react-scripts": "5.0.1",
     "socket.io-client": "^4.8.3",
     "thermal-printer": "^1.0.5",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "node scripts/banner.js && react-scripts start",

@@ -130,7 +130,7 @@ export default function BodyTemp() {
     const timer = setTimeout(() => {
       const isLast = isLastStep('bodytemp', location.state?.checklist);
       if (measurementStep === 0) {
-        speak("Body Temperature Measurement. Get ready to measure your temperature.");
+        speak("Body Temperature.");
       } else if (measurementStep === 1) {
         speak("Step 1. Position Sensor. Point sensor at forehead.");
       } else if (measurementStep === 2) {
@@ -663,7 +663,7 @@ export default function BodyTemp() {
             <div className="exit-modal-buttons">
               <button
                 className="exit-modal-button secondary"
-                onClick={() => setShowExitModal(false)}>
+                onClick={() => { setShowExitModal(false); setAutoContinueCountdown(5); }}>
                 Cancel
               </button>
               <button

@@ -542,6 +542,7 @@ export default function BMI() {
   // Voice
   useEffect(() => {
     const t = setTimeout(() => {
+      if (currentPhase === PHASE.CALIBRATING) speak("BMI Phase.");
       if (currentPhase === PHASE.WEIGHT) speak("Step 1. Stand on the scale and hold still for 3 seconds.");
       if (currentPhase === PHASE.HEIGHT) speak("Step 2. Stand under the height sensor for 2 seconds.");
       if (currentPhase === PHASE.COMPLETE) speak("Measurement complete. BMI calculated.");
@@ -731,7 +732,7 @@ export default function BMI() {
             <h2 className="exit-modal-title">Exit Measurement?</h2>
             <p className="exit-modal-message">Do you want to go back to login and cancel the measurement?</p>
             <div className="exit-modal-buttons">
-              <button className="exit-modal-button secondary" onClick={() => setShowExitModal(false)}>Cancel</button>
+              <button className="exit-modal-button secondary" onClick={() => { setShowExitModal(false); setCountdown(5); }}>Cancel</button>
               <button className="exit-modal-button primary" onClick={confirmExit}>Yes, Exit</button>
             </div>
           </motion.div>

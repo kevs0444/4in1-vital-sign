@@ -116,3 +116,77 @@ def update_user_status(user_id):
         }), 500
     finally:
         session.close()
+
+@admin_bp.route('/share-stats', methods=['GET'])
+def get_share_stats():
+    """
+    Returns statistics for email and print sharing:
+    - email_sent_count: Number of measurements with email_sent = 1
+    - receipt_printed_count: Number of measurements with receipt_printed = 1
+    - paper_remaining: 100 - receipt_printed_count (assuming 100 receipts per roll)
+    """
+    session = SessionLocal()
+    try:
+        from app.models.measurement_model import Measurement
+        
+        email_query = session.query(func.count(Measurement.id)).filter(Measurement.email_sent == 1)
+        
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        if start_date:
+            email_query = email_query.filter(Measurement.created_at >= start_date)
+        if end_date:
+            email_query = email_query.filter(Measurement.created_at <= end_date)
+            
+        email_count = email_query.scalar() or 0
+        
+        # NOTE: Print count is NOT filtered by time because it tracks physical paper usage on the current roll.
+        print_count = session.query(func.count(Measurement.id)).filter(Measurement.receipt_printed == 1).scalar() or 0
+        paper_remaining = max(0, 100 - print_count)
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'email_sent_count': email_count,
+                'receipt_printed_count': print_count,
+                'paper_remaining': paper_remaining
+            }
+        })
+    except Exception as e:
+        print(f"Error fetching share stats: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+    finally:
+        session.close()
+
+@admin_bp.route('/reset-paper-roll', methods=['POST'])
+def reset_paper_roll():
+    """
+    Resets all receipt_printed flags to 0.
+    Called when a new thermal paper roll is inserted.
+    """
+    session = SessionLocal()
+    try:
+        from app.models.measurement_model import Measurement
+        
+        # Reset all receipt_printed to 0
+        session.query(Measurement).filter(Measurement.receipt_printed == 1).update({Measurement.receipt_printed: 0})
+        session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Paper roll reset successfully. All receipt counts cleared.'
+        })
+    except Exception as e:
+        print(f"Error resetting paper roll: {e}")
+        session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+    finally:
+        session.close()
+

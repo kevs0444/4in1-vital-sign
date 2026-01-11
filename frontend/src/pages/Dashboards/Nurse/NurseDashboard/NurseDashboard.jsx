@@ -8,6 +8,7 @@ import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod, MultiSelectDropdown } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
 import PopulationAnalytics from '../../../../components/PopulationAnalytics/PopulationAnalytics';
+import NoDataFound from '../../../../components/NoDataFound/NoDataFound';
 import { Assessment } from '@mui/icons-material';
 import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
 
@@ -534,7 +535,7 @@ const NurseDashboard = () => {
                                     {loading ? (
                                         <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading users...</td></tr>
                                     ) : filteredUsers.length === 0 ? (
-                                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No users found.</td></tr>
+                                        <NoDataFound type="users" searchTerm={searchTerm} compact={true} colSpan={5} />
                                     ) : (
                                         filteredUsers.map((u, index) => (
                                             <tr key={u.user_id} style={{ background: index === 0 && u.last_checkup ? '#fff1f2' : 'transparent', transition: 'background 0.2s' }}>
@@ -576,8 +577,8 @@ const NurseDashboard = () => {
                                     Loading users...
                                 </div>
                             ) : filteredUsers.length === 0 ? (
-                                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                    No users found.
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <NoDataFound type="users" searchTerm={searchTerm} />
                                 </div>
                             ) : (
                                 filteredUsers.map((u) => (
@@ -774,7 +775,7 @@ const NurseDashboard = () => {
                                 </thead>
                                 <tbody>
                                     {displayedMyHistory.length === 0 ? (
-                                        <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>No history found (Try changing filters)</td></tr>
+                                        <NoDataFound type="history" compact={true} colSpan={9} />
                                     ) : (
                                         displayedMyHistory.map((m) => (
                                             <tr key={m.id}>
@@ -1028,7 +1029,7 @@ const NurseDashboard = () => {
                                     {historyLoading ? (
                                         <tr><td colSpan="11" style={{ textAlign: 'center' }}>Loading history...</td></tr>
                                     ) : displayedUserHistory.length === 0 ? (
-                                        <tr><td colSpan="11" style={{ textAlign: 'center' }}>No history records found.</td></tr>
+                                        <NoDataFound type="history" compact={true} colSpan={11} />
                                     ) : (
                                         displayedUserHistory.map(h => (
                                             <tr key={h.id}>

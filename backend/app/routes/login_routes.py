@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash
 
 login_bp = Blueprint('login', __name__)
 
-@login_bp.route('/login', methods=['POST'])
+@login_bp.route('/login', methods=['POST', 'OPTIONS'])
 def login():
     """
     Handle user login via RFID or manual credentials
@@ -14,6 +14,9 @@ def login():
     - For RFID: {"rfid_tag": "RFID_DATA"} - Accepts both with and without RTU prefix
     - For manual: {"school_number": "SCHOOL_NUMBER", "password": "PASSWORD"}
     """
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'OK'}), 200
+
     try:
         data = request.get_json()
         

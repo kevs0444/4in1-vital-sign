@@ -441,7 +441,9 @@ export default function Max30102() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const isLast = isLastStep('max30102', location.state?.checklist);
-      if (step === 2) {
+      if (step === 1) {
+        speak("Pulse Oximeter.");
+      } else if (step === 2) {
         speak(SPEECH_MESSAGES.MAX30102.INSERT_FINGER);
       } else if (step === 3 && secondsRemaining === MEASUREMENT_DURATION) {
         speak(SPEECH_MESSAGES.MAX30102.HOLD_STEADY);
@@ -643,7 +645,7 @@ export default function Max30102() {
             <h2 className="exit-modal-title">Exit Measurement?</h2>
             <p className="exit-modal-message">Do you want to go back to login and cancel the measurement?</p>
             <div className="exit-modal-buttons">
-              <button className="exit-modal-button secondary" onClick={() => setShowExitModal(false)}>Cancel</button>
+              <button className="exit-modal-button secondary" onClick={() => { setShowExitModal(false); setAutoContinueCountdown(5); }}>Cancel</button>
               <button className="exit-modal-button primary" onClick={confirmExit}>Yes, Exit</button>
             </div>
           </motion.div>

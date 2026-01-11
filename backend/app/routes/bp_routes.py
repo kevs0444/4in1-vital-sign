@@ -51,6 +51,41 @@ def trigger_bp_measurement():
         print("⚠️ Arduino not connected - Using physical button instead")
         return jsonify({"success": True, "message": "Camera started (use physical button)"})
 
+@bp_routes.route('/command', methods=['POST', 'OPTIONS'])
+def send_bp_command():
+    """Endpoint to send commands to the BP device"""
+    from flask import request
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'OK'}), 200
+
+    try:
+        data = request.json
+        command = data.get('command')
+        
+        if not command:
+            return jsonify({"status": "error", "message": "No command provided"}), 400
+
+        print(f"📡 API Command Received: {command}")
+        
+        success, message = bp_sensor.send_command(command)
+        
+        if success:
+            return jsonify({"status": "success", "message": message})
+        else:
+            return jsonify({"status": "error", "message": message}), 500
+            
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@bp_routes.route('/data', methods=['GET', 'OPTIONS'])
+def get_bp_data():
+    """Endpoint to get current BP data"""
+    from flask import request
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'OK'}), 200
+    
+    return jsonify(bp_sensor.get_data())
+
 @bp_routes.route('/set_camera', methods=['POST'])
 def set_bp_camera_index():
     """Switch the BP camera index dynamically."""

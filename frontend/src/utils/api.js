@@ -1,11 +1,5 @@
 // frontend/src/utils/api.js - COMPLETE UPDATED VERSION WITH MISSING SENSOR FUNCTIONS
-const getDynamicApiUrl = () => {
-  // Force relative path to ensure we always use the Proxy (Local) or Funnel (Remote)
-  // This avoids issues where REACT_APP_API_URL might be misconfigured
-  return '/api';
-};
-
-const API_URL = getDynamicApiUrl();
+const API_URL = '/api'; // Use relative path to leverage React Proxy (handles HTTPS/SSL termination)
 
 // Timeout configuration
 const TIMEOUTS = {
@@ -662,6 +656,30 @@ export const updateUserStatus = async (userId, status) => {
   }
 };
 
+// Get share statistics (email sent, receipts printed)
+export const getShareStats = async () => {
+  try {
+    console.log('📧🖨️ Getting share stats...');
+    return await fetchWithTimeout(`${API_URL}/admin/share-stats`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Error getting share stats:', error);
+    throw error;
+  }
+};
+
+// Reset paper roll (set all receipt_printed to 0)
+export const resetPaperRoll = async () => {
+  try {
+    console.log('🧻 Resetting paper roll...');
+    return await fetchWithTimeout(`${API_URL}/admin/reset-paper-roll`, {
+      method: 'POST'
+    }, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Error resetting paper roll:', error);
+    throw error;
+  }
+};
+
 // ==================== SENSOR API FUNCTIONS ====================
 
 export const sensorAPI = {
@@ -1209,5 +1227,16 @@ export const printerAPI = {
         details: error.message
       };
     }
+  }
+};
+
+export const getShareStatsFiltered = async (params = {}) => {
+  try {
+    const query = new URLSearchParams(params).toString();
+    console.log(`📧 Fetching share stats with filter: ${query}`);
+    return await fetchWithTimeout(`${API_URL}/admin/share-stats?${query}`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Error fetching share stats:', error);
+    return { success: false, message: error.message };
   }
 };

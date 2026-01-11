@@ -32,14 +32,15 @@ import {
     RadialLinearScale,
     Filler
 } from 'chart.js';
-import { Line, Radar, Doughnut, Pie } from 'react-chartjs-2';
+import { Line, Doughnut } from 'react-chartjs-2';
 import './AdminDashboard.css';
-import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory, printerAPI } from '../../../../utils/api';
+import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory, printerAPI, getShareStatsFiltered, resetPaperRoll } from '../../../../utils/api';
 import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance component
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod, MultiSelectDropdown } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
+import NoDataFound from '../../../../components/NoDataFound/NoDataFound';
 
-import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
+import { useRealtimeUpdates } from '../../../../hooks/useRealtimeData';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -171,6 +172,17 @@ const AdminDashboard = () => {
     // Printing Status
     const [printerStatus, setPrinterStatus] = useState({ status: 'checking', message: 'Checking...' });
 
+    // Share Statistics (Email & Print)
+    const [shareStats, setShareStats] = useState({
+        emailCount: 0,
+        printCount: 0,
+        paperRemaining: 100
+    });
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+    const [emailTimePeriod, setEmailTimePeriod] = useState('weekly');
+    const [emailCustomDateRange, setEmailCustomDateRange] = useState(null);
+
     // Personal History State
     const [myHistory, setMyHistory] = useState([]);
     // Removed unused historyLoading
@@ -202,7 +214,7 @@ const AdminDashboard = () => {
 
     // Filter users list by registration date
     const timeFilteredUsers = useMemo(() => {
-        if (!usersList || usersList.length === 0) return [];
+        if (!usersList || !Array.isArray(usersList) || usersList.length === 0) return [];
         return filterHistoryByTimePeriod(
             usersList.map(u => ({ ...u, created_at: u.created_at || u.registered_at })),
             usersTimePeriod,
@@ -298,6 +310,70 @@ const AdminDashboard = () => {
         }
     };
 
+    const fetchShareStats = async () => {
+        try {
+            // Calculate Date Range
+            let dateParams = {};
+            const end = new Date();
+            const start = new Date();
+            start.setHours(0, 0, 0, 0);
+
+            if (emailTimePeriod === 'custom' && emailCustomDateRange?.start && emailCustomDateRange?.end) {
+                dateParams = { start_date: emailCustomDateRange.start, end_date: emailCustomDateRange.end };
+            } else {
+                switch (emailTimePeriod) {
+                    case 'daily':
+                        dateParams = { start_date: start.toISOString(), end_date: end.toISOString() };
+                        break;
+                    case 'weekly':
+                        start.setDate(start.getDate() - 7);
+                        dateParams = { start_date: start.toISOString(), end_date: end.toISOString() };
+                        break;
+                    case 'monthly':
+                        start.setMonth(start.getMonth() - 1);
+                        dateParams = { start_date: start.toISOString(), end_date: end.toISOString() };
+                        break;
+                    case 'annually':
+                        start.setFullYear(start.getFullYear() - 1);
+                        dateParams = { start_date: start.toISOString(), end_date: end.toISOString() };
+                        break;
+                    default:
+                        dateParams = {}; // All time
+                }
+            }
+
+            const response = await getShareStatsFiltered(dateParams);
+            if (response && response.success && response.stats) {
+                setShareStats({
+                    emailCount: response.stats.email_sent_count || 0,
+                    printCount: response.stats.receipt_printed_count || 0,
+                    paperRemaining: response.stats.paper_remaining ?? 100
+                });
+            }
+        } catch (error) {
+            console.error("Error fetching share stats:", error);
+        }
+    };
+
+    const handleResetPaperRoll = async () => {
+        setIsResetting(true);
+        try {
+            const response = await resetPaperRoll();
+            if (response && response.success) {
+                setShareStats(prev => ({ ...prev, printCount: 0, paperRemaining: 100 }));
+                setToast({ type: 'success', title: 'Paper Roll Reset', message: 'Receipt counter has been reset for the new roll.', id: Date.now() });
+            } else {
+                throw new Error(response?.message || 'Reset failed');
+            }
+        } catch (error) {
+            console.error("Error resetting paper roll:", error);
+            setToast({ type: 'error', title: 'Reset Failed', message: 'Could not reset paper roll counter.', id: Date.now() });
+        } finally {
+            setIsResetting(false);
+            setShowResetModal(false);
+        }
+    };
+
     const filterUsers = React.useCallback(() => {
         let result = Array.isArray(timeFilteredUsers) ? timeFilteredUsers : [];
 
@@ -335,20 +411,30 @@ const AdminDashboard = () => {
         }
         fetchDashboardData();
 
-        // Poll printer status every 30 seconds
-        const printerInterval = setInterval(checkPrinterStatus, 30000);
+        // Poll printer status every 5 seconds for real-time live updates
+        const printerInterval = setInterval(checkPrinterStatus, 5000);
         checkPrinterStatus(); // Initial check
 
-        return () => clearInterval(printerInterval);
-    }, [navigate, location]);
+        // Fetch share stats initially and poll every 10 seconds
+        fetchShareStats();
+        const shareStatsInterval = setInterval(fetchShareStats, 10000);
+
+        return () => {
+            clearInterval(printerInterval);
+            clearInterval(shareStatsInterval);
+        };
+    }, [navigate, location, emailTimePeriod, emailCustomDateRange]);
 
     // Real-time WebSocket updates - instant push notifications
     const refetchAllData = React.useCallback(async () => {
-        await fetchDashboardData();
-        if (user) {
-            await fetchMyHistory(user.userId || user.user_id || user.id);
-        }
-    }, [user]);
+        // Parallel fetch for maximum speed
+        await Promise.all([
+            fetchDashboardData(),
+            checkPrinterStatus(),
+            fetchShareStats(),
+            user ? fetchMyHistory(user.userId || user.user_id || user.id) : Promise.resolve()
+        ]);
+    }, [user, emailTimePeriod, emailCustomDateRange]); // Added dependencies for share stats
 
     const { isConnected, lastUpdated, connectionStatus } = useRealtimeUpdates({
         role: 'Admin',
@@ -386,7 +472,9 @@ const AdminDashboard = () => {
             await updateUserStatus(userId, newStatus);
             // Re-fetch to confirm
             const usersData = await getAdminUsers();
-            setUsersList(usersData);
+            // Extract the users array from the API response
+            const usersArray = (usersData && usersData.users) ? usersData.users : [];
+            setUsersList(Array.isArray(usersArray) ? usersArray : []);
         } catch (error) {
             console.error("Failed to update status", error);
             // Revert on error would be ideal, but simply refetching works
@@ -429,16 +517,27 @@ const AdminDashboard = () => {
     };
 
     // --- Chart Data Preparation ---
+    // Define Role Colors (Red & Gray Theme)
+    const roleColors = {
+        'Admin': '#b91c1c',    // Dark Red
+        'Doctor': '#ef4444',   // Red
+        'Nurse': '#f87171',    // Light Red
+        'Student': '#475569',  // Dark Gray
+        'Employee': '#94a3b8'  // Light Gray
+    };
+
+    const roles = Object.keys(stats.roles_distribution || {});
     const roleDoughnutData = {
-        labels: Object.keys(stats.roles_distribution || {}),
+        labels: roles,
         datasets: [{
             data: Object.values(stats.roles_distribution || {}),
-            backgroundColor: ['#dc2626', '#ef4444', '#f87171', '#94a3b8', '#64748b'],
-            borderWidth: 0
+            backgroundColor: roles.map(r => roleColors[r] || '#cbd5e1'),
+            borderWidth: 0,
+            hoverOffset: 10,
+            cutout: '75%'
         }]
     };
 
-    // Mock trends data if empty
     const trafficData = {
         labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
         datasets: [
@@ -461,29 +560,26 @@ const AdminDashboard = () => {
         ]
     };
 
-    const sensorHealthData = {
-        labels: ['BP Accuracy', 'SpO2 Response', 'Temp Stability', 'Connect Speed', 'Data Integrity'],
-        datasets: [{
-            label: 'System Health',
-            data: [95, 88, 92, 96, 99],
-            backgroundColor: 'rgba(220, 38, 38, 0.2)',
-            borderColor: '#dc2626',
-            borderWidth: 2,
-        }]
-    };
-
     const pieOptions = {
         plugins: {
             legend: {
                 display: true,
-                position: 'bottom',
+                position: 'right',
                 labels: {
                     usePointStyle: true,
-                    padding: 20
+                    padding: 15,
+                    font: {
+                        family: "'Inter', sans-serif",
+                        size: 11
+                    },
+                    color: '#64748b'
                 }
             }
         },
-        maintainAspectRatio: false
+        maintainAspectRatio: false,
+        layout: {
+            padding: 10
+        }
     };
 
     const chartOptions = {
@@ -593,13 +689,96 @@ const AdminDashboard = () => {
                 >
                     {/* 1. Header Metrics Row */}
                     <div className="metrics-grid">
-                        <motion.div className="metric-card main-metric" whileHover={{ y: -5 }}>
-                            <div className="metric-icon-bg"><Person /></div>
-                            <div className="metric-content">
-                                <span className="metric-label">Total Users</span>
-                                <span className="metric-value">{stats.total_users}</span>
-                                <span className="metric-trend positive">↑ 12% vs last week</span>
+                        {/* 1. Combined Users & Pending Approvals Card (Red Theme) */}
+                        <motion.div
+                            className="metric-card"
+                            whileHover={{ y: -5 }}
+                            style={{
+                                background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                                color: 'white',
+                                border: 'none',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            <div className="metric-content" style={{ position: 'relative', zIndex: 2 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+
+                                    {/* Left: Total Users */}
+                                    <div style={{ paddingRight: '24px', borderRight: '1px solid rgba(255,255,255,0.2)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                                            <div style={{
+                                                background: 'rgba(255,255,255,0.2)',
+                                                padding: '8px',
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                marginRight: '12px'
+                                            }}>
+                                                <Person style={{ fontSize: '1.2rem', color: 'white' }} />
+                                            </div>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: '500', opacity: 0.9 }}>Total Users</span>
+                                        </div>
+                                        <span style={{ fontSize: '2rem', fontWeight: '800', display: 'block', lineHeight: '1' }}>
+                                            {stats.total_users}
+                                        </span>
+                                        <span style={{ fontSize: '0.75rem', marginTop: '6px', display: 'block', opacity: 0.9 }}>
+                                            ↑ 12% vs last week
+                                        </span>
+                                    </div>
+
+                                    {/* Right: Pending Approvals */}
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                                            <div style={{
+                                                background: 'rgba(255,255,255,0.2)',
+                                                padding: '8px',
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                marginRight: '12px'
+                                            }}>
+                                                <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                                            </div>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: '500', opacity: 0.9 }}>Pending</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                            <span style={{ fontSize: '2rem', fontWeight: '800', display: 'block', lineHeight: '1' }}>
+                                                {Array.isArray(usersList) ? usersList.filter(u => u.approval_status === "pending").length : 0}
+                                            </span>
+                                            {Array.isArray(usersList) && usersList.filter(u => u.approval_status === "pending").length > 0 && (
+                                                <span style={{
+                                                    fontSize: '0.7rem',
+                                                    background: 'white',
+                                                    color: '#b91c1c',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    fontWeight: '700'
+                                                }}>
+                                                    ACTION
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span style={{ fontSize: '0.75rem', marginTop: '6px', display: 'block', opacity: 0.9 }}>
+                                            Needs review
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Decorative Circle */}
+                            <div style={{
+                                position: 'absolute',
+                                right: '-20px',
+                                bottom: '-20px',
+                                width: '120px',
+                                height: '120px',
+                                borderRadius: '50%',
+                                background: 'white',
+                                opacity: 0.1
+                            }} />
                         </motion.div>
 
                         <motion.div className="metric-card" whileHover={{ y: -5 }}>
@@ -638,6 +817,7 @@ const AdminDashboard = () => {
                                         borderRadius: '6px',
                                         fontSize: '0.75rem',
                                         width: 'fit-content',
+                                        marginBottom: '12px',
                                         backgroundColor: printerStatus.status === 'ready' ? '#f0fdf4' :
                                             printerStatus.status === 'warning' ? '#fffbeb' :
                                                 printerStatus.status === 'checking' ? '#f1f5f9' : '#fef2f2',
@@ -650,6 +830,62 @@ const AdminDashboard = () => {
                                     }}>
                                         {printerStatus.message || 'Checking...'}
                                     </span>
+
+                                    {/* Separator line */}
+                                    <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0 12px 0' }}></div>
+
+                                    {/* Thermal Paper Section (Merged) */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>🧻 Thermal Paper</span>
+                                            <span style={{
+                                                color: shareStats.paperRemaining <= 10 ? '#ef4444' : shareStats.paperRemaining <= 30 ? '#f59e0b' : '#10b981',
+                                                fontWeight: '800',
+                                                fontSize: '0.9rem'
+                                            }}>
+                                                {shareStats.paperRemaining}%
+                                            </span>
+                                        </div>
+
+                                        {/* Progress bar */}
+                                        <div style={{
+                                            width: '100%',
+                                            height: '6px',
+                                            backgroundColor: '#e5e7eb',
+                                            borderRadius: '3px',
+                                            overflow: 'hidden'
+                                        }}>
+                                            <div style={{
+                                                width: `${Math.min(100, shareStats.paperRemaining)}%`, /* Use remaining % directly */
+                                                height: '100%',
+                                                backgroundColor: shareStats.paperRemaining <= 10 ? '#ef4444' : shareStats.paperRemaining <= 30 ? '#f59e0b' : '#10b981',
+                                                transition: 'width 0.3s ease'
+                                            }} />
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                {shareStats.printCount} printed
+                                            </span>
+                                            <button
+                                                onClick={() => setShowResetModal(true)}
+                                                disabled={shareStats.printCount === 0}
+                                                style={{
+                                                    padding: '4px 10px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '600',
+                                                    backgroundColor: shareStats.printCount > 0 ? '#eff6ff' : '#f1f5f9',
+                                                    color: shareStats.printCount > 0 ? '#3b82f6' : '#9ca3af',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: shareStats.printCount > 0 ? 'pointer' : 'not-allowed',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                Counter Reset
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div className={`status-indicator-ring`}
@@ -668,12 +904,54 @@ const AdminDashboard = () => {
                                 }}></div>
                         </motion.div>
 
-                        <motion.div className="metric-card" whileHover={{ y: -5 }}>
-                            <div className="metric-content">
-                                <span className="metric-label">Pending Approvals</span>
-                                <span className="metric-value">{Array.isArray(usersList) ? usersList.filter(u => u.approval_status === "pending").length : 0}</span>
-                                <span className="metric-sub" style={{ color: '#dc2626' }}>Needs Attention</span>
+                        {/* Email Statistics Card (Gray Theme) */}
+                        {/* Email Statistics Card (Gray Theme) */}
+                        <motion.div
+                            className="metric-card"
+                            whileHover={{ y: -5 }}
+                            style={{ background: '#e2e8f0', border: 'none', position: 'relative', overflow: 'visible' }}
+                        >
+                            <div className="metric-content" style={{ zIndex: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+                                    <span className="metric-label" style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        📧 Email Reports
+                                    </span>
+                                    <div style={{ position: 'relative', zIndex: 20 }}>
+                                        <TimePeriodFilter
+                                            timePeriod={emailTimePeriod}
+                                            setTimePeriod={setEmailTimePeriod}
+                                            customDateRange={emailCustomDateRange}
+                                            setCustomDateRange={setEmailCustomDateRange}
+                                            variant="dropdown"
+                                            showCustom={true}
+                                        />
+                                    </div>
+                                </div>
+                                <span className="metric-value" style={{
+                                    color: '#1e293b',
+                                    fontWeight: '800',
+                                    fontSize: '2.5rem',
+                                    lineHeight: '1.1',
+                                    marginTop: '8px',
+                                    display: 'block'
+                                }}>
+                                    {shareStats.emailCount}
+                                </span>
+                                <span style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                                    emails sent
+                                </span>
                             </div>
+                            <div style={{
+                                position: 'absolute',
+                                right: '-20px',
+                                bottom: '-20px',
+                                width: '120px',
+                                height: '120px',
+                                borderRadius: '50%',
+                                border: '12px solid #cbd5e1',
+                                opacity: 0.2,
+                                zIndex: 0
+                            }} />
                         </motion.div>
                     </div>
 
@@ -691,11 +969,28 @@ const AdminDashboard = () => {
                             <div className="card-header">
                                 <h3>User Distribution</h3>
                             </div>
-                            <div className="chart-wrapper pie-wrapper">
+                            <div className="chart-wrapper pie-wrapper" style={{ position: 'relative', flex: 1, minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 {loading ? (
                                     <div className="loading-spinner"></div>
                                 ) : (
-                                    <Pie data={roleDoughnutData} options={pieOptions} />
+                                    <>
+                                        <Doughnut data={roleDoughnutData} options={pieOptions} />
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '50%',
+                                            left: pieOptions.plugins.legend.position === 'right' ? '35%' : '50%', // Offset if legend is right
+                                            transform: 'translate(-50%, -50%)',
+                                            textAlign: 'center',
+                                            pointerEvents: 'none'
+                                        }}>
+                                            <span style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b', display: 'block', lineHeight: 1 }}>
+                                                {stats.total_users}
+                                            </span>
+                                            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                Users
+                                            </span>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </motion.div>
@@ -725,56 +1020,7 @@ const AdminDashboard = () => {
                             </div>
                         </motion.div>
 
-                        {/* Sensor Health Radar */}
-                        <motion.div
-                            className="analytics-card health-card"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 }}
-                        >
-                            <div className="card-header">
-                                <h3>Sensor Calibration</h3>
-                            </div>
-                            <div className="chart-wrapper radar-wrapper">
-                                <Radar data={sensorHealthData} options={{ ...radarOptions, scales: { r: { ticks: { display: false, backdropColor: 'transparent' } } } }} />
-                            </div>
-                        </motion.div>
 
-                        {/* Smart Insights Panel */}
-                        <motion.div
-                            className="analytics-card insights-card"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5 }}
-                        >
-                            <div className="card-header">
-                                <h3>AI Insights</h3>
-                                <span className="beta-badge">BETA</span>
-                            </div>
-                            <div className="insights-list">
-                                <div className="insight-item">
-                                    <div className="insight-icon red">⚠️</div>
-                                    <div className="insight-text">
-                                        <strong>High BP Alert</strong>
-                                        <p>15% increase in high blood pressure readings this week.</p>
-                                    </div>
-                                </div>
-                                <div className="insight-item">
-                                    <div className="insight-icon gray">📊</div>
-                                    <div className="insight-text">
-                                        <strong>Peak Usage</strong>
-                                        <p>Most measurements taken between 9:00 AM - 11:00 AM.</p>
-                                    </div>
-                                </div>
-                                <div className="insight-item">
-                                    <div className="insight-icon gray">👥</div>
-                                    <div className="insight-text">
-                                        <strong>New Registrations</strong>
-                                        <p>Student sign-ups are trending upwards.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
 
                     </div>
                 </motion.div>
@@ -806,7 +1052,7 @@ const AdminDashboard = () => {
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
                                 </div>
-                                <div className="role-filter-wrapper" style={{ display: 'flex', gap: '0.8rem' }}>
+                                <div className="role-filter-wrapper">
                                     <MultiSelectDropdown
                                         label="Select Roles"
                                         selectedItems={roleFilter}
@@ -866,30 +1112,17 @@ const AdminDashboard = () => {
                                 </div>
 
                                 {/* View Toggle Buttons */}
-                                <div className="view-toggle" style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
+                                <div className="view-toggle">
                                     <button
                                         onClick={() => setViewMode('table')}
-                                        style={{
-                                            padding: '8px',
-                                            border: 'none',
-                                            background: viewMode === 'table' ? '#eff6ff' : 'white',
-                                            color: viewMode === 'table' ? '#2563eb' : '#64748b',
-                                            cursor: 'pointer'
-                                        }}
+                                        className={viewMode === 'table' ? 'active' : ''}
                                         title="Table View"
                                     >
                                         <TableRows fontSize="small" />
                                     </button>
                                     <button
                                         onClick={() => setViewMode('card')}
-                                        style={{
-                                            padding: '8px',
-                                            border: 'none',
-                                            background: viewMode === 'card' ? '#eff6ff' : 'white',
-                                            color: viewMode === 'card' ? '#2563eb' : '#64748b',
-                                            cursor: 'pointer',
-                                            borderLeft: '1px solid #e2e8f0'
-                                        }}
+                                        className={viewMode === 'card' ? 'active' : ''}
                                         title="Card View"
                                     >
                                         <GridView fontSize="small" />
@@ -971,16 +1204,14 @@ const AdminDashboard = () => {
                                                 </tr>
                                             ))
                                         ) : (
-                                            <tr>
-                                                <td colSpan="6" className="text-center p-4">No users found matching "{searchTerm}"</td>
-                                            </tr>
+                                            <NoDataFound type="users" searchTerm={searchTerm} compact={true} colSpan={6} />
                                         )}
                                     </tbody>
                                 </table>
                             </div>
                         ) : (
                             // CARD VIEW IMPLEMENTATION
-                            <div className="user-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', padding: '10px' }}>
+                            <div className="user-cards-grid">
                                 {loading ? (
                                     Array(6).fill(0).map((_, idx) => (
                                         <div key={`card-skeleton-${idx}`} className="user-card-skeleton" style={{ padding: '20px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', height: '200px' }}>
@@ -1059,8 +1290,8 @@ const AdminDashboard = () => {
                                         </motion.div>
                                     ))
                                 ) : (
-                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-                                        No users found matching "{searchTerm}"
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <NoDataFound type="users" searchTerm={searchTerm} />
                                     </div>
                                 )}
                             </div>
@@ -1193,7 +1424,7 @@ const AdminDashboard = () => {
                                             </tr>
                                         ))
                                     ) : displayedMyHistory.length === 0 ? (
-                                        <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>No measurements found (Try changing filters).</td></tr>
+                                        <NoDataFound type="history" compact={true} colSpan={11} />
                                     ) : (
                                         displayedMyHistory.map((m) => (
                                             <tr key={m.id}>
@@ -1337,6 +1568,69 @@ const AdminDashboard = () => {
                         >
                             Close
                         </button>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Paper Roll Reset Confirmation Modal */}
+            {showResetModal && (
+                <div className="status-modal-overlay" onClick={() => setShowResetModal(false)}>
+                    <motion.div
+                        className="status-modal-content warning"
+                        initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.98)',
+                            border: '1px solid rgba(255, 255, 255, 0.5)',
+                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                            maxWidth: '400px'
+                        }}
+                    >
+                        <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🧻</div>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1f2937', marginBottom: '12px' }}>
+                            Reset Paper Roll?
+                        </h2>
+                        <p style={{ fontSize: '1rem', color: '#6b7280', lineHeight: '1.6', marginBottom: '24px' }}>
+                            This will reset the receipt counter to 0, indicating a new thermal paper roll has been inserted.
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+                            <button
+                                onClick={() => setShowResetModal(false)}
+                                disabled={isResetting}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px',
+                                    background: '#f1f5f9',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600',
+                                    color: '#475569'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleResetPaperRoll}
+                                disabled={isResetting}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px',
+                                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    cursor: isResetting ? 'not-allowed' : 'pointer',
+                                    fontWeight: '600',
+                                    color: 'white',
+                                    opacity: isResetting ? 0.7 : 1
+                                }}
+                            >
+                                {isResetting ? 'Resetting...' : 'Confirm Reset'}
+                            </button>
+                        </div>
                     </motion.div>
                 </div>
             )}

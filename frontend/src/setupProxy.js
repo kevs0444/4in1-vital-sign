@@ -7,25 +7,36 @@ module.exports = function (app) {
         res.send('ok');
     });
 
-    // API Proxy
-    app.use(
-        ['/api', '/admin', '/clearance'],
-        createProxyMiddleware({
-            target: 'http://127.0.0.1:5000',
-            changeOrigin: true,
-            secure: false,
-        })
-    );
+    // Create Proxy instances
+    const apiProxy = createProxyMiddleware({
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        secure: false
+    });
 
-    // WebSocket Proxy (Isolated for robustness)
-    app.use(
-        '/socket.io',
-        createProxyMiddleware({
-            target: 'http://127.0.0.1:5000',
-            changeOrigin: true,
-            secure: false,
-            ws: true,
-            logLevel: 'debug' // Log proxy activity to console
-        })
-    );
+    const socketProxy = createProxyMiddleware({
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        logLevel: 'debug'
+    });
+
+    // Manually route requests to preserve path prefixes (avoid app.use stripping)
+    app.use((req, res, next) => {
+        // Forward API requests
+        if (req.url.startsWith('/api')) {
+            return apiProxy(req, res, next);
+        }
+        // Forward specific legacy/direct paths (Robustness)
+        // Explicitly match /login/login (API) but NOT /login (Page)
+        if (req.url.includes('/login/login')) {
+            return apiProxy(req, res, next);
+        }
+
+        if (req.url.startsWith('/socket.io')) {
+            return socketProxy(req, res, next);
+        }
+        next();
+    });
 };
