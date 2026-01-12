@@ -121,7 +121,7 @@ def update_user_status(user_id):
 def get_share_stats():
     """
     Returns statistics for email and print sharing:
-    - email_sent_count: Number of measurements with email_sent = 1
+    - email_sent_count: Number of measurements with email_sent = 1 (filtered by created_at)
     - receipt_printed_count: Number of measurements with receipt_printed = 1
     - paper_remaining: 100 - receipt_printed_count (assuming 100 receipts per roll)
     """
@@ -129,11 +129,13 @@ def get_share_stats():
     try:
         from app.models.measurement_model import Measurement
         
+        # Email count - filtered by created_at date range
         email_query = session.query(func.count(Measurement.id)).filter(Measurement.email_sent == 1)
         
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
+        # Filter by created_at (when measurement was taken)
         if start_date:
             email_query = email_query.filter(Measurement.created_at >= start_date)
         if end_date:
@@ -141,7 +143,7 @@ def get_share_stats():
             
         email_count = email_query.scalar() or 0
         
-        # NOTE: Print count is NOT filtered by time because it tracks physical paper usage on the current roll.
+        # Print count is NOT filtered by time because it tracks physical paper usage on the current roll.
         print_count = session.query(func.count(Measurement.id)).filter(Measurement.receipt_printed == 1).scalar() or 0
         paper_remaining = max(0, 100 - print_count)
         

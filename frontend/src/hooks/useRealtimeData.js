@@ -151,6 +151,18 @@ export const useRealtimeUpdates = (options = {}) => {
                 }
                 break;
 
+            case 'email_activity':
+            case 'print_activity':
+                // Call custom handler for UI updates (e.g., "sending" spinner)
+                if (onDataUpdate) {
+                    onDataUpdate(eventData);
+                }
+                // Refetch to get updated counts
+                if (refetchData) {
+                    refetchData();
+                }
+                break;
+
             default:
                 if (onDataUpdate) {
                     onDataUpdate(eventData);

@@ -39,7 +39,7 @@ class Measurement(Base):
 
     # Sharing Status
     email_sent = Column(Integer, default=0) 
-    receipt_printed = Column(Integer, default=0) 
+    receipt_printed = Column(Integer, default=0)
 
     # Relationships
     user = relationship("User", back_populates="measurements")

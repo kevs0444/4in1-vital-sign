@@ -18,8 +18,13 @@
     top: 0;
     left: 0;
     height: 100vh;
+    /* Fallback */
+    height: 100dvh;
+    /* Mobile friendly dynamic height */
     z-index: 50;
     transition: width 0.3s ease, transform 0.3s ease;
+    overflow: hidden;
+    /* Prevent sidebar itself from scrolling, only nav should scroll */
 }
 
 /* Collapsed Sidebar State */
@@ -99,6 +104,8 @@
     flex: 1;
     padding: 1.5rem 1rem;
     overflow-y: auto;
+    min-height: 0;
+    /* Crucial for flux scrolling */
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -143,7 +150,13 @@
 
 .sidebar-footer {
     padding: 1.5rem;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    /* iOS Safe Area */
     border-top: 1px solid #f1f5f9;
+    background: white;
+    /* Ensure it stays on top if anything odd happens */
+    flex-shrink: 0;
+    /* Prevent footer from shrinking */
 }
 
 .user-profile {
@@ -304,10 +317,17 @@
     border: none;
     color: #334155;
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.75rem;
+    /* Larger touch target */
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.menu-toggle:active {
+    background-color: #f1f5f9;
 }
 
 /* Hide mobile close button on desktop */

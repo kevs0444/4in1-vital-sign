@@ -1682,3 +1682,54 @@
         /* Taller charts for portrait viewing */
     }
 }
+
+/* Printer Card Responsive Layout */
+.printer-details-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.printer-info-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+@media (min-width: 1200px) {
+    .printer-details-layout {
+        flex-direction: row;
+        gap: 16px;
+    }
+
+    .printer-info-left {
+        flex: 1;
+        min-width: 120px;
+        border-right: 1px solid #f1f5f9;
+        padding-right: 12px;
+        justify-content: center;
+    }
+
+    .printer-paper-right {
+        flex: 1.5;
+    }
+
+    .printer-horizontal-divider {
+        display: none;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}

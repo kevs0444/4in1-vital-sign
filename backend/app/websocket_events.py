@@ -180,5 +180,5 @@ def broadcast_to_all(event_type, data):
         'data': data
     }
     
-    socketio.emit('data_update', event_data, broadcast=True)
+    socketio.emit('data_update', event_data)
     logger.info(f"📡 Broadcast to all: {event_type}")

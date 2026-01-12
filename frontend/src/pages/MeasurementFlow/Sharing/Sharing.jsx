@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Sharing.css";
 import { speak, reinitSpeech, stopSpeaking } from "../../../utils/speech";
+import { getShareStatsFiltered } from "../../../utils/api";
 import {
   getBMICategory as getBMICategoryUtil,
   getTemperatureStatus as getTemperatureStatusUtil,
@@ -14,7 +15,7 @@ import {
 
 const getDynamicApiUrl = () => {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL + '/api';
-  return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+  return '/api'; // Use relative path to leverage Proxy
 };
 
 const API_BASE = getDynamicApiUrl();
@@ -40,6 +41,23 @@ export default function Sharing() {
   });
 
   const [showSkipModal, setShowSkipModal] = useState(false);
+  const [isPaperEmpty, setIsPaperEmpty] = useState(false);
+
+  useEffect(() => {
+    const checkPaper = async () => {
+      try {
+        const response = await getShareStatsFiltered({});
+        if (response && response.success && response.stats) {
+          if ((response.stats.paper_remaining ?? 100) <= 0) {
+            setIsPaperEmpty(true);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to check paper status", e);
+      }
+    };
+    checkPaper();
+  }, []);
 
   useEffect(() => {
     if (location.state) {
@@ -508,14 +526,19 @@ export default function Sharing() {
           <button
             className={`action-card ${printSent ? 'success' : isPrinting ? 'processing' : ''}`}
             onClick={handlePrint}
-            disabled={printSent || isPrinting}
+            disabled={printSent || isPrinting || isPaperEmpty}
+            style={isPaperEmpty ? { opacity: 0.6, cursor: 'not-allowed', borderColor: '#ef4444' } : {}}
           >
             <div className="action-icon">
-              {printSent ? '✓' : isPrinting ? '⏳' : '🖨️'}
+              {printSent ? '✓' : isPaperEmpty ? '⚠️' : isPrinting ? '⏳' : '🖨️'}
             </div>
             <div className="action-details">
-              <span className="action-title">{printSent ? 'Printed' : isPrinting ? 'Printing...' : 'Print Receipt'}</span>
-              <span className="action-desc">{printSent ? 'Receipt sent to printer' : 'Get a physical copy'}</span>
+              <span className="action-title" style={isPaperEmpty ? { color: '#ef4444' } : {}}>
+                {printSent ? 'Printed' : isPaperEmpty ? 'Out of Paper' : isPrinting ? 'Printing...' : 'Print Receipt'}
+              </span>
+              <span className="action-desc" style={isPaperEmpty ? { color: '#ef4444' } : {}}>
+                {printSent ? 'Receipt sent to printer' : isPaperEmpty ? 'Printer unavailable' : 'Get a physical copy'}
+              </span>
             </div>
           </button>
         </div>

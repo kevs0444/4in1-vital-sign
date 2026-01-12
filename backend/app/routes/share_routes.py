@@ -28,7 +28,7 @@ def send_email_func(to_email, subject, body):
 
         msg.attach(MIMEText(body, 'html'))
 
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
         server.ehlo()
         server.starttls()
         server.ehlo()
@@ -475,13 +475,16 @@ def get_health_report_template(user_data):
     </html>
     """
 
-from app.websocket_events import broadcast_stats_update
+from app.websocket_events import broadcast_stats_update, broadcast_to_all
 
 @share_bp.route('/email', methods=['POST'])
 def send_results_email():
     print("=" * 60)
     print("📧 SEND RESULTS EMAIL REQUEST RECEIVED")
     print("=" * 60)
+    
+    # Notify Admin Dashboard of activity
+    broadcast_to_all('email_activity', {'status': 'sending'})
     
     data = request.get_json()
     identifier = data.get('email')  # Can be email OR school number
@@ -557,9 +560,32 @@ def send_results_email():
         if send_email_func(target_email, subject, html_content):
             print(f"✅ Email sent successfully to {target_email}")
             
-            # Record stat in DB (Assuming share_stats table exists or using a shared function)
+            # Record stat in DB 
+            # Update Measurement Status immediately so the broadcast triggers correct stats
+            try:
+                from app.models.measurement_model import Measurement
+                meas_id = user_data.get('measurement_id') or user_data.get('id')
+                # Avoid confusing 'id' if it's user id. measurement_id should be distinct.
+                # In Sharing.jsx: ID: {userData.measurement_id || userData.id || "N/A"}
+                # But userData.id might be user_id if not careful. Check formatting.
+                # If ID starts with MEAS-, it is measurement.
+                
+                if meas_id and str(meas_id).startswith('MEAS-'):
+                     msm = db.query(Measurement).filter(Measurement.id == meas_id).first()
+                     if msm:
+                         msm.email_sent = 1
+                         db.commit()
+                         print(f"✅ Measurement {meas_id} marked as emailed.")
+                else: 
+                     # Fallback: Find latest measurement for user if needed, or skip
+                     # For now, only update if we have a valid Measurement ID
+                     pass
+            except Exception as e_db:
+                 print(f"⚠️ Failed to update measurement status: {e_db}")
+
             # For now, we trust the frontend will refetch stats, but we MUST broadcast
             broadcast_stats_update() # TRIGGER INSTANT UPDATE
+            broadcast_to_all('email_activity', {'status': 'sent'}) # Notify email completed
             
             return jsonify({'success': True, 'message': f'Report sent to {target_email}'}), 200
         else:

@@ -149,6 +149,11 @@ def update_share_status(measurement_id):
             return jsonify({'success': False, 'message': 'Invalid share type'}), 400
 
         db.commit()
+
+        # Broadcast update to admins so dashboard reflects changes instantly
+        from app.websocket_events import broadcast_stats_update
+        broadcast_stats_update()
+
         return jsonify({'success': True, 'message': f'Updated {share_type} status'}), 200
 
     except Exception as e:

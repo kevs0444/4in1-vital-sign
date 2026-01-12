@@ -667,6 +667,7 @@ export const getShareStats = async () => {
   }
 };
 
+
 // Reset paper roll (set all receipt_printed to 0)
 export const resetPaperRoll = async () => {
   try {

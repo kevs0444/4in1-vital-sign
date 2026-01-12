@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 
 import logging
 from datetime import datetime
+from app.utils.db import SessionLocal
+from app.models.measurement_model import Measurement
 
 print_bp = Blueprint('print', __name__)
 
@@ -184,6 +186,19 @@ def print_receipt():
         finally:
             win32print.ClosePrinter(hPrinter)
             
+        # Update DB for Receipt Printed
+        try:
+            session = SessionLocal()
+            msm_id = data.get('measurement_id') or data.get('id')
+            if msm_id and str(msm_id).startswith('MEAS-'):
+                msm = session.query(Measurement).filter(Measurement.id == msm_id).first()
+                if msm:
+                    msm.receipt_printed = 1
+                    session.commit()
+            session.close()
+        except Exception as e_db:
+             logging.error(f"Failed to update receipt status in DB: {e_db}")
+
         # Broadcast update to refresh Print Count / Paper Status on Dashboard
         broadcast_stats_update() # TRIGGER INSTANT UPDATE
             

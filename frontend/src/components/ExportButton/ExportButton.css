@@ -1,0 +1,106 @@
+.export-button-container {
+    position: relative;
+    display: inline-block;
+    height: 100%;
+}
+
+.export-btn-main {
+    padding: 8px;
+    height: 100%;
+    /* Matches parent height (e.g., 40px) */
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    min-width: 50px;
+    gap: 2px;
+    transition: all 0.2s;
+}
+
+.export-btn-main:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+    border-color: #94a3b8;
+}
+
+.export-dropdown-menu {
+    position: absolute;
+    top: 110%;
+    /* Just below the button */
+    right: 0;
+    width: 140px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    overflow: hidden;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.export-dropdown-menu button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    color: #334155;
+    gap: 10px;
+    transition: background 0.1s;
+}
+
+.export-dropdown-menu button:hover {
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.export-dropdown-menu button:not(:last-child) {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Simple File Type Icons/Badges */
+.file-icon {
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 4px;
+    border-radius: 3px;
+    color: white;
+    min-width: 32px;
+    text-align: center;
+}
+
+.file-icon.csv {
+    background: #64748b;
+}
+
+/* Slate */
+.file-icon.excel {
+    background: #10b981;
+}
+
+/* Green */
+.file-icon.pdf {
+    background: #ef4444;
+}
+
+/* Red */

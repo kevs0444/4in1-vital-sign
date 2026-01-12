@@ -11,6 +11,9 @@ import PopulationAnalytics from '../../../../components/PopulationAnalytics/Popu
 import NoDataFound from '../../../../components/NoDataFound/NoDataFound';
 import { Assessment } from '@mui/icons-material';
 import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
+import ExportButton from '../../../../components/ExportButton/ExportButton';
+import { exportToCSV, exportToExcel, exportToPDF } from '../../../../utils/exportUtils';
+import Pagination from '../../../../components/Pagination/Pagination';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -256,18 +259,45 @@ const DoctorDashboard = () => {
         });
     };
 
-    const filteredUsers = timeFilteredPatients
-        .filter(u =>
-            u.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.role?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        .sort((a, b) => {
-            const dateA = a.last_checkup ? new Date(a.last_checkup).getTime() : 0;
-            const dateB = b.last_checkup ? new Date(b.last_checkup).getTime() : 0;
-            return dateB - dateA;
-        });
+    const filteredUsers = useMemo(() => {
+        return timeFilteredPatients
+            .filter(u =>
+                u.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                u.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                u.role?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .sort((a, b) => {
+                const dateA = a.last_checkup ? new Date(a.last_checkup).getTime() : 0;
+                const dateB = b.last_checkup ? new Date(b.last_checkup).getTime() : 0;
+                return dateB - dateA;
+            });
+    }, [timeFilteredPatients, searchTerm]);
+
+    // Pagination State
+    const [usersPage, setUsersPage] = useState(1);
+    const [historyPage, setHistoryPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Pagination Logic for Users
+    const totalUserPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const currentUsers = useMemo(() => {
+        const start = (usersPage - 1) * itemsPerPage;
+        return filteredUsers.slice(start, start + itemsPerPage);
+    }, [filteredUsers, usersPage]);
+
+    // Reset pagination
+    useEffect(() => { setUsersPage(1); }, [searchTerm, patientsTimePeriod, patientsCustomDateRange]);
+
+    // Pagination Logic for History
+    const totalHistoryPages = Math.ceil((displayedMyHistory?.length || 0) / itemsPerPage);
+    const currentHistory = useMemo(() => {
+        const start = (historyPage - 1) * itemsPerPage;
+        return (displayedMyHistory || []).slice(start, start + itemsPerPage);
+    }, [displayedMyHistory, historyPage]);
+
+    // Reset history pagination
+    useEffect(() => { setHistoryPage(1); }, [metricFilter, riskFilter, timePeriod, customDateRange]);
 
     const toggleMetric = (value) => {
         if (value === 'all') {
@@ -405,6 +435,21 @@ const DoctorDashboard = () => {
     const displayedMyHistory = processHistory(timeFilteredHistory, metricFilter, riskFilter);
     const displayedUserHistory = processHistory(timeFilteredUserHistory, modalMetricFilter, modalRiskFilter);
 
+    const handleExportPatients = (format) => {
+        const data = timeFilteredPatients.map(u => ({
+            "Name": `${u.firstname || ''} ${u.lastname || ''}`.trim(),
+            "Role": u.role,
+            "School ID": u.school_number || 'N/A',
+            "Email": u.email,
+            "Last Checkup": u.last_checkup ? formatDate(u.last_checkup) : 'N/A'
+        }));
+        const filename = `Assigned_Patients_${new Date().toISOString().split('T')[0]}`;
+
+        if (format === 'csv') exportToCSV(data, filename);
+        if (format === 'excel') exportToExcel(data, filename);
+        if (format === 'pdf') exportToPDF(data, filename, "Assigned Patients Report");
+    };
+
     // Define Tabs
     const tabs = [
         { id: 'patients', label: 'Patients Overview', icon: <LocalHospital /> },
@@ -458,7 +503,7 @@ const DoctorDashboard = () => {
                 >
                     <div className="table-header">
                         <h3>Assigned Patients / All Users ({timeFilteredPatients.length} records)</h3>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <div className="table-controls">
                             <div className="search-bar">
                                 <Search className="search-icon" />
                                 <input
@@ -476,6 +521,13 @@ const DoctorDashboard = () => {
                                 setCustomDateRange={setPatientsCustomDateRange}
                                 variant="dropdown"
                             />
+
+                            <ExportButton
+                                onExportCSV={() => handleExportPatients('csv')}
+                                onExportExcel={() => handleExportPatients('excel')}
+                                onExportPDF={() => handleExportPatients('pdf')}
+                            />
+
                             {/* View Mode Toggle */}
                             <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
                                 <button
@@ -535,10 +587,10 @@ const DoctorDashboard = () => {
                                     <tbody>
                                         {loading ? (
                                             <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading users...</td></tr>
-                                        ) : filteredUsers.length === 0 ? (
+                                        ) : currentUsers.length === 0 ? (
                                             <NoDataFound type="users" searchTerm={searchTerm} compact={true} colSpan={5} />
                                         ) : (
-                                            filteredUsers.map((u, index) => (
+                                            currentUsers.map((u, index) => (
                                                 <tr key={u.user_id} style={{ background: index === 0 && u.last_checkup ? '#fff1f2' : 'transparent', transition: 'background 0.2s' }}>
                                                     <td>
                                                         <div className="user-name-cell">
@@ -569,22 +621,17 @@ const DoctorDashboard = () => {
                     {/* Card View */}
                     {
                         viewMode === 'card' && (
-                            <div className="user-cards-grid" style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                                gap: '1.5rem',
-                                padding: '10px'
-                            }}>
+                            <div className="user-cards-grid">
                                 {loading ? (
                                     <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                                         Loading users...
                                     </div>
-                                ) : filteredUsers.length === 0 ? (
+                                ) : currentUsers.length === 0 ? (
                                     <div style={{ gridColumn: '1 / -1' }}>
                                         <NoDataFound type="users" searchTerm={searchTerm} />
                                     </div>
                                 ) : (
-                                    filteredUsers.map((u) => (
+                                    currentUsers.map((u) => (
                                         <motion.div
                                             key={u.user_id}
                                             className="user-card"
@@ -661,6 +708,11 @@ const DoctorDashboard = () => {
                             </div>
                         )
                     }
+                    <Pagination
+                        currentPage={usersPage}
+                        totalPages={totalUserPages}
+                        onPageChange={setUsersPage}
+                    />
                 </motion.div >
             )}
 
@@ -750,10 +802,10 @@ const DoctorDashboard = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {displayedMyHistory.length === 0 ? (
+                                        {currentHistory.length === 0 ? (
                                             <NoDataFound type="history" compact={true} colSpan={9} />
                                         ) : (
-                                            displayedMyHistory.map((m) => (
+                                            currentHistory.map((m) => (
                                                 <tr key={m.id}>
                                                     <td>{formatDate(m.created_at)}</td>
                                                     {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
@@ -782,6 +834,11 @@ const DoctorDashboard = () => {
                                     </tbody>
                                 </table>
                             </div>
+                            <Pagination
+                                currentPage={historyPage}
+                                totalPages={totalHistoryPages}
+                                onPageChange={setHistoryPage}
+                            />
                         </motion.div>
                     </>
                 )
@@ -1051,7 +1108,7 @@ const DoctorDashboard = () => {
             {/* Detailed Result Modal (Shared) */}
             {
                 selectedMeasurement && (
-                    <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setSelectedMeasurement(null)}>
+                    <div className="modal-overlay" style={{ zIndex: 1300, backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setSelectedMeasurement(null)}>
                         <motion.div
                             className="modal-content"
                             initial={{ scale: 0.9, opacity: 0 }}
@@ -1063,7 +1120,7 @@ const DoctorDashboard = () => {
                                 <button className="close-btn" onClick={() => setSelectedMeasurement(null)}>&times;</button>
                             </div>
 
-                            <div style={{ marginBottom: '24px', maxHeight: '60vh', overflowY: 'auto' }}>
+                            <div style={{ marginBottom: '24px' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
                                     <div><strong>Date:</strong> {formatDate(selectedMeasurement.created_at)}</div>
                                     <div><strong>BP:</strong> {selectedMeasurement.systolic ? `${selectedMeasurement.systolic}/${selectedMeasurement.diastolic}` : 'Not Measured'}</div>

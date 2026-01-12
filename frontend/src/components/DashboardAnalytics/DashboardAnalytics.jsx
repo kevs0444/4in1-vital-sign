@@ -969,6 +969,67 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 </div>
             </motion.div>
 
+            {/* Summary Cards Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px', marginTop: '24px' }}>
+                {/* Total Checkups Card */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        background: 'white',
+                        borderRadius: '16px',
+                        padding: '24px',
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
+                        borderLeft: '6px solid #dc2626',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center'
+                    }}
+                >
+                    <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                        Total Checkups
+                    </div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#1e293b', lineHeight: 1, marginBottom: '4px' }}>
+                        {analyticsData?.totalRecords || 0}
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: '500' }}>
+                        Measurements Taken
+                    </div>
+                </motion.div>
+
+                {/* Latest Status Card */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    style={{
+                        background: 'white',
+                        borderRadius: '16px',
+                        padding: '24px',
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center'
+                    }}
+                >
+                    <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                        Latest Status
+                    </div>
+                    <div style={{
+                        fontSize: '2rem',
+                        fontWeight: '800',
+                        color: filteredHistory.length > 0 && (filteredHistory[filteredHistory.length - 1].risk_category?.toLowerCase().includes('normal') || filteredHistory[filteredHistory.length - 1].risk_category?.toLowerCase().includes('optimal')) ? '#10b981' : '#dc2626',
+                        lineHeight: 1.2,
+                        marginBottom: '4px'
+                    }}>
+                        {filteredHistory.length > 0 ? (filteredHistory[filteredHistory.length - 1].risk_category || 'Unknown') : 'No Data'}
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: '500' }}>
+                        {filteredHistory.length > 0 ? new Date(filteredHistory[filteredHistory.length - 1].created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'No measurements yet'}
+                    </div>
+                </motion.div>
+            </div>
+
             <div className="analytics-grid" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',

@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Check, Close, ErrorOutline, WarningAmber,
     Search,
-    Download,
     Person,
     Visibility,
     GridView,
@@ -15,7 +14,9 @@ import {
     History,
     Build,
     Print,
-    Dashboard
+    Dashboard,
+    Notifications,
+    Email
 } from '@mui/icons-material';
 import DashboardLayout from '../../../../components/DashboardLayout/DashboardLayout';
 import {
@@ -41,6 +42,9 @@ import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod, MultiS
 import NoDataFound from '../../../../components/NoDataFound/NoDataFound';
 
 import { useRealtimeUpdates } from '../../../../hooks/useRealtimeData';
+import { exportToCSV, exportToExcel, exportToPDF } from '../../../../utils/exportUtils';
+import ExportButton from '../../../../components/ExportButton/ExportButton';
+import Pagination from '../../../../components/Pagination/Pagination';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -182,6 +186,7 @@ const AdminDashboard = () => {
     const [isResetting, setIsResetting] = useState(false);
     const [emailTimePeriod, setEmailTimePeriod] = useState('weekly');
     const [emailCustomDateRange, setEmailCustomDateRange] = useState(null);
+    const [emailStatus, setEmailStatus] = useState('idle'); // 'idle' or 'sending'
 
     // Personal History State
     const [myHistory, setMyHistory] = useState([]);
@@ -199,18 +204,21 @@ const AdminDashboard = () => {
     const [metricFilter, setMetricFilter] = useState(['all']);
     const [riskFilter, setRiskFilter] = useState(['all']);
     const [sortOrder, setSortOrder] = useState('desc');
-    const [isMetricDropdownOpen, setIsMetricDropdownOpen] = useState(false);
-    const [isRiskDropdownOpen, setIsRiskDropdownOpen] = useState(false);
+    // Removed unused dropdown states
 
     // User Management Filters
-    const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+    // Removed unused dropdown states
     const [statusFilter, setStatusFilter] = useState(['All']);
-    const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
     // Filter history by time period
     const timeFilteredHistory = useMemo(() => {
         return filterHistoryByTimePeriod(myHistory, timePeriod, customDateRange);
     }, [myHistory, timePeriod, customDateRange]);
+
+    // Pagination State
+    const [usersPage, setUsersPage] = useState(1);
+    const [historyPage, setHistoryPage] = useState(1);
+    const itemsPerPage = 10;
 
     // Filter users list by registration date
     const timeFilteredUsers = useMemo(() => {
@@ -261,6 +269,30 @@ const AdminDashboard = () => {
         return processed;
     }, [timeFilteredHistory, metricFilter, riskFilter, sortOrder]);
 
+    // Pagination Logic for Users
+    const totalUserPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const currentUsers = useMemo(() => {
+        const start = (usersPage - 1) * itemsPerPage;
+        return filteredUsers.slice(start, start + itemsPerPage);
+    }, [filteredUsers, usersPage]);
+
+    // Reset pagination when user filters change
+    useEffect(() => {
+        setUsersPage(1);
+    }, [searchTerm, roleFilter, statusFilter, usersTimePeriod, usersCustomDateRange]);
+
+    // Pagination Logic for History
+    const totalHistoryPages = Math.ceil(displayedMyHistory.length / itemsPerPage);
+    const currentHistory = useMemo(() => {
+        const start = (historyPage - 1) * itemsPerPage;
+        return displayedMyHistory.slice(start, start + itemsPerPage);
+    }, [displayedMyHistory, historyPage]);
+
+    // Reset pagination when history filters change
+    useEffect(() => {
+        setHistoryPage(1);
+    }, [metricFilter, riskFilter, sortOrder, timePeriod, customDateRange]);
+
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
@@ -310,7 +342,7 @@ const AdminDashboard = () => {
         }
     };
 
-    const fetchShareStats = async () => {
+    const fetchShareStats = React.useCallback(async () => {
         try {
             // Calculate Date Range
             let dateParams = {};
@@ -353,7 +385,7 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error("Error fetching share stats:", error);
         }
-    };
+    }, [emailTimePeriod, emailCustomDateRange]);
 
     const handleResetPaperRoll = async () => {
         setIsResetting(true);
@@ -423,10 +455,11 @@ const AdminDashboard = () => {
             clearInterval(printerInterval);
             clearInterval(shareStatsInterval);
         };
-    }, [navigate, location, emailTimePeriod, emailCustomDateRange]);
+    }, [navigate, location, fetchShareStats]);
 
     // Real-time WebSocket updates - instant push notifications
     const refetchAllData = React.useCallback(async () => {
+        setEmailStatus('idle'); // Clear sending status when we get new data (transmission done)
         // Parallel fetch for maximum speed
         await Promise.all([
             fetchDashboardData(),
@@ -434,9 +467,9 @@ const AdminDashboard = () => {
             fetchShareStats(),
             user ? fetchMyHistory(user.userId || user.user_id || user.id) : Promise.resolve()
         ]);
-    }, [user, emailTimePeriod, emailCustomDateRange]); // Added dependencies for share stats
+    }, [user, fetchShareStats]); // Added dependencies for share stats
 
-    const { isConnected, lastUpdated, connectionStatus } = useRealtimeUpdates({
+    const { isConnected, lastUpdated } = useRealtimeUpdates({
         role: 'Admin',
         userId: user?.userId || user?.user_id || user?.id,
         refetchData: refetchAllData,
@@ -446,9 +479,191 @@ const AdminDashboard = () => {
         },
         onNewUser: (data) => {
             console.log('👤 New user registered:', data);
-            // Data will be refetched automatically
+            // Add notification
+            setNotifications(prev => [{
+                id: `new-user-${Date.now()}`,
+                type: 'info',
+                title: 'New Registration',
+                message: `New user ${data.name || ''} registered.`,
+                time: 'Just now',
+                read: false,
+                color: '#3b82f6'
+            }, ...prev]);
+        },
+        onDataUpdate: (event) => {
+            if (event.type === 'email_activity' && event.data.status === 'sending') {
+                setEmailStatus('sending');
+                // Failsafe reset after 15s
+                setTimeout(() => setEmailStatus(prev => prev === 'sending' ? 'idle' : prev), 15000);
+            }
         }
     });
+
+    // --- Notification System ---
+    const [notifications, setNotifications] = useState([]);
+    const [isNotifOpen, setIsNotifOpen] = useState(false);
+    const prevEmailCount = React.useRef(shareStats.emailCount);
+
+    // 1. Monitor Pending Users
+    useEffect(() => {
+        if (!usersList) return;
+        const pendingCount = usersList.filter(u => u.approval_status === 'pending').length;
+
+        setNotifications(prev => {
+            // Remove old pending alerts to avoid duplicates/stale data
+            const clean = prev.filter(n => n.type !== 'pending');
+            if (pendingCount > 0) {
+                return [{
+                    id: 'pending-alert',
+                    type: 'pending',
+                    title: 'Pending Approvals',
+                    message: `${pendingCount} user(s) waiting for approval.`,
+                    time: 'Action Required',
+                    read: false,
+                    color: '#f59e0b',
+                    action: () => setActiveTab('users')
+                }, ...clean];
+            }
+            return clean;
+        });
+    }, [usersList, setActiveTab]);
+
+    // 2. Monitor Email Sends
+    useEffect(() => {
+        // Initialize ref if 0
+        if (prevEmailCount.current === 0 && shareStats.emailCount > 0) {
+            prevEmailCount.current = shareStats.emailCount;
+            return;
+        }
+
+        if (shareStats.emailCount > prevEmailCount.current) {
+            setNotifications(prev => [{
+                id: `email-${Date.now()}`,
+                type: 'email',
+                title: 'Email Sent',
+                message: 'Weekly report sent successfully.',
+                time: 'Just now',
+                read: false,
+                color: '#10b981'
+            }, ...prev]);
+            prevEmailCount.current = shareStats.emailCount;
+        }
+    }, [shareStats.emailCount]);
+
+    // 3. Monitor Printer
+    useEffect(() => {
+        if (printerStatus.status === 'offline' || printerStatus.status === 'error') {
+            setNotifications(prev => {
+                if (prev.some(n => n.type === 'printer' && n.read === false)) return prev; // Don't spam if unread exists
+                return [{
+                    id: `printer-${Date.now()}`,
+                    type: 'printer',
+                    title: 'Printer Issue',
+                    message: `Printer is ${printerStatus.status}: ${printerStatus.message}`,
+                    time: 'Now',
+                    read: false,
+                    color: '#ef4444'
+                }, ...prev];
+            });
+        }
+    }, [printerStatus.status, printerStatus.message]);
+
+    // 4. Monitor Paper Roll
+    // 4. Monitor Paper Roll
+    const prevPaperStatus = React.useRef('ok');
+    useEffect(() => {
+        const currentPaperLevel = shareStats.paperRemaining;
+        let currentStatus = 'ok';
+
+        if (currentPaperLevel <= 0) currentStatus = 'empty';
+        else if (currentPaperLevel <= 5) currentStatus = 'critical';
+        else if (currentPaperLevel <= 15) currentStatus = 'low';
+
+        // Notify only on status change to worse (or if it's the first time and low)
+        // We use a ref to track the last alerted status to avoid spamming on every percentage drop if staying in same tier
+        // But we do want to alert if it drops from low to critical or empty
+        if (currentStatus !== 'ok' && currentStatus !== prevPaperStatus.current) {
+            setNotifications(prev => {
+                // Prevent duplicate paper alerts
+                if (prev.some(n => n.type === 'paper' && n.read === false)) return prev;
+
+                let title = 'Paper Low';
+                let msg = `Thermal paper is ${currentStatus} (${currentPaperLevel}%).`;
+
+                if (currentStatus === 'empty') {
+                    title = 'Out of Paper';
+                    msg = 'Paper roll is empty (0%). Please replace immediately.';
+                } else if (currentStatus === 'critical') {
+                    title = 'Paper Critical';
+                    msg = `Thermal paper is critically low (${currentPaperLevel}%).`;
+                }
+
+                return [{
+                    id: `paper-${Date.now()}`,
+                    type: 'paper',
+                    title: title,
+                    message: msg,
+                    time: 'Action Required',
+                    read: false,
+                    color: (currentStatus === 'critical' || currentStatus === 'empty') ? '#ef4444' : '#f59e0b',
+                    action: () => setShowResetModal(true)
+                }, ...prev];
+            });
+        }
+        prevPaperStatus.current = currentStatus;
+    }, [shareStats.paperRemaining]);
+
+    const markAsRead = (id) => {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    };
+
+    const clearAllNotifications = () => {
+        setNotifications([]);
+    };
+
+    const getExportData_Users = () => {
+        return filteredUsers.map(u => ({
+            "Name": `${u.firstname || ''} ${u.lastname || ''}`.trim(),
+            "Role": u.role,
+            "School ID": u.school_number || 'N/A',
+            "Email": u.email,
+            "Registered Date": u.created_at || u.registered_at || 'N/A',
+            "Status": u.approval_status || 'pending'
+        }));
+    };
+
+    const handleExportUsers = (format) => {
+        const data = getExportData_Users();
+        const filename = `Registered_Users_${new Date().toISOString().split('T')[0]}`;
+
+        if (format === 'csv') exportToCSV(data, filename);
+        if (format === 'excel') exportToExcel(data, filename);
+        if (format === 'pdf') exportToPDF(data, filename, "Registered Users Report");
+    };
+
+    const getExportData_History = () => {
+        return displayedMyHistory.map(m => ({
+            "Date": m.created_at ? new Date(m.created_at).toLocaleString() : 'N/A',
+            "BP": m.systolic ? `${m.systolic}/${m.diastolic}` : 'N/A',
+            "HR": m.heart_rate || 'N/A',
+            "RR": m.respiratory_rate || 'N/A',
+            "SpO2": m.spo2 || 'N/A',
+            "Temp": m.temperature || 'N/A',
+            "Weight": m.weight || 'N/A',
+            "Height": m.height || 'N/A',
+            "BMI": m.bmi || 'N/A',
+            "Risk": m.risk_category || 'N/A'
+        }));
+    };
+
+    const handleExportHistory = (format) => {
+        const data = getExportData_History();
+        const filename = `My_Measurement_History_${new Date().toISOString().split('T')[0]}`;
+
+        if (format === 'csv') exportToCSV(data, filename);
+        if (format === 'excel') exportToExcel(data, filename);
+        if (format === 'pdf') exportToPDF(data, filename, "Measurement History Report");
+    };
 
     useEffect(() => {
         filterUsers();
@@ -588,11 +803,8 @@ const AdminDashboard = () => {
         scales: { y: { beginAtZero: true } }
     };
 
-    const radarOptions = {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { r: { suggestedMin: 0, suggestedMax: 100 } }
-    };
+    // Removed unused radarOptions
+
 
     // --- History Helper Functions ---
     const formatDate = (dateString) => {
@@ -669,6 +881,99 @@ const AdminDashboard = () => {
             isConnected={isConnected}
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
+
+            {/* --- Top Bar with Notifications --- */}
+            <div className="admin-top-bar" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px', padding: '0 10px', position: 'relative' }}>
+                <div style={{ position: 'relative' }}>
+                    <button
+                        onClick={() => setIsNotifOpen(!isNotifOpen)}
+                        style={{
+                            background: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '40px', height: '40px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)', position: 'relative'
+                        }}
+                    >
+                        <Notifications style={{ color: '#64748b' }} />
+                        {notifications.filter(n => !n.read).length > 0 && (
+                            <span style={{
+                                position: 'absolute', top: '-2px', right: '-2px', background: '#ef4444', color: 'white',
+                                fontSize: '0.7rem', fontWeight: 'bold', width: '18px', height: '18px', borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white'
+                            }}>
+                                {notifications.filter(n => !n.read).length}
+                            </span>
+                        )}
+                    </button>
+
+                    <AnimatePresence>
+                        {isNotifOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                style={{
+                                    position: 'absolute', top: '50px', right: '0', width: '320px', background: 'white',
+                                    borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                                    zIndex: 1000, border: '1px solid #f1f5f9', overflow: 'hidden'
+                                }}
+                            >
+                                <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>Notifications</h4>
+                                    {notifications.length > 0 && (
+                                        <button onClick={clearAllNotifications} style={{ border: 'none', background: 'none', color: '#64748b', fontSize: '0.75rem', cursor: 'pointer' }}>
+                                            Clear All
+                                        </button>
+                                    )}
+                                </div>
+                                <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                                    {notifications.length === 0 ? (
+                                        <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+                                            No new notifications
+                                        </div>
+                                    ) : (
+                                        notifications.map(n => (
+                                            <div
+                                                key={n.id}
+                                                onClick={() => {
+                                                    markAsRead(n.id);
+                                                    if (n.action) {
+                                                        n.action();
+                                                        setIsNotifOpen(false);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '12px 16px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer',
+                                                    background: n.read ? 'white' : '#f0f9ff', transition: 'background 0.2s'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    <div style={{
+                                                        minWidth: '32px', height: '32px', borderRadius: '50%', background: `${n.color}20`, color: n.color,
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    }}>
+                                                        {n.type === 'pending' ? <Person fontSize="small" /> :
+                                                            n.type === 'printer' ? <Print fontSize="small" /> :
+                                                                n.type === 'email' ? <Email fontSize="small" /> :
+                                                                    <Notifications fontSize="small" />}
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{n.title}</span>
+                                                            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{n.time}</span>
+                                                        </div>
+                                                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: '1.4' }}>{n.message}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
+
             {/* Personal Info Tab */}
             {activeTab === 'profile' && user && (
                 <PersonalInfo
@@ -806,83 +1111,126 @@ const AdminDashboard = () => {
                                             printerStatus.status === 'checking' ? 'CHECKING' : 'OFFLINE'}
                                 </span>
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
-                                    <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>
-                                        {printerStatus.printer_name || 'Generic Printer'}
-                                    </span>
+                                <div className="printer-details-layout">
+                                    {/* Left: Info */}
+                                    <div className="printer-info-left">
+                                        <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>
+                                            {printerStatus.printer_name || 'Generic Printer'}
+                                        </span>
 
-                                    <span style={{
-                                        display: 'inline-block',
-                                        padding: '4px 10px',
-                                        borderRadius: '6px',
-                                        fontSize: '0.75rem',
-                                        width: 'fit-content',
-                                        marginBottom: '12px',
-                                        backgroundColor: printerStatus.status === 'ready' ? '#f0fdf4' :
-                                            printerStatus.status === 'warning' ? '#fffbeb' :
-                                                printerStatus.status === 'checking' ? '#f1f5f9' : '#fef2f2',
-                                        color: printerStatus.status === 'ready' ? '#166534' :
-                                            printerStatus.status === 'warning' ? '#92400e' :
-                                                printerStatus.status === 'checking' ? '#475569' : '#991b1b',
-                                        border: `1px solid ${printerStatus.status === 'ready' ? '#bbf7d0' :
-                                            printerStatus.status === 'warning' ? '#fde68a' :
-                                                printerStatus.status === 'checking' ? '#e2e8f0' : '#fecaca'}`
-                                    }}>
-                                        {printerStatus.message || 'Checking...'}
-                                    </span>
+                                        <span style={{
+                                            display: 'inline-block',
+                                            padding: '4px 10px',
+                                            borderRadius: '6px',
+                                            fontSize: '0.75rem',
+                                            width: 'fit-content',
+                                            backgroundColor: printerStatus.status === 'ready' ? '#f0fdf4' :
+                                                printerStatus.status === 'warning' ? '#fffbeb' :
+                                                    printerStatus.status === 'checking' ? '#f1f5f9' : '#fef2f2',
+                                            color: printerStatus.status === 'ready' ? '#166534' :
+                                                printerStatus.status === 'warning' ? '#92400e' :
+                                                    printerStatus.status === 'checking' ? '#475569' : '#991b1b',
+                                            border: `1px solid ${printerStatus.status === 'ready' ? '#bbf7d0' :
+                                                printerStatus.status === 'warning' ? '#fde68a' :
+                                                    printerStatus.status === 'checking' ? '#e2e8f0' : '#fecaca'}`
+                                        }}>
+                                            {printerStatus.message || 'Checking...'}
+                                        </span>
+                                    </div>
 
-                                    {/* Separator line */}
-                                    <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0 12px 0' }}></div>
+                                    {/* Separator for Mobile Only */}
+                                    <div className="printer-horizontal-divider" style={{ height: '1px', background: '#e2e8f0' }}></div>
 
-                                    {/* Thermal Paper Section (Merged) */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>🧻 Thermal Paper</span>
+                                    {/* Right: Thermal Paper (Enhanced Battery Style) */}
+                                    <div className="printer-paper-right" style={{ background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                🧻 Paper
+                                            </span>
                                             <span style={{
-                                                color: shareStats.paperRemaining <= 10 ? '#ef4444' : shareStats.paperRemaining <= 30 ? '#f59e0b' : '#10b981',
+                                                color: shareStats.paperRemaining <= 5 ? '#ef4444' :
+                                                    shareStats.paperRemaining <= 15 ? '#f97316' :
+                                                        shareStats.paperRemaining <= 40 ? '#f59e0b' : '#10b981',
                                                 fontWeight: '800',
-                                                fontSize: '0.9rem'
+                                                fontSize: '0.85rem'
                                             }}>
                                                 {shareStats.paperRemaining}%
                                             </span>
                                         </div>
 
-                                        {/* Progress bar */}
                                         <div style={{
-                                            width: '100%',
-                                            height: '6px',
-                                            backgroundColor: '#e5e7eb',
-                                            borderRadius: '3px',
-                                            overflow: 'hidden'
+                                            position: 'relative',
+                                            height: '24px', // Slightly taller for text if needed
+                                            background: '#e2e8f0',
+                                            borderRadius: '5px',
+                                            border: '1px solid #cbd5e1',
+                                            padding: '2px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
                                         }}>
+                                            {/* Fill */}
                                             <div style={{
-                                                width: `${Math.min(100, shareStats.paperRemaining)}%`, /* Use remaining % directly */
                                                 height: '100%',
-                                                backgroundColor: shareStats.paperRemaining <= 10 ? '#ef4444' : shareStats.paperRemaining <= 30 ? '#f59e0b' : '#10b981',
-                                                transition: 'width 0.3s ease'
+                                                width: `${Math.max(5, Math.min(100, shareStats.paperRemaining))}%`,
+                                                background: shareStats.paperRemaining <= 5 ? 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)' :
+                                                    shareStats.paperRemaining <= 15 ? 'linear-gradient(90deg, #f97316 0%, #ea580c 100%)' :
+                                                        shareStats.paperRemaining <= 40 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)' :
+                                                            'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
+                                                borderRadius: '3px',
+                                                transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
                                             }} />
+
+                                            {/* Status Text Overlay */}
+                                            <div style={{
+                                                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '0.7rem', fontWeight: '700',
+                                                color: shareStats.paperRemaining <= 40 ? '#fff' : '#1e293b',
+                                                textShadow: shareStats.paperRemaining <= 40 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
+                                                pointerEvents: 'none'
+                                            }}>
+                                                {shareStats.paperRemaining <= 5 ? 'CRITICAL' :
+                                                    shareStats.paperRemaining <= 15 ? 'LOW' :
+                                                        shareStats.paperRemaining <= 40 ? 'MODERATE' : 'GOOD'}
+                                            </div>
+
+                                            {/* Segments Overlay */}
+                                            <div style={{
+                                                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                                                display: 'flex',
+                                                padding: '2px'
+                                            }}>
+                                                {[...Array(10)].map((_, i) => (
+                                                    <div key={i} style={{
+                                                        flex: 1,
+                                                        borderRight: i < 9 ? '1px solid rgba(255,255,255,0.2)' : 'none'
+                                                    }}></div>
+                                                ))}
+                                            </div>
                                         </div>
 
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
                                                 {shareStats.printCount} printed
                                             </span>
                                             <button
                                                 onClick={() => setShowResetModal(true)}
                                                 disabled={shareStats.printCount === 0}
                                                 style={{
-                                                    padding: '4px 10px',
-                                                    fontSize: '0.75rem',
+                                                    padding: '4px 8px',
+                                                    fontSize: '0.7rem',
                                                     fontWeight: '600',
                                                     backgroundColor: shareStats.printCount > 0 ? '#eff6ff' : '#f1f5f9',
                                                     color: shareStats.printCount > 0 ? '#3b82f6' : '#9ca3af',
-                                                    border: 'none',
-                                                    borderRadius: '6px',
+                                                    border: '1px solid',
+                                                    borderColor: shareStats.printCount > 0 ? '#bfdbfe' : '#e2e8f0',
+                                                    borderRadius: '4px',
                                                     cursor: shareStats.printCount > 0 ? 'pointer' : 'not-allowed',
-                                                    transition: 'all 0.2s ease'
+                                                    display: 'flex', alignItems: 'center', gap: '4px'
                                                 }}
                                             >
-                                                Counter Reset
+                                                ↺ Reset
                                             </button>
                                         </div>
                                     </div>
@@ -915,6 +1263,18 @@ const AdminDashboard = () => {
                                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
                                     <span className="metric-label" style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         📧 Email Reports
+                                        {emailStatus === 'sending' && (
+                                            <span style={{
+                                                fontSize: '0.65rem',
+                                                background: '#3b82f6',
+                                                color: 'white',
+                                                padding: '2px 8px',
+                                                borderRadius: '10px',
+                                                animation: 'pulse 1.5s infinite'
+                                            }}>
+                                                Sending...
+                                            </span>
+                                        )}
                                     </span>
                                     <div style={{ position: 'relative', zIndex: 20 }}>
                                         <TimePeriodFilter
@@ -1080,25 +1440,11 @@ const AdminDashboard = () => {
                                     />
                                 </div>
 
-                                <button
-                                    className="icon-btn"
-                                    title="Export"
-                                    style={{
-                                        padding: '8px',
-                                        height: '100%',
-                                        borderRadius: '6px',
-                                        border: '1px solid #cbd5e1',
-                                        background: 'white',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#64748b',
-                                        minWidth: '40px'
-                                    }}
-                                >
-                                    <Download />
-                                </button>
+                                <ExportButton
+                                    onExportCSV={() => handleExportUsers('csv')}
+                                    onExportExcel={() => handleExportUsers('excel')}
+                                    onExportPDF={() => handleExportUsers('pdf')}
+                                />
 
                                 {/* Time Period Filter */}
                                 <div style={{ height: '100%' }}>
@@ -1157,8 +1503,8 @@ const AdminDashboard = () => {
                                                     <td><div className="skeleton-box" style={{ width: '90px' }}></div></td>
                                                 </tr>
                                             ))
-                                        ) : filteredUsers.length > 0 ? (
-                                            filteredUsers.map((u, i) => (
+                                        ) : currentUsers.length > 0 ? (
+                                            currentUsers.map((u, i) => (
                                                 <tr key={u.user_id}>
                                                     <td>
                                                         <div className="user-name-cell">
@@ -1221,8 +1567,8 @@ const AdminDashboard = () => {
                                             <div className="skeleton-box" style={{ width: '100%', height: '40px' }}></div>
                                         </div>
                                     ))
-                                ) : filteredUsers.length > 0 ? (
-                                    filteredUsers.map((u) => (
+                                ) : currentUsers.length > 0 ? (
+                                    currentUsers.map((u) => (
                                         <motion.div
                                             key={u.user_id}
                                             className="user-card-item"
@@ -1296,6 +1642,11 @@ const AdminDashboard = () => {
                                 )}
                             </div>
                         )}
+                        <Pagination
+                            currentPage={usersPage}
+                            totalPages={totalUserPages}
+                            onPageChange={setUsersPage}
+                        />
                     </motion.div>
                 </>
             )}
@@ -1395,6 +1746,12 @@ const AdminDashboard = () => {
                                     <option value="desc">Newest First</option>
                                     <option value="asc">Oldest First</option>
                                 </select>
+                                <ExportButton
+                                    onExportCSV={() => handleExportHistory('csv')}
+                                    onExportExcel={() => handleExportHistory('excel')}
+                                    onExportPDF={() => handleExportHistory('pdf')}
+                                />
+
                             </div>
                         </div>
                         <div className="table-container-wrapper">
@@ -1423,10 +1780,10 @@ const AdminDashboard = () => {
                                                 ))}
                                             </tr>
                                         ))
-                                    ) : displayedMyHistory.length === 0 ? (
+                                    ) : currentHistory.length === 0 ? (
                                         <NoDataFound type="history" compact={true} colSpan={11} />
                                     ) : (
-                                        displayedMyHistory.map((m) => (
+                                        currentHistory.map((m) => (
                                             <tr key={m.id}>
                                                 <td>{formatDate(m.created_at)}</td>
                                                 {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
@@ -1461,6 +1818,11 @@ const AdminDashboard = () => {
                                 </tbody>
                             </table>
                         </div>
+                        <Pagination
+                            currentPage={historyPage}
+                            totalPages={totalHistoryPages}
+                            onPageChange={setHistoryPage}
+                        />
                     </motion.div>
                 </>
             )}
