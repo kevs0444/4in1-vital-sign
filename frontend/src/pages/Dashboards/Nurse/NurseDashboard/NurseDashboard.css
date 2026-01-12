@@ -366,12 +366,112 @@
     padding: 10px;
 }
 
+
+/* =====================================================
+   COMPONENT ANALYTICS STYLES (Population & Dashboard)
+   ===================================================== */
+
+/* Population Analytics */
+.population-analytics-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.population-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.population-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.population-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+}
+
+.population-bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 1.5rem;
+}
+
+/* Dashboard Analytics */
+.dashboard-analytics-container {
+    padding: 0 0 20px 0;
+}
+
+.dashboard-summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+    margin-top: 24px;
+}
+
+.dashboard-analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.table-container-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* =====================================================
    COMPREHENSIVE RESPONSIVE DESIGN SYSTEM
    ===================================================== */
 
-/* --- MOBILE PORTRAIT (< 480px) --- */
+/* --- MOBILE PORTRAIT (< 480px) - Covers Mobile S, M, L --- */
 @media (max-width: 480px) {
+
+    /* Population Analytics Mobile */
+    .population-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .population-header>div {
+        width: 100%;
+    }
+
+    .population-stats-grid {
+        grid-template-columns: 1fr;
+        /* Stack on small mobile */
+        gap: 1rem;
+    }
+
+    .population-charts-grid {
+        grid-template-columns: 1fr;
+        min-height: auto;
+    }
+
+    .population-bottom-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    /* Dashboard Analytics Mobile */
+    .dashboard-summary-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .dashboard-analytics-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
 
     /* Summary Cards - Single Column */
     .summary-cards {
@@ -380,7 +480,8 @@
     }
 
     .summary-card {
-        padding: 1.25rem;
+        padding: 1rem;
+        /* Reduced padding for small screens */
     }
 
     .summary-value {
@@ -399,10 +500,15 @@
     .distribution-card,
     .trends-card,
     .health-card,
-    .insights-card {
-        grid-column: span 1;
-        min-height: 280px;
-        padding: 1.25rem;
+    .insights-card,
+    .population-card,
+    .dashboard-card {
+        grid-column: span 1 !important;
+        /* Force span 1 */
+        grid-row: auto !important;
+        /* Reset row span */
+        min-height: auto;
+        padding: 1rem;
     }
 
     .metric-value {
@@ -454,8 +560,9 @@
 
     .users-table th,
     .users-table td {
-        padding: 0.75rem 1rem;
-        font-size: 0.85rem;
+        padding: 0.75rem 0.5rem;
+        /* Reduced horizontal padding */
+        font-size: 0.8rem;
     }
 
     .user-avatar {
@@ -491,11 +598,18 @@
     /* Charts */
     .chart-card {
         height: 260px;
-        padding: 1rem;
+        padding: 0.5rem;
+        /* Maximize space for chart */
     }
 
     .chart-wrapper {
         min-height: 180px;
+    }
+
+    /* Pie Chart Wrapper specific */
+    .pie-wrapper {
+        height: 200px;
+        /* Constrain height on mobile */
     }
 
     /* Header Adjustments */
@@ -521,6 +635,10 @@
         max-height: 100vh !important;
         border-radius: 0 !important;
         padding: 1rem !important;
+    }
+
+    .modal-header h2 {
+        font-size: 1.2rem;
     }
 }
 

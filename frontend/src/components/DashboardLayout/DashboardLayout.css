@@ -23,8 +23,8 @@
     /* Mobile friendly dynamic height */
     z-index: 50;
     transition: width 0.3s ease, transform 0.3s ease;
-    overflow: hidden;
-    /* Prevent sidebar itself from scrolling, only nav should scroll */
+    overflow: visible;
+    /* Allow toggle button to protrude */
 }
 
 /* Collapsed Sidebar State */
@@ -68,6 +68,7 @@
     align-items: center;
     gap: 0.75rem;
     border-bottom: 1px solid #f1f5f9;
+    overflow-x: hidden;
 }
 
 .sidebar-logo {
@@ -104,6 +105,7 @@
     flex: 1;
     padding: 1.5rem 1rem;
     overflow-y: auto;
+    overflow-x: hidden;
     min-height: 0;
     /* Crucial for flux scrolling */
     display: flex;
@@ -157,6 +159,7 @@
     /* Ensure it stays on top if anything odd happens */
     flex-shrink: 0;
     /* Prevent footer from shrinking */
+    overflow-x: hidden;
 }
 
 .user-profile {

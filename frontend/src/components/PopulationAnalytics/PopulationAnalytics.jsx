@@ -171,8 +171,8 @@ const PopulationAnalytics = () => {
     const roles = ['Full Institution', 'Student', 'Employee', 'Doctor', 'Nurse'];
 
     return (
-        <div className="population-analytics" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div className="population-analytics-container">
+            <header className="population-header">
                 <div>
                     <h2 style={{ fontSize: '1.8rem', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>Population Health Analytics</h2>
                     <p style={{ color: '#64748b', fontWeight: '500' }}>Aggregated insights from {data?.averages.total} measurements</p>
@@ -252,7 +252,7 @@ const PopulationAnalytics = () => {
             </header>
 
             {/* Quick Stats Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+            <div className="population-stats-grid">
                 <StatCard
                     icon={<Favorite />}
                     label="Avg Heart Rate"
@@ -285,11 +285,12 @@ const PopulationAnalytics = () => {
             </div>
 
             {/* Main Charts Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+            <div className="population-charts-grid">
 
                 {/* Heart Rate Trends */}
                 <motion.div
                     style={cardStyle}
+                    className="population-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                 >
@@ -297,7 +298,7 @@ const PopulationAnalytics = () => {
                         <h3>Heart Rate Trends (Daily Avg)</h3>
                         <TrendingUp style={{ color: '#dc2626' }} />
                     </div>
-                    <div style={{ height: '300px' }}>
+                    <div className="chart-wrapper">
                         <Line data={hrTrendData} options={chartOptions} />
                     </div>
                 </motion.div>
@@ -305,6 +306,7 @@ const PopulationAnalytics = () => {
                 {/* Blood Pressure Trends */}
                 <motion.div
                     style={cardStyle}
+                    className="population-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
@@ -316,17 +318,18 @@ const PopulationAnalytics = () => {
                             <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: '700' }}>● DIA</span>
                         </div>
                     </div>
-                    <div style={{ height: '300px' }}>
+                    <div className="chart-wrapper">
                         <Line data={bpTrendData} options={chartOptions} />
                     </div>
                 </motion.div>
             </div>
 
             {/* Bottom Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <div className="population-bottom-grid">
                 {/* Risk Distribution */}
                 <motion.div
                     style={cardStyle}
+                    className="population-card"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 }}
@@ -334,11 +337,11 @@ const PopulationAnalytics = () => {
                     <div style={cardHeaderStyle}>
                         <h3>Population Risk Profile</h3>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                        <div style={{ width: '200px', height: '200px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        <div className="pie-wrapper" style={{ width: '200px', height: '200px' }}>
                             <Doughnut data={riskDistributionData} options={{ ...chartOptions, scales: { x: { display: false }, y: { display: false } } }} />
                         </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '200px' }}>
                             {Object.entries(data?.risk_distribution || {}).map(([cat, count], idx) => (
                                 <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -355,6 +358,7 @@ const PopulationAnalytics = () => {
                 {/* Health Insights */}
                 <motion.div
                     style={{ ...cardStyle, background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', color: 'white' }}
+                    className="population-card"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 }}

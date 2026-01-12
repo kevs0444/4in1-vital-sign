@@ -153,12 +153,14 @@ export const useRealtimeUpdates = (options = {}) => {
 
             case 'email_activity':
             case 'print_activity':
+                console.log('🔔 Real-time event received:', eventData.type, eventData.data);
                 // Call custom handler for UI updates (e.g., "sending" spinner)
                 if (onDataUpdate) {
                     onDataUpdate(eventData);
                 }
                 // Refetch to get updated counts
                 if (refetchData) {
+                    console.log('🔄 Triggering refetch for', eventData.type);
                     refetchData();
                 }
                 break;

@@ -122,30 +122,48 @@ def get_share_stats():
     """
     Returns statistics for email and print sharing:
     - email_sent_count: Number of measurements with email_sent = 1 (filtered by created_at)
-    - receipt_printed_count: Number of measurements with receipt_printed = 1
-    - paper_remaining: 100 - receipt_printed_count (assuming 100 receipts per roll)
+    - receipt_printed_count: Number of measurements with receipt_printed = 1 (filtered by created_at)
+    - paper_remaining: 100 - TOTAL receipt_printed_count (for paper roll tracking)
     """
     session = SessionLocal()
     try:
         from app.models.measurement_model import Measurement
         
-        # Email count - filtered by created_at date range
-        email_query = session.query(func.count(Measurement.id)).filter(Measurement.email_sent == 1)
-        
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
-        # Filter by created_at (when measurement was taken)
+        # Debug: Log the date filter parameters
+        print("=" * 50)
+        print("📧 SHARE STATS REQUEST")
+        print(f"   Start Date: {start_date}")
+        print(f"   End Date: {end_date}")
+        
+        # Email count - filtered by created_at date range
+        email_query = session.query(func.count(Measurement.id)).filter(Measurement.email_sent == 1)
         if start_date:
             email_query = email_query.filter(Measurement.created_at >= start_date)
         if end_date:
             email_query = email_query.filter(Measurement.created_at <= end_date)
-            
         email_count = email_query.scalar() or 0
         
-        # Print count is NOT filtered by time because it tracks physical paper usage on the current roll.
-        print_count = session.query(func.count(Measurement.id)).filter(Measurement.receipt_printed == 1).scalar() or 0
-        paper_remaining = max(0, 100 - print_count)
+        # Print count - ALSO filtered by created_at date range (for display)
+        print_query = session.query(func.count(Measurement.id)).filter(Measurement.receipt_printed == 1)
+        if start_date:
+            print_query = print_query.filter(Measurement.created_at >= start_date)
+        if end_date:
+            print_query = print_query.filter(Measurement.created_at <= end_date)
+        print_count = print_query.scalar() or 0
+        
+        # Paper remaining uses TOTAL print count (not filtered) for physical paper tracking
+        total_print_count = session.query(func.count(Measurement.id)).filter(Measurement.receipt_printed == 1).scalar() or 0
+        paper_remaining = max(0, 100 - total_print_count)
+        
+        # Debug: Log the results
+        print(f"   📨 Emails Sent (filtered): {email_count}")
+        print(f"   🖨️ Receipts Printed (filtered): {print_count}")
+        print(f"   🧻 Total Printed (unfiltered): {total_print_count}")
+        print(f"   📄 Paper Remaining: {paper_remaining}%")
+        print("=" * 50)
         
         return jsonify({
             'success': True,

@@ -264,7 +264,8 @@ const NurseDashboard = () => {
                 u.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 u.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                u.role?.toLowerCase().includes(searchTerm.toLowerCase())
+                u.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                u.school_number?.toLowerCase().includes(searchTerm.toLowerCase())
             )
             .sort((a, b) => {
                 const dateA = a.last_checkup ? new Date(a.last_checkup).getTime() : 0;
@@ -1135,6 +1136,14 @@ const NurseDashboard = () => {
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             onClick={(e) => e.stopPropagation()}
+                            style={{
+                                backgroundColor: '#ffffff',
+                                borderRadius: '16px',
+                                padding: '24px',
+                                maxWidth: '600px',
+                                width: '100%',
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                            }}
                         >
                             <div className="modal-header">
                                 <h2>Detailed Assessment</h2>

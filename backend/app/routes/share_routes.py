@@ -565,27 +565,47 @@ def send_results_email():
             try:
                 from app.models.measurement_model import Measurement
                 meas_id = user_data.get('measurement_id') or user_data.get('id')
-                # Avoid confusing 'id' if it's user id. measurement_id should be distinct.
-                # In Sharing.jsx: ID: {userData.measurement_id || userData.id || "N/A"}
-                # But userData.id might be user_id if not careful. Check formatting.
-                # If ID starts with MEAS-, it is measurement.
+                user_id_for_lookup = user_data.get('user_id') or user_data.get('userId')
                 
+                print(f"📝 Attempting to mark email_sent=1")
+                print(f"   measurement_id: {meas_id}")
+                print(f"   user_id: {user_id_for_lookup}")
+                
+                msm = None
+                
+                # Try to find by measurement_id first
                 if meas_id and str(meas_id).startswith('MEAS-'):
-                     msm = db.query(Measurement).filter(Measurement.id == meas_id).first()
-                     if msm:
-                         msm.email_sent = 1
-                         db.commit()
-                         print(f"✅ Measurement {meas_id} marked as emailed.")
-                else: 
-                     # Fallback: Find latest measurement for user if needed, or skip
-                     # For now, only update if we have a valid Measurement ID
-                     pass
+                    msm = db.query(Measurement).filter(Measurement.id == meas_id).first()
+                    if msm:
+                        print(f"   ✅ Found measurement by ID: {meas_id}")
+                
+                # Fallback: Find latest measurement for user
+                if not msm and user_id_for_lookup:
+                    msm = db.query(Measurement).filter(
+                        Measurement.user_id == user_id_for_lookup
+                    ).order_by(Measurement.created_at.desc()).first()
+                    if msm:
+                        print(f"   ✅ Found latest measurement for user: {msm.id}")
+                
+                # Update the measurement if found
+                if msm:
+                    if msm.email_sent != 1:
+                        msm.email_sent = 1
+                        db.commit()
+                        print(f"   ✅ Measurement {msm.id} marked as emailed (email_sent=1)")
+                    else:
+                        print(f"   ℹ️ Measurement {msm.id} already marked as emailed")
+                else:
+                    print(f"   ⚠️ No measurement found to update")
+                    
             except Exception as e_db:
                  print(f"⚠️ Failed to update measurement status: {e_db}")
 
             # For now, we trust the frontend will refetch stats, but we MUST broadcast
+            print("📡 Broadcasting real-time updates...")
             broadcast_stats_update() # TRIGGER INSTANT UPDATE
             broadcast_to_all('email_activity', {'status': 'sent'}) # Notify email completed
+            print("📡 Broadcasts sent successfully!")
             
             return jsonify({'success': True, 'message': f'Report sent to {target_email}'}), 200
         else:

@@ -33,7 +33,7 @@ import {
     RadialLinearScale,
     Filler
 } from 'chart.js';
-import { Line, Doughnut } from 'react-chartjs-2';
+import { Line, Doughnut, Pie } from 'react-chartjs-2';
 import './AdminDashboard.css';
 import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory, printerAPI, getShareStatsFiltered, resetPaperRoll } from '../../../../utils/api';
 import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance component
@@ -374,8 +374,11 @@ const AdminDashboard = () => {
                 }
             }
 
+            console.log('📧 Fetching share stats with params:', dateParams);
             const response = await getShareStatsFiltered(dateParams);
+            console.log('📧 Share stats response:', response);
             if (response && response.success && response.stats) {
+                console.log('📧 Setting shareStats:', response.stats);
                 setShareStats({
                     emailCount: response.stats.email_sent_count || 0,
                     printCount: response.stats.receipt_printed_count || 0,
@@ -447,9 +450,9 @@ const AdminDashboard = () => {
         const printerInterval = setInterval(checkPrinterStatus, 5000);
         checkPrinterStatus(); // Initial check
 
-        // Fetch share stats initially and poll every 10 seconds
+        // Fetch share stats initially and poll every 2 seconds for REAL-TIME updates
         fetchShareStats();
-        const shareStatsInterval = setInterval(fetchShareStats, 10000);
+        const shareStatsInterval = setInterval(fetchShareStats, 2000);
 
         return () => {
             clearInterval(printerInterval);
@@ -748,8 +751,7 @@ const AdminDashboard = () => {
             data: Object.values(stats.roles_distribution || {}),
             backgroundColor: roles.map(r => roleColors[r] || '#cbd5e1'),
             borderWidth: 0,
-            hoverOffset: 10,
-            cutout: '75%'
+            hoverOffset: 10
         }]
     };
 
@@ -1086,6 +1088,76 @@ const AdminDashboard = () => {
                             }} />
                         </motion.div>
 
+                        {/* Email Statistics Card (Dark Gray Theme) */}
+                        <motion.div
+                            className="metric-card"
+                            whileHover={{ y: -5 }}
+                            style={{
+                                background: 'linear-gradient(135deg, #475569 0%, #334155 100%)',
+                                border: 'none',
+                                position: 'relative',
+                                overflow: 'visible',
+                                color: 'white'
+                            }}
+                        >
+                            {/* Dropdown positioned absolutely at top right */}
+                            <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 20 }}>
+                                <TimePeriodFilter
+                                    timePeriod={emailTimePeriod}
+                                    setTimePeriod={setEmailTimePeriod}
+                                    customDateRange={emailCustomDateRange}
+                                    setCustomDateRange={setEmailCustomDateRange}
+                                    variant="dropdown"
+                                    showCustom={true}
+                                />
+                            </div>
+
+                            <div className="metric-content" style={{ zIndex: 10 }}>
+                                {/* Label */}
+                                <span className="metric-label" style={{ color: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                                    📧 Email Reports
+                                    {emailStatus === 'sending' && (
+                                        <span style={{
+                                            fontSize: '0.65rem',
+                                            background: '#3b82f6',
+                                            color: 'white',
+                                            padding: '2px 8px',
+                                            borderRadius: '10px',
+                                            animation: 'pulse 1.5s infinite'
+                                        }}>
+                                            Sending...
+                                        </span>
+                                    )}
+                                </span>
+
+                                {/* Count */}
+                                <span className="metric-value" style={{
+                                    color: 'white',
+                                    fontWeight: '800',
+                                    fontSize: '2.5rem',
+                                    lineHeight: '1.1',
+                                    display: 'block'
+                                }}>
+                                    {shareStats.emailCount}
+                                </span>
+                                <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginTop: '4px', display: 'block' }}>
+                                    emails sent
+                                </span>
+                            </div>
+                            <div style={{
+                                position: 'absolute',
+                                right: '-20px',
+                                bottom: '-20px',
+                                width: '120px',
+                                height: '120px',
+                                borderRadius: '50%',
+                                border: '12px solid rgba(255,255,255,0.1)',
+                                opacity: 0.3,
+                                zIndex: 0
+                            }} />
+                        </motion.div>
+
+                        {/* Printer Status Card */}
                         <motion.div className="metric-card" whileHover={{ y: -5 }}>
                             <div className="metric-content">
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -1160,7 +1232,7 @@ const AdminDashboard = () => {
 
                                         <div style={{
                                             position: 'relative',
-                                            height: '24px', // Slightly taller for text if needed
+                                            height: '24px',
                                             background: '#e2e8f0',
                                             borderRadius: '5px',
                                             border: '1px solid #cbd5e1',
@@ -1210,15 +1282,15 @@ const AdminDashboard = () => {
                                             </div>
                                         </div>
 
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', gap: '12px' }}>
+                                            <span style={{ fontSize: '0.7rem', color: '#64748b', whiteSpace: 'nowrap' }}>
                                                 {shareStats.printCount} printed
                                             </span>
                                             <button
                                                 onClick={() => setShowResetModal(true)}
                                                 disabled={shareStats.printCount === 0}
                                                 style={{
-                                                    padding: '4px 8px',
+                                                    padding: '4px 10px',
                                                     fontSize: '0.7rem',
                                                     fontWeight: '600',
                                                     backgroundColor: shareStats.printCount > 0 ? '#eff6ff' : '#f1f5f9',
@@ -1227,7 +1299,8 @@ const AdminDashboard = () => {
                                                     borderColor: shareStats.printCount > 0 ? '#bfdbfe' : '#e2e8f0',
                                                     borderRadius: '4px',
                                                     cursor: shareStats.printCount > 0 ? 'pointer' : 'not-allowed',
-                                                    display: 'flex', alignItems: 'center', gap: '4px'
+                                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                                    whiteSpace: 'nowrap'
                                                 }}
                                             >
                                                 ↺ Reset
@@ -1251,68 +1324,6 @@ const AdminDashboard = () => {
                                     border: '10px solid'
                                 }}></div>
                         </motion.div>
-
-                        {/* Email Statistics Card (Gray Theme) */}
-                        {/* Email Statistics Card (Gray Theme) */}
-                        <motion.div
-                            className="metric-card"
-                            whileHover={{ y: -5 }}
-                            style={{ background: '#e2e8f0', border: 'none', position: 'relative', overflow: 'visible' }}
-                        >
-                            <div className="metric-content" style={{ zIndex: 10 }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
-                                    <span className="metric-label" style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        📧 Email Reports
-                                        {emailStatus === 'sending' && (
-                                            <span style={{
-                                                fontSize: '0.65rem',
-                                                background: '#3b82f6',
-                                                color: 'white',
-                                                padding: '2px 8px',
-                                                borderRadius: '10px',
-                                                animation: 'pulse 1.5s infinite'
-                                            }}>
-                                                Sending...
-                                            </span>
-                                        )}
-                                    </span>
-                                    <div style={{ position: 'relative', zIndex: 20 }}>
-                                        <TimePeriodFilter
-                                            timePeriod={emailTimePeriod}
-                                            setTimePeriod={setEmailTimePeriod}
-                                            customDateRange={emailCustomDateRange}
-                                            setCustomDateRange={setEmailCustomDateRange}
-                                            variant="dropdown"
-                                            showCustom={true}
-                                        />
-                                    </div>
-                                </div>
-                                <span className="metric-value" style={{
-                                    color: '#1e293b',
-                                    fontWeight: '800',
-                                    fontSize: '2.5rem',
-                                    lineHeight: '1.1',
-                                    marginTop: '8px',
-                                    display: 'block'
-                                }}>
-                                    {shareStats.emailCount}
-                                </span>
-                                <span style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                                    emails sent
-                                </span>
-                            </div>
-                            <div style={{
-                                position: 'absolute',
-                                right: '-20px',
-                                bottom: '-20px',
-                                width: '120px',
-                                height: '120px',
-                                borderRadius: '50%',
-                                border: '12px solid #cbd5e1',
-                                opacity: 0.2,
-                                zIndex: 0
-                            }} />
-                        </motion.div>
                     </div>
 
                     {/* 2. Main Analytics Grid */}
@@ -1327,30 +1338,13 @@ const AdminDashboard = () => {
                             transition={{ delay: 0.2 }}
                         >
                             <div className="card-header">
-                                <h3>User Distribution</h3>
+                                <h3>User Distribution <span style={{ fontSize: '0.9em', color: '#64748b', fontWeight: '500' }}>({stats.total_users} Users)</span></h3>
                             </div>
-                            <div className="chart-wrapper pie-wrapper" style={{ position: 'relative', flex: 1, minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="chart-wrapper pie-wrapper">
                                 {loading ? (
                                     <div className="loading-spinner"></div>
                                 ) : (
-                                    <>
-                                        <Doughnut data={roleDoughnutData} options={pieOptions} />
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '50%',
-                                            left: pieOptions.plugins.legend.position === 'right' ? '35%' : '50%', // Offset if legend is right
-                                            transform: 'translate(-50%, -50%)',
-                                            textAlign: 'center',
-                                            pointerEvents: 'none'
-                                        }}>
-                                            <span style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b', display: 'block', lineHeight: 1 }}>
-                                                {stats.total_users}
-                                            </span>
-                                            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                Users
-                                            </span>
-                                        </div>
-                                    </>
+                                    <Pie data={roleDoughnutData} options={pieOptions} />
                                 )}
                             </div>
                         </motion.div>

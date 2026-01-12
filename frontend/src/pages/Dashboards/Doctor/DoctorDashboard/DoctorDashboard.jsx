@@ -289,6 +289,58 @@ const DoctorDashboard = () => {
     // Reset pagination
     useEffect(() => { setUsersPage(1); }, [searchTerm, patientsTimePeriod, patientsCustomDateRange]);
 
+    // Filtering & Sorting Helper (now uses pre-filtered timeFilteredHistory)
+    const processHistory = (data, activeMetricFilter = metricFilter, activeRiskFilter = riskFilter) => {
+        if (!data) return [];
+        let processed = [...data];
+
+        // Metric Filter
+        if (!activeMetricFilter.includes('all')) {
+            processed = processed.filter(item => {
+                if (activeMetricFilter.includes('bp') && item.systolic > 0) return true;
+                if (activeMetricFilter.includes('hr') && item.heart_rate > 0) return true;
+                if (activeMetricFilter.includes('rr') && item.respiratory_rate > 0) return true;
+                if (activeMetricFilter.includes('spo2') && item.spo2 > 0) return true;
+                if (activeMetricFilter.includes('temp') && item.temperature > 0) return true;
+                if (activeMetricFilter.includes('weight') && item.weight > 0) return true;
+                if (activeMetricFilter.includes('height') && item.height > 0) return true;
+                if (activeMetricFilter.includes('bmi') && item.bmi > 0) return true;
+                return false;
+            });
+        }
+
+        // Risk Filter
+        if (!activeRiskFilter.includes('all')) {
+            processed = processed.filter(item => {
+                if (!item.risk_category) return false;
+                const riskCat = item.risk_category.toLowerCase();
+                return activeRiskFilter.some(filter => riskCat.includes(filter));
+            });
+        }
+
+        // Sort
+        processed.sort((a, b) => {
+            const dateA = new Date(a.created_at);
+            const dateB = new Date(b.created_at);
+            return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+        });
+
+        return processed;
+    };
+
+    const getRiskColor = (category) => {
+        if (!category) return '#64748b';
+        const cat = category.toLowerCase();
+        if (cat.includes('low')) return '#10b981';
+        if (cat.includes('moderate')) return '#f59e0b';
+        if (cat.includes('high')) return '#ef4444';
+        if (cat.includes('critical')) return '#dc2626';
+        return '#64748b';
+    };
+
+    const displayedMyHistory = processHistory(timeFilteredHistory, metricFilter, riskFilter);
+    const displayedUserHistory = processHistory(timeFilteredUserHistory, modalMetricFilter, modalRiskFilter);
+
     // Pagination Logic for History
     const totalHistoryPages = Math.ceil((displayedMyHistory?.length || 0) / itemsPerPage);
     const currentHistory = useMemo(() => {
@@ -383,57 +435,7 @@ const DoctorDashboard = () => {
         setModalRiskFilter(newFilters);
     };
 
-    // Filtering & Sorting Helper (now uses pre-filtered timeFilteredHistory)
-    const processHistory = (data, activeMetricFilter = metricFilter, activeRiskFilter = riskFilter) => {
-        if (!data) return [];
-        let processed = [...data];
 
-        // Metric Filter
-        if (!activeMetricFilter.includes('all')) {
-            processed = processed.filter(item => {
-                if (activeMetricFilter.includes('bp') && item.systolic > 0) return true;
-                if (activeMetricFilter.includes('hr') && item.heart_rate > 0) return true;
-                if (activeMetricFilter.includes('rr') && item.respiratory_rate > 0) return true;
-                if (activeMetricFilter.includes('spo2') && item.spo2 > 0) return true;
-                if (activeMetricFilter.includes('temp') && item.temperature > 0) return true;
-                if (activeMetricFilter.includes('weight') && item.weight > 0) return true;
-                if (activeMetricFilter.includes('height') && item.height > 0) return true;
-                if (activeMetricFilter.includes('bmi') && item.bmi > 0) return true;
-                return false;
-            });
-        }
-
-        // Risk Filter
-        if (!activeRiskFilter.includes('all')) {
-            processed = processed.filter(item => {
-                if (!item.risk_category) return false;
-                const riskCat = item.risk_category.toLowerCase();
-                return activeRiskFilter.some(filter => riskCat.includes(filter));
-            });
-        }
-
-        // Sort
-        processed.sort((a, b) => {
-            const dateA = new Date(a.created_at);
-            const dateB = new Date(b.created_at);
-            return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-        });
-
-        return processed;
-    };
-
-    const getRiskColor = (category) => {
-        if (!category) return '#64748b';
-        const cat = category.toLowerCase();
-        if (cat.includes('low')) return '#10b981';
-        if (cat.includes('moderate')) return '#f59e0b';
-        if (cat.includes('high')) return '#ef4444';
-        if (cat.includes('critical')) return '#dc2626';
-        return '#64748b';
-    };
-
-    const displayedMyHistory = processHistory(timeFilteredHistory, metricFilter, riskFilter);
-    const displayedUserHistory = processHistory(timeFilteredUserHistory, modalMetricFilter, modalRiskFilter);
 
     const handleExportPatients = (format) => {
         const data = timeFilteredPatients.map(u => ({
@@ -1114,6 +1116,14 @@ const DoctorDashboard = () => {
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             onClick={(e) => e.stopPropagation()}
+                            style={{
+                                backgroundColor: '#ffffff',
+                                borderRadius: '16px',
+                                padding: '24px',
+                                maxWidth: '600px',
+                                width: '100%',
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                            }}
                         >
                             <div className="modal-header">
                                 <h2>Detailed Assessment</h2>

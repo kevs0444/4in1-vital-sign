@@ -894,7 +894,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
     };
 
     return (
-        <div className="dashboard-analytics-container" style={{ padding: '0 0 20px 0' }}>
+        <div className="dashboard-analytics-container">
             <div style={{ marginBottom: '24px' }}>
                 <h2 style={{ fontSize: '1.8rem', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>Health Overview</h2>
                 <p style={{ fontSize: '1rem', color: '#64748b', fontWeight: '500', marginBottom: '16px' }}>
@@ -970,9 +970,10 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
             </motion.div>
 
             {/* Summary Cards Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px', marginTop: '24px' }}>
+            <div className="dashboard-summary-row">
                 {/* Total Checkups Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     style={{
@@ -999,6 +1000,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
 
                 {/* Latest Status Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
@@ -1030,15 +1032,11 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                 </motion.div>
             </div>
 
-            <div className="analytics-grid" style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                gap: '1.5rem',
-                alignItems: 'start'
-            }}>
+            <div className="dashboard-analytics-grid">
 
                 {/* Heart Condition Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     whileHover={{ scale: 1.02, boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.25)' }}
@@ -1092,6 +1090,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
 
                 {/* Heart Rate Chart Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
@@ -1164,6 +1163,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
 
                 {/* Blood Pressure Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
@@ -1232,6 +1232,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
 
                 {/* SpO2 Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
@@ -1269,6 +1270,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
 
                 {/* Temperature Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
@@ -1297,6 +1299,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
 
                 {/* Weight Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
@@ -1347,6 +1350,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
 
                 {/* BMI Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     whileHover={{ scale: 1.02, boxShadow: '0 20px 40px -10px rgba(220, 38, 38, 0.15)' }}
@@ -1385,6 +1389,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
 
                 {/* Height Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
@@ -1412,6 +1417,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
 
                 {/* Respiratory Rate Card */}
                 <motion.div
+                    className="dashboard-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45 }}

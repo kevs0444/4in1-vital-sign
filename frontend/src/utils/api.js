@@ -1233,7 +1233,9 @@ export const printerAPI = {
 
 export const getShareStatsFiltered = async (params = {}) => {
   try {
-    const query = new URLSearchParams(params).toString();
+    // Add timestamp to prevent caching
+    const paramsWithCache = { ...params, _t: Date.now() };
+    const query = new URLSearchParams(paramsWithCache).toString();
     console.log(`📧 Fetching share stats with filter: ${query}`);
     return await fetchWithTimeout(`${API_URL}/admin/share-stats?${query}`, {}, TIMEOUTS.SHORT);
   } catch (error) {
