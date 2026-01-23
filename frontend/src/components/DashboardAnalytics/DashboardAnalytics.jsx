@@ -105,6 +105,9 @@ export const MultiSelectDropdown = ({
         };
     }, []);
 
+    const buttonRef = React.useRef(null);
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+
     // When this dropdown opens, close all others
     const handleToggle = () => {
         if (!isOpen) {
@@ -112,6 +115,15 @@ export const MultiSelectDropdown = ({
             window.dispatchEvent(new CustomEvent('closeAllDropdowns', {
                 detail: { except: dropdownId.current }
             }));
+
+            // Calculate fixed position
+            if (buttonRef.current) {
+                const rect = buttonRef.current.getBoundingClientRect();
+                setDropdownPos({
+                    top: rect.bottom,
+                    left: rect.left
+                });
+            }
         }
         setIsOpen(!isOpen);
     };
@@ -125,6 +137,7 @@ export const MultiSelectDropdown = ({
     return (
         <div style={{ position: 'relative', display: 'inline-block' }}>
             <button
+                ref={buttonRef}
                 onClick={handleToggle}
                 style={{
                     padding: '10px 16px',
@@ -161,9 +174,9 @@ export const MultiSelectDropdown = ({
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
+                        position: 'fixed',
+                        top: dropdownPos.top,
+                        left: dropdownPos.left,
                         zIndex: 1000,
                         background: 'white',
                         border: '1px solid #e2e8f0',
@@ -308,12 +321,24 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
     }, []);
 
     // When this dropdown opens, close all others
+    const buttonRef = React.useRef(null);
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+
     const handleToggle = () => {
         if (!showDropdown) {
             // Close all other dropdowns first, except this one
             window.dispatchEvent(new CustomEvent('closeAllDropdowns', {
                 detail: { except: dropdownId.current }
             }));
+
+            // Calculate fixed position
+            if (buttonRef.current) {
+                const rect = buttonRef.current.getBoundingClientRect();
+                setDropdownPos({
+                    top: rect.bottom,
+                    left: rect.left
+                });
+            }
         }
         setShowDropdown(!showDropdown);
     };
@@ -347,6 +372,7 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
         return (
             <div style={{ position: 'relative', display: 'inline-block' }}>
                 <button
+                    ref={buttonRef}
                     onClick={handleToggle}
                     style={{
                         padding: '10px 16px',
@@ -377,9 +403,9 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         style={{
-                            position: 'absolute',
-                            top: '100%',
-                            left: 0,
+                            position: 'fixed',
+                            top: dropdownPos.top,
+                            left: dropdownPos.left,
                             zIndex: 1000,
                             background: 'white',
                             border: '1px solid #e2e8f0',

@@ -556,49 +556,10 @@
 
 /* --- SMALL TABLETS / LARGE PHONES (481px - 768px) --- */
 @media (min-width: 481px) and (max-width: 768px) {
-
-    .summary-cards,
-    .metrics-grid,
-    .analytics-grid,
     .user-cards-grid {
         grid-template-columns: repeat(2, 1fr) !important;
-        gap: 1rem;
-    }
-
-    .distribution-card,
-    .trends-card {
-        grid-column: span 2;
-    }
-
-    .health-card,
-    .insights-card {
-        grid-column: span 1;
-    }
-
-    .table-header {
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .table-controls {
-        flex-direction: column;
-        align-items: stretch;
-        width: 100%;
-    }
-
-    .search-bar {
-        width: 100%;
-    }
-
-    .chart-card {
-        height: 300px;
-    }
-
-    .view-mode-toggle {
-        justify-content: center;
-        width: 100%;
+        gap: 0.75rem !important;
+        padding: 0.5rem !important;
     }
 }
 
@@ -969,6 +930,7 @@
         border-radius: 12px !important;
     }
 }
+
 /* Enhanced Kiosk Header Layout */
 @media (max-width: 768px) {
     .table-header {
@@ -976,7 +938,7 @@
         align-items: flex-start !important;
         gap: 12px !important;
     }
-    
+
     .table-header h3 {
         width: 100%;
         margin-bottom: 8px;
@@ -985,29 +947,63 @@
     }
 
     /* Wrap controls nicely */
-    .table-header > div:not(h3) {
+    .table-header>div:not(h3) {
         width: 100%;
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        justify-content: space-between; /* or flex-start */
+        justify-content: space-between;
+        /* or flex-start */
     }
 
-    /* Filters full width or scrollable */
+    /* Filters full width - allow wrap */
     .table-header .filter-group {
-         overflow-x: auto;
-         display: flex;
-         gap: 8px;
-         padding-bottom: 4px;
-         width: 100%;
+        overflow-x: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-bottom: 4px;
+        width: 100%;
+        align-items: center;
+    }
+}
+
+/* Enhanced Kiosk Header Layout for 768px */
+@media (max-width: 768px) {
+    .table-header {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+
+    .table-controls {
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .table-controls>* {
+        flex-shrink: 0;
+    }
+
+    .search-bar {
+        flex-shrink: 1;
+        /* Allow to shrink */
+        min-width: 200px;
+        flex: 1 1 auto;
+        width: auto !important;
     }
 }
 
 /* Measurement Card Grid for History */
 .measurement-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 32px;
     margin-top: 16px;
 }
 
@@ -1015,7 +1011,7 @@
     background: white;
     border-radius: 12px;
     padding: 16px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     border: 1px solid #e2e8f0;
     transition: transform 0.2s;
 }

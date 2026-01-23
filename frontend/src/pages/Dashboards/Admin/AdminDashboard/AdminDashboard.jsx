@@ -1642,85 +1642,196 @@ const AdminDashboard = () => {
 
                         <div className="table-header">
                             <h3>Registered Users Database ({filteredUsers.length} records)</h3>
-                            <div className="table-actions">
-                                <div className="search-bar">
-                                    <Search className="search-icon" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search users..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                                <div className="role-filter-wrapper">
-                                    <MultiSelectDropdown
-                                        label="Select Roles"
-                                        selectedItems={roleFilter}
-                                        options={[
-                                            { id: 'All', label: 'All Roles' },
-                                            ...(Object.keys(stats.roles_distribution || {}).length > 0
-                                                ? Object.keys(stats.roles_distribution)
-                                                : ['Admin', 'Doctor', 'Nurse', 'Employee', 'Student']
-                                            ).map(role => ({ id: role, label: role }))
-                                        ]}
-                                        onToggle={toggleRole}
-                                        allLabel="All Roles"
-                                    />
-                                    <MultiSelectDropdown
-                                        label="Select Status"
-                                        selectedItems={statusFilter}
-                                        options={[
-                                            { id: 'All', label: 'All Status' },
-                                            { id: 'approved', label: 'Approved' },
-                                            { id: 'pending', label: 'Pending' },
-                                            { id: 'rejected', label: 'Rejected' }
-                                        ]}
-                                        onToggle={toggleStatus}
-                                        allLabel="All Status"
-                                    />
-                                </div>
 
-                                <ExportButton
-                                    onExportCSV={() => handleExportUsers('csv')}
-                                    onExportExcel={() => handleExportUsers('excel')}
-                                    onExportPDF={() => handleExportUsers('pdf')}
-                                />
+                            {/* --- DESKTOP LAYOUT (> 768px) --- */}
+                            {window.innerWidth > 768 && (
+                                <div className="table-actions desktop-only">
+                                    <div className="search-bar">
+                                        <Search className="search-icon" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search users..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="role-filter-wrapper">
+                                        <MultiSelectDropdown
+                                            label="Select Roles"
+                                            selectedItems={roleFilter}
+                                            options={[
+                                                { id: 'All', label: 'All Roles' },
+                                                ...(Object.keys(stats.roles_distribution || {}).length > 0
+                                                    ? Object.keys(stats.roles_distribution)
+                                                    : ['Admin', 'Doctor', 'Nurse', 'Employee', 'Student']
+                                                ).map(role => ({ id: role, label: role }))
+                                            ]}
+                                            onToggle={toggleRole}
+                                            allLabel="All Roles"
+                                        />
+                                        <MultiSelectDropdown
+                                            label="Select Status"
+                                            selectedItems={statusFilter}
+                                            options={[
+                                                { id: 'All', label: 'All Status' },
+                                                { id: 'approved', label: 'Approved' },
+                                                { id: 'pending', label: 'Pending' },
+                                                { id: 'rejected', label: 'Rejected' }
+                                            ]}
+                                            onToggle={toggleStatus}
+                                            allLabel="All Status"
+                                        />
+                                    </div>
 
-                                {/* Time Period Filter */}
-                                <div style={{ height: '100%' }}>
-                                    <TimePeriodFilter
-                                        timePeriod={usersTimePeriod}
-                                        setTimePeriod={setUsersTimePeriod}
-                                        customDateRange={usersCustomDateRange}
-                                        setCustomDateRange={setUsersCustomDateRange}
-                                        variant="dropdown"
+                                    <ExportButton
+                                        onExportCSV={() => handleExportUsers('csv')}
+                                        onExportExcel={() => handleExportUsers('excel')}
+                                        onExportPDF={() => handleExportUsers('pdf')}
                                     />
-                                </div>
 
-                                {/* View Toggle Buttons */}
-                                <div className="view-toggle">
-                                    <button
-                                        onClick={() => {
-                                            if (window.innerWidth > 768) setViewMode('table');
-                                        }}
-                                        className={viewMode === 'table' ? 'active' : ''}
-                                        title="Table View"
-                                        style={{
-                                            cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
-                                            opacity: window.innerWidth <= 768 ? 0.5 : 1
-                                        }}
-                                    >
-                                        <TableRows fontSize="small" />
-                                    </button>
-                                    <button
-                                        onClick={() => setViewMode('card')}
-                                        className={viewMode === 'card' ? 'active' : ''}
-                                        title="Card View"
-                                    >
-                                        <GridView fontSize="small" />
-                                    </button>
+                                    <div style={{ height: '100%' }}>
+                                        <TimePeriodFilter
+                                            timePeriod={usersTimePeriod}
+                                            setTimePeriod={setUsersTimePeriod}
+                                            customDateRange={usersCustomDateRange}
+                                            setCustomDateRange={setUsersCustomDateRange}
+                                            variant="dropdown"
+                                        />
+                                    </div>
+
+                                    <div className="view-toggle">
+                                        <button
+                                            onClick={() => setViewMode('table')}
+                                            className={viewMode === 'table' ? 'active' : ''}
+                                            title="Table View"
+                                        >
+                                            <TableRows fontSize="small" />
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode('card')}
+                                            className={viewMode === 'card' ? 'active' : ''}
+                                            title="Card View"
+                                        >
+                                            <GridView fontSize="small" />
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* --- KIOSK LAYOUT (<= 768px) --- */}
+                            {window.innerWidth <= 768 && (
+                                <div className="table-actions kiosk-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                                    {/* Row 1: Search Bar (Full Width) */}
+                                    <div className="search-bar" style={{ width: '100%', maxWidth: 'none', margin: 0 }}>
+                                        <Search className="search-icon" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search users..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            style={{ width: '100%' }}
+                                        />
+                                    </div>
+
+                                    {/* Row 2: Scrollable Filters & Actions Strip */}
+                                    <div className="kiosk-scroll-container" style={{
+                                        display: 'flex',
+                                        flexWrap: 'nowrap',
+                                        overflowX: 'auto',
+                                        gap: '12px',
+                                        alignItems: 'center',
+                                        paddingBottom: '8px', // Space for scrollbar
+                                        whiteSpace: 'nowrap',
+                                        WebkitOverflowScrolling: 'touch',
+                                        width: '100%'
+                                    }}>
+                                        <style>{`
+                                            /* Hide scrollbar for cleaner look */
+                                            .kiosk-scroll-container::-webkit-scrollbar {
+                                                display: none;
+                                            }
+                                            .kiosk-scroll-container {
+                                                -ms-overflow-style: none;
+                                                scrollbar-width: none;
+                                            }
+                                        `}</style>
+
+
+                                        {/* Roles */}
+                                        <div style={{ flex: '0 0 auto', minWidth: '150px' }}>
+                                            <MultiSelectDropdown
+                                                label="Select Roles"
+                                                selectedItems={roleFilter}
+                                                options={[
+                                                    { id: 'All', label: 'All Roles' },
+                                                    ...(Object.keys(stats.roles_distribution || {}).length > 0
+                                                        ? Object.keys(stats.roles_distribution)
+                                                        : ['Admin', 'Doctor', 'Nurse', 'Employee', 'Student']
+                                                    ).map(role => ({ id: role, label: role }))
+                                                ]}
+                                                onToggle={toggleRole}
+                                                allLabel="All Roles"
+                                            />
+                                        </div>
+
+                                        {/* Status */}
+                                        <div style={{ flex: '0 0 auto', minWidth: '150px' }}>
+                                            <MultiSelectDropdown
+                                                label="Select Status"
+                                                selectedItems={statusFilter}
+                                                options={[
+                                                    { id: 'All', label: 'All Status' },
+                                                    { id: 'approved', label: 'Approved' },
+                                                    { id: 'pending', label: 'Pending' },
+                                                    { id: 'rejected', label: 'Rejected' }
+                                                ]}
+                                                onToggle={toggleStatus}
+                                                allLabel="All Status"
+                                            />
+                                        </div>
+
+                                        {/* Time Filter */}
+                                        <div style={{ flex: '0 0 auto', minWidth: '140px' }}>
+                                            <TimePeriodFilter
+                                                timePeriod={usersTimePeriod}
+                                                setTimePeriod={setUsersTimePeriod}
+                                                customDateRange={usersCustomDateRange}
+                                                setCustomDateRange={setUsersCustomDateRange}
+                                                variant="dropdown"
+                                            />
+                                        </div>
+
+                                        {/* Export Button */}
+                                        <div style={{ flex: '0 0 auto' }}>
+                                            <ExportButton
+                                                onExportCSV={() => handleExportUsers('csv')}
+                                                onExportExcel={() => handleExportUsers('excel')}
+                                                onExportPDF={() => handleExportUsers('pdf')}
+                                            />
+                                        </div>
+
+                                        {/* View Toggle */}
+                                        <div className="view-toggle" style={{ margin: 0, flex: '0 0 auto', display: 'flex', gap: '4px' }}>
+                                            <button
+                                                className={viewMode === 'table' ? 'active' : ''}
+                                                disabled={true}
+                                                style={{ opacity: 0.5, cursor: 'not-allowed', padding: '8px' }}
+                                                title="Table View (Disabled on Kiosk)"
+                                            >
+                                                <TableRows fontSize="small" />
+                                            </button>
+                                            <button
+                                                onClick={() => setViewMode('card')}
+                                                className={viewMode === 'card' ? 'active' : ''}
+                                                style={{ padding: '8px' }}
+                                                title="Card View"
+                                            >
+                                                <GridView fontSize="small" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {viewMode === 'table' ? (
@@ -1775,28 +1886,10 @@ const AdminDashboard = () => {
                                                     <td>{u.email}</td>
                                                     <td>{u.created_at || 'N/A'}</td>
                                                     <td>
-                                                        <select
-                                                            className={`role-select status-${u.approval_status?.toLowerCase() || 'pending'}`}
-                                                            value={u.approval_status || 'pending'}
-                                                            onChange={(e) => handleStatusUpdate(u.user_id, e.target.value)}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            style={{
-                                                                minWidth: '110px',
-                                                                padding: '6px 10px',
-                                                                borderRadius: '6px',
-                                                                fontWeight: '600',
-                                                                fontSize: '0.85rem',
-                                                                border: '1px solid #e2e8f0',
-                                                                background: u.approval_status === 'approved' ? '#dcfce7' :
-                                                                    u.approval_status === 'rejected' ? '#fee2e2' : '#fff7ed',
-                                                                color: u.approval_status === 'approved' ? '#166534' :
-                                                                    u.approval_status === 'rejected' ? '#991b1b' : '#c2410c'
-                                                            }}
-                                                        >
-                                                            <option value="pending">Pending</option>
-                                                            <option value="approved">Approved</option>
-                                                            <option value="rejected">Rejected</option>
-                                                        </select>
+                                                        <StatusDropdown
+                                                            currentStatus={u.approval_status || 'pending'}
+                                                            onStatusChange={(newStatus) => handleStatusUpdate(u.user_id, newStatus)}
+                                                        />
                                                     </td>
                                                 </tr>
                                             ))

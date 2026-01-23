@@ -116,6 +116,9 @@ const NurseDashboard = () => {
     const [modalViewMode, setModalViewMode] = useState(window.innerWidth <= 768 ? 'card' : 'table');
 
     useEffect(() => {
+        // Hide body scrollbar to prevent double scrollbars in kiosk mode
+        document.body.style.overflow = 'hidden';
+
         const handleResize = () => {
             if (window.innerWidth <= 768) {
                 setViewMode('card');
@@ -125,7 +128,10 @@ const NurseDashboard = () => {
         };
 
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            document.body.style.overflow = 'auto';
+        };
     }, []);
 
     const handleExportHistory = (format) => {
@@ -178,6 +184,8 @@ const NurseDashboard = () => {
     const [isRiskDropdownOpen, setIsRiskDropdownOpen] = useState(false);
     const [modalRiskFilter, setModalRiskFilter] = useState(['all']);
     const [isModalRiskDropdownOpen, setIsModalRiskDropdownOpen] = useState(false);
+    const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+    const [isPersonalSortDropdownOpen, setIsPersonalSortDropdownOpen] = useState(false);
 
     // Modal specific time period
     const [modalTimePeriod, setModalTimePeriod] = useState('all');
@@ -535,78 +543,180 @@ const NurseDashboard = () => {
                     className="table-section"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: 'calc(97vh - 120px)',
+                        flex: 1
+                    }}
                 >
                     <div className="table-header">
                         <h3>Assigned Patients / All Users ({timeFilteredPatients.length} records)</h3>
-                        <div className="table-controls">
-                            <div className="search-bar">
-                                <Search className="search-icon" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by name, email, role..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+
+                        {/* --- DESKTOP LAYOUT (> 768px) --- */}
+                        {window.innerWidth > 768 && (
+                            <div className="table-controls desktop-only">
+                                <div className="search-bar">
+                                    <Search className="search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, email, role..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+
+                                <TimePeriodFilter
+                                    timePeriod={patientsTimePeriod}
+                                    setTimePeriod={setPatientsTimePeriod}
+                                    customDateRange={patientsCustomDateRange}
+                                    setCustomDateRange={setPatientsCustomDateRange}
+                                    variant="dropdown"
                                 />
+
+                                <ExportButton
+                                    onExportCSV={() => handleExportPatients('csv')}
+                                    onExportExcel={() => handleExportPatients('excel')}
+                                    onExportPDF={() => handleExportPatients('pdf')}
+                                />
+
+                                <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                    <button
+                                        onClick={() => {
+                                            if (window.innerWidth > 768) setViewMode('table');
+                                        }}
+                                        style={{
+                                            padding: '8px 12px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: viewMode === 'table' ? '#dc2626' : 'transparent',
+                                            color: viewMode === 'table' ? 'white' : '#64748b',
+                                            cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                            opacity: window.innerWidth <= 768 ? 0.5 : 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        title="Table View"
+                                    >
+                                        <TableRows style={{ fontSize: '1.2rem' }} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('card')}
+                                        style={{
+                                            padding: '8px 12px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: viewMode === 'card' ? '#dc2626' : 'transparent',
+                                            color: viewMode === 'card' ? 'white' : '#64748b',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        title="Card View"
+                                    >
+                                        <GridView style={{ fontSize: '1.2rem' }} />
+                                    </button>
+                                </div>
                             </div>
+                        )}
 
-                            {/* Time Period Filter */}
-                            <TimePeriodFilter
-                                timePeriod={patientsTimePeriod}
-                                setTimePeriod={setPatientsTimePeriod}
-                                customDateRange={patientsCustomDateRange}
-                                setCustomDateRange={setPatientsCustomDateRange}
-                                variant="dropdown"
-                            />
+                        {/* --- KIOSK LAYOUT (<= 768px) --- */}
+                        {window.innerWidth <= 768 && (
+                            <div className="table-controls kiosk-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                                {/* Row 1: Search Bar */}
+                                <div className="search-bar" style={{ width: '100%', maxWidth: 'none', margin: 0 }}>
+                                    <Search className="search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, email, role..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
 
-                            <ExportButton
-                                onExportCSV={() => handleExportPatients('csv')}
-                                onExportExcel={() => handleExportPatients('excel')}
-                                onExportPDF={() => handleExportPatients('pdf')}
-                            />
+                                {/* Row 2: Scrollable Filters & Actions Strip */}
+                                <div className="kiosk-scroll-container" style={{
+                                    display: 'flex',
+                                    flexWrap: 'nowrap',
+                                    overflowX: 'auto',
+                                    gap: '12px',
+                                    alignItems: 'center',
+                                    paddingBottom: '8px',
+                                    whiteSpace: 'nowrap',
+                                    WebkitOverflowScrolling: 'touch',
+                                    width: '100%'
+                                }}>
+                                    <style>{`
+                                        /* Hide scrollbar on buttons as requested */
+                                        .kiosk-scroll-container::-webkit-scrollbar {
+                                            display: none;
+                                        }
+                                        .kiosk-scroll-container {
+                                            -ms-overflow-style: none;
+                                            scrollbar-width: none;
+                                        }
+                                    `}</style>
 
-                            {/* View Mode Toggle */}
-                            <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
-                                <button
-                                    onClick={() => {
-                                        if (window.innerWidth > 768) setViewMode('table');
-                                    }}
-                                    style={{
-                                        padding: '8px 12px',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        background: viewMode === 'table' ? '#dc2626' : 'transparent',
-                                        color: viewMode === 'table' ? 'white' : '#64748b',
-                                        cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
-                                        opacity: window.innerWidth <= 768 ? 0.5 : 1,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    title="Table View"
-                                >
-                                    <TableRows style={{ fontSize: '1.2rem' }} />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('card')}
-                                    style={{
-                                        padding: '8px 12px',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        background: viewMode === 'card' ? '#dc2626' : 'transparent',
-                                        color: viewMode === 'card' ? 'white' : '#64748b',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    title="Card View"
-                                >
-                                    <GridView style={{ fontSize: '1.2rem' }} />
-                                </button>
+
+                                    <div style={{ flex: '0 0 auto', minWidth: '140px' }}>
+                                        <TimePeriodFilter
+                                            timePeriod={patientsTimePeriod}
+                                            setTimePeriod={setPatientsTimePeriod}
+                                            customDateRange={patientsCustomDateRange}
+                                            setCustomDateRange={setPatientsCustomDateRange}
+                                            variant="dropdown"
+                                        />
+                                    </div>
+
+                                    {/* Export Button Removed in Kiosk Mode */}
+
+                                    {/* View Mode Toggle */}
+                                    <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px', flex: '0 0 auto', margin: 0 }}>
+                                        <button
+                                            disabled={true}
+                                            style={{
+                                                padding: '8px 12px',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                background: 'transparent',
+                                                color: '#64748b',
+                                                cursor: 'not-allowed',
+                                                opacity: 0.5,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                            title="Table View (Disabled on Kiosk)"
+                                        >
+                                            <TableRows style={{ fontSize: '1.2rem' }} />
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode('card')}
+                                            style={{
+                                                padding: '8px 12px',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                background: viewMode === 'card' ? '#dc2626' : 'transparent',
+                                                color: viewMode === 'card' ? 'white' : '#64748b',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            title="Card View"
+                                        >
+                                            <GridView style={{ fontSize: '1.2rem' }} />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Table View */}
@@ -655,9 +765,18 @@ const NurseDashboard = () => {
                         </div>
                     )}
 
-                    {/* Card View */}
+                    {/* Card View - Compact for Kiosk */}
                     {viewMode === 'card' && (
-                        <div className="user-cards-grid">
+                        <div className="user-cards-grid" style={{
+                            flex: 1,
+                            minHeight: 0,
+                            overflowY: 'auto',
+                            paddingRight: '4px',
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '0.75rem',
+                            alignContent: 'start'
+                        }}>
                             {loading ? (
                                 <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                                     Loading users...
@@ -673,20 +792,23 @@ const NurseDashboard = () => {
                                         className="user-card"
                                         initial={{ opacity: 0, scale: 0.95 }}
                                         animate={{ opacity: 1, scale: 1 }}
-                                        whileHover={{ y: -4, boxShadow: '0 12px 24px rgba(0,0,0,0.12)' }}
+                                        whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}
                                         style={{
                                             background: 'white',
-                                            borderRadius: '16px',
-                                            padding: '1.5rem',
-                                            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                            borderRadius: '12px',
+                                            padding: '0.875rem',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                                             border: '1px solid #e2e8f0',
-                                            transition: 'all 0.2s ease'
+                                            transition: 'all 0.2s ease',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.5rem'
                                         }}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                                             <div style={{
-                                                width: '56px',
-                                                height: '56px',
+                                                width: '40px',
+                                                height: '40px',
                                                 borderRadius: '50%',
                                                 background: 'linear-gradient(135deg, #dc2626, #ef4444)',
                                                 color: 'white',
@@ -694,24 +816,25 @@ const NurseDashboard = () => {
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 fontWeight: 'bold',
-                                                fontSize: '1.25rem'
+                                                fontSize: '0.875rem',
+                                                flexShrink: 0
                                             }}>
                                                 {u.firstname[0]}{u.lastname[0]}
                                             </div>
-                                            <div style={{ flex: 1 }}>
-                                                <h4 style={{ margin: 0, color: '#1e293b', fontSize: '1.1rem' }}>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <h4 style={{ margin: 0, color: '#1e293b', fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     {u.firstname} {u.lastname}
                                                 </h4>
-                                                <span className={`role-badge role-${u.role.toLowerCase()}`} style={{ fontSize: '0.75rem', marginTop: '4px', display: 'inline-block' }}>
+                                                <span className={`role-badge role-${u.role.toLowerCase()}`} style={{ fontSize: '0.65rem', marginTop: '2px', display: 'inline-block', padding: '2px 6px' }}>
                                                     {u.role}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.9rem', color: '#475569' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#475569' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                 <span style={{ color: '#94a3b8' }}>Email:</span>
-                                                <span style={{ fontWeight: '500', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
+                                                <span style={{ fontWeight: '500', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</span>
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                 <span style={{ color: '#94a3b8' }}>School ID:</span>
@@ -728,15 +851,17 @@ const NurseDashboard = () => {
                                             onClick={() => viewUserHistory(u)}
                                             style={{
                                                 width: '100%',
-                                                padding: '10px',
-                                                borderRadius: '8px',
+                                                padding: '6px',
+                                                borderRadius: '6px',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                gap: '6px'
+                                                gap: '4px',
+                                                fontSize: '0.75rem',
+                                                marginTop: 'auto'
                                             }}
                                         >
-                                            <Visibility style={{ fontSize: '1rem' }} /> View History
+                                            <Visibility style={{ fontSize: '0.875rem' }} /> View History
                                         </button>
                                     </motion.div>
                                 ))
@@ -766,29 +891,52 @@ const NurseDashboard = () => {
             {/* --- My Measurements Tab --- */}
             {activeTab === 'personal' && (
                 <>
-                    {/* Time Period Filter for Table */}
-                    <div style={{ marginTop: '30px', marginBottom: '20px' }}>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter Records</h3>
-                        <TimePeriodFilter
-                            timePeriod={timePeriod}
-                            setTimePeriod={setTimePeriod}
-                            customDateRange={customDateRange}
-                            setCustomDateRange={setCustomDateRange}
-                            variant="dropdown"
-                        />
-                    </div>
+                    {/* --- KIOSK LAYOUT Merged Filters (<= 768px) --- */}
+                    {window.innerWidth <= 768 ? (
+                        <div style={{ marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>
+                                My Measurements ({processHistory(timeFilteredHistory).length} records)
+                            </h3>
+                            <div className="kiosk-scroll-container" style={{
+                                display: 'flex',
+                                flexWrap: 'nowrap',
+                                overflowX: 'auto',
+                                gap: '12px',
+                                alignItems: 'center',
+                                background: 'white',
+                                padding: '12px',
+                                paddingBottom: '16px', // Extra for scrollbar inside bordered container
+                                borderRadius: '12px',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                border: '1px solid #e2e8f0',
+                                whiteSpace: 'nowrap',
+                                WebkitOverflowScrolling: 'touch'
+                            }}>
+                                <style>{`
+                                    /* Hide scrollbar for cleaner look */
+                                    .kiosk-scroll-container::-webkit-scrollbar {
+                                        display: none;
+                                    }
+                                    .kiosk-scroll-container {
+                                        -ms-overflow-style: none;
+                                        scrollbar-width: none;
+                                    }
+                                `}</style>
+                                {/* Time Filter */}
+                                <div style={{ flex: '0 0 auto', minWidth: '140px' }}>
+                                    <TimePeriodFilter
+                                        timePeriod={timePeriod}
+                                        setTimePeriod={setTimePeriod}
+                                        customDateRange={customDateRange}
+                                        setCustomDateRange={setCustomDateRange}
+                                        variant="dropdown"
+                                    />
+                                </div>
 
-                    <motion.div
-                        className="table-section"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <div className="table-header">
-                            <h3>My Measurements ({processHistory(timeFilteredHistory).length} records)</h3>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                                {/* Metrics & Risks - flex grow to fill */}
+                                <div style={{ flex: '0 0 auto', display: 'flex', gap: '8px' }}>
                                     <MultiSelectDropdown
-                                        label="Select Metrics"
+                                        label="Metrics"
                                         selectedItems={metricFilter}
                                         options={[
                                             { id: 'all', label: 'All Metrics' },
@@ -805,7 +953,7 @@ const NurseDashboard = () => {
                                         allLabel="All Metrics"
                                     />
                                     <MultiSelectDropdown
-                                        label="Select Risks"
+                                        label="Risks"
                                         selectedItems={riskFilter}
                                         options={[
                                             { id: 'all', label: 'All Risks' },
@@ -818,489 +966,858 @@ const NurseDashboard = () => {
                                         allLabel="All Risks"
                                     />
                                 </div>
-                                <select
-                                    value={sortOrder}
-                                    onChange={(e) => setSortOrder(e.target.value)}
-                                    style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                                >
-                                    <option value="desc">Newest First</option>
-                                    <option value="asc">Oldest First</option>
-                                </select>
-                                <ExportButton
-                                    onExportCSV={() => handleExportHistory('csv')}
-                                    onExportExcel={() => handleExportHistory('excel')}
-                                    onExportPDF={() => handleExportHistory('pdf')}
+
+                                {/* Sort */}
+                                <div style={{ position: 'relative', flex: '0 0 auto' }}>
+                                    <button
+                                        onClick={() => setIsPersonalSortDropdownOpen(!isPersonalSortDropdownOpen)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #cbd5e1',
+                                            background: 'white',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px'
+                                        }}
+                                    >
+                                        <span style={{ fontSize: '0.9rem' }}>{sortOrder === 'desc' ? 'Newest' : 'Oldest'}</span>
+                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                    </button>
+                                    {isPersonalSortDropdownOpen && (
+                                        <div style={{
+                                            position: 'absolute', top: '100%', right: 0, zIndex: 100,
+                                            background: 'white', border: '1px solid #e2e8f0', borderRadius: '6px',
+                                            boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '120px', padding: '4px', marginTop: '4px'
+                                        }}>
+                                            <div onClick={() => { setSortOrder('desc'); setIsPersonalSortDropdownOpen(false); }}
+                                                style={{ padding: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>Newest First</div>
+                                            <div onClick={() => { setSortOrder('asc'); setIsPersonalSortDropdownOpen(false); }}
+                                                style={{ padding: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>Oldest First</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Actions Group */}
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: '0 0 auto' }}>
+                                    <ExportButton
+                                        onExportCSV={() => handleExportHistory('csv')}
+                                        onExportExcel={() => handleExportHistory('excel')}
+                                        onExportPDF={() => handleExportHistory('pdf')}
+                                    />
+                                    <div className="view-mode-toggle" style={{ display: 'flex', gap: '2px', background: '#f1f5f9', borderRadius: '6px', padding: '2px' }}>
+                                        <button disabled style={{ padding: '6px', border: 'none', background: 'transparent', color: '#cbd5e1' }}><TableRows fontSize="small" /></button>
+                                        <button onClick={() => setHistoryViewMode('card')} style={{ padding: '6px', border: 'none', borderRadius: '4px', background: '#dc2626', color: 'white' }}><GridView fontSize="small" /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        /* --- DESKTOP LAYOUT (Original) --- */
+                        <>
+                            <div style={{ marginTop: '30px', marginBottom: '20px' }}>
+                                <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', marginBottom: '12px' }}>Filter Records</h3>
+                                <TimePeriodFilter
+                                    timePeriod={timePeriod}
+                                    setTimePeriod={setTimePeriod}
+                                    customDateRange={customDateRange}
+                                    setCustomDateRange={setCustomDateRange}
+                                    variant="dropdown"
                                 />
-                                <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
-                                    <button
-                                        onClick={() => {
-                                            if (window.innerWidth > 768) setHistoryViewMode('table');
-                                        }}
-                                        style={{
-                                            padding: '8px',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            background: historyViewMode === 'table' ? '#dc2626' : 'transparent',
-                                            color: historyViewMode === 'table' ? 'white' : '#64748b',
-                                            cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
-                                            opacity: window.innerWidth <= 768 ? 0.5 : 1
-                                        }}
-                                    >
-                                        <TableRows />
-                                    </button>
-                                    <button
-                                        onClick={() => setHistoryViewMode('card')}
-                                        style={{
-                                            padding: '8px',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            background: historyViewMode === 'card' ? '#dc2626' : 'transparent',
-                                            color: historyViewMode === 'card' ? 'white' : '#64748b',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <GridView />
-                                    </button>
-                                </div>
                             </div>
-                        </div>
 
-                        {historyViewMode === 'table' ? (
-                            <div className="table-container-wrapper">
-                                <table className="users-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP (mmHg)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR (bpm)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR (bpm)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2 (%)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp (°C)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
-                                            <th>Risk Status</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {currentHistory.length === 0 ? (
-                                            <NoDataFound type="history" compact={true} colSpan={11} />
-                                        ) : (
-                                            currentHistory.map((m) => (
-                                                <tr key={m.id}>
-                                                    <td>{formatDate(m.created_at)}</td>
-                                                    {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{m.heart_rate ? m.heart_rate : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{m.respiratory_rate ? m.respiratory_rate : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{m.spo2 ? `${m.spo2}%` : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{m.temperature ? `${m.temperature}°C` : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{m.weight ? m.weight : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{m.height ? m.height : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : 'Not Measured'}</td>}
-                                                    <td>
-                                                        <span className={`risk-badge ${m.risk_category?.toLowerCase().includes('normal') ? 'risk-normal' :
-                                                            m.risk_category?.toLowerCase().includes('high') ? 'risk-high' : 'risk-elevated'
-                                                            }`}>
-                                                            {m.risk_category || 'Unknown'}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <button className="action-btn" onClick={() => setSelectedMeasurement(m)}>
-                                                            <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="measurement-cards-grid">
-                                {currentHistory.length === 0 ? (
-                                    <div style={{ gridColumn: '1/-1' }}><NoDataFound type="measurements" /></div>
-                                ) : (
-                                    currentHistory.map(m => (
-                                        <div className="measurement-card" key={m.id} onClick={() => setSelectedMeasurement(m)}>
-                                            <div className="m-card-header">
-                                                <div className="m-card-date">{formatDate(m.created_at)}</div>
-                                                <span className={`risk-badge ${m.risk_category?.toLowerCase().includes('normal') ? 'risk-normal' : 'risk-high'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
-                                                    {m.risk_category || 'Unknown'}
-                                                </span>
-                                            </div>
-                                            <div className="m-card-grid">
-                                                <div className="m-metric">
-                                                    <span className="m-label">BP (mmHg)</span>
-                                                    <span className="m-value">{m.systolic ? `${m.systolic}/${m.diastolic}` : '-'}</span>
-                                                </div>
-                                                <div className="m-metric">
-                                                    <span className="m-label">Heart Rate</span>
-                                                    <span className="m-value">{m.heart_rate ? `${m.heart_rate} bpm` : '-'}</span>
-                                                </div>
-                                                <div className="m-metric">
-                                                    <span className="m-label">SpO2</span>
-                                                    <span className="m-value">{m.spo2 ? `${m.spo2}%` : '-'}</span>
-                                                </div>
-                                                <div className="m-metric">
-                                                    <span className="m-label">Temp</span>
-                                                    <span className="m-value">{m.temperature ? `${m.temperature}°C` : '-'}</span>
-                                                </div>
-                                            </div>
-                                            <button className="action-btn" style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>
-                                                View Details
-                                            </button>
+                            <motion.div
+                                className="table-section"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                            >
+                                <div className="table-header">
+                                    <h3>My Measurements ({processHistory(timeFilteredHistory).length} records)</h3>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                                            <MultiSelectDropdown
+                                                label="Select Metrics"
+                                                selectedItems={metricFilter}
+                                                options={[
+                                                    { id: 'all', label: 'All Metrics' },
+                                                    { id: 'bp', label: 'Blood Pressure' },
+                                                    { id: 'hr', label: 'Heart Rate' },
+                                                    { id: 'rr', label: 'Respiratory Rate' },
+                                                    { id: 'spo2', label: 'SpO2' },
+                                                    { id: 'temp', label: 'Temp' },
+                                                    { id: 'weight', label: 'Weight' },
+                                                    { id: 'height', label: 'Height' },
+                                                    { id: 'bmi', label: 'BMI' }
+                                                ]}
+                                                onToggle={toggleMetric}
+                                                allLabel="All Metrics"
+                                            />
+                                            <MultiSelectDropdown
+                                                label="Select Risks"
+                                                selectedItems={riskFilter}
+                                                options={[
+                                                    { id: 'all', label: 'All Risks' },
+                                                    { id: 'low', label: 'Low Risk' },
+                                                    { id: 'moderate', label: 'Moderate Risk' },
+                                                    { id: 'high', label: 'High Risk' },
+                                                    { id: 'critical', label: 'Critical Risk' }
+                                                ]}
+                                                onToggle={toggleRisk}
+                                                allLabel="All Risks"
+                                            />
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        )}
-
-                        <Pagination
-                            currentPage={historyPage}
-                            totalPages={totalHistoryPages}
-                            onPageChange={setHistoryPage}
-                        />
-                    </motion.div>
-                </>
-            )}
-
-            {selectedUser && (
-                <div className="modal-overlay" onClick={() => setSelectedUser(null)} style={{ background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <motion.div
-                        className="modal-content"
-                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                            maxWidth: '900px',
-                            width: '95%',
-                            maxHeight: '85vh',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            backdropFilter: 'blur(20px)',
-                            border: '1px solid rgba(255, 255, 255, 0.5)',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                            borderRadius: '24px',
-                            padding: '24px'
-                        }}
-                    >
-                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <div style={{
-                                    width: '48px', height: '48px', borderRadius: '50%',
-                                    background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-                                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '1.25rem', fontWeight: 'bold',
-                                    boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.3)'
-                                }}>
-                                    {selectedUser.firstname[0]}{selectedUser.lastname[0]}
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        History Analysis
-                                    </div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', lineHeight: 1.2 }}>
-                                        {selectedUser.firstname} {selectedUser.lastname}
-                                    </div>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setSelectedUser(null)}
-                                style={{
-                                    width: '36px', height: '36px', borderRadius: '50%', border: 'none',
-                                    background: '#f1f5f9', color: '#64748b', fontSize: '1.5rem',
-                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    transition: 'all 0.2s'
-                                }}
-                                className="hover-scale"
-                            >
-                                &times;
-                            </button>
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <TimePeriodFilter
-                                timePeriod={modalTimePeriod}
-                                setTimePeriod={setModalTimePeriod}
-                                customDateRange={modalCustomDateRange}
-                                setCustomDateRange={setModalCustomDateRange}
-                                variant="dropdown"
-                            />
-
-                            <div style={{ position: 'relative' }}>
-                                <button
-                                    onClick={() => setIsModalMetricDropdownOpen(!isModalMetricDropdownOpen)}
-                                    style={{
-                                        padding: '8px 12px',
-                                        borderRadius: '6px',
-                                        border: '1px solid #cbd5e1',
-                                        background: 'white',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '5px',
-                                        minWidth: '150px',
-                                        justifyContent: 'space-between'
-                                    }}
-                                >
-                                    <span>
-                                        {modalMetricFilter.includes('all') ? 'All Metrics' :
-                                            modalMetricFilter.length > 0 ? `${modalMetricFilter.length} Selected` : 'Select Metrics'}
-                                    </span>
-                                    <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                </button>
-                                {isModalMetricDropdownOpen && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: '100%',
-                                        left: 0,
-                                        zIndex: 100,
-                                        background: 'white',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '6px',
-                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                        width: '200px',
-                                        padding: '8px',
-                                        marginTop: '4px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '4px'
-                                    }}>
-                                        {[
-                                            { value: 'all', label: 'All Metrics' },
-                                            { value: 'bp', label: 'Blood Pressure' },
-                                            { value: 'hr', label: 'Heart Rate' },
-                                            { value: 'rr', label: 'Respiratory Rate' },
-                                            { value: 'spo2', label: 'SpO2' },
-                                            { value: 'temp', label: 'Temp' },
-                                            { value: 'weight', label: 'Weight' },
-                                            { value: 'height', label: 'Height' },
-                                            { value: 'bmi', label: 'BMI' }
-                                        ].map(opt => (
-                                            <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={modalMetricFilter.includes(opt.value)}
-                                                    onChange={() => toggleModalMetric(opt.value)}
-                                                    style={{ cursor: 'pointer' }}
-                                                />
-                                                {opt.label}
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div style={{ position: 'relative' }}>
-                                <button
-                                    onClick={() => setIsModalRiskDropdownOpen(!isModalRiskDropdownOpen)}
-                                    style={{
-                                        padding: '8px 12px',
-                                        borderRadius: '6px',
-                                        border: '1px solid #cbd5e1',
-                                        background: 'white',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '5px',
-                                        minWidth: '150px',
-                                        justifyContent: 'space-between'
-                                    }}
-                                >
-                                    <span>
-                                        {modalRiskFilter.includes('all') ? 'All Risks' :
-                                            modalRiskFilter.length > 0 ? `${modalRiskFilter.length} Selected` : 'Select Risks'}
-                                    </span>
-                                    <span style={{ fontSize: '0.8rem' }}>▼</span>
-                                </button>
-                                {isModalRiskDropdownOpen && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: '100%',
-                                        left: 0,
-                                        zIndex: 100,
-                                        background: 'white',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '6px',
-                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                        width: '200px',
-                                        padding: '8px',
-                                        marginTop: '4px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '4px'
-                                    }}>
-                                        {[
-                                            { value: 'all', label: 'All Risks' },
-                                            { value: 'low', label: 'Low Risk' },
-                                            { value: 'moderate', label: 'Moderate Risk' },
-                                            { value: 'high', label: 'High Risk' },
-                                            { value: 'critical', label: 'Critical Risk' }
-                                        ].map(opt => (
-                                            <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={modalRiskFilter.includes(opt.value)}
-                                                    onChange={() => toggleModalRisk(opt.value)}
-                                                    style={{ cursor: 'pointer' }}
-                                                />
-                                                {opt.label}
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <select
-                                value={sortOrder}
-                                onChange={(e) => setSortOrder(e.target.value)}
-                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                            >
-                                <option value="desc">Newest First</option>
-                                <option value="asc">Oldest First</option>
-                            </select>
-
-                            <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
-                                <button
-                                    onClick={() => {
-                                        if (window.innerWidth > 768) setModalViewMode('table');
-                                    }}
-                                    style={{
-                                        padding: '8px',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        background: modalViewMode === 'table' ? '#dc2626' : 'transparent',
-                                        color: modalViewMode === 'table' ? 'white' : '#64748b',
-                                        cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
-                                        opacity: window.innerWidth <= 768 ? 0.5 : 1
-                                    }}
-                                >
-                                    <TableRows fontSize="small" />
-                                </button>
-                                <button
-                                    onClick={() => setModalViewMode('card')}
-                                    style={{
-                                        padding: '8px',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        background: modalViewMode === 'card' ? '#dc2626' : 'transparent',
-                                        color: modalViewMode === 'card' ? 'white' : '#64748b',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <GridView fontSize="small" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {modalViewMode === 'table' ? (
-                            <div className="table-container-wrapper" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                                <table className="users-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
-                                            {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
-                                            <th>Risk</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {historyLoading ? (
-                                            <tr><td colSpan="11" style={{ textAlign: 'center' }}>Loading history...</td></tr>
-                                        ) : displayedUserHistory.length === 0 ? (
-                                            <NoDataFound type="history" compact={true} colSpan={11} />
-                                        ) : (
-                                            displayedUserHistory.map(h => (
-                                                <tr key={h.id}>
-                                                    <td>{formatDate(h.created_at)}</td>
-                                                    {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{h.systolic ? `${h.systolic}/${h.diastolic}` : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{h.heart_rate ? h.heart_rate : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{h.respiratory_rate ? h.respiratory_rate : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{h.spo2 ? `${h.spo2}%` : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{h.temperature ? `${h.temperature}°C` : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{h.weight ? h.weight : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{h.height ? h.height : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{h.bmi && Number(h.bmi) > 0 ? Number(h.bmi).toFixed(1) : 'Not Measured'}</td>}
-                                                    <td>
-                                                        <span style={{
-                                                            padding: '2px 6px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600',
-                                                            background: h.risk_category?.toLowerCase().includes('high') ? '#fee2e2' : '#dcfce7',
-                                                            color: h.risk_category?.toLowerCase().includes('high') ? '#991b1b' : '#166534'
-                                                        }}>
-                                                            {h.risk_category}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            onClick={() => setSelectedMeasurement(h)}
-                                                            style={{ border: 'none', background: 'none', color: '#3b82f6', cursor: 'pointer', fontWeight: '600' }}
-                                                        >
-                                                            View
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="measurement-cards-grid" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '8px' }}>
-                                {historyLoading ? (
-                                    <div style={{ textAlign: 'center', gridColumn: '1/-1' }}>Loading history...</div>
-                                ) : displayedUserHistory.length === 0 ? (
-                                    <div style={{ gridColumn: '1/-1' }}><NoDataFound type="measurements" /></div>
-                                ) : (
-                                    displayedUserHistory.map(h => (
-                                        <div className="measurement-card" key={h.id} onClick={() => setSelectedMeasurement(h)}>
-                                            <div className="m-card-header">
-                                                <div className="m-card-date">{formatDate(h.created_at)}</div>
-                                                <span style={{
-                                                    padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600',
-                                                    background: h.risk_category?.toLowerCase().includes('high') ? '#fee2e2' : '#dcfce7',
-                                                    color: h.risk_category?.toLowerCase().includes('high') ? '#991b1b' : '#166534'
+                                        <div style={{ position: 'relative' }}>
+                                            <button
+                                                onClick={() => setIsPersonalSortDropdownOpen(!isPersonalSortDropdownOpen)}
+                                                style={{
+                                                    padding: '8px 12px',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid #cbd5e1',
+                                                    background: 'white',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    minWidth: '140px',
+                                                    justifyContent: 'space-between'
+                                                }}
+                                            >
+                                                <span>
+                                                    {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+                                                </span>
+                                                <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                            </button>
+                                            {isPersonalSortDropdownOpen && (
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: '100%',
+                                                    left: 0,
+                                                    zIndex: 100,
+                                                    background: 'white',
+                                                    border: '1px solid #e2e8f0',
+                                                    borderRadius: '6px',
+                                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                                    width: '100%',
+                                                    padding: '4px',
+                                                    marginTop: '4px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '2px'
                                                 }}>
-                                                    {h.risk_category || 'Unknown'}
-                                                </span>
-                                            </div>
-                                            <div className="m-card-grid">
-                                                <div className="m-metric">
-                                                    <span className="m-label">BP (mmHg)</span>
-                                                    <span className="m-value">{h.systolic ? `${h.systolic}/${h.diastolic}` : '-'}</span>
+                                                    <div
+                                                        onClick={() => { setSortOrder('desc'); setIsPersonalSortDropdownOpen(false); }}
+                                                        style={{
+                                                            padding: '8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155',
+                                                            background: sortOrder === 'desc' ? '#f1f5f9' : 'transparent', transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => sortOrder !== 'desc' && (e.target.style.background = '#f8fafc')}
+                                                        onMouseLeave={(e) => sortOrder !== 'desc' && (e.target.style.background = 'transparent')}
+                                                    >
+                                                        Newest First
+                                                    </div>
+                                                    <div
+                                                        onClick={() => { setSortOrder('asc'); setIsPersonalSortDropdownOpen(false); }}
+                                                        style={{
+                                                            padding: '8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155',
+                                                            background: sortOrder === 'asc' ? '#f1f5f9' : 'transparent', transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => sortOrder !== 'asc' && (e.target.style.background = '#f8fafc')}
+                                                        onMouseLeave={(e) => sortOrder !== 'asc' && (e.target.style.background = 'transparent')}
+                                                    >
+                                                        Oldest First
+                                                    </div>
                                                 </div>
-                                                <div className="m-metric">
-                                                    <span className="m-label">Heart Rate</span>
-                                                    <span className="m-value">{h.heart_rate ? `${h.heart_rate} bpm` : '-'}</span>
-                                                </div>
-                                                <div className="m-metric">
-                                                    <span className="m-label">SpO2</span>
-                                                    <span className="m-value">{h.spo2 ? `${h.spo2}%` : '-'}</span>
-                                                </div>
-                                                <div className="m-metric">
-                                                    <span className="m-label">Temp</span>
-                                                    <span className="m-value">{h.temperature ? `${h.temperature}°C` : '-'}</span>
-                                                </div>
-                                            </div>
-                                            <button className="action-btn" style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>
-                                                View Details
+                                            )}
+                                        </div>
+                                        <ExportButton
+                                            onExportCSV={() => handleExportHistory('csv')}
+                                            onExportExcel={() => handleExportHistory('excel')}
+                                            onExportPDF={() => handleExportHistory('pdf')}
+                                        />
+                                        <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                            <button
+                                                onClick={() => {
+                                                    if (window.innerWidth > 768) setHistoryViewMode('table');
+                                                }}
+                                                style={{
+                                                    padding: '8px',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    background: historyViewMode === 'table' ? '#dc2626' : 'transparent',
+                                                    color: historyViewMode === 'table' ? 'white' : '#64748b',
+                                                    cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                                    opacity: window.innerWidth <= 768 ? 0.5 : 1
+                                                }}
+                                            >
+                                                <TableRows />
+                                            </button>
+                                            <button
+                                                onClick={() => setHistoryViewMode('card')}
+                                                style={{
+                                                    padding: '8px',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    background: historyViewMode === 'card' ? '#dc2626' : 'transparent',
+                                                    color: historyViewMode === 'card' ? 'white' : '#64748b',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <GridView />
                                             </button>
                                         </div>
-                                    ))
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+
+                    {historyViewMode === 'table' ? (
+                        <div className="table-container-wrapper">
+                            <table className="users-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP (mmHg)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR (bpm)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR (bpm)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2 (%)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp (°C)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
+                                        {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
+                                        <th>Risk Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {currentHistory.length === 0 ? (
+                                        <NoDataFound type="history" compact={true} colSpan={11} />
+                                    ) : (
+                                        currentHistory.map((m) => (
+                                            <tr key={m.id}>
+                                                <td>{formatDate(m.created_at)}</td>
+                                                {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
+                                                {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{m.heart_rate ? m.heart_rate : 'Not Measured'}</td>}
+                                                {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{m.respiratory_rate ? m.respiratory_rate : 'Not Measured'}</td>}
+                                                {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{m.spo2 ? `${m.spo2}%` : 'Not Measured'}</td>}
+                                                {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{m.temperature ? `${m.temperature}°C` : 'Not Measured'}</td>}
+                                                {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{m.weight ? m.weight : 'Not Measured'}</td>}
+                                                {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{m.height ? m.height : 'Not Measured'}</td>}
+                                                {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : 'Not Measured'}</td>}
+                                                <td>
+                                                    <span className={`risk-badge ${m.risk_category?.toLowerCase().includes('normal') ? 'risk-normal' :
+                                                        m.risk_category?.toLowerCase().includes('high') ? 'risk-high' : 'risk-elevated'
+                                                        }`}>
+                                                        {m.risk_category || 'Unknown'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <button className="action-btn" onClick={() => setSelectedMeasurement(m)}>
+                                                        <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="measurement-cards-grid" style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                            gap: '32px',
+                            alignItems: 'stretch',
+                            gridAutoRows: '1fr'
+                        }}>
+                            {currentHistory.length === 0 ? (
+                                <div style={{ gridColumn: '1/-1' }}><NoDataFound type="measurements" /></div>
+                            ) : (
+                                currentHistory.map(m => (
+                                    <div className="measurement-card" key={m.id} onClick={() => setSelectedMeasurement(m)}
+                                        style={{
+                                            background: 'white',
+                                            borderRadius: '16px',
+                                            padding: '32px',
+                                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05)',
+                                            border: '1px solid #f1f5f9',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '24px',
+                                            height: '100%',
+                                            minHeight: '320px'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                    >
+                                        {/* Card Header */}
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            paddingBottom: '16px',
+                                            borderBottom: '1px solid #f1f5f9'
+                                        }}>
+                                            <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1e293b' }}>
+                                                {formatDate(m.created_at)}
+                                            </div>
+                                            <span style={{
+                                                padding: '6px 14px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700',
+                                                background: m.risk_category?.toLowerCase().includes('high') ? '#fee2e2' :
+                                                    m.risk_category?.toLowerCase().includes('moderate') ? '#ffedd5' : '#dcfce7',
+                                                color: m.risk_category?.toLowerCase().includes('high') ? '#991b1b' :
+                                                    m.risk_category?.toLowerCase().includes('moderate') ? '#9a3412' : '#166534'
+                                            }}>
+                                                {m.risk_category || 'Unknown'}
+                                            </span>
+                                        </div>
+
+                                        {/* Metrics Grid - Responsive Multi-column */}
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                                            gap: '24px',
+                                            textAlign: 'left',
+                                            width: '100%',
+                                            flexGrow: 1,
+                                            minHeight: '120px'
+                                        }}>
+                                            {(metricFilter.includes('all') || metricFilter.includes('bp')) && m.systolic != null && (
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>BP (mmHg)</span>
+                                                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.systolic}/{m.diastolic}</span>
+                                                </div>
+                                            )}
+                                            {(metricFilter.includes('all') || metricFilter.includes('hr')) && m.heart_rate != null && (
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Heart Rate</span>
+                                                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.heart_rate} bpm</span>
+                                                </div>
+                                            )}
+                                            {(metricFilter.includes('all') || metricFilter.includes('rr')) && m.respiratory_rate != null && (
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Resp. Rate</span>
+                                                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.respiratory_rate} bpm</span>
+                                                </div>
+                                            )}
+                                            {(metricFilter.includes('all') || metricFilter.includes('spo2')) && m.spo2 != null && (
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>SpO2</span>
+                                                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.spo2}%</span>
+                                                </div>
+                                            )}
+                                            {(metricFilter.includes('all') || metricFilter.includes('temp')) && m.temperature != null && (
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Temp</span>
+                                                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.temperature}°C</span>
+                                                </div>
+                                            )}
+                                            {(metricFilter.includes('all') || metricFilter.includes('weight')) && m.weight != null && (
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Weight</span>
+                                                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.weight} kg</span>
+                                                </div>
+                                            )}
+                                            {(metricFilter.includes('all') || metricFilter.includes('height')) && m.height != null && (
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Height</span>
+                                                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.height} cm</span>
+                                                </div>
+                                            )}
+                                            {(metricFilter.includes('all') || metricFilter.includes('bmi')) && m.bmi != null && Number(m.bmi) > 0 && (
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>BMI</span>
+                                                    <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{Number(m.bmi).toFixed(1)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button className="action-btn" style={{ width: '100%', marginTop: 'auto', justifyContent: 'center', background: 'white', border: '1px solid #e2e8f0', color: '#475569' }}>
+                                            View Details
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+
+                    <Pagination
+                        currentPage={historyPage}
+                        totalPages={totalHistoryPages}
+                        onPageChange={setHistoryPage}
+                    />
+
+                </>
+            )
+            }
+
+            {
+                selectedUser && (
+                    <div className="modal-overlay" onClick={() => setSelectedUser(null)} style={{ background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <motion.div
+                            className="modal-content"
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                                maxWidth: '900px',
+                                width: '95%',
+                                maxHeight: '85vh',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                background: 'rgba(255, 255, 255, 0.95)',
+                                backdropFilter: 'blur(20px)',
+                                border: '1px solid rgba(255, 255, 255, 0.5)',
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                borderRadius: '24px',
+                                padding: '24px'
+                            }}
+                        >
+                            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <div style={{
+                                        width: '48px', height: '48px', borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+                                        color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '1.25rem', fontWeight: 'bold',
+                                        boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.3)'
+                                    }}>
+                                        {selectedUser.firstname[0]}{selectedUser.lastname[0]}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            History Analysis
+                                        </div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', lineHeight: 1.2 }}>
+                                            {selectedUser.firstname} {selectedUser.lastname}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedUser(null)}
+                                    style={{
+                                        width: '36px', height: '36px', borderRadius: '50%', border: 'none',
+                                        background: '#f1f5f9', color: '#64748b', fontSize: '1.5rem',
+                                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    className="hover-scale"
+                                >
+                                    &times;
+                                </button>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <TimePeriodFilter
+                                    timePeriod={modalTimePeriod}
+                                    setTimePeriod={setModalTimePeriod}
+                                    customDateRange={modalCustomDateRange}
+                                    setCustomDateRange={setModalCustomDateRange}
+                                    variant="dropdown"
+                                />
+
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        onClick={() => setIsModalMetricDropdownOpen(!isModalMetricDropdownOpen)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #cbd5e1',
+                                            background: 'white',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            minWidth: '150px',
+                                            justifyContent: 'space-between'
+                                        }}
+                                    >
+                                        <span>
+                                            {modalMetricFilter.includes('all') ? 'All Metrics' :
+                                                modalMetricFilter.length > 0 ? `${modalMetricFilter.length} Selected` : 'Select Metrics'}
+                                        </span>
+                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                    </button>
+                                    {isModalMetricDropdownOpen && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            zIndex: 100,
+                                            background: 'white',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '6px',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            width: '200px',
+                                            padding: '8px',
+                                            marginTop: '4px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px'
+                                        }}>
+                                            {[
+                                                { value: 'all', label: 'All Metrics' },
+                                                { value: 'bp', label: 'Blood Pressure' },
+                                                { value: 'hr', label: 'Heart Rate' },
+                                                { value: 'rr', label: 'Respiratory Rate' },
+                                                { value: 'spo2', label: 'SpO2' },
+                                                { value: 'temp', label: 'Temp' },
+                                                { value: 'weight', label: 'Weight' },
+                                                { value: 'height', label: 'Height' },
+                                                { value: 'bmi', label: 'BMI' }
+                                            ].map(opt => (
+                                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={modalMetricFilter.includes(opt.value)}
+                                                        onChange={() => toggleModalMetric(opt.value)}
+                                                        style={{ cursor: 'pointer' }}
+                                                    />
+                                                    {opt.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        onClick={() => setIsModalRiskDropdownOpen(!isModalRiskDropdownOpen)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #cbd5e1',
+                                            background: 'white',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            minWidth: '150px',
+                                            justifyContent: 'space-between'
+                                        }}
+                                    >
+                                        <span>
+                                            {modalRiskFilter.includes('all') ? 'All Risks' :
+                                                modalRiskFilter.length > 0 ? `${modalRiskFilter.length} Selected` : 'Select Risks'}
+                                        </span>
+                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                    </button>
+                                    {isModalRiskDropdownOpen && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            zIndex: 100,
+                                            background: 'white',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '6px',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            width: '200px',
+                                            padding: '8px',
+                                            marginTop: '4px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px'
+                                        }}>
+                                            {[
+                                                { value: 'all', label: 'All Risks' },
+                                                { value: 'low', label: 'Low Risk' },
+                                                { value: 'moderate', label: 'Moderate Risk' },
+                                                { value: 'high', label: 'High Risk' },
+                                                { value: 'critical', label: 'Critical Risk' }
+                                            ].map(opt => (
+                                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={modalRiskFilter.includes(opt.value)}
+                                                        onChange={() => toggleModalRisk(opt.value)}
+                                                        style={{ cursor: 'pointer' }}
+                                                    />
+                                                    {opt.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #cbd5e1',
+                                            background: 'white',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            minWidth: '140px',
+                                            justifyContent: 'space-between'
+                                        }}
+                                    >
+                                        <span>
+                                            {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+                                        </span>
+                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                    </button>
+                                    {isSortDropdownOpen && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            zIndex: 100,
+                                            background: 'white',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '6px',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            width: '100%',
+                                            padding: '4px',
+                                            marginTop: '4px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '2px'
+                                        }}>
+                                            <div
+                                                onClick={() => { setSortOrder('desc'); setIsSortDropdownOpen(false); }}
+                                                style={{
+                                                    padding: '8px',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.9rem',
+                                                    color: '#334155',
+                                                    background: sortOrder === 'desc' ? '#f1f5f9' : 'transparent',
+                                                    transition: 'background 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => sortOrder !== 'desc' && (e.target.style.background = '#f8fafc')}
+                                                onMouseLeave={(e) => sortOrder !== 'desc' && (e.target.style.background = 'transparent')}
+                                            >
+                                                Newest First
+                                            </div>
+                                            <div
+                                                onClick={() => { setSortOrder('asc'); setIsSortDropdownOpen(false); }}
+                                                style={{
+                                                    padding: '8px',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.9rem',
+                                                    color: '#334155',
+                                                    background: sortOrder === 'asc' ? '#f1f5f9' : 'transparent',
+                                                    transition: 'background 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => sortOrder !== 'asc' && (e.target.style.background = '#f8fafc')}
+                                                onMouseLeave={(e) => sortOrder !== 'asc' && (e.target.style.background = 'transparent')}
+                                            >
+                                                Oldest First
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {window.innerWidth > 768 && (
+                                    <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                        <button
+                                            onClick={() => {
+                                                if (window.innerWidth > 768) setModalViewMode('table');
+                                            }}
+                                            style={{
+                                                padding: '8px',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                background: modalViewMode === 'table' ? '#dc2626' : 'transparent',
+                                                color: modalViewMode === 'table' ? 'white' : '#64748b',
+                                                cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                                opacity: window.innerWidth <= 768 ? 0.5 : 1
+                                            }}
+                                        >
+                                            <TableRows fontSize="small" />
+                                        </button>
+                                        <button
+                                            onClick={() => setModalViewMode('card')}
+                                            style={{
+                                                padding: '8px',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                background: modalViewMode === 'card' ? '#dc2626' : 'transparent',
+                                                color: modalViewMode === 'card' ? 'white' : '#64748b',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <GridView fontSize="small" />
+                                        </button>
+                                    </div>
                                 )}
                             </div>
-                        )}
-                    </motion.div>
-                </div>
-            )}
+
+                            {modalViewMode === 'table' ? (
+                                <div className="table-container-wrapper" style={{ maxHeight: '57vh', overflowY: 'auto' }}>
+                                    <table className="users-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bp')) && <th>BP</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('hr')) && <th>HR</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('rr')) && <th>RR</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('spo2')) && <th>SpO2</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('temp')) && <th>Temp</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('weight') || modalMetricFilter.includes('bmi')) && <th>Weight (kg)</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('height') || modalMetricFilter.includes('bmi')) && <th>Height (cm)</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bmi')) && <th>BMI</th>}
+                                                <th>Risk</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {historyLoading ? (
+                                                <tr><td colSpan="11" style={{ textAlign: 'center' }}>Loading history...</td></tr>
+                                            ) : displayedUserHistory.length === 0 ? (
+                                                <NoDataFound type="history" compact={true} colSpan={11} />
+                                            ) : (
+                                                displayedUserHistory.map(h => (
+                                                    <tr key={h.id}>
+                                                        <td>{formatDate(h.created_at)}</td>
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bp')) && <td>{h.systolic ? `${h.systolic}/${h.diastolic}` : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('hr')) && <td>{h.heart_rate ? h.heart_rate : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('rr')) && <td>{h.respiratory_rate ? h.respiratory_rate : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('spo2')) && <td>{h.spo2 ? `${h.spo2}%` : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('temp')) && <td>{h.temperature ? `${h.temperature}°C` : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('weight') || modalMetricFilter.includes('bmi')) && <td>{h.weight ? h.weight : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('height') || modalMetricFilter.includes('bmi')) && <td>{h.height ? h.height : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bmi')) && <td>{h.bmi && Number(h.bmi) > 0 ? Number(h.bmi).toFixed(1) : 'Not Measured'}</td>}
+                                                        <td>
+                                                            <span style={{
+                                                                padding: '2px 6px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600',
+                                                                background: h.risk_category?.toLowerCase().includes('high') ? '#fee2e2' : '#dcfce7',
+                                                                color: h.risk_category?.toLowerCase().includes('high') ? '#991b1b' : '#166534'
+                                                            }}>
+                                                                {h.risk_category}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                onClick={() => setSelectedMeasurement(h)}
+                                                                style={{ border: 'none', background: 'none', color: '#3b82f6', cursor: 'pointer', fontWeight: '600' }}
+                                                            >
+                                                                View
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="measurement-cards-grid" style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                    gap: '16px',
+                                    maxHeight: '57vh',
+                                    overflowY: 'auto',
+                                    padding: '8px 4px 16px 4px',
+                                    alignItems: 'stretch',
+                                    gridAutoRows: 'max-content'
+                                }}>
+                                    {historyLoading ? (
+                                        <div style={{ textAlign: 'center', gridColumn: '1/-1', padding: '40px' }}>Loading history...</div>
+                                    ) : displayedUserHistory.length === 0 ? (
+                                        <div style={{ gridColumn: '1/-1' }}><NoDataFound type="measurements" /></div>
+                                    ) : (
+                                        displayedUserHistory.map(h => (
+                                            <div className="measurement-card" key={h.id} onClick={() => setSelectedMeasurement(h)}
+                                                style={{
+                                                    background: 'white',
+                                                    borderRadius: '12px',
+                                                    padding: '16px',
+                                                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                                                    border: '1px solid #f1f5f9',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '12px',
+                                                    position: 'relative',
+                                                    overflow: 'hidden'
+                                                }}
+                                                onMouseEnter={e => {
+                                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.05)';
+                                                }}
+                                            >
+                                                {/* Card Header */}
+                                                <div style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    marginBottom: '16px'
+                                                }}>
+                                                    <div style={{
+                                                        fontSize: '1rem',
+                                                        fontWeight: '700',
+                                                        color: '#1e293b',
+                                                        letterSpacing: '-0.02em'
+                                                    }}>
+                                                        {formatDate(h.created_at)}
+                                                    </div>
+                                                    <span style={{
+                                                        padding: '4px 10px',
+                                                        borderRadius: '20px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: '700',
+                                                        background: h.risk_category?.toLowerCase().includes('high') ? '#fee2e2' :
+                                                            h.risk_category?.toLowerCase().includes('moderate') ? '#ffedd5' : '#dcfce7',
+                                                        color: h.risk_category?.toLowerCase().includes('high') ? '#991b1b' :
+                                                            h.risk_category?.toLowerCase().includes('moderate') ? '#9a3412' : '#166534'
+                                                    }}>
+                                                        {h.risk_category || 'Unknown'}
+                                                    </span>
+                                                </div>
+
+                                                {/* Footer Button */}
+                                                <button style={{
+                                                    width: '100%',
+                                                    padding: '10px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #e2e8f0',
+                                                    background: 'white',
+                                                    color: '#475569',
+                                                    fontWeight: '600',
+                                                    fontSize: '0.9rem',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    marginTop: 'auto'
+                                                }}
+                                                    onMouseEnter={e => {
+                                                        e.target.style.background = '#f8fafc';
+                                                        e.target.style.color = '#1e293b';
+                                                        e.target.style.borderColor = '#cbd5e1';
+                                                    }}
+                                                    onMouseLeave={e => {
+                                                        e.target.style.background = 'white';
+                                                        e.target.style.color = '#475569';
+                                                        e.target.style.borderColor = '#e2e8f0';
+                                                    }}
+                                                >
+                                                    View Details
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </motion.div>
+                    </div>
+                )}
+
+
+
 
             {/* Detailed Result Modal (Shared) */}
             {
@@ -1400,7 +1917,7 @@ const NurseDashboard = () => {
                     </div>
                 )
             }
-        </DashboardLayout>
+        </DashboardLayout >
     );
 };
 

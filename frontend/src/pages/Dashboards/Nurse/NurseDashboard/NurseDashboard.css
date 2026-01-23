@@ -523,34 +523,41 @@
 
     .table-header {
         padding: 1rem;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.75rem;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1rem;
     }
 
     .table-header h3 {
         font-size: 1.1rem;
-        text-align: center;
+        text-align: left;
+        width: 100%;
+        margin-bottom: 0.5rem;
     }
 
     .table-actions,
     .table-controls {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
         gap: 0.75rem;
         width: 100%;
-        align-items: stretch;
+        align-items: center;
     }
 
     .search-bar {
-        width: 100%;
-        min-width: unset;
+        width: auto;
+        min-width: 200px;
+        flex: 1 1 250px;
         max-width: none;
     }
 
     .role-filter-wrapper {
-        flex-direction: column !important;
-        gap: 0.75rem !important;
-        width: 100%;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+        width: auto;
+        flex: 1;
     }
 
     /* Table Compact View */
@@ -590,7 +597,7 @@
 
     /* User Cards Grid */
     .user-cards-grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 1rem !important;
         padding: 0.5rem !important;
     }
@@ -687,6 +694,12 @@
     .user-cards-grid {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 1rem;
+    }
+
+    .user-cards-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
+        padding: 0.5rem !important;
     }
 
     .distribution-card,
@@ -942,28 +955,34 @@
 .table-container-wrapper::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
+
 /* Kiosk Mode Optimization (768px Portrait) */
 @media (max-width: 768px) {
     .dashboard-container {
         padding-bottom: 80px;
     }
+
     .user-cards-grid {
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; 
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
         gap: 1rem !important;
         padding: 0.5rem !important;
     }
+
     .user-card {
         padding: 1rem !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05) !important;
     }
+
     .action-btn {
         padding: 12px 16px !important;
         font-size: 1rem !important;
     }
+
     .search-bar {
         width: 100% !important;
         margin-bottom: 10px;
     }
+
     .modal-content {
         width: 95% !important;
         max-height: 90vh !important;
@@ -974,27 +993,75 @@
 /* Enhanced Kiosk Header Layout */
 @media (max-width: 768px) {
     .table-header {
-        flex-direction: column !important;
-        align-items: flex-start !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
         gap: 12px !important;
     }
+
     .table-header h3 {
         width: 100%;
         margin-bottom: 8px;
     }
-    .table-header > div:not(h3) {
+
+    .table-header>div:not(h3) {
         width: 100%;
         display: flex;
+        flex-direction: row;
+        align-items: center;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 0.75rem;
     }
 }
-/* Measurement Card CSS */
-.measurement-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-.measurement-card { background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
-.m-card-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem; }
-.m-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-.m-metric { display: flex; flexDirection: column; }
-.m-label { font-size: 0.7rem; color: #64748b; }
-.m-value { font-weight: 600; color: #1e293b; }
 
+/* Measurement Card CSS */
+.measurement-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.measurement-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.m-card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 0.5rem;
+}
+
+.m-card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.m-metric {
+    display: flex;
+    flex-direction: column;
+}
+
+.m-label {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.m-value {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Force 2-column grid for Kiosk/Tablet (Portrait) */
+@media (min-width: 500px) and (max-width: 768px) {
+    .user-cards-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 1rem !important;
+    }
+}

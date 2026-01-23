@@ -115,6 +115,9 @@ const DoctorDashboard = () => {
     const [modalViewMode, setModalViewMode] = useState(window.innerWidth <= 768 ? 'card' : 'table');
 
     useEffect(() => {
+        // Hide body scrollbar to prevent double scrollbars in kiosk mode
+        document.body.style.overflow = 'hidden';
+
         const handleResize = () => {
             if (window.innerWidth <= 768) {
                 setViewMode('card');
@@ -124,7 +127,10 @@ const DoctorDashboard = () => {
         };
 
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            document.body.style.overflow = 'auto';
+        };
     }, []);
 
     const handleExportHistory = (format) => {
@@ -175,6 +181,8 @@ const DoctorDashboard = () => {
     const [riskFilter, setRiskFilter] = useState(['all']); // Array for multi-select
     const [modalRiskFilter, setModalRiskFilter] = useState(['all']);
     const [isModalRiskDropdownOpen, setIsModalRiskDropdownOpen] = useState(false);
+    const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+    const [isPersonalSortDropdownOpen, setIsPersonalSortDropdownOpen] = useState(false);
 
     // Modal specific time period
     const [modalTimePeriod, setModalTimePeriod] = useState('all');
@@ -534,77 +542,181 @@ const DoctorDashboard = () => {
                     className="table-section"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: 'calc(97vh - 120px)',
+                        flex: 1
+                    }}
                 >
                     <div className="table-header">
                         <h3>Assigned Patients / All Users ({timeFilteredPatients.length} records)</h3>
-                        <div className="table-controls">
-                            <div className="search-bar">
-                                <Search className="search-icon" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by name, email, role..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+
+                        {/* --- DESKTOP LAYOUT (> 768px) --- */}
+                        {window.innerWidth > 768 && (
+                            <div className="table-controls desktop-only">
+                                <div className="search-bar">
+                                    <Search className="search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, email, role..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+
+                                <TimePeriodFilter
+                                    timePeriod={patientsTimePeriod}
+                                    setTimePeriod={setPatientsTimePeriod}
+                                    customDateRange={patientsCustomDateRange}
+                                    setCustomDateRange={setPatientsCustomDateRange}
+                                    variant="dropdown"
                                 />
+
+                                <ExportButton
+                                    onExportCSV={() => handleExportPatients('csv')}
+                                    onExportExcel={() => handleExportPatients('excel')}
+                                    onExportPDF={() => handleExportPatients('pdf')}
+                                />
+
+                                {/* View Mode Toggle */}
+                                <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                    <button
+                                        onClick={() => {
+                                            if (window.innerWidth > 768) setViewMode('table');
+                                        }}
+                                        style={{
+                                            padding: '8px 12px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: viewMode === 'table' ? '#dc2626' : 'transparent',
+                                            color: viewMode === 'table' ? 'white' : '#64748b',
+                                            cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                            opacity: window.innerWidth <= 768 ? 0.5 : 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        title="Table View"
+                                    >
+                                        <TableRows style={{ fontSize: '1.2rem' }} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('card')}
+                                        style={{
+                                            padding: '8px 12px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: viewMode === 'card' ? '#dc2626' : 'transparent',
+                                            color: viewMode === 'card' ? 'white' : '#64748b',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        title="Card View"
+                                    >
+                                        <GridView style={{ fontSize: '1.2rem' }} />
+                                    </button>
+                                </div>
                             </div>
+                        )}
 
-                            <TimePeriodFilter
-                                timePeriod={patientsTimePeriod}
-                                setTimePeriod={setPatientsTimePeriod}
-                                customDateRange={patientsCustomDateRange}
-                                setCustomDateRange={setPatientsCustomDateRange}
-                                variant="dropdown"
-                            />
+                        {/* --- KIOSK LAYOUT (<= 768px) --- */}
+                        {window.innerWidth <= 768 && (
+                            <div className="table-controls kiosk-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                                {/* Row 1: Search Bar */}
+                                <div className="search-bar" style={{ width: '100%', maxWidth: 'none', margin: 0 }}>
+                                    <Search className="search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, email, role..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
 
-                            <ExportButton
-                                onExportCSV={() => handleExportPatients('csv')}
-                                onExportExcel={() => handleExportPatients('excel')}
-                                onExportPDF={() => handleExportPatients('pdf')}
-                            />
+                                {/* Row 2: Scrollable Filters & Actions Strip */}
+                                <div className="kiosk-scroll-container" style={{
+                                    display: 'flex',
+                                    flexWrap: 'nowrap',
+                                    overflowX: 'auto',
+                                    gap: '12px',
+                                    alignItems: 'center',
+                                    paddingBottom: '8px',
+                                    whiteSpace: 'nowrap',
+                                    WebkitOverflowScrolling: 'touch',
+                                    width: '100%'
+                                }}>
+                                    <style>{`
+                                        /* Hide scrollbar on buttons as requested */
+                                        .kiosk-scroll-container::-webkit-scrollbar {
+                                            display: none;
+                                        }
+                                        .kiosk-scroll-container {
+                                            -ms-overflow-style: none;
+                                            scrollbar-width: none;
+                                        }
+                                    `}</style>
 
-                            {/* View Mode Toggle */}
-                            <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
-                                <button
-                                    onClick={() => {
-                                        if (window.innerWidth > 768) setViewMode('table');
-                                    }}
-                                    style={{
-                                        padding: '8px 12px',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        background: viewMode === 'table' ? '#dc2626' : 'transparent',
-                                        color: viewMode === 'table' ? 'white' : '#64748b',
-                                        cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
-                                        opacity: window.innerWidth <= 768 ? 0.5 : 1,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    title="Table View"
-                                >
-                                    <TableRows style={{ fontSize: '1.2rem' }} />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('card')}
-                                    style={{
-                                        padding: '8px 12px',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        background: viewMode === 'card' ? '#dc2626' : 'transparent',
-                                        color: viewMode === 'card' ? 'white' : '#64748b',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    title="Card View"
-                                >
-                                    <GridView style={{ fontSize: '1.2rem' }} />
-                                </button>
+
+                                    <div style={{ flex: '0 0 auto', minWidth: '140px' }}>
+                                        <TimePeriodFilter
+                                            timePeriod={patientsTimePeriod}
+                                            setTimePeriod={setPatientsTimePeriod}
+                                            customDateRange={patientsCustomDateRange}
+                                            setCustomDateRange={setPatientsCustomDateRange}
+                                            variant="dropdown"
+                                        />
+                                    </div>
+
+                                    {/* Export Button Removed in Kiosk Mode */}
+
+                                    {/* View Mode Toggle */}
+                                    <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px', flex: '0 0 auto', margin: 0 }}>
+                                        <button
+                                            disabled={true}
+                                            style={{
+                                                padding: '8px 12px',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                background: 'transparent',
+                                                color: '#64748b',
+                                                cursor: 'not-allowed',
+                                                opacity: 0.5,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                            title="Table View (Disabled on Kiosk)"
+                                        >
+                                            <TableRows style={{ fontSize: '1.2rem' }} />
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode('card')}
+                                            style={{
+                                                padding: '8px 12px',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                background: viewMode === 'card' ? '#dc2626' : 'transparent',
+                                                color: viewMode === 'card' ? 'white' : '#64748b',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            title="Card View"
+                                        >
+                                            <GridView style={{ fontSize: '1.2rem' }} />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Table View */}
@@ -655,96 +767,109 @@ const DoctorDashboard = () => {
                         )
                     }
 
-                    {/* Card View */}
-                    {
-                        viewMode === 'card' && (
-                            <div className="user-cards-grid">
-                                {loading ? (
-                                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                        Loading users...
-                                    </div>
-                                ) : currentUsers.length === 0 ? (
-                                    <div style={{ gridColumn: '1 / -1' }}>
-                                        <NoDataFound type="users" searchTerm={searchTerm} />
-                                    </div>
-                                ) : (
-                                    currentUsers.map((u) => (
-                                        <motion.div
-                                            key={u.user_id}
-                                            className="user-card"
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            whileHover={{ y: -4, boxShadow: '0 12px 24px rgba(0,0,0,0.12)' }}
+                    {/* Card View - Compact for Kiosk */}
+                    {viewMode === 'card' && (
+                        <div className="user-cards-grid" style={{
+                            flex: 1,
+                            minHeight: 0,
+                            overflowY: 'auto',
+                            paddingRight: '4px',
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '0.75rem',
+                            alignContent: 'start'
+                        }}>
+                            {loading ? (
+                                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                    Loading users...
+                                </div>
+                            ) : currentUsers.length === 0 ? (
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <NoDataFound type="users" searchTerm={searchTerm} />
+                                </div>
+                            ) : (
+                                currentUsers.map((u) => (
+                                    <motion.div
+                                        key={u.user_id}
+                                        className="user-card"
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}
+                                        style={{
+                                            background: 'white',
+                                            borderRadius: '12px',
+                                            padding: '0.875rem',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                                            border: '1px solid #e2e8f0',
+                                            transition: 'all 0.2s ease',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.5rem'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                                            <div style={{
+                                                width: '40px',
+                                                height: '40px',
+                                                borderRadius: '50%',
+                                                background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+                                                color: 'white',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontWeight: 'bold',
+                                                fontSize: '0.875rem',
+                                                flexShrink: 0
+                                            }}>
+                                                {u.firstname[0]}{u.lastname[0]}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <h4 style={{ margin: 0, color: '#1e293b', fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {u.firstname} {u.lastname}
+                                                </h4>
+                                                <span className={`role-badge role-${u.role.toLowerCase()}`} style={{ fontSize: '0.65rem', marginTop: '2px', display: 'inline-block', padding: '2px 6px' }}>
+                                                    {u.role}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#475569' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#94a3b8' }}>Email:</span>
+                                                <span style={{ fontWeight: '500', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#94a3b8' }}>School ID:</span>
+                                                <span style={{ fontWeight: '500' }}>{u.school_number || 'N/A'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#94a3b8' }}>Last Checkup:</span>
+                                                <span style={{ fontWeight: '500' }}>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            className="action-btn"
+                                            onClick={() => viewUserHistory(u)}
                                             style={{
-                                                background: 'white',
-                                                borderRadius: '16px',
-                                                padding: '1.5rem',
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                                                border: '1px solid #e2e8f0',
-                                                transition: 'all 0.2s ease'
+                                                width: '100%',
+                                                padding: '6px',
+                                                borderRadius: '6px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '4px',
+                                                fontSize: '0.75rem',
+                                                marginTop: 'auto'
                                             }}
                                         >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                                                <div style={{
-                                                    width: '56px',
-                                                    height: '56px',
-                                                    borderRadius: '50%',
-                                                    background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-                                                    color: 'white',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '1.25rem'
-                                                }}>
-                                                    {u.firstname[0]}{u.lastname[0]}
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <h4 style={{ margin: 0, color: '#1e293b', fontSize: '1.1rem' }}>
-                                                        {u.firstname} {u.lastname}
-                                                    </h4>
-                                                    <span className={`role-badge role-${u.role.toLowerCase()}`} style={{ fontSize: '0.75rem', marginTop: '4px', display: 'inline-block' }}>
-                                                        {u.role}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.9rem', color: '#475569' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#94a3b8' }}>Email:</span>
-                                                    <span style={{ fontWeight: '500', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#94a3b8' }}>School ID:</span>
-                                                    <span style={{ fontWeight: '500' }}>{u.school_number || 'N/A'}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: '#94a3b8' }}>Last Checkup:</span>
-                                                    <span style={{ fontWeight: '500' }}>{u.last_checkup ? formatDate(u.last_checkup) : '-'}</span>
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                className="action-btn"
-                                                onClick={() => viewUserHistory(u)}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '10px',
-                                                    borderRadius: '8px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '6px'
-                                                }}
-                                            >
-                                                <Visibility style={{ fontSize: '1rem' }} /> View History
-                                            </button>
-                                        </motion.div>
-                                    ))
-                                )}
-                            </div>
-                        )
-                    }
+                                            <Visibility style={{ fontSize: '0.875rem' }} /> View History
+                                        </button>
+                                    </motion.div>
+                                ))
+                            )}
+                        </div>
+                    )}
                     <Pagination
                         currentPage={usersPage}
                         totalPages={totalUserPages}
@@ -818,14 +943,69 @@ const DoctorDashboard = () => {
                                             allLabel="All Risks"
                                         />
                                     </div>
-                                    <select
-                                        value={sortOrder}
-                                        onChange={(e) => setSortOrder(e.target.value)}
-                                        style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                                    >
-                                        <option value="desc">Newest First</option>
-                                        <option value="asc">Oldest First</option>
-                                    </select>
+                                    <div style={{ position: 'relative' }}>
+                                        <button
+                                            onClick={() => setIsPersonalSortDropdownOpen(!isPersonalSortDropdownOpen)}
+                                            style={{
+                                                padding: '8px 12px',
+                                                borderRadius: '6px',
+                                                border: '1px solid #cbd5e1',
+                                                background: 'white',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                minWidth: '140px',
+                                                justifyContent: 'space-between'
+                                            }}
+                                        >
+                                            <span>
+                                                {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+                                            </span>
+                                            <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                        </button>
+                                        {isPersonalSortDropdownOpen && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                left: 0,
+                                                zIndex: 100,
+                                                background: 'white',
+                                                border: '1px solid #e2e8f0',
+                                                borderRadius: '6px',
+                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                                width: '100%',
+                                                padding: '4px',
+                                                marginTop: '4px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '2px'
+                                            }}>
+                                                <div
+                                                    onClick={() => { setSortOrder('desc'); setIsPersonalSortDropdownOpen(false); }}
+                                                    style={{
+                                                        padding: '8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155',
+                                                        background: sortOrder === 'desc' ? '#f1f5f9' : 'transparent', transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => sortOrder !== 'desc' && (e.target.style.background = '#f8fafc')}
+                                                    onMouseLeave={(e) => sortOrder !== 'desc' && (e.target.style.background = 'transparent')}
+                                                >
+                                                    Newest First
+                                                </div>
+                                                <div
+                                                    onClick={() => { setSortOrder('asc'); setIsPersonalSortDropdownOpen(false); }}
+                                                    style={{
+                                                        padding: '8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155',
+                                                        background: sortOrder === 'asc' ? '#f1f5f9' : 'transparent', transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => sortOrder !== 'asc' && (e.target.style.background = '#f8fafc')}
+                                                    onMouseLeave={(e) => sortOrder !== 'asc' && (e.target.style.background = 'transparent')}
+                                                >
+                                                    Oldest First
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                     <ExportButton
                                         onExportCSV={() => handleExportHistory('csv')}
                                         onExportExcel={() => handleExportHistory('excel')}
@@ -917,37 +1097,118 @@ const DoctorDashboard = () => {
                                     </table>
                                 </div>
                             ) : (
-                                <div className="measurement-cards-grid">
+                                <div className="measurement-cards-grid" style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                                    gap: '32px',
+                                    alignItems: 'stretch',
+                                    gridAutoRows: '1fr'
+                                }}>
                                     {currentHistory.length === 0 ? (
                                         <div style={{ gridColumn: '1/-1' }}><NoDataFound type="measurements" /></div>
                                     ) : (
                                         currentHistory.map(m => (
-                                            <div className="measurement-card" key={m.id} onClick={() => setSelectedMeasurement(m)}>
-                                                <div className="m-card-header">
-                                                    <div className="m-card-date">{formatDate(m.created_at)}</div>
-                                                    <span className={`risk-badge ${m.risk_category?.toLowerCase().includes('normal') ? 'risk-normal' : 'risk-high'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                                            <div className="measurement-card" key={m.id} onClick={() => setSelectedMeasurement(m)}
+                                                style={{
+                                                    background: 'white',
+                                                    borderRadius: '16px',
+                                                    padding: '32px',
+                                                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05)',
+                                                    border: '1px solid #f1f5f9',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '24px',
+                                                    height: '100%',
+                                                    minHeight: '300px'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                            >
+                                                {/* Card Header */}
+                                                <div style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    paddingBottom: '20px',
+                                                    borderBottom: '1px solid #f1f5f9'
+                                                }}>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1e293b' }}>
+                                                        {formatDate(m.created_at)}
+                                                    </div>
+                                                    <span style={{
+                                                        padding: '6px 14px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700',
+                                                        background: m.risk_category?.toLowerCase().includes('high') ? '#fee2e2' :
+                                                            m.risk_category?.toLowerCase().includes('moderate') ? '#ffedd5' : '#dcfce7',
+                                                        color: m.risk_category?.toLowerCase().includes('high') ? '#991b1b' :
+                                                            m.risk_category?.toLowerCase().includes('moderate') ? '#9a3412' : '#166534'
+                                                    }}>
                                                         {m.risk_category || 'Unknown'}
                                                     </span>
                                                 </div>
-                                                <div className="m-card-grid">
-                                                    <div className="m-metric">
-                                                        <span className="m-label">BP (mmHg)</span>
-                                                        <span className="m-value">{m.systolic ? `${m.systolic}/${m.diastolic}` : '-'}</span>
-                                                    </div>
-                                                    <div className="m-metric">
-                                                        <span className="m-label">Heart Rate</span>
-                                                        <span className="m-value">{m.heart_rate ? `${m.heart_rate} bpm` : '-'}</span>
-                                                    </div>
-                                                    <div className="m-metric">
-                                                        <span className="m-label">SpO2</span>
-                                                        <span className="m-value">{m.spo2 ? `${m.spo2}%` : '-'}</span>
-                                                    </div>
-                                                    <div className="m-metric">
-                                                        <span className="m-label">Temp</span>
-                                                        <span className="m-value">{m.temperature ? `${m.temperature}°C` : '-'}</span>
-                                                    </div>
+
+                                                {/* Metrics Grid - Responsive Multi-column */}
+                                                <div style={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                                                    gap: '24px',
+                                                    textAlign: 'left',
+                                                    width: '100%',
+                                                    flexGrow: 1,
+                                                    minHeight: '120px'
+                                                }}>
+                                                    {(metricFilter.includes('all') || metricFilter.includes('bp')) && m.systolic != null && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>BP (mmHg)</span>
+                                                            <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.systolic}/{m.diastolic}</span>
+                                                        </div>
+                                                    )}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('hr')) && m.heart_rate != null && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Heart Rate</span>
+                                                            <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.heart_rate} bpm</span>
+                                                        </div>
+                                                    )}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('rr')) && m.respiratory_rate != null && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Resp. Rate</span>
+                                                            <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.respiratory_rate} bpm</span>
+                                                        </div>
+                                                    )}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('spo2')) && m.spo2 != null && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>SpO2</span>
+                                                            <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.spo2}%</span>
+                                                        </div>
+                                                    )}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('temp')) && m.temperature != null && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Temp</span>
+                                                            <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.temperature}°C</span>
+                                                        </div>
+                                                    )}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('weight')) && m.weight != null && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Weight</span>
+                                                            <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.weight} kg</span>
+                                                        </div>
+                                                    )}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('height')) && m.height != null && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Height</span>
+                                                            <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{m.height} cm</span>
+                                                        </div>
+                                                    )}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('bmi')) && m.bmi != null && Number(m.bmi) > 0 && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.025em' }}>BMI</span>
+                                                            <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>{Number(m.bmi).toFixed(1)}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <button className="action-btn" style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>
+
+                                                <button className="action-btn" style={{ width: '100%', marginTop: 'auto', justifyContent: 'center', background: 'white', border: '1px solid #e2e8f0', color: '#475569' }}>
                                                     View Details
                                                 </button>
                                             </div>
@@ -1155,46 +1416,113 @@ const DoctorDashboard = () => {
                                     )}
                                 </div>
 
-                                <select
-                                    value={sortOrder}
-                                    onChange={(e) => setSortOrder(e.target.value)}
-                                    style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                                >
-                                    <option value="desc">Newest First</option>
-                                    <option value="asc">Oldest First</option>
-                                </select>
-
-                                <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                <div style={{ position: 'relative' }}>
                                     <button
-                                        onClick={() => {
-                                            if (window.innerWidth > 768) setModalViewMode('table');
-                                        }}
+                                        onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
                                         style={{
-                                            padding: '8px',
-                                            border: 'none',
+                                            padding: '8px 12px',
                                             borderRadius: '6px',
-                                            background: modalViewMode === 'table' ? '#dc2626' : 'transparent',
-                                            color: modalViewMode === 'table' ? 'white' : '#64748b',
-                                            cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
-                                            opacity: window.innerWidth <= 768 ? 0.5 : 1
+                                            border: '1px solid #cbd5e1',
+                                            background: 'white',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            minWidth: '140px',
+                                            justifyContent: 'space-between'
                                         }}
                                     >
-                                        <TableRows fontSize="small" />
+                                        <span>
+                                            {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+                                        </span>
+                                        <span style={{ fontSize: '0.8rem' }}>▼</span>
                                     </button>
-                                    <button
-                                        onClick={() => setModalViewMode('card')}
-                                        style={{
-                                            padding: '8px',
-                                            border: 'none',
+                                    {isSortDropdownOpen && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            zIndex: 100,
+                                            background: 'white',
+                                            border: '1px solid #e2e8f0',
                                             borderRadius: '6px',
-                                            background: modalViewMode === 'card' ? '#dc2626' : 'transparent',
-                                            color: modalViewMode === 'card' ? 'white' : '#64748b',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <GridView fontSize="small" />
-                                    </button>
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            width: '100%',
+                                            padding: '4px',
+                                            marginTop: '4px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '2px'
+                                        }}>
+                                            <div
+                                                onClick={() => { setSortOrder('desc'); setIsSortDropdownOpen(false); }}
+                                                style={{
+                                                    padding: '8px',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.9rem',
+                                                    color: '#334155',
+                                                    background: sortOrder === 'desc' ? '#f1f5f9' : 'transparent',
+                                                    transition: 'background 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => sortOrder !== 'desc' && (e.target.style.background = '#f8fafc')}
+                                                onMouseLeave={(e) => sortOrder !== 'desc' && (e.target.style.background = 'transparent')}
+                                            >
+                                                Newest First
+                                            </div>
+                                            <div
+                                                onClick={() => { setSortOrder('asc'); setIsSortDropdownOpen(false); }}
+                                                style={{
+                                                    padding: '8px',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.9rem',
+                                                    color: '#334155',
+                                                    background: sortOrder === 'asc' ? '#f1f5f9' : 'transparent',
+                                                    transition: 'background 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => sortOrder !== 'asc' && (e.target.style.background = '#f8fafc')}
+                                                onMouseLeave={(e) => sortOrder !== 'asc' && (e.target.style.background = 'transparent')}
+                                            >
+                                                Oldest First
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
+
+                                {window.innerWidth > 768 && (
+                                    <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                        <button
+                                            onClick={() => {
+                                                if (window.innerWidth > 768) setModalViewMode('table');
+                                            }}
+                                            style={{
+                                                padding: '8px',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                background: modalViewMode === 'table' ? '#dc2626' : 'transparent',
+                                                color: modalViewMode === 'table' ? 'white' : '#64748b',
+                                                cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                                opacity: window.innerWidth <= 768 ? 0.5 : 1
+                                            }}
+                                        >
+                                            <TableRows fontSize="small" />
+                                        </button>
+                                        <button
+                                            onClick={() => setModalViewMode('card')}
+                                            style={{
+                                                padding: '8px',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                background: modalViewMode === 'card' ? '#dc2626' : 'transparent',
+                                                color: modalViewMode === 'card' ? 'white' : '#64748b',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <GridView fontSize="small" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {modalViewMode === 'table' ? (
@@ -1203,14 +1531,14 @@ const DoctorDashboard = () => {
                                         <thead>
                                             <tr>
                                                 <th>Date</th>
-                                                {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP</th>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR</th>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR</th>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2</th>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp</th>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bp')) && <th>BP</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('hr')) && <th>HR</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('rr')) && <th>RR</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('spo2')) && <th>SpO2</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('temp')) && <th>Temp</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('weight') || modalMetricFilter.includes('bmi')) && <th>Weight (kg)</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('height') || modalMetricFilter.includes('bmi')) && <th>Height (cm)</th>}
+                                                {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bmi')) && <th>BMI</th>}
                                                 <th>Risk</th>
                                                 <th>Action</th>
                                             </tr>
@@ -1224,14 +1552,14 @@ const DoctorDashboard = () => {
                                                 displayedUserHistory.map(h => (
                                                     <tr key={h.id}>
                                                         <td>{formatDate(h.created_at)}</td>
-                                                        {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{h.systolic ? `${h.systolic}/${h.diastolic}` : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{h.heart_rate ? h.heart_rate : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{h.respiratory_rate ? h.respiratory_rate : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{h.spo2 ? `${h.spo2}%` : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{h.temperature ? `${h.temperature}°C` : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{h.weight ? h.weight : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{h.height ? h.height : 'Not Measured'}</td>}
-                                                        {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{h.bmi && Number(h.bmi) > 0 ? Number(h.bmi).toFixed(1) : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bp')) && <td>{h.systolic ? `${h.systolic}/${h.diastolic}` : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('hr')) && <td>{h.heart_rate ? h.heart_rate : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('rr')) && <td>{h.respiratory_rate ? h.respiratory_rate : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('spo2')) && <td>{h.spo2 ? `${h.spo2}%` : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('temp')) && <td>{h.temperature ? `${h.temperature}°C` : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('weight') || modalMetricFilter.includes('bmi')) && <td>{h.weight ? h.weight : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('height') || modalMetricFilter.includes('bmi')) && <td>{h.height ? h.height : 'Not Measured'}</td>}
+                                                        {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bmi')) && <td>{h.bmi && Number(h.bmi) > 0 ? Number(h.bmi).toFixed(1) : 'Not Measured'}</td>}
                                                         <td>
                                                             <span style={{
                                                                 padding: '2px 6px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600',
@@ -1256,43 +1584,86 @@ const DoctorDashboard = () => {
                                     </table>
                                 </div>
                             ) : (
-                                <div className="measurement-cards-grid" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '8px' }}>
+                                <div className="measurement-cards-grid" style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                    gap: '16px',
+                                    maxHeight: '60vh',
+                                    overflowY: 'auto',
+                                    padding: '8px 4px 16px 4px',
+                                    alignItems: 'stretch',
+                                    gridAutoRows: 'max-content'
+                                }}>
                                     {historyLoading ? (
-                                        <div style={{ textAlign: 'center', gridColumn: '1/-1' }}>Loading history...</div>
+                                        <div style={{ textAlign: 'center', gridColumn: '1/-1', padding: '40px' }}>Loading history...</div>
                                     ) : displayedUserHistory.length === 0 ? (
                                         <div style={{ gridColumn: '1/-1' }}><NoDataFound type="measurements" /></div>
                                     ) : (
                                         displayedUserHistory.map(h => (
-                                            <div className="measurement-card" key={h.id} onClick={() => setSelectedMeasurement(h)}>
-                                                <div className="m-card-header">
-                                                    <div className="m-card-date">{formatDate(h.created_at)}</div>
+                                            <div className="measurement-card" key={h.id} onClick={() => setSelectedMeasurement(h)}
+                                                style={{
+                                                    background: 'white',
+                                                    borderRadius: '12px',
+                                                    padding: '16px',
+                                                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                                                    border: '1px solid #e2e8f0',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '12px',
+                                                    height: '100%',
+                                                    position: 'relative'
+                                                }}
+                                                onMouseEnter={e => {
+                                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1)';
+                                                }}
+                                            >
+                                                {/* Card Header */}
+                                                <div style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center'
+                                                }}>
+                                                    <div style={{
+                                                        fontSize: '0.95rem',
+                                                        fontWeight: '600',
+                                                        color: '#1e293b'
+                                                    }}>
+                                                        {formatDate(h.created_at)}
+                                                    </div>
                                                     <span style={{
-                                                        padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600',
-                                                        background: h.risk_category?.toLowerCase().includes('high') ? '#fee2e2' : '#dcfce7',
-                                                        color: h.risk_category?.toLowerCase().includes('high') ? '#991b1b' : '#166534'
+                                                        padding: '4px 8px',
+                                                        borderRadius: '12px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: '700',
+                                                        background: h.risk_category?.toLowerCase().includes('high') ? '#fee2e2' :
+                                                            h.risk_category?.toLowerCase().includes('moderate') ? '#ffedd5' : '#dcfce7',
+                                                        color: h.risk_category?.toLowerCase().includes('high') ? '#991b1b' :
+                                                            h.risk_category?.toLowerCase().includes('moderate') ? '#9a3412' : '#166534'
                                                     }}>
                                                         {h.risk_category || 'Unknown'}
                                                     </span>
                                                 </div>
-                                                <div className="m-card-grid">
-                                                    <div className="m-metric">
-                                                        <span className="m-label">BP (mmHg)</span>
-                                                        <span className="m-value">{h.systolic ? `${h.systolic}/${h.diastolic}` : '-'}</span>
-                                                    </div>
-                                                    <div className="m-metric">
-                                                        <span className="m-label">Heart Rate</span>
-                                                        <span className="m-value">{h.heart_rate ? `${h.heart_rate} bpm` : '-'}</span>
-                                                    </div>
-                                                    <div className="m-metric">
-                                                        <span className="m-label">SpO2</span>
-                                                        <span className="m-value">{h.spo2 ? `${h.spo2}%` : '-'}</span>
-                                                    </div>
-                                                    <div className="m-metric">
-                                                        <span className="m-label">Temp</span>
-                                                        <span className="m-value">{h.temperature ? `${h.temperature}°C` : '-'}</span>
-                                                    </div>
-                                                </div>
-                                                <button className="action-btn" style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>
+
+                                                {/* Footer Button - Always at bottom */}
+                                                <button style={{
+                                                    width: '100%',
+                                                    padding: '8px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #e2e8f0',
+                                                    background: 'white',
+                                                    color: '#475569',
+                                                    fontWeight: '600',
+                                                    fontSize: '0.85rem',
+                                                    cursor: 'pointer',
+                                                    marginTop: 'auto'
+                                                }}>
                                                     View Details
                                                 </button>
                                             </div>

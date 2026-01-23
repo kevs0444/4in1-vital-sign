@@ -4,12 +4,25 @@ import './ExportButton.css';
 
 const ExportButton = ({ onExportCSV, onExportExcel, onExportPDF }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const buttonRef = React.useRef(null);
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
 
-    const toggleDropdown = () => setIsOpen(!isOpen);
+    const toggleDropdown = () => {
+        if (!isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            // Position it below the button, aligned to the right edge or left edge depending on space
+            // Defaulting to left alignment or keeping it consistent with relative flow visual
+            // Let's use left alignment if possible, relative to the button
+            setDropdownPos({
+                top: rect.bottom + 4, // 4px gap
+                left: rect.left
+            });
+        }
+        setIsOpen(!isOpen);
+    };
 
     const handleAction = (action) => {
         setIsOpen(false);
-        // Small timeout to allow UI to close
         setTimeout(() => {
             if (action === 'csv' && onExportCSV) onExportCSV();
             if (action === 'excel' && onExportExcel) onExportExcel();
@@ -17,13 +30,26 @@ const ExportButton = ({ onExportCSV, onExportExcel, onExportPDF }) => {
         }, 100);
     };
 
-    // Click outside handler could be added here for robustness, 
-    // but for now a simple blur or mouseleave might suffice if kept simple.
-    // Using a simple conditional render for the menu.
+    // Close on click outside
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (buttonRef.current && !buttonRef.current.contains(event.target) && !event.target.closest('.export-dropdown-menu')) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
 
     return (
         <div className="export-button-container" onMouseLeave={() => setIsOpen(false)}>
             <button
+                ref={buttonRef}
                 className="export-btn-main"
                 onClick={toggleDropdown}
                 title="Export Data"
@@ -33,7 +59,16 @@ const ExportButton = ({ onExportCSV, onExportExcel, onExportPDF }) => {
             </button>
 
             {isOpen && (
-                <div className="export-dropdown-menu">
+                <div
+                    className="export-dropdown-menu"
+                    style={{
+                        position: 'fixed',
+                        top: `${dropdownPos.top}px`,
+                        left: `${dropdownPos.left}px`,
+                        zIndex: 9999,
+                        width: '140px' // Manual width as extracted from CSS
+                    }}
+                >
                     <button onClick={() => handleAction('csv')}>
                         <span className="file-icon csv">TXT</span> CSV
                     </button>
