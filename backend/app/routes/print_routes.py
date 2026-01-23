@@ -61,22 +61,17 @@ def format_receipt(data):
     
     # Temp
     if 'bodytemp' in checklist or data.get('temperature'):
-        lines.append(f"Body Temp: {data.get('temperature', 'N/A')} C\n")
-        lines.append(f"Status: {data.get('temperatureStatus', 'N/A')}\n")
+        lines.append(f"Body Temp: {data.get('temperature', 'N/A')} C ({data.get('temperatureStatus', 'N/A')})\n")
         
     # Heart/SpO2
     if 'max30102' in checklist or data.get('heartRate'):
-        lines.append(f"Heart Rate: {data.get('heartRate', 'N/A')} BPM\n")
-        lines.append(f"Status: {data.get('heartRateStatus', 'N/A')}\n")
-        lines.append(f"SpO2: {data.get('spo2', 'N/A')}%\n")
-        lines.append(f"Status: {data.get('spo2Status', 'N/A')}\n")
-        lines.append(f"Resp. Rate: {data.get('respiratoryRate', 'N/A')}/min\n")
-        lines.append(f"Status: {data.get('respiratoryStatus', 'N/A')}\n")
+        lines.append(f"Heart Rate: {data.get('heartRate', 'N/A')} BPM ({data.get('heartRateStatus', 'N/A')})\n")
+        lines.append(f"SpO2: {data.get('spo2', 'N/A')}% ({data.get('spo2Status', 'N/A')})\n")
+        lines.append(f"Resp. Rate: {data.get('respiratoryRate', 'N/A')}/min ({data.get('respiratoryStatus', 'N/A')})\n")
 
     # BP
     if 'bloodpressure' in checklist or data.get('systolic'):
-        lines.append(f"BP: {data.get('systolic', 'N/A')}/{data.get('diastolic', 'N/A')} mmHg\n")
-        lines.append(f"Status: {data.get('bloodPressureStatus', 'N/A')}\n")
+        lines.append(f"BP: {data.get('systolic', 'N/A')}/{data.get('diastolic', 'N/A')} mmHg ({data.get('bloodPressureStatus', 'N/A')})\n")
         
     # Weight/Height
     if 'bmi' in checklist or data.get('weight'):

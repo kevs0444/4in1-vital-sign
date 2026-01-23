@@ -10,6 +10,9 @@ import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod, MultiS
 import NoDataFound from '../../../../components/NoDataFound/NoDataFound';
 import { Assessment } from '@mui/icons-material';
 import { useRealtimeUpdates, formatLastUpdated } from '../../../../hooks/useRealtimeData';
+import ExportButton from '../../../../components/ExportButton/ExportButton';
+import { exportToCSV, exportToExcel, exportToPDF } from '../../../../utils/exportUtils';
+import { GridView, TableRows } from '@mui/icons-material';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -111,6 +114,21 @@ const EmployeeDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'history', 'profile'
     const [toast, setToast] = useState(null);
     const [popAverages, setPopAverages] = useState(null);
+
+    // Kiosk Mode: Default to 'card' if width <= 768px (Only for consistent view logic, though Employee uses table mostly)
+    const [viewMode, setViewMode] = useState(window.innerWidth <= 768 ? 'card' : 'table');
+
+    useEffect(() => {
+        const handleResize = () => {
+            // Just tracking state if needed.
+            if (window.innerWidth <= 768) {
+                setViewMode('card');
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Time Period Filter State (shared between analytics and table)
     const [timePeriod, setTimePeriod] = useState('weekly'); // daily, weekly, monthly, annually, custom
@@ -301,6 +319,36 @@ const EmployeeDashboard = () => {
         });
     };
 
+    const [historyViewMode, setHistoryViewMode] = useState(window.innerWidth <= 768 ? 'card' : 'table');
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth <= 768) {
+                setHistoryViewMode('card');
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const handleExportHistory = (format) => {
+        const data = timeFilteredHistory.map(m => ({
+            "Date": new Date(m.created_at).toLocaleString(),
+            "Blood Pressure": m.systolic ? `${m.systolic}/${m.diastolic}` : 'N/A',
+            "Heart Rate": m.heart_rate || 'N/A',
+            "SpO2": m.spo2 ? `${m.spo2}%` : 'N/A',
+            "Temp": m.temperature ? `${m.temperature}°C` : 'N/A',
+            "Weight": m.weight || 'N/A',
+            "Risk": m.risk_category || 'Unknown'
+        }));
+        const filename = `My_Health_Records_${new Date().toISOString().split('T')[0]}`;
+
+        if (format === 'csv') exportToCSV(data, filename);
+        if (format === 'excel') exportToExcel(data, filename);
+        if (format === 'pdf') exportToPDF(data, filename, "My Health Measurements");
+    };
+
     const tabs = [
         { id: 'overview', label: 'My Health Overview', icon: <Dashboard /> },
         { id: 'history', label: 'My Measurements', icon: <History /> },
@@ -390,36 +438,38 @@ const EmployeeDashboard = () => {
                                     setCustomDateRange={setCustomDateRange}
                                     variant="dropdown"
                                 />
-                                <MultiSelectDropdown
-                                    label="Select Metrics"
-                                    selectedItems={metricFilter}
-                                    options={[
-                                        { id: 'all', label: 'All Metrics' },
-                                        { id: 'bp', label: 'Blood Pressure' },
-                                        { id: 'hr', label: 'Heart Rate' },
-                                        { id: 'rr', label: 'Respiratory Rate' },
-                                        { id: 'spo2', label: 'SpO2' },
-                                        { id: 'temp', label: 'Temp' },
-                                        { id: 'weight', label: 'Weight' },
-                                        { id: 'height', label: 'Height' },
-                                        { id: 'bmi', label: 'BMI' }
-                                    ]}
-                                    onToggle={toggleMetric}
-                                    allLabel="All Metrics"
-                                />
-                                <MultiSelectDropdown
-                                    label="Select Risks"
-                                    selectedItems={riskFilter}
-                                    options={[
-                                        { id: 'all', label: 'All Risks' },
-                                        { id: 'low', label: 'Low Risk' },
-                                        { id: 'moderate', label: 'Moderate Risk' },
-                                        { id: 'high', label: 'High Risk' },
-                                        { id: 'critical', label: 'Critical Risk' }
-                                    ]}
-                                    onToggle={toggleRisk}
-                                    allLabel="All Risks"
-                                />
+                                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                                    <MultiSelectDropdown
+                                        label="Select Metrics"
+                                        selectedItems={metricFilter}
+                                        options={[
+                                            { id: 'all', label: 'All Metrics' },
+                                            { id: 'bp', label: 'Blood Pressure' },
+                                            { id: 'hr', label: 'Heart Rate' },
+                                            { id: 'rr', label: 'Respiratory Rate' },
+                                            { id: 'spo2', label: 'SpO2' },
+                                            { id: 'temp', label: 'Temp' },
+                                            { id: 'weight', label: 'Weight' },
+                                            { id: 'height', label: 'Height' },
+                                            { id: 'bmi', label: 'BMI' }
+                                        ]}
+                                        onToggle={toggleMetric}
+                                        allLabel="All Metrics"
+                                    />
+                                    <MultiSelectDropdown
+                                        label="Select Risks"
+                                        selectedItems={riskFilter}
+                                        options={[
+                                            { id: 'all', label: 'All Risks' },
+                                            { id: 'low', label: 'Low Risk' },
+                                            { id: 'moderate', label: 'Moderate Risk' },
+                                            { id: 'high', label: 'High Risk' },
+                                            { id: 'critical', label: 'Critical Risk' }
+                                        ]}
+                                        onToggle={toggleRisk}
+                                        allLabel="All Risks"
+                                    />
+                                </div>
                                 <select
                                     value={sortOrder}
                                     onChange={(e) => setSortOrder(e.target.value)}
@@ -438,66 +488,149 @@ const EmployeeDashboard = () => {
                                     <option value="desc">Newest First</option>
                                     <option value="asc">Oldest First</option>
                                 </select>
+
+                                <ExportButton
+                                    onExportCSV={() => handleExportHistory('csv')}
+                                    onExportExcel={() => handleExportHistory('excel')}
+                                    onExportPDF={() => handleExportHistory('pdf')}
+                                />
+
+                                <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                    <button
+                                        onClick={() => {
+                                            if (window.innerWidth > 768) setViewMode('table');
+                                        }}
+                                        style={{
+                                            padding: '8px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: viewMode === 'table' ? '#dc2626' : 'transparent',
+                                            color: viewMode === 'table' ? 'white' : '#64748b',
+                                            cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                            opacity: window.innerWidth <= 768 ? 0.5 : 1
+                                        }}
+                                    >
+                                        <TableRows />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('card')}
+                                        style={{
+                                            padding: '8px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: viewMode === 'card' ? '#dc2626' : 'transparent',
+                                            color: viewMode === 'card' ? 'white' : '#64748b',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <GridView />
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="table-container-wrapper">
-                            <table className="history-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP (mmHg)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR (bpm)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR (bpm)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2 (%)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp (°C)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
-                                        <th>Risk Status</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(() => {
-                                        const processedHistory = processHistory(timeFilteredHistory);
-                                        return loading ? (
-                                            <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Loading history...</td></tr>
-                                        ) : processedHistory.length === 0 ? (
-                                            <NoDataFound type="measurements" compact={true} colSpan={11} />
-                                        ) : (
-                                            processedHistory.map((m) => (
-                                                <tr key={m.id}>
-                                                    <td>{formatDate(m.created_at)}</td>
-                                                    {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{m.heart_rate ? m.heart_rate : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{m.respiratory_rate ? m.respiratory_rate : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{m.spo2 ? `${m.spo2}%` : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{m.temperature ? `${m.temperature}°C` : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{m.weight ? m.weight : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{m.height ? m.height : 'Not Measured'}</td>}
-                                                    {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : 'Not Measured'}</td>}
-                                                    <td>
-                                                        <span className={`risk-badge ${m.risk_category?.toLowerCase().includes('normal') ? 'risk-normal' :
-                                                            m.risk_category?.toLowerCase().includes('high') ? 'risk-high' : 'risk-elevated'
-                                                            }`}>
-                                                            {m.risk_category || 'Unknown'}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="action-btn"
-                                                            onClick={() => setSelectedMeasurement(m)}
-                                                        >
-                                                            <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        );
-                                    })()}
-                                </tbody>
-                            </table>
-                        </div>
+                        {viewMode === 'table' ? (
+                            <div className="table-container-wrapper">
+                                <table className="history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP (mmHg)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR (bpm)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR (bpm)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2 (%)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp (°C)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
+                                            <th>Risk Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(() => {
+                                            const processedHistory = processHistory(timeFilteredHistory);
+                                            return loading ? (
+                                                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>Loading history...</td></tr>
+                                            ) : processedHistory.length === 0 ? (
+                                                <NoDataFound type="measurements" compact={true} colSpan={11} />
+                                            ) : (
+                                                processedHistory.map((m) => (
+                                                    <tr key={m.id}>
+                                                        <td>{formatDate(m.created_at)}</td>
+                                                        {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
+                                                        {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{m.heart_rate ? m.heart_rate : 'Not Measured'}</td>}
+                                                        {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{m.respiratory_rate ? m.respiratory_rate : 'Not Measured'}</td>}
+                                                        {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{m.spo2 ? `${m.spo2}%` : 'Not Measured'}</td>}
+                                                        {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{m.temperature ? `${m.temperature}°C` : 'Not Measured'}</td>}
+                                                        {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{m.weight ? m.weight : 'Not Measured'}</td>}
+                                                        {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{m.height ? m.height : 'Not Measured'}</td>}
+                                                        {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : 'Not Measured'}</td>}
+                                                        <td>
+                                                            <span className={`risk-badge ${m.risk_category?.toLowerCase().includes('normal') ? 'risk-normal' :
+                                                                m.risk_category?.toLowerCase().includes('high') ? 'risk-high' : 'risk-elevated'
+                                                                }`}>
+                                                                {m.risk_category || 'Unknown'}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="action-btn"
+                                                                onClick={() => setSelectedMeasurement(m)}
+                                                            >
+                                                                <Visibility style={{ fontSize: '1rem', marginRight: '4px' }} /> View
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            );
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="measurement-cards-grid">
+                                {(() => {
+                                    const processedHistory = processHistory(timeFilteredHistory);
+                                    return loading ? (
+                                        <div style={{ padding: '2rem', textAlign: 'center', gridColumn: '1/-1' }}>Loading...</div>
+                                    ) : processedHistory.length === 0 ? (
+                                        <div style={{ gridColumn: '1/-1' }}><NoDataFound type="measurements" /></div>
+                                    ) : (
+                                        processedHistory.map(m => (
+                                            <div className="measurement-card" key={m.id} onClick={() => setSelectedMeasurement(m)}>
+                                                <div className="m-card-header">
+                                                    <div className="m-card-date">{formatDate(m.created_at)}</div>
+                                                    <span className={`risk-badge ${m.risk_category?.toLowerCase().includes('normal') ? 'risk-normal' : 'risk-high'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                                                        {m.risk_category || 'Unknown'}
+                                                    </span>
+                                                </div>
+                                                <div className="m-card-grid">
+                                                    <div className="m-metric">
+                                                        <span className="m-label">BP (mmHg)</span>
+                                                        <span className="m-value">{m.systolic ? `${m.systolic}/${m.diastolic}` : '-'}</span>
+                                                    </div>
+                                                    <div className="m-metric">
+                                                        <span className="m-label">Heart Rate</span>
+                                                        <span className="m-value">{m.heart_rate ? `${m.heart_rate} bpm` : '-'}</span>
+                                                    </div>
+                                                    <div className="m-metric">
+                                                        <span className="m-label">SpO2</span>
+                                                        <span className="m-value">{m.spo2 ? `${m.spo2}%` : '-'}</span>
+                                                    </div>
+                                                    <div className="m-metric">
+                                                        <span className="m-label">Temp</span>
+                                                        <span className="m-value">{m.temperature ? `${m.temperature}°C` : '-'}</span>
+                                                    </div>
+                                                </div>
+                                                <button className="action-btn" style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>
+                                                    View Details
+                                                </button>
+                                            </div>
+                                        ))
+                                    );
+                                })()}
+                            </div>
+                        )}
                     </motion.div>
                 </>
             )

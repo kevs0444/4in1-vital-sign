@@ -335,6 +335,8 @@
     overflow-x: auto;
     overflow-y: auto;
     flex: 1;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
 .users-table {
@@ -1733,3 +1735,55 @@
         opacity: 1;
     }
 }
+
+/* Kiosk Mode Optimization (768px Portrait) */
+@media (max-width: 768px) {
+    .user-cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+        gap: 1rem !important;
+        padding: 0.5rem !important;
+    }
+
+    .user-card-item {
+        padding: 1.5rem !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .search-bar {
+        width: 100% !important;
+        margin-bottom: 10px;
+    }
+
+    .role-filter-wrapper {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .role-select {
+        width: 100%;
+    }
+
+    .status-modal-content {
+        width: 90% !important;
+        max-width: 90% !important;
+    }
+}
+/* Enhanced Kiosk Header Layout */
+@media (max-width: 768px) {
+    .table-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+    .table-header h3 {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    .table-header > div:not(h3) {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+

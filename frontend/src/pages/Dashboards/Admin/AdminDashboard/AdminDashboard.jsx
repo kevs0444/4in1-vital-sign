@@ -33,7 +33,7 @@ import {
     RadialLinearScale,
     Filler
 } from 'chart.js';
-import { Line, Doughnut, Pie } from 'react-chartjs-2';
+import { Line, Pie } from 'react-chartjs-2';
 import './AdminDashboard.css';
 import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory, printerAPI, getShareStatsFiltered, resetPaperRoll } from '../../../../utils/api';
 import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance component
@@ -134,6 +134,117 @@ const StatusToast = ({ toast, onClose }) => {
     );
 };
 
+// Custom Status Dropdown Component
+const StatusDropdown = ({ currentStatus, onStatusChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = React.useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'approved': return { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' };
+            case 'rejected': return { bg: '#fee2e2', text: '#991b1b', border: '#fecaca' };
+            case 'pending': default: return { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' };
+        }
+    };
+
+    const handleSelect = (status) => {
+        onStatusChange(status);
+        setIsOpen(false);
+    };
+
+    const currentStyle = getStatusColor(currentStatus);
+
+    return (
+        <div ref={dropdownRef} style={{ position: 'relative', width: '100%' }} onClick={(e) => e.stopPropagation()}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    border: `1px solid ${currentStyle.border}`,
+                    background: currentStyle.bg,
+                    color: currentStyle.text,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    textTransform: 'capitalize',
+                    transition: 'all 0.2s'
+                }}
+            >
+                {currentStatus}
+                <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>▼</span>
+            </button>
+
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: 0,
+                        right: 0,
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        padding: '4px',
+                        marginBottom: '4px',
+                        zIndex: 10,
+                        border: '1px solid #e2e8f0'
+                    }}
+                >
+                    {['pending', 'approved', 'rejected'].map((status) => {
+                        const style = getStatusColor(status);
+                        return (
+                            <div
+                                key={status}
+                                onClick={() => handleSelect(status)}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = style.bg;
+                                    e.currentTarget.style.color = style.text;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                    e.currentTarget.style.color = '#475569';
+                                }}
+                                style={{
+                                    padding: '8px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    textAlign: 'center',
+                                    fontWeight: '600',
+                                    fontSize: '0.9rem',
+                                    color: '#475569',
+                                    textTransform: 'capitalize',
+                                    transition: 'all 0.1s',
+                                    marginBottom: '2px'
+                                }}
+                            >
+                                {status}
+                            </div>
+                        );
+                    })}
+                </motion.div>
+            )}
+        </div>
+    );
+};
+
 // Register ChartJS components
 ChartJS.register(
     ArcElement,
@@ -148,6 +259,18 @@ ChartJS.register(
     RadialLinearScale,
     Filler
 );
+
+// Helper component for auto-closing notifications
+const NotificationTimer = ({ id, onClose }) => {
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            onClose(id);
+        }, 3000); // 3 seconds auto close
+        return () => clearTimeout(timer);
+    }, [id, onClose]);
+    return null;
+};
+
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -171,7 +294,22 @@ const AdminDashboard = () => {
     const [filteredUsers, setFilteredUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState(['All']);
-    const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
+
+    // Kiosk Mode: Default to 'card' if width <= 768px
+    const [viewMode, setViewMode] = useState(window.innerWidth <= 768 ? 'card' : 'table');
+    const [historyViewMode, setHistoryViewMode] = useState(window.innerWidth <= 768 ? 'card' : 'table');
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth <= 768) {
+                setViewMode('card');
+                setHistoryViewMode('card');
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Printing Status
     const [printerStatus, setPrinterStatus] = useState({ status: 'checking', message: 'Checking...' });
@@ -192,6 +330,51 @@ const AdminDashboard = () => {
     const [myHistory, setMyHistory] = useState([]);
     // Removed unused historyLoading
     const [selectedMeasurement, setSelectedMeasurement] = useState(null);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [userHistory, setUserHistory] = useState([]);
+    const [userHistoryLoading, setUserHistoryLoading] = useState(false);
+    // Modal filters for User Detail
+    const [modalMetricFilter, setModalMetricFilter] = useState(['all']);
+    const [modalRiskFilter, setModalRiskFilter] = useState(['all']);
+    const [modalTimePeriod, setModalTimePeriod] = useState('all');
+    const [modalCustomDateRange, setModalCustomDateRange] = useState(null);
+    const [isModalMetricDropdownOpen, setIsModalMetricDropdownOpen] = useState(false);
+    const [isModalRiskDropdownOpen, setIsModalRiskDropdownOpen] = useState(false);
+    const [modalViewMode, setModalViewMode] = useState('card');
+
+    const toggleModalMetric = (metric) => {
+        if (metric === 'all') {
+            setModalMetricFilter(['all']);
+        } else {
+            if (modalMetricFilter.includes('all')) {
+                setModalMetricFilter([metric]);
+            } else {
+                if (modalMetricFilter.includes(metric)) {
+                    const next = modalMetricFilter.filter(m => m !== metric);
+                    setModalMetricFilter(next.length ? next : ['all']);
+                } else {
+                    setModalMetricFilter([...modalMetricFilter, metric]);
+                }
+            }
+        }
+    };
+
+    const toggleModalRisk = (risk) => {
+        if (risk === 'all') {
+            setModalRiskFilter(['all']);
+        } else {
+            if (modalRiskFilter.includes('all')) {
+                setModalRiskFilter([risk]);
+            } else {
+                if (modalRiskFilter.includes(risk)) {
+                    const next = modalRiskFilter.filter(r => r !== risk);
+                    setModalRiskFilter(next.length ? next : ['all']);
+                } else {
+                    setModalRiskFilter([...modalRiskFilter, risk]);
+                }
+            }
+        }
+    };
 
     // Personal History Time Period
     const [timePeriod, setTimePeriod] = useState('weekly');
@@ -229,6 +412,50 @@ const AdminDashboard = () => {
             usersCustomDateRange
         );
     }, [usersList, usersTimePeriod, usersCustomDateRange]);
+
+    // Filter VIEWED USER history by time period
+    const timeFilteredUserHistory = useMemo(() => {
+        return filterHistoryByTimePeriod(userHistory, modalTimePeriod, modalCustomDateRange);
+    }, [userHistory, modalTimePeriod, modalCustomDateRange]);
+
+    // Process VIEWED USER history (metrics, risks, sort)
+    const displayedUserHistory = useMemo(() => {
+        if (!timeFilteredUserHistory) return [];
+        let processed = [...timeFilteredUserHistory];
+
+        // Metric Filter
+        if (!modalMetricFilter.includes('all')) {
+            processed = processed.filter(item => {
+                if (modalMetricFilter.includes('bp') && item.systolic > 0) return true;
+                if (modalMetricFilter.includes('hr') && item.heart_rate > 0) return true;
+                if (modalMetricFilter.includes('rr') && item.respiratory_rate > 0) return true;
+                if (modalMetricFilter.includes('spo2') && item.spo2 > 0) return true;
+                if (modalMetricFilter.includes('temp') && item.temperature > 0) return true;
+                if (modalMetricFilter.includes('weight') && item.weight > 0) return true;
+                if (modalMetricFilter.includes('height') && item.height > 0) return true;
+                if (modalMetricFilter.includes('bmi') && item.bmi > 0) return true;
+                return false;
+            });
+        }
+
+        // Risk Filter
+        if (!modalRiskFilter.includes('all')) {
+            processed = processed.filter(item => {
+                if (!item.risk_category) return false;
+                const riskCat = item.risk_category.toLowerCase();
+                return modalRiskFilter.some(filter => riskCat.includes(filter));
+            });
+        }
+
+        // Sort
+        processed.sort((a, b) => {
+            const dateA = new Date(a.created_at);
+            const dateB = new Date(b.created_at);
+            return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+        });
+
+        return processed;
+    }, [timeFilteredUserHistory, modalMetricFilter, modalRiskFilter, sortOrder]);
 
     // Apply processHistory-like sorting and metric filtering
     const displayedMyHistory = useMemo(() => {
@@ -331,6 +558,24 @@ const AdminDashboard = () => {
         }
     };
 
+    const fetchUserHistory = async (targetUserId) => {
+        try {
+            setUserHistoryLoading(true);
+            const response = await getMeasurementHistory(targetUserId);
+            setUserHistory((response && response.history && Array.isArray(response.history)) ? response.history : []);
+        } catch (error) {
+            console.error("Error fetching user history:", error);
+            // toast({ type: 'error', title: 'Error', message: 'Failed to fetch user history.' });
+        } finally {
+            setUserHistoryLoading(false);
+        }
+    };
+
+    const handleUserClick = (u) => {
+        setSelectedUser(u);
+        fetchUserHistory(u.user_id || u.id);
+    };
+
     const checkPrinterStatus = async () => {
         try {
             const status = await printerAPI.getStatus();
@@ -350,24 +595,30 @@ const AdminDashboard = () => {
             const start = new Date();
             start.setHours(0, 0, 0, 0);
 
+            // Helper for local time ISO string (matches DB naive datetime)
+            const toLocalISOString = (date) => {
+                const tzOffset = date.getTimezoneOffset() * 60000;
+                return new Date(date.getTime() - tzOffset).toISOString().slice(0, -1);
+            };
+
             if (emailTimePeriod === 'custom' && emailCustomDateRange?.start && emailCustomDateRange?.end) {
                 dateParams = { start_date: emailCustomDateRange.start, end_date: emailCustomDateRange.end };
             } else {
                 switch (emailTimePeriod) {
                     case 'daily':
-                        dateParams = { start_date: start.toISOString(), end_date: end.toISOString() };
+                        dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
                         break;
                     case 'weekly':
                         start.setDate(start.getDate() - 7);
-                        dateParams = { start_date: start.toISOString(), end_date: end.toISOString() };
+                        dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
                         break;
                     case 'monthly':
                         start.setMonth(start.getMonth() - 1);
-                        dateParams = { start_date: start.toISOString(), end_date: end.toISOString() };
+                        dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
                         break;
                     case 'annually':
                         start.setFullYear(start.getFullYear() - 1);
-                        dateParams = { start_date: start.toISOString(), end_date: end.toISOString() };
+                        dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
                         break;
                     default:
                         dateParams = {}; // All time
@@ -504,7 +755,6 @@ const AdminDashboard = () => {
 
     // --- Notification System ---
     const [notifications, setNotifications] = useState([]);
-    const [isNotifOpen, setIsNotifOpen] = useState(false);
     const prevEmailCount = React.useRef(shareStats.emailCount);
 
     // 1. Monitor Pending Users
@@ -616,13 +866,7 @@ const AdminDashboard = () => {
         prevPaperStatus.current = currentStatus;
     }, [shareStats.paperRemaining]);
 
-    const markAsRead = (id) => {
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    };
 
-    const clearAllNotifications = () => {
-        setNotifications([]);
-    };
 
     const getExportData_Users = () => {
         return filteredUsers.map(u => ({
@@ -884,96 +1128,99 @@ const AdminDashboard = () => {
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
 
-            {/* --- Top Bar with Notifications --- */}
-            <div className="admin-top-bar" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px', padding: '0 10px', position: 'relative' }}>
-                <div style={{ position: 'relative' }}>
-                    <button
-                        onClick={() => setIsNotifOpen(!isNotifOpen)}
-                        style={{
-                            background: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '40px', height: '40px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)', position: 'relative'
-                        }}
-                    >
-                        <Notifications style={{ color: '#64748b' }} />
-                        {notifications.filter(n => !n.read).length > 0 && (
-                            <span style={{
-                                position: 'absolute', top: '-2px', right: '-2px', background: '#ef4444', color: 'white',
-                                fontSize: '0.7rem', fontWeight: 'bold', width: '18px', height: '18px', borderRadius: '50%',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white'
+            {/* --- Enhanced Glassmorphism Notifications (Centered) --- */}
+            <div className="notification-center-container" style={{
+                position: 'fixed',
+                top: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 9999,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                width: '90%',
+                maxWidth: '450px',
+                pointerEvents: 'none' // Allow clicks to pass through container
+            }}>
+                <AnimatePresence mode="popLayout">
+                    {notifications.map(n => (
+                        <motion.div
+                            key={n.id}
+                            layout
+                            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                            style={{
+                                pointerEvents: 'auto',
+                                background: 'rgba(255, 255, 255, 0.85)',
+                                backdropFilter: 'blur(12px)',
+                                WebkitBackdropFilter: 'blur(12px)',
+                                border: '1px solid rgba(255, 255, 255, 0.5)',
+                                borderRadius: '16px',
+                                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
+                                padding: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '15px',
+                                width: '100%',
+                                borderLeft: `6px solid ${n.type === 'printer' || n.type === 'error' || n.type === 'critical' ? '#dc2626' : // Red
+                                    n.type === 'warning' || n.type === 'pending' || n.type === 'paper' ? '#94a3b8' : // Gray (or maybe Orange/Slate per theme) - User asked for Red/White/Gray. Let's use Gray for warnings to fit theme? Or keep status colors?
+                                        '#475569' // Dark Gray for others
+                                    }`,
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {/* Icon Box */}
+                            <div style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '12px',
+                                background: n.type === 'printer' || n.type === 'error' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(71, 85, 105, 0.1)',
+                                color: n.type === 'printer' || n.type === 'error' ? '#dc2626' : '#475569',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             }}>
-                                {notifications.filter(n => !n.read).length}
-                            </span>
-                        )}
-                    </button>
+                                {n.type === 'pending' ? <Person /> :
+                                    n.type === 'printer' ? <Print /> :
+                                        n.type === 'paper' ? <Dashboard /> : // Use generic icon or specific if available
+                                            n.type === 'email' ? <Email /> :
+                                                <Notifications />}
+                            </div>
 
-                    <AnimatePresence>
-                        {isNotifOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
+                            {/* Content */}
+                            <div style={{ flex: 1 }}>
+                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: '#1e293b' }}>{n.title}</h4>
+                                <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>{n.message}</p>
+                            </div>
+
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setNotifications(prev => prev.filter(item => item.id !== n.id))}
                                 style={{
-                                    position: 'absolute', top: '50px', right: '0', width: '320px', background: 'white',
-                                    borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
-                                    zIndex: 1000, border: '1px solid #f1f5f9', overflow: 'hidden'
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#94a3b8',
+                                    cursor: 'pointer',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '50%',
+                                    transition: 'background 0.2s'
                                 }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.color = '#dc2626'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
                             >
-                                <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>Notifications</h4>
-                                    {notifications.length > 0 && (
-                                        <button onClick={clearAllNotifications} style={{ border: 'none', background: 'none', color: '#64748b', fontSize: '0.75rem', cursor: 'pointer' }}>
-                                            Clear All
-                                        </button>
-                                    )}
-                                </div>
-                                <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
-                                    {notifications.length === 0 ? (
-                                        <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
-                                            No new notifications
-                                        </div>
-                                    ) : (
-                                        notifications.map(n => (
-                                            <div
-                                                key={n.id}
-                                                onClick={() => {
-                                                    markAsRead(n.id);
-                                                    if (n.action) {
-                                                        n.action();
-                                                        setIsNotifOpen(false);
-                                                    }
-                                                }}
-                                                style={{
-                                                    padding: '12px 16px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer',
-                                                    background: n.read ? 'white' : '#f0f9ff', transition: 'background 0.2s'
-                                                }}
-                                            >
-                                                <div style={{ display: 'flex', gap: '10px' }}>
-                                                    <div style={{
-                                                        minWidth: '32px', height: '32px', borderRadius: '50%', background: `${n.color}20`, color: n.color,
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                    }}>
-                                                        {n.type === 'pending' ? <Person fontSize="small" /> :
-                                                            n.type === 'printer' ? <Print fontSize="small" /> :
-                                                                n.type === 'email' ? <Email fontSize="small" /> :
-                                                                    <Notifications fontSize="small" />}
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{n.title}</span>
-                                                            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{n.time}</span>
-                                                        </div>
-                                                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: '1.4' }}>{n.message}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                                <Close fontSize="small" />
+                            </button>
+
+                            {/* Self-Destruct Timer for this specific notification */}
+                            <NotificationTimer id={n.id} onClose={(id) => setNotifications(prev => prev.filter(i => i.id !== id))} />
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
             </div>
 
             {/* Personal Info Tab */}
@@ -1288,17 +1535,16 @@ const AdminDashboard = () => {
                                             </span>
                                             <button
                                                 onClick={() => setShowResetModal(true)}
-                                                disabled={shareStats.printCount === 0}
                                                 style={{
                                                     padding: '4px 10px',
                                                     fontSize: '0.7rem',
                                                     fontWeight: '600',
-                                                    backgroundColor: shareStats.printCount > 0 ? '#eff6ff' : '#f1f5f9',
-                                                    color: shareStats.printCount > 0 ? '#3b82f6' : '#9ca3af',
+                                                    backgroundColor: '#eff6ff',
+                                                    color: '#3b82f6',
                                                     border: '1px solid',
-                                                    borderColor: shareStats.printCount > 0 ? '#bfdbfe' : '#e2e8f0',
+                                                    borderColor: '#bfdbfe',
                                                     borderRadius: '4px',
-                                                    cursor: shareStats.printCount > 0 ? 'pointer' : 'not-allowed',
+                                                    cursor: 'pointer',
                                                     display: 'flex', alignItems: 'center', gap: '4px',
                                                     whiteSpace: 'nowrap'
                                                 }}
@@ -1454,9 +1700,15 @@ const AdminDashboard = () => {
                                 {/* View Toggle Buttons */}
                                 <div className="view-toggle">
                                     <button
-                                        onClick={() => setViewMode('table')}
+                                        onClick={() => {
+                                            if (window.innerWidth > 768) setViewMode('table');
+                                        }}
                                         className={viewMode === 'table' ? 'active' : ''}
                                         title="Table View"
+                                        style={{
+                                            cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                            opacity: window.innerWidth <= 768 ? 0.5 : 1
+                                        }}
                                     >
                                         <TableRows fontSize="small" />
                                     </button>
@@ -1501,10 +1753,15 @@ const AdminDashboard = () => {
                                             currentUsers.map((u, i) => (
                                                 <tr key={u.user_id}>
                                                     <td>
-                                                        <div className="user-name-cell">
+                                                        <div
+                                                            className="user-name-cell"
+                                                            onClick={() => handleUserClick(u)}
+                                                            style={{ cursor: 'pointer' }}
+                                                            title="View User History"
+                                                        >
                                                             <div className="user-avatar">{u.firstname[0]}{u.lastname[0]}</div>
                                                             <div>
-                                                                <div className="fw-bold">{u.firstname} {u.lastname}</div>
+                                                                <div className="fw-bold" style={{ color: '#2563eb' }}>{u.firstname} {u.lastname}</div>
                                                                 <div className="text-secondary small">ID: {u.user_id ? u.user_id.substring(0, 8) + '...' : 'N/A'}</div>
                                                             </div>
                                                         </div>
@@ -1569,6 +1826,7 @@ const AdminDashboard = () => {
                                             initial={{ opacity: 0, scale: 0.9 }}
                                             animate={{ opacity: 1, scale: 1 }}
                                             whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                            onClick={() => handleUserClick(u)}
                                             style={{
                                                 background: 'white',
                                                 borderRadius: '16px',
@@ -1579,7 +1837,8 @@ const AdminDashboard = () => {
                                                 alignItems: 'center',
                                                 textAlign: 'center',
                                                 boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-                                                transition: 'all 0.2s ease'
+                                                transition: 'all 0.2s ease',
+                                                cursor: 'pointer'
                                             }}
                                         >
                                             <div className="user-avatar" style={{
@@ -1603,29 +1862,12 @@ const AdminDashboard = () => {
                                             </div>
 
                                             <div style={{ marginTop: 'auto', width: '100%' }}>
-                                                <select
-                                                    className={`role-select status-${u.approval_status?.toLowerCase() || 'pending'}`}
-                                                    value={u.approval_status || 'pending'}
-                                                    onChange={(e) => handleStatusUpdate(u.user_id, e.target.value)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    style={{
-                                                        width: '100%',
-                                                        padding: '8px',
-                                                        borderRadius: '8px',
-                                                        fontWeight: '600',
-                                                        fontSize: '0.9rem',
-                                                        border: '1px solid #e2e8f0',
-                                                        background: u.approval_status === 'approved' ? '#dcfce7' :
-                                                            u.approval_status === 'rejected' ? '#fee2e2' : '#fff7ed',
-                                                        color: u.approval_status === 'approved' ? '#166534' :
-                                                            u.approval_status === 'rejected' ? '#991b1b' : '#c2410c',
-                                                        textAlign: 'center'
-                                                    }}
-                                                >
-                                                    <option value="pending">Pending</option>
-                                                    <option value="approved">Approved</option>
-                                                    <option value="rejected">Rejected</option>
-                                                </select>
+                                                <div style={{ marginTop: 'auto', width: '100%' }}>
+                                                    <StatusDropdown
+                                                        currentStatus={u.approval_status || 'pending'}
+                                                        onStatusChange={(newStatus) => handleStatusUpdate(u.user_id, newStatus)}
+                                                    />
+                                                </div>
                                             </div>
                                         </motion.div>
                                     ))
@@ -1701,37 +1943,39 @@ const AdminDashboard = () => {
                     >
                         <div className="table-header">
                             <h3>My Measurements ({displayedMyHistory.length} records)</h3>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <MultiSelectDropdown
-                                    label="Select Metrics"
-                                    selectedItems={metricFilter}
-                                    options={[
-                                        { id: 'all', label: 'All Metrics' },
-                                        { id: 'bp', label: 'Blood Pressure' },
-                                        { id: 'hr', label: 'Heart Rate' },
-                                        { id: 'rr', label: 'Respiratory Rate' },
-                                        { id: 'spo2', label: 'SpO2' },
-                                        { id: 'temp', label: 'Temp' },
-                                        { id: 'weight', label: 'Weight' },
-                                        { id: 'height', label: 'Height' },
-                                        { id: 'bmi', label: 'BMI' }
-                                    ]}
-                                    onToggle={toggleMetric}
-                                    allLabel="All Metrics"
-                                />
-                                <MultiSelectDropdown
-                                    label="Select Risks"
-                                    selectedItems={riskFilter}
-                                    options={[
-                                        { id: 'all', label: 'All Risks' },
-                                        { id: 'low', label: 'Low Risk' },
-                                        { id: 'moderate', label: 'Moderate Risk' },
-                                        { id: 'high', label: 'High Risk' },
-                                        { id: 'critical', label: 'Critical Risk' }
-                                    ]}
-                                    onToggle={toggleRisk}
-                                    allLabel="All Risks"
-                                />
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                                    <MultiSelectDropdown
+                                        label="Select Metrics"
+                                        selectedItems={metricFilter}
+                                        options={[
+                                            { id: 'all', label: 'All Metrics' },
+                                            { id: 'bp', label: 'Blood Pressure' },
+                                            { id: 'hr', label: 'Heart Rate' },
+                                            { id: 'rr', label: 'Respiratory Rate' },
+                                            { id: 'spo2', label: 'SpO2' },
+                                            { id: 'temp', label: 'Temp' },
+                                            { id: 'weight', label: 'Weight' },
+                                            { id: 'height', label: 'Height' },
+                                            { id: 'bmi', label: 'BMI' }
+                                        ]}
+                                        onToggle={toggleMetric}
+                                        allLabel="All Metrics"
+                                    />
+                                    <MultiSelectDropdown
+                                        label="Select Risks"
+                                        selectedItems={riskFilter}
+                                        options={[
+                                            { id: 'all', label: 'All Risks' },
+                                            { id: 'low', label: 'Low Risk' },
+                                            { id: 'moderate', label: 'Moderate Risk' },
+                                            { id: 'high', label: 'High Risk' },
+                                            { id: 'critical', label: 'Critical Risk' }
+                                        ]}
+                                        onToggle={toggleRisk}
+                                        allLabel="All Risks"
+                                    />
+                                </div>
                                 <select
                                     value={sortOrder}
                                     onChange={(e) => setSortOrder(e.target.value)}
@@ -1745,73 +1989,151 @@ const AdminDashboard = () => {
                                     onExportExcel={() => handleExportHistory('excel')}
                                     onExportPDF={() => handleExportHistory('pdf')}
                                 />
-
+                                <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                    <button
+                                        onClick={() => {
+                                            if (window.innerWidth > 768) setHistoryViewMode('table');
+                                        }}
+                                        style={{
+                                            padding: '8px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: historyViewMode === 'table' ? '#dc2626' : 'transparent',
+                                            color: historyViewMode === 'table' ? 'white' : '#64748b',
+                                            cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                            opacity: window.innerWidth <= 768 ? 0.5 : 1
+                                        }}
+                                    >
+                                        <TableRows />
+                                    </button>
+                                    <button
+                                        onClick={() => setHistoryViewMode('card')}
+                                        style={{
+                                            padding: '8px',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            background: historyViewMode === 'card' ? '#dc2626' : 'transparent',
+                                            color: historyViewMode === 'card' ? 'white' : '#64748b',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <GridView />
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="table-container-wrapper">
-                            <table className="users-table">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP (mmHg)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR (bpm)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR (bpm)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2 (%)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp (°C)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
-                                        {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
-                                        <th>Risk Status</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        Array(5).fill(0).map((_, idx) => (
-                                            <tr key={`history-skeleton-${idx}`} className="skeleton-row">
-                                                {Array(11).fill(0).map((_, cellIdx) => (
-                                                    <td key={cellIdx}><div className="skeleton-box" style={{ width: cellIdx === 0 ? '120px' : '60px' }}></div></td>
-                                                ))}
-                                            </tr>
-                                        ))
-                                    ) : currentHistory.length === 0 ? (
-                                        <NoDataFound type="history" compact={true} colSpan={11} />
-                                    ) : (
-                                        currentHistory.map((m) => (
-                                            <tr key={m.id}>
-                                                <td>{formatDate(m.created_at)}</td>
-                                                {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{m.heart_rate ? m.heart_rate : 'Not Measured'}</td>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{m.respiratory_rate ? m.respiratory_rate : 'Not Measured'}</td>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{m.spo2 ? `${m.spo2}%` : 'Not Measured'}</td>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{m.temperature ? `${m.temperature}°C` : 'Not Measured'}</td>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{m.weight ? m.weight : 'Not Measured'}</td>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{m.height ? m.height : 'Not Measured'}</td>}
-                                                {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : 'Not Measured'}</td>}
-                                                <td>
-                                                    <span className="risk-badge" style={{
-                                                        color: getRiskColor(m.risk_category),
-                                                        fontWeight: 'bold',
-                                                        textTransform: 'capitalize'
-                                                    }}>
-                                                        {m.risk_category || 'Unknown'}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <button
-                                                        className="action-btn"
-                                                        onClick={() => setSelectedMeasurement(m)}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '4px', border: 'none', background: 'transparent', color: '#2563eb', cursor: 'pointer', fontWeight: 600 }}
-                                                    >
-                                                        <Visibility style={{ fontSize: '1rem' }} /> View
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+
+                        {historyViewMode === 'table' ? (
+                            <div className="table-container-wrapper">
+                                <table className="users-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            {(metricFilter.includes('all') || metricFilter.includes('bp')) && <th>BP (mmHg)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('hr')) && <th>HR (bpm)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('rr')) && <th>RR (bpm)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <th>SpO2 (%)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('temp')) && <th>Temp (°C)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <th>Weight (kg)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <th>Height (cm)</th>}
+                                            {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <th>BMI</th>}
+                                            <th>Risk Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+                                            Array(5).fill(0).map((_, idx) => (
+                                                <tr key={`history-skeleton-${idx}`} className="skeleton-row">
+                                                    {Array(11).fill(0).map((_, cellIdx) => (
+                                                        <td key={cellIdx}><div className="skeleton-box" style={{ width: cellIdx === 0 ? '120px' : '60px' }}></div></td>
+                                                    ))}
+                                                </tr>
+                                            ))
+                                        ) : currentHistory.length === 0 ? (
+                                            <NoDataFound type="history" compact={true} colSpan={11} />
+                                        ) : (
+                                            currentHistory.map((m) => (
+                                                <tr key={m.id}>
+                                                    <td>{formatDate(m.created_at)}</td>
+                                                    {(metricFilter.includes('all') || metricFilter.includes('bp')) && <td>{m.systolic ? `${m.systolic}/${m.diastolic}` : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('hr')) && <td>{m.heart_rate ? m.heart_rate : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('rr')) && <td>{m.respiratory_rate ? m.respiratory_rate : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('spo2')) && <td>{m.spo2 ? `${m.spo2}%` : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('temp')) && <td>{m.temperature ? `${m.temperature}°C` : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('weight') || metricFilter.includes('bmi')) && <td>{m.weight ? m.weight : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('height') || metricFilter.includes('bmi')) && <td>{m.height ? m.height : 'Not Measured'}</td>}
+                                                    {(metricFilter.includes('all') || metricFilter.includes('bmi')) && <td>{m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : 'Not Measured'}</td>}
+                                                    <td>
+                                                        <span className="risk-badge" style={{
+                                                            color: getRiskColor(m.risk_category),
+                                                            fontWeight: 'bold',
+                                                            textTransform: 'capitalize'
+                                                        }}>
+                                                            {m.risk_category || 'Unknown'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <button
+                                                            className="action-btn"
+                                                            onClick={() => setSelectedMeasurement(m)}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: '4px', border: 'none', background: 'transparent', color: '#2563eb', cursor: 'pointer', fontWeight: 600 }}
+                                                        >
+                                                            <Visibility style={{ fontSize: '1rem' }} /> View
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="measurement-cards-grid">
+                                {loading ? (
+                                    <div style={{ padding: '2rem', textAlign: 'center', gridColumn: '1/-1' }}>Loading...</div>
+                                ) : currentHistory.length === 0 ? (
+                                    <div style={{ gridColumn: '1/-1' }}><NoDataFound type="measurements" /></div>
+                                ) : (
+                                    currentHistory.map(m => (
+                                        <div className="measurement-card" key={m.id} onClick={() => setSelectedMeasurement(m)}>
+                                            <div className="m-card-header">
+                                                <div className="m-card-date">{formatDate(m.created_at)}</div>
+                                                <span className="risk-badge" style={{
+                                                    color: getRiskColor(m.risk_category),
+                                                    fontWeight: 'bold',
+                                                    textTransform: 'capitalize',
+                                                    fontSize: '0.75rem'
+                                                }}>
+                                                    {m.risk_category || 'Unknown'}
+                                                </span>
+                                            </div>
+                                            <div className="m-card-grid">
+                                                <div className="m-metric">
+                                                    <span className="m-label">BP (mmHg)</span>
+                                                    <span className="m-value">{m.systolic ? `${m.systolic}/${m.diastolic}` : '-'}</span>
+                                                </div>
+                                                <div className="m-metric">
+                                                    <span className="m-label">Heart Rate</span>
+                                                    <span className="m-value">{m.heart_rate ? `${m.heart_rate} bpm` : '-'}</span>
+                                                </div>
+                                                <div className="m-metric">
+                                                    <span className="m-label">SpO2</span>
+                                                    <span className="m-value">{m.spo2 ? `${m.spo2}%` : '-'}</span>
+                                                </div>
+                                                <div className="m-metric">
+                                                    <span className="m-label">Temp</span>
+                                                    <span className="m-value">{m.temperature ? `${m.temperature}°C` : '-'}</span>
+                                                </div>
+                                            </div>
+                                            <button className="action-btn" style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>
+                                                View Details
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
                         <Pagination
                             currentPage={historyPage}
                             totalPages={totalHistoryPages}
@@ -1987,6 +2309,315 @@ const AdminDashboard = () => {
                                 {isResetting ? 'Resetting...' : 'Confirm Reset'}
                             </button>
                         </div>
+                    </motion.div>
+                </div>
+            )}
+            {/* User Detail Modal */}
+            {selectedUser && (
+                <div className="modal-overlay" onClick={() => setSelectedUser(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <motion.div
+                        className="modal-content"
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ background: 'white', padding: '2rem', borderRadius: '12px', maxWidth: '900px', width: '95%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', display: 'flex', flexDirection: 'column' }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                <div style={{
+                                    width: '60px', height: '60px', borderRadius: '50%',
+                                    background: `linear-gradient(135deg, ${selectedUser.role === 'Student' ? '#3b82f6' : '#ef4444'}, ${selectedUser.role === 'Student' ? '#2563eb' : '#dc2626'})`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: 'white', fontSize: '1.5rem', fontWeight: 'bold'
+                                }}>
+                                    {selectedUser.firstname ? selectedUser.firstname[0] : 'U'}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        User History
+                                    </div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', lineHeight: 1.2 }}>
+                                        {selectedUser.firstname} {selectedUser.lastname}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedUser(null)}
+                                style={{
+                                    width: '36px', height: '36px', borderRadius: '50%', border: 'none',
+                                    background: '#f1f5f9', color: '#64748b', fontSize: '1.5rem',
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.2s'
+                                }}
+                                className="hover-scale"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <TimePeriodFilter
+                                timePeriod={modalTimePeriod}
+                                setTimePeriod={setModalTimePeriod}
+                                customDateRange={modalCustomDateRange}
+                                setCustomDateRange={setModalCustomDateRange}
+                                variant="dropdown"
+                            />
+
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    onClick={() => setIsModalMetricDropdownOpen(!isModalMetricDropdownOpen)}
+                                    style={{
+                                        padding: '8px 12px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #cbd5e1',
+                                        background: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        minWidth: '150px',
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    <span>
+                                        {modalMetricFilter.includes('all') ? 'All Metrics' :
+                                            modalMetricFilter.length > 0 ? `${modalMetricFilter.length} Selected` : 'Select Metrics'}
+                                    </span>
+                                    <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                </button>
+                                {isModalMetricDropdownOpen && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        left: 0,
+                                        zIndex: 100,
+                                        background: 'white',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '6px',
+                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                        width: '200px',
+                                        padding: '8px',
+                                        marginTop: '4px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '4px'
+                                    }}>
+                                        {[
+                                            { value: 'all', label: 'All Metrics' },
+                                            { value: 'bp', label: 'Blood Pressure' },
+                                            { value: 'hr', label: 'Heart Rate' },
+                                            { value: 'rr', label: 'Respiratory Rate' },
+                                            { value: 'spo2', label: 'SpO2' },
+                                            { value: 'temp', label: 'Temp' },
+                                            { value: 'weight', label: 'Weight' },
+                                            { value: 'height', label: 'Height' },
+                                            { value: 'bmi', label: 'BMI' }
+                                        ].map(opt => (
+                                            <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={modalMetricFilter.includes(opt.value)}
+                                                    onChange={() => toggleModalMetric(opt.value)}
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                                {opt.label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    onClick={() => setIsModalRiskDropdownOpen(!isModalRiskDropdownOpen)}
+                                    style={{
+                                        padding: '8px 12px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #cbd5e1',
+                                        background: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        minWidth: '150px',
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    <span>
+                                        {modalRiskFilter.includes('all') ? 'All Risks' :
+                                            modalRiskFilter.length > 0 ? `${modalRiskFilter.length} Selected` : 'Select Risks'}
+                                    </span>
+                                    <span style={{ fontSize: '0.8rem' }}>▼</span>
+                                </button>
+                                {isModalRiskDropdownOpen && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        left: 0,
+                                        zIndex: 100,
+                                        background: 'white',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '6px',
+                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                        width: '200px',
+                                        padding: '8px',
+                                        marginTop: '4px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '4px'
+                                    }}>
+                                        {[
+                                            { value: 'all', label: 'All Risks' },
+                                            { value: 'low', label: 'Low Risk' },
+                                            { value: 'moderate', label: 'Moderate Risk' },
+                                            { value: 'high', label: 'High Risk' },
+                                            { value: 'critical', label: 'Critical Risk' }
+                                        ].map(opt => (
+                                            <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={modalRiskFilter.includes(opt.value)}
+                                                    onChange={() => toggleModalRisk(opt.value)}
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                                {opt.label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                <button
+                                    onClick={() => {
+                                        if (window.innerWidth > 768) setModalViewMode('table');
+                                    }}
+                                    style={{
+                                        padding: '8px',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        background: modalViewMode === 'table' ? '#dc2626' : 'transparent',
+                                        color: modalViewMode === 'table' ? 'white' : '#64748b',
+                                        cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                        opacity: window.innerWidth <= 768 ? 0.5 : 1
+                                    }}
+                                >
+                                    <TableRows fontSize="small" />
+                                </button>
+                                <button
+                                    onClick={() => setModalViewMode('card')}
+                                    style={{
+                                        padding: '8px',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        background: modalViewMode === 'card' ? '#dc2626' : 'transparent',
+                                        color: modalViewMode === 'card' ? 'white' : '#64748b',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <GridView fontSize="small" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {modalViewMode === 'table' ? (
+                            <div className="table-container-wrapper" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                                <table className="users-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bp')) && <th>BP</th>}
+                                            {(modalMetricFilter.includes('all') || modalMetricFilter.includes('hr')) && <th>HR</th>}
+                                            {(modalMetricFilter.includes('all') || modalMetricFilter.includes('rr')) && <th>RR</th>}
+                                            {(modalMetricFilter.includes('all') || modalMetricFilter.includes('spo2')) && <th>SpO2</th>}
+                                            {(modalMetricFilter.includes('all') || modalMetricFilter.includes('temp')) && <th>Temp</th>}
+                                            <th>Risk</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {userHistoryLoading ? (
+                                            <tr><td colSpan="8" style={{ textAlign: 'center' }}>Loading history...</td></tr>
+                                        ) : displayedUserHistory.length === 0 ? (
+                                            <NoDataFound type="history" compact={true} colSpan={8} />
+                                        ) : (
+                                            displayedUserHistory.map(h => (
+                                                <tr key={h.id}>
+                                                    <td>{formatDate(h.created_at)}</td>
+                                                    {(modalMetricFilter.includes('all') || modalMetricFilter.includes('bp')) && <td>{h.systolic ? `${h.systolic}/${h.diastolic}` : '-'}</td>}
+                                                    {(modalMetricFilter.includes('all') || modalMetricFilter.includes('hr')) && <td>{h.heart_rate ? h.heart_rate : '-'}</td>}
+                                                    {(modalMetricFilter.includes('all') || modalMetricFilter.includes('rr')) && <td>{h.respiratory_rate ? h.respiratory_rate : '-'}</td>}
+                                                    {(modalMetricFilter.includes('all') || modalMetricFilter.includes('spo2')) && <td>{h.spo2 ? `${h.spo2}%` : '-'}</td>}
+                                                    {(modalMetricFilter.includes('all') || modalMetricFilter.includes('temp')) && <td>{h.temperature ? `${h.temperature}°C` : '-'}</td>}
+                                                    <td>
+                                                        <span style={{
+                                                            padding: '2px 6px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600',
+                                                            background: h.risk_category?.toLowerCase().includes('high') ? '#fee2e2' : '#dcfce7',
+                                                            color: h.risk_category?.toLowerCase().includes('high') ? '#991b1b' : '#166534'
+                                                        }}>
+                                                            {h.risk_category}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <button
+                                                            onClick={() => setSelectedMeasurement(h)}
+                                                            style={{ border: 'none', background: 'none', color: '#3b82f6', cursor: 'pointer', fontWeight: '600' }}
+                                                        >
+                                                            View
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="measurement-cards-grid" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '8px' }}>
+                                {userHistoryLoading ? (
+                                    <div style={{ textAlign: 'center', gridColumn: '1/-1' }}>Loading history...</div>
+                                ) : displayedUserHistory.length === 0 ? (
+                                    <div style={{ gridColumn: '1/-1' }}><NoDataFound type="measurements" /></div>
+                                ) : (
+                                    displayedUserHistory.map(h => (
+                                        <div className="measurement-card" key={h.id} onClick={() => setSelectedMeasurement(h)}>
+                                            <div className="m-card-header">
+                                                <div className="m-card-date">{formatDate(h.created_at)}</div>
+                                                <span style={{
+                                                    padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600',
+                                                    background: h.risk_category?.toLowerCase().includes('high') ? '#fee2e2' : '#dcfce7',
+                                                    color: h.risk_category?.toLowerCase().includes('high') ? '#991b1b' : '#166534'
+                                                }}>
+                                                    {h.risk_category || 'Unknown'}
+                                                </span>
+                                            </div>
+                                            <div className="m-card-grid">
+                                                <div className="m-metric">
+                                                    <span className="m-label">BP (mmHg)</span>
+                                                    <span className="m-value">{h.systolic ? `${h.systolic}/${h.diastolic}` : '-'}</span>
+                                                </div>
+                                                <div className="m-metric">
+                                                    <span className="m-label">Heart Rate</span>
+                                                    <span className="m-value">{h.heart_rate ? `${h.heart_rate} bpm` : '-'}</span>
+                                                </div>
+                                                <div className="m-metric">
+                                                    <span className="m-label">SpO2</span>
+                                                    <span className="m-value">{h.spo2 ? `${h.spo2}%` : '-'}</span>
+                                                </div>
+                                                <div className="m-metric">
+                                                    <span className="m-label">Temp</span>
+                                                    <span className="m-value">{h.temperature ? `${h.temperature}°C` : '-'}</span>
+                                                </div>
+                                            </div>
+                                            <button className="action-btn" style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>
+                                                View Details
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
                     </motion.div>
                 </div>
             )}
