@@ -500,6 +500,8 @@
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.25rem;
     padding: 1rem;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .user-card-item {
@@ -628,21 +630,25 @@
 }
 
 /* Scrollbar Styling */
-.table-container-wrapper::-webkit-scrollbar {
+.table-container-wrapper::-webkit-scrollbar,
+.user-cards-grid::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
-.table-container-wrapper::-webkit-scrollbar-track {
+.table-container-wrapper::-webkit-scrollbar-track,
+.user-cards-grid::-webkit-scrollbar-track {
     background: #f1f5f9;
 }
 
-.table-container-wrapper::-webkit-scrollbar-thumb {
+.table-container-wrapper::-webkit-scrollbar-thumb,
+.user-cards-grid::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 4px;
 }
 
-.table-container-wrapper::-webkit-scrollbar-thumb:hover {
+.table-container-wrapper::-webkit-scrollbar-thumb:hover,
+.user-cards-grid::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
 

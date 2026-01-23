@@ -1526,7 +1526,7 @@ const DoctorDashboard = () => {
                             </div>
 
                             {modalViewMode === 'table' ? (
-                                <div className="table-container-wrapper" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                                <div className="table-container-wrapper" style={{ maxHeight: '57vh', overflowY: 'auto' }}>
                                     <table className="users-table">
                                         <thead>
                                             <tr>
@@ -1588,7 +1588,7 @@ const DoctorDashboard = () => {
                                     display: 'grid',
                                     gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
                                     gap: '16px',
-                                    maxHeight: '60vh',
+                                    maxHeight: '57vh',
                                     overflowY: 'auto',
                                     padding: '8px 4px 16px 4px',
                                     alignItems: 'stretch',

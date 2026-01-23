@@ -35,7 +35,7 @@ import {
 } from 'chart.js';
 import { Line, Pie } from 'react-chartjs-2';
 import './AdminDashboard.css';
-import { getAdminStats, getAdminUsers, updateUserStatus, getMeasurementHistory, printerAPI, getShareStatsFiltered, resetPaperRoll } from '../../../../utils/api';
+import { getAdminStats, getAdminUsers, updateUserStatus, updateUserProfile, getMeasurementHistory, printerAPI, getShareStatsFiltered, resetPaperRoll } from '../../../../utils/api';
 import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance component
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod, MultiSelectDropdown } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
@@ -245,6 +245,124 @@ const StatusDropdown = ({ currentStatus, onStatusChange }) => {
     );
 };
 
+// Custom Role Dropdown Component
+const RoleDropdown = ({ currentRole, onRoleChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = React.useRef(null);
+    const roles = ['Student', 'Nurse', 'Doctor', 'Employee', 'Admin'];
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const getRoleColor = (role) => {
+        const r = role.toLowerCase();
+        switch (r) {
+            case 'student': return { bg: '#fef3c7', text: '#b45309', border: '#fde68a' }; // Yellow/Beige
+            case 'nurse': return { bg: '#e0f2fe', text: '#0369a1', border: '#bae6fd' }; // Light Blue
+            case 'doctor': return { bg: '#ecfccb', text: '#4d7c0f', border: '#d9f99d' }; // Light Green
+            case 'employee': return { bg: '#f3e8ff', text: '#7e22ce', border: '#e9d5ff' }; // Light Purple
+            case 'admin': return { bg: '#fee2e2', text: '#dc2626', border: '#fecaca' }; // Light Red
+            default: return { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' }; // Gray
+        }
+    };
+
+    const handleSelect = (role) => {
+        onRoleChange(role);
+        setIsOpen(false);
+    };
+
+    const currentStyle = getRoleColor(currentRole);
+
+    return (
+        <div ref={dropdownRef} style={{ position: 'relative', width: '100%', minWidth: '100px' }} onClick={(e) => e.stopPropagation()}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    width: '100%',
+                    padding: '6px 10px',
+                    borderRadius: '20px', // Match badge style roughly
+                    fontWeight: '600',
+                    fontSize: '0.8rem', // Slightly smaller font match badge
+                    border: `1px solid ${currentStyle.border}`,
+                    background: currentStyle.bg,
+                    color: currentStyle.text,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    textTransform: 'capitalize',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap'
+                }}
+            >
+                {currentRole}
+                <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>▼</span>
+            </button>
+
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)', // Center align
+                        minWidth: '120px',
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        padding: '4px',
+                        marginTop: '4px',
+                        zIndex: 50,
+                        border: '1px solid #e2e8f0'
+                    }}
+                >
+                    {roles.map((role) => {
+                        const style = getRoleColor(role);
+                        return (
+                            <div
+                                key={role}
+                                onClick={() => handleSelect(role)}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = style.bg;
+                                    e.currentTarget.style.color = style.text;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                    e.currentTarget.style.color = '#475569';
+                                }}
+                                style={{
+                                    padding: '8px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    textAlign: 'center',
+                                    fontWeight: '600',
+                                    fontSize: '0.85rem',
+                                    color: '#475569',
+                                    textTransform: 'capitalize',
+                                    transition: 'all 0.1s',
+                                    marginBottom: '2px'
+                                }}
+                            >
+                                {role}
+                            </div>
+                        );
+                    })}
+                </motion.div>
+            )}
+        </div>
+    );
+};
+
 // Register ChartJS components
 ChartJS.register(
     ArcElement,
@@ -265,10 +383,165 @@ const NotificationTimer = ({ id, onClose }) => {
     useEffect(() => {
         const timer = setTimeout(() => {
             onClose(id);
-        }, 3000); // 3 seconds auto close
+        }, 5000); // 5 seconds auto close
         return () => clearTimeout(timer);
     }, [id, onClose]);
     return null;
+};
+
+// Notification Bell Component
+const NotificationBell = ({ pendingCount, printerStatus, shareStats, onNavigate }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = React.useRef(null);
+
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Determine if we have any alerts
+    const hasAlerts = pendingCount > 0 || printerStatus.status !== 'ready' || shareStats.paperRemaining <= 20;
+
+    return (
+        <div ref={dropdownRef} style={{ position: 'fixed', top: '20px', right: '30px', zIndex: 1000 }}>
+            <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    background: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '48px',
+                    height: '48px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    color: '#64748b'
+                }}
+            >
+                <Notifications />
+                {hasAlerts && (
+                    <span style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '12px',
+                        width: '10px',
+                        height: '10px',
+                        backgroundColor: '#ef4444',
+                        borderRadius: '50%',
+                        border: '2px solid white'
+                    }} />
+                )}
+            </motion.button>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        style={{
+                            position: 'absolute',
+                            top: '60px',
+                            right: '0',
+                            width: '320px',
+                            backgroundColor: 'white',
+                            borderRadius: '16px',
+                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                            border: '1px solid #f1f5f9',
+                            padding: '16px',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: '#1e293b' }}>System Status</h3>
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Live</span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                            {/* Pending Users */}
+                            <div
+                                onClick={() => { onNavigate('users'); setIsOpen(false); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '4px', borderRadius: '8px', transition: 'background 0.2s', '&:hover': { background: '#f8fafc' } }}
+                            >
+                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: pendingCount > 0 ? '#fff7ed' : '#f1f5f9', color: pendingCount > 0 ? '#f97316' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Person />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>User Registration</h4>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: pendingCount > 0 ? '#ea580c' : '#64748b' }}>
+                                        {pendingCount > 0 ? `${pendingCount} pending approval(s)` : 'All users approved'}
+                                    </p>
+                                </div>
+                                {pendingCount > 0 && <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#f97316' }}>Action</span>}
+                            </div>
+
+                            {/* Printer Status */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: printerStatus.status === 'ready' ? '#f0fdf4' : '#fef2f2', color: printerStatus.status === 'ready' ? '#16a34a' : '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Print />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>Printer System</h4>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: printerStatus.status === 'ready' ? '#16a34a' : '#ef4444' }}></span>
+                                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                                            {printerStatus.status === 'ready' ? 'Online' : 'Offline/Error'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Paper Status */}
+                            <div
+                                onClick={() => { setIsOpen(false); /* Trigger reset modal if needed */ }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
+                            >
+                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: shareStats.paperRemaining <= 20 ? '#fffbeb' : '#f0f9ff', color: shareStats.paperRemaining <= 20 ? '#d97706' : '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Dashboard />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>Paper Roll</h4>
+                                    <div style={{ width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '2px', marginTop: '6px' }}>
+                                        <div style={{ width: `${shareStats.paperRemaining}%`, height: '100%', borderRadius: '2px', background: shareStats.paperRemaining <= 20 ? '#d97706' : '#0ea5e9' }}></div>
+                                    </div>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                                        {shareStats.paperRemaining}% remaining
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Email Status */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#f3e8ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Email />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>Email Service</h4>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                                        {shareStats.emailCount} emails sent
+                                    </p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
 };
 
 
@@ -944,6 +1217,27 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleRoleUpdate = async (userId, newRole) => {
+        try {
+            // Optimistic update
+            const updatedList = usersList.map(u =>
+                u.user_id === userId ? { ...u, role: newRole } : u
+            );
+            setUsersList(updatedList);
+
+            await updateUserProfile(userId, { role: newRole });
+
+            // Re-fetch to confirm and update stats
+            fetchDashboardData();
+            setToast({ type: 'success', title: 'Role Updated', message: `User role updated to ${newRole}`, id: Date.now() });
+
+        } catch (error) {
+            console.error("Failed to update role", error);
+            setToast({ type: 'error', title: 'Update Failed', message: 'Failed to update user role.', id: Date.now() });
+            fetchDashboardData(); // Revert
+        }
+    };
+
     const toggleStatus = (status) => {
         if (status === 'All') {
             setStatusFilter(['All']);
@@ -1127,6 +1421,13 @@ const AdminDashboard = () => {
             isConnected={isConnected}
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
+
+            <NotificationBell
+                pendingCount={usersList ? usersList.filter(u => u.approval_status === "pending").length : 0}
+                printerStatus={printerStatus}
+                shareStats={shareStats}
+                onNavigate={setActiveTab}
+            />
 
             {/* --- Enhanced Glassmorphism Notifications (Centered) --- */}
             <div className="notification-center-container" style={{
@@ -1872,15 +2173,16 @@ const AdminDashboard = () => {
                                                         >
                                                             <div className="user-avatar">{u.firstname[0]}{u.lastname[0]}</div>
                                                             <div>
-                                                                <div className="fw-bold" style={{ color: '#2563eb' }}>{u.firstname} {u.lastname}</div>
+                                                                <div className="fw-bold" style={{ color: '#000000' }}>{u.firstname} {u.lastname}</div>
                                                                 <div className="text-secondary small">ID: {u.user_id ? u.user_id.substring(0, 8) + '...' : 'N/A'}</div>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        <span className={`role-badge role-${u.role.toLowerCase()}`}>
-                                                            {u.role}
-                                                        </span>
+                                                        <RoleDropdown
+                                                            currentRole={u.role || 'Student'}
+                                                            onRoleChange={(newRole) => handleRoleUpdate(u.user_id, newRole)}
+                                                        />
                                                     </td>
                                                     <td>{u.school_number || 'N/A'}</td>
                                                     <td>{u.email}</td>
@@ -1943,7 +2245,13 @@ const AdminDashboard = () => {
                                             </div>
 
                                             <h4 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#1e293b' }}>{u.firstname} {u.lastname}</h4>
-                                            <span className={`role-badge role-${u.role.toLowerCase()}`} style={{ marginBottom: '15px' }}>{u.role}</span>
+
+                                            <div style={{ marginBottom: '15px', width: '60%' }}>
+                                                <RoleDropdown
+                                                    currentRole={u.role || 'Student'}
+                                                    onRoleChange={(newRole) => handleRoleUpdate(u.user_id, newRole)}
+                                                />
+                                            </div>
 
                                             <div className="card-details" style={{ width: '100%', fontSize: '0.9rem', color: '#64748b', marginBottom: '15px', textAlign: 'left' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>

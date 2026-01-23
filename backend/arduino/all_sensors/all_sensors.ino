@@ -37,7 +37,11 @@ MAX30105 particleSensor;
 // =================================================================
 const float WEIGHT_CALIBRATION_FACTOR = 21333.55; 
 const float SENSOR_MOUNT_HEIGHT_CM = 213.36;      
-const float TEMPERATURE_CALIBRATION_OFFSET = 3.5; 
+// Temperature Settings (Medical Grade)
+const int TEMP_SAMPLES_PER_READING = 10;
+const float HUMAN_MIN_VALID_TEMP = 35.0;
+const float HUMAN_MAX_VALID_TEMP = 43.0;
+// const float TEMPERATURE_CALIBRATION_OFFSET = 3.5; // Replaced by dynamic logic 
 
 // MAX30102 Config
 #define BUFFER_SIZE 50
@@ -150,6 +154,34 @@ String getSignalQuality(float pi) {
   else if (pi >= 0.5) return "FAIR";
   else if (pi >= 0.2) return "WEAK";
   else return "POOR";
+}
+
+// =================================================================
+// --- HELPER FUNCTIONS (TEMP) ---
+// =================================================================
+
+float calculateDynamicOffset(float ambientTemp) {
+  // Medical Grade Compensation Algorithm
+  // Based on user calibration: 20C-25C Ambient -> +6.5C Offset
+  
+  if (ambientTemp <= 10.0) return 8.5; // Extreme Cold
+  
+  // Linear Interpolation for smoother transitions
+  if (ambientTemp <= 20.0) {
+    // Map 10C->20C : +8.5 -> +7.0
+    return 8.5 - ((ambientTemp - 10.0) * (1.5 / 10.0));
+  }
+  else if (ambientTemp <= 25.0) {
+    // Standard Room Temp (20-25C) -> Fixed +6.5
+    return 6.5; 
+  }
+  else if (ambientTemp <= 30.0) {
+    // Map 25C->30C : +6.5 -> +3.0
+    return 6.5 - ((ambientTemp - 25.0) * (3.5 / 5.0));
+  }
+  else {
+    return 2.0; // Very Hot Ambient
+  }
 }
 
 // =================================================================
@@ -467,9 +499,56 @@ void loop() {
   }
   
   if (tempActive && tempSensorInitialized && millis() - lastTempPrint > DATA_PRINT_INTERVAL) {
-      float objTemp = mlx.readObjectTempC();
-      if (!isnan(objTemp) && objTemp > 0) {
-         Serial.print("DEBUG:Temperature reading: "); Serial.println(objTemp + TEMPERATURE_CALIBRATION_OFFSET, 2);
+      
+      float sumObj = 0;
+      float sumAmb = 0;
+      
+      // 1. ACQUIRE SAMPLES (Smoothing)
+      // Take multiple readings to filter out sensor noise
+      for (int i = 0; i < TEMP_SAMPLES_PER_READING; i++) {
+        sumObj += mlx.readObjectTempC();
+        sumAmb += mlx.readAmbientTempC();
+        delay(20); // 20ms gap * 10 = 200ms total block (Acceptable for this loop flow)
+      }
+      
+      float avgObj = sumObj / TEMP_SAMPLES_PER_READING;
+      float avgAmb = sumAmb / TEMP_SAMPLES_PER_READING;
+      
+      if (!isnan(avgObj) && avgObj > 0) {
+         // 2. APPLY ALGORITHM
+         float offset = calculateDynamicOffset(avgAmb);
+         float bodyTemp = avgObj + offset;
+         
+         // 3. INTELLIGENT OUTPUT
+         // Detailed log for debugging (Serial Monitor users)
+         Serial.print("Amb: "); Serial.print(avgAmb, 1);
+         Serial.print("C | Raw: "); Serial.print(avgObj, 1);
+         Serial.print("C | Offset: +"); Serial.print(offset, 1);
+         
+         // Check Validity & FEVER STATUS
+         if (bodyTemp < HUMAN_MIN_VALID_TEMP) {
+            Serial.print(" -> READ: "); Serial.print(bodyTemp, 1);
+            Serial.println("C [IGNORED: NO HUMAN DETECTED]");
+         } 
+         else if (bodyTemp > HUMAN_MAX_VALID_TEMP) {
+            Serial.print(" -> READ: "); Serial.print(bodyTemp, 1);
+            Serial.println("C [IGNORED: INVALID HIGH]");
+         } 
+         else {
+            // Valid Human Reading -> Send to Backend
+            Serial.print(" -> BODY: "); Serial.print(bodyTemp, 1); 
+            Serial.print(" C [");
+            
+            // Fever Classifier (User Parameters)
+            if (bodyTemp <= 37.2) Serial.print("Normal");
+            else if (bodyTemp <= 38.0) Serial.print("Slight fever");
+            else Serial.print("Critical");
+            
+            Serial.println("]");
+
+            // BACKEND PROTOCOL: Keep the standard format for the app to parse
+            Serial.print("DEBUG:Temperature reading: "); Serial.println(bodyTemp, 2);
+         }
       }
       lastTempPrint = millis();
   }

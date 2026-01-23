@@ -234,8 +234,8 @@ export default function Result() {
 
   return (
     <div
-      className="container-fluid d-flex justify-content-center align-items-center min-vh-100 p-0 result-container"
-      style={{ background: getRiskGradient(riskLevel) }}
+      className="container-fluid d-flex justify-content-center min-vh-100 p-0 result-container py-5"
+      style={{ background: getRiskGradient(riskLevel), overflowY: 'auto' }}
     >
       <div
         className={`card border-0 shadow-lg p-4 p-md-5 mx-3 result-content page-transition`}
@@ -468,25 +468,31 @@ export default function Result() {
           <div className="d-flex flex-column gap-3">
 
             {/* Medical Action Recommendations */}
-            <div className={`card border-0 shadow-sm ${expandedSections.recommendations ? 'bg-light' : ''}`}>
+            <div className="card border-0 shadow-sm overflow-hidden">
               <div
-                className="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between cursor-pointer"
+                className="card-header bg-white border-0 py-4 d-flex align-items-center justify-content-between cursor-pointer transition-all hover-bg-light"
                 onClick={() => toggleSection('recommendations')}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="d-flex align-items-center gap-3">
-                  <span className="fs-4">🩺</span>
-                  <span className="fw-bold">Medical Action Recommendations</span>
+                  <div className="icon-box bg-danger bg-opacity-10 text-danger rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
+                    <span className="fs-4">🩺</span>
+                  </div>
+                  <div>
+                    <h5 className="fw-bold mb-0 text-dark">Medical Actions</h5>
+                    <small className="text-muted">Immediate steps</small>
+                  </div>
                 </div>
-                <span className="fs-4 text-muted">{expandedSections.recommendations ? '−' : '+'}</span>
+                <span className={`transition-transform fs-4 text-muted ${expandedSections.recommendations ? 'rotate-180' : ''}`}>▼</span>
               </div>
+
               {expandedSections.recommendations && (
-                <div className="card-body pt-0">
-                  <div className="ps-4 ms-2 border-start border-3 border-danger">
+                <div className="card-body bg-white pt-2 pb-4 px-4">
+                  <div className="d-flex flex-column gap-2">
                     {suggestions.map((suggestion, index) => (
-                      <div key={index} className="mb-2 d-flex gap-2">
-                        <span className="fw-bold text-danger">{index + 1}.</span>
-                        <span>{suggestion}</span>
+                      <div key={index} className="p-3 rounded-3 bg-light d-flex align-items-start gap-3">
+                        <span className="fw-bold text-danger fs-5 mt-1">{index + 1}.</span>
+                        <p className="mb-0 text-dark fw-medium">{suggestion}</p>
                       </div>
                     ))}
                   </div>
@@ -495,25 +501,33 @@ export default function Result() {
             </div>
 
             {/* Preventive Strategy Plans */}
-            <div className={`card border-0 shadow-sm ${expandedSections.prevention ? 'bg-light' : ''}`}>
+            <div className="card border-0 shadow-sm overflow-hidden">
               <div
-                className="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between cursor-pointer"
+                className="card-header bg-white border-0 py-4 d-flex align-items-center justify-content-between cursor-pointer transition-all hover-bg-light"
                 onClick={() => toggleSection('prevention')}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="d-flex align-items-center gap-3">
-                  <span className="fs-4">🛡️</span>
-                  <span className="fw-bold">Preventive Strategy Plans</span>
+                  <div className="icon-box bg-success bg-opacity-10 text-success rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
+                    <span className="fs-4">🛡️</span>
+                  </div>
+                  <div>
+                    <h5 className="fw-bold mb-0 text-dark">Preventive Strategy</h5>
+                    <small className="text-muted">Long-term care</small>
+                  </div>
                 </div>
-                <span className="fs-4 text-muted">{expandedSections.prevention ? '−' : '+'}</span>
+                <span className={`transition-transform fs-4 text-muted ${expandedSections.prevention ? 'rotate-180' : ''}`}>▼</span>
               </div>
+
               {expandedSections.prevention && (
-                <div className="card-body pt-0">
-                  <div className="ps-4 ms-2 border-start border-3 border-success">
+                <div className="card-body bg-white pt-2 pb-4 px-4">
+                  <div className="d-flex flex-column gap-2">
                     {preventions.map((prevention, index) => (
-                      <div key={index} className="mb-2 d-flex gap-2">
-                        <span className="text-success">🛡️</span>
-                        <span>{prevention}</span>
+                      <div key={index} className="p-3 rounded-3 bg-light d-flex align-items-start gap-3">
+                        <div className="mt-1 text-success">
+                          <span className="fs-5">✓</span>
+                        </div>
+                        <p className="mb-0 text-dark fw-medium">{prevention}</p>
                       </div>
                     ))}
                   </div>
@@ -522,25 +536,31 @@ export default function Result() {
             </div>
 
             {/* Wellness Improvement Tips */}
-            <div className={`card border-0 shadow-sm ${expandedSections.wellness ? 'bg-light' : ''}`}>
+            <div className="card border-0 shadow-sm overflow-hidden">
               <div
-                className="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between cursor-pointer"
+                className="card-header bg-white border-0 py-4 d-flex align-items-center justify-content-between cursor-pointer transition-all hover-bg-light"
                 onClick={() => toggleSection('wellness')}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="d-flex align-items-center gap-3">
-                  <span className="fs-4">💪</span>
-                  <span className="fw-bold">Wellness Improvement Tips</span>
+                  <div className="icon-box bg-warning bg-opacity-10 text-warning rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
+                    <span className="fs-4">💪</span>
+                  </div>
+                  <div>
+                    <h5 className="fw-bold mb-0 text-dark">Wellness Tips</h5>
+                    <small className="text-muted">Daily habits</small>
+                  </div>
                 </div>
-                <span className="fs-4 text-muted">{expandedSections.wellness ? '−' : '+'}</span>
+                <span className={`transition-transform fs-4 text-muted ${expandedSections.wellness ? 'rotate-180' : ''}`}>▼</span>
               </div>
+
               {expandedSections.wellness && (
-                <div className="card-body pt-0">
-                  <div className="ps-4 ms-2 border-start border-3 border-warning">
+                <div className="card-body bg-white pt-2 pb-4 px-4">
+                  <div className="d-flex flex-column gap-2">
                     {wellnessTips.map((tip, index) => (
-                      <div key={index} className="mb-2 d-flex gap-2">
-                        <span className="fw-bold text-warning">{index + 1}.</span>
-                        <span>{tip}</span>
+                      <div key={index} className="p-3 rounded-3 bg-light d-flex align-items-start gap-3">
+                        <span className="fw-bold text-warning fs-5 mt-1">{index + 1}.</span>
+                        <p className="mb-0 text-dark fw-medium">{tip}</p>
                       </div>
                     ))}
                   </div>
@@ -549,27 +569,35 @@ export default function Result() {
             </div>
 
             {/* Healthcare Provider Guidance */}
-            <div className={`card border-0 shadow-sm ${expandedSections.guidance ? 'bg-light' : ''}`}>
+            <div className="card border-0 shadow-sm overflow-hidden">
               <div
-                className="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between cursor-pointer"
+                className="card-header bg-white border-0 py-4 d-flex align-items-center justify-content-between cursor-pointer transition-all hover-bg-light"
                 onClick={() => toggleSection('guidance')}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="d-flex align-items-center gap-3">
-                  <span className="fs-4">👨‍⚕️</span>
-                  <span className="fw-bold">Healthcare Provider Guidance</span>
+                  <div className="icon-box bg-primary bg-opacity-10 text-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
+                    <span className="fs-4">👨‍⚕️</span>
+                  </div>
+                  <div>
+                    <h5 className="fw-bold mb-0 text-dark">Provider Guidance</h5>
+                    <small className="text-muted">Medical protocol</small>
+                  </div>
                 </div>
-                <span className="fs-4 text-muted">{expandedSections.guidance ? '−' : '+'}</span>
+                <span className={`transition-transform fs-4 text-muted ${expandedSections.guidance ? 'rotate-180' : ''}`}>▼</span>
               </div>
+
               {expandedSections.guidance && (
-                <div className="card-body pt-0">
-                  <div className="p-3 bg-white rounded border d-flex gap-3 align-items-start">
-                    <span className="fs-1">🏥</span>
-                    <div>
-                      <h4 className="h6 fw-bold mb-1">Standard Medical Protocol</h4>
-                      <p className="mb-0 small text-muted">
-                        {providerGuidance.length > 0 ? providerGuidance[0] : "Please consult a healthcare professional for a detailed assessment."}
-                      </p>
+                <div className="card-body bg-white pt-2 pb-4 px-4">
+                  <div className="p-4 rounded-3 bg-light motion-safe-animate-slide-up">
+                    <div className="d-flex gap-3 align-items-start">
+                      <span className="fs-2 text-primary">🏥</span>
+                      <div className="w-100">
+                        <h6 className="fw-bold text-dark mb-2">Standard Medical Protocol</h6>
+                        <p className="mb-0 text-secondary text-wrap text-break">
+                          {providerGuidance.length > 0 ? providerGuidance[0] : "Please consult a healthcare professional for a detailed assessment."}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
