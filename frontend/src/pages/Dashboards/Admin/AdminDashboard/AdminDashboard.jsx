@@ -1162,7 +1162,50 @@ const AdminDashboard = () => {
                                 <Line data={trafficData} options={{
                                     ...chartOptions,
                                     maintainAspectRatio: false,
-                                    plugins: { legend: { display: true, position: 'top' } },
+                                    interaction: {
+                                        mode: 'index',
+                                        intersect: false,
+                                    },
+                                    plugins: {
+                                        legend: { display: true, position: 'top' },
+                                        tooltip: {
+                                            enabled: true,
+                                            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                                            titleColor: '#ffffff',
+                                            bodyColor: '#e2e8f0',
+                                            titleFont: {
+                                                size: 14,
+                                                weight: 'bold',
+                                                family: "'Inter', sans-serif"
+                                            },
+                                            bodyFont: {
+                                                size: 13,
+                                                family: "'Inter', sans-serif"
+                                            },
+                                            padding: 12,
+                                            cornerRadius: 8,
+                                            displayColors: true,
+                                            boxWidth: 12,
+                                            boxHeight: 12,
+                                            boxPadding: 4,
+                                            usePointStyle: true,
+                                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                                            borderWidth: 1,
+                                            caretSize: 6,
+                                            caretPadding: 10,
+                                            callbacks: {
+                                                title: (tooltipItems) => {
+                                                    return `📅 ${tooltipItems[0].label}`;
+                                                },
+                                                label: (context) => {
+                                                    const label = context.dataset.label || '';
+                                                    const value = context.parsed.y;
+                                                    const icon = label === 'Active Users' ? '👥' : '📊';
+                                                    return `${icon} ${label}: ${value}`;
+                                                }
+                                            }
+                                        }
+                                    },
                                     scales: {
                                         y: { grid: { borderDash: [5, 5], color: '#f1f5f9' }, beginAtZero: true },
                                         x: { grid: { display: false } }

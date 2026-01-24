@@ -1,0 +1,61 @@
+.health-overview-container {
+    width: 100%;
+    padding: 2rem;
+    border-radius: 32px;
+    /* More rounded for modern look */
+    background: rgba(255, 255, 255, 0.7);
+    /* More transparent for glassmorphism */
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+        0 10px 40px -10px rgba(220, 38, 38, 0.05),
+        /* Subtle red tint shadow to match theme */
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    /* Inner glow */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Gradient blob background effect */
+.health-overview-container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 50% 50%,
+            rgba(220, 38, 38, 0.03) 0%,
+            transparent 50%);
+    z-index: -1;
+    pointer-events: none;
+    transform: translateZ(0);
+}
+
+.health-overview-container:hover {
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow:
+        0 20px 50px -12px rgba(220, 38, 38, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+    transform: translateY(-4px);
+}
+
+/* Ensure the scrollbar is nice if content overflows */
+.health-overview-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.health-overview-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.health-overview-container::-webkit-scrollbar-thumb {
+    background: rgba(220, 38, 38, 0.2);
+    border-radius: 10px;
+}
+
+.health-overview-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(220, 38, 38, 0.4);
+}

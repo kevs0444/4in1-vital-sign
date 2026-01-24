@@ -1383,19 +1383,15 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                             <span style={{ fontWeight: '700', color: '#1e293b' }}>Weight</span>
                         </div>
                     </div>
-                    <div style={{ width: '120px', height: '70px', position: 'relative', marginBottom: '8px' }}>
+                    <div style={{ width: '150px', height: '90px', position: 'relative', marginBottom: '8px' }}>
                         <Doughnut
                             data={weightData}
                             options={{
                                 maintainAspectRatio: false,
-                                cutout: '80%',
+                                cutout: '75%',
                                 plugins: {
                                     tooltip: { enabled: false },
-                                    legend: {
-                                        display: true,
-                                        position: 'bottom',
-                                        labels: { boxWidth: 10, font: { size: 10 } }
-                                    }
+                                    legend: { display: false }
                                 },
                                 rotation: 270,
                                 circumference: 180
