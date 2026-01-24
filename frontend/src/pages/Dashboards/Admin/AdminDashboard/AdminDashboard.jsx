@@ -331,10 +331,18 @@ const AdminDashboard = () => {
             console.log('📧 Share stats response:', response);
             if (response && response.success && response.stats) {
                 console.log('📧 Setting shareStats:', response.stats);
+                const printed = response.stats.receipt_printed_count || 0;
+                const MAX_PAPER = 35; // Total papers per user request
+                // Calculate percentage based on 35 papers
+                // 0 printed = 100%
+                // 35 printed = 0%
+                const remainingCount = Math.max(0, MAX_PAPER - printed);
+                const paperPercentage = Math.round((remainingCount / MAX_PAPER) * 100);
+
                 setShareStats({
                     emailCount: response.stats.email_sent_count || 0,
-                    printCount: response.stats.receipt_printed_count || 0,
-                    paperRemaining: response.stats.paper_remaining ?? 100
+                    printCount: printed,
+                    paperRemaining: paperPercentage
                 });
             }
         } catch (error) {
@@ -568,30 +576,36 @@ const AdminDashboard = () => {
     // 4. Monitor Paper Roll
     const prevPaperStatus = React.useRef('ok');
     useEffect(() => {
-        const currentPaperLevel = shareStats.paperRemaining;
+        // User Rules:
+        // 1 - 20 print Good
+        // 21 - 30 print Moderate
+        // 30 - 35 Critical
+        const printed = shareStats.printCount;
         let currentStatus = 'ok';
 
-        if (currentPaperLevel <= 0) currentStatus = 'empty';
-        else if (currentPaperLevel <= 5) currentStatus = 'critical';
-        else if (currentPaperLevel <= 15) currentStatus = 'low';
+        if (printed >= 35) currentStatus = 'empty'; // Reached limit
+        else if (printed >= 30) currentStatus = 'critical'; // 30 - 35
+        else if (printed > 20) currentStatus = 'low'; // 21 - 30 (Moderate)
+        // 0 - 20 is 'ok' (Good)
 
         // Notify only on status change to worse (or if it's the first time and low)
-        // We use a ref to track the last alerted status to avoid spamming on every percentage drop if staying in same tier
-        // But we do want to alert if it drops from low to critical or empty
         if (currentStatus !== 'ok' && currentStatus !== prevPaperStatus.current) {
             setNotifications(prev => {
                 // Prevent duplicate paper alerts
                 if (prev.some(n => n.type === 'paper' && n.read === false)) return prev;
 
-                let title = 'Paper Low';
-                let msg = `Thermal paper is ${currentStatus} (${currentPaperLevel}%).`;
+                let title = 'Paper Level';
+                let msg = `Paper roll status: ${currentStatus.toUpperCase()} (${printed}/35 printed).`;
 
                 if (currentStatus === 'empty') {
                     title = 'Out of Paper';
-                    msg = 'Paper roll is empty (0%). Please replace immediately.';
+                    msg = 'Paper roll is empty (35/35 printed). Please replace immediately.';
                 } else if (currentStatus === 'critical') {
                     title = 'Paper Critical';
-                    msg = `Thermal paper is critically low (${currentPaperLevel}%).`;
+                    msg = `Thermal paper is critically low (${printed}/35 printed).`;
+                } else if (currentStatus === 'low') {
+                    title = 'Paper Moderate';
+                    msg = `Thermal paper usage is moderate (${printed}/35 printed).`;
                 }
 
                 return [{
@@ -607,7 +621,7 @@ const AdminDashboard = () => {
             });
         }
         prevPaperStatus.current = currentStatus;
-    }, [shareStats.paperRemaining]);
+    }, [shareStats.printCount]);
 
 
 
@@ -1005,13 +1019,12 @@ const AdminDashboard = () => {
                                                 🧻 Paper
                                             </span>
                                             <span style={{
-                                                color: shareStats.paperRemaining <= 5 ? '#ef4444' :
-                                                    shareStats.paperRemaining <= 15 ? '#f97316' :
-                                                        shareStats.paperRemaining <= 40 ? '#f59e0b' : '#10b981',
+                                                color: shareStats.printCount >= 30 ? '#ef4444' :
+                                                    shareStats.printCount > 20 ? '#f59e0b' : '#10b981',
                                                 fontWeight: '800',
                                                 fontSize: '0.85rem'
                                             }}>
-                                                {shareStats.paperRemaining}%
+                                                {shareStats.printCount}/35
                                             </span>
                                         </div>
 
@@ -1029,11 +1042,10 @@ const AdminDashboard = () => {
                                             {/* Fill */}
                                             <div style={{
                                                 height: '100%',
-                                                width: `${Math.max(5, Math.min(100, shareStats.paperRemaining))}%`,
-                                                background: shareStats.paperRemaining <= 5 ? 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)' :
-                                                    shareStats.paperRemaining <= 15 ? 'linear-gradient(90deg, #f97316 0%, #ea580c 100%)' :
-                                                        shareStats.paperRemaining <= 40 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)' :
-                                                            'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
+                                                width: `${Math.max(0, Math.min(100, shareStats.paperRemaining))}%`,
+                                                background: shareStats.printCount >= 30 ? 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)' :
+                                                    shareStats.printCount > 20 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)' :
+                                                        'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
                                                 borderRadius: '3px',
                                                 transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
                                             }} />
@@ -1047,9 +1059,9 @@ const AdminDashboard = () => {
                                                 textShadow: shareStats.paperRemaining <= 40 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
                                                 pointerEvents: 'none'
                                             }}>
-                                                {shareStats.paperRemaining <= 5 ? 'CRITICAL' :
-                                                    shareStats.paperRemaining <= 15 ? 'LOW' :
-                                                        shareStats.paperRemaining <= 40 ? 'MODERATE' : 'GOOD'}
+                                                {shareStats.printCount >= 35 ? 'EMPTY' :
+                                                    shareStats.printCount >= 30 ? 'CRITICAL' :
+                                                        shareStats.printCount > 20 ? 'MODERATE' : 'GOOD'}
                                             </div>
 
                                             {/* Segments Overlay */}

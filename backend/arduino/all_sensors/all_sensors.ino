@@ -41,7 +41,8 @@ const float SENSOR_MOUNT_HEIGHT_CM = 213.36;
 const int TEMP_SAMPLES_PER_READING = 10;
 const float HUMAN_MIN_VALID_TEMP = 35.0;
 const float HUMAN_MAX_VALID_TEMP = 43.0;
-// const float TEMPERATURE_CALIBRATION_OFFSET = 3.5; // Replaced by dynamic logic 
+// 🔧 CALIBRATION BIAS (based on your IR thermometer)
+const float CALIBRATION_BIAS = 3.5;   // fine-tune ±0.1 if needed 
 
 // MAX30102 Config
 #define BUFFER_SIZE 50
@@ -160,27 +161,22 @@ String getSignalQuality(float pi) {
 // --- HELPER FUNCTIONS (TEMP) ---
 // =================================================================
 
+/* -------- REDUCED AMBIENT OFFSET (MAX +1.00C) -------- */
 float calculateDynamicOffset(float ambientTemp) {
-  // Medical Grade Compensation Algorithm
-  // Based on user calibration: 20C-25C Ambient -> +6.5C Offset
-  
-  if (ambientTemp <= 10.0) return 8.5; // Extreme Cold
-  
-  // Linear Interpolation for smoother transitions
-  if (ambientTemp <= 20.0) {
-    // Map 10C->20C : +8.5 -> +7.0
-    return 8.5 - ((ambientTemp - 10.0) * (1.5 / 10.0));
+
+  if (ambientTemp <= 15.0) {
+    return 1.0;
   }
   else if (ambientTemp <= 25.0) {
-    // Standard Room Temp (20-25C) -> Fixed +6.5
-    return 6.5; 
+    // Map 15C → 25C : 1.0 → 0.5
+    return 1.0 - ((ambientTemp - 15.0) * (0.5 / 10.0));
   }
   else if (ambientTemp <= 30.0) {
-    // Map 25C->30C : +6.5 -> +3.0
-    return 6.5 - ((ambientTemp - 25.0) * (3.5 / 5.0));
+    // Map 25C → 30C : 0.5 → 0.2
+    return 0.5 - ((ambientTemp - 25.0) * (0.3 / 5.0));
   }
   else {
-    return 2.0; // Very Hot Ambient
+    return 0.1;
   }
 }
 
@@ -503,27 +499,43 @@ void loop() {
       float sumObj = 0;
       float sumAmb = 0;
       
-      // 1. ACQUIRE SAMPLES (Smoothing)
-      // Take multiple readings to filter out sensor noise
-      for (int i = 0; i < TEMP_SAMPLES_PER_READING; i++) {
-        sumObj += mlx.readObjectTempC();
-        sumAmb += mlx.readAmbientTempC();
-        delay(20); // 20ms gap * 10 = 200ms total block (Acceptable for this loop flow)
+      // 1. ACQUIRE SAMPLES (Smoothing with Hardware Noise Filter)
+      int validSamples = 0;
+      for (int i = 0; i < TEMP_SAMPLES_PER_READING + 5; i++) {
+        float rawObj = mlx.readObjectTempC();
+        float rawAmb = mlx.readAmbientTempC();
+        
+        // Sanity Check: Ambient 0-50C, Object 0-100C
+        if (rawObj > 0.0 && rawObj < 100.0 && rawAmb > 0.0 && rawAmb < 50.0) {
+          sumObj += rawObj;
+          sumAmb += rawAmb;
+          validSamples++;
+        }
+        
+        if (validSamples >= TEMP_SAMPLES_PER_READING) break; 
+        delay(20); 
       }
       
-      float avgObj = sumObj / TEMP_SAMPLES_PER_READING;
-      float avgAmb = sumAmb / TEMP_SAMPLES_PER_READING;
+      float avgObj = 0; 
+      float avgAmb = 0;
+      if (validSamples > 0) {
+          avgObj = sumObj / validSamples;
+          avgAmb = sumAmb / validSamples;
+      }
       
       if (!isnan(avgObj) && avgObj > 0) {
          // 2. APPLY ALGORITHM
          float offset = calculateDynamicOffset(avgAmb);
-         float bodyTemp = avgObj + offset;
+         offset = constrain(offset, 0.0, 1.0);   // safety clamp
+         
+         float bodyTemp = avgObj + CALIBRATION_BIAS + offset;
          
          // 3. INTELLIGENT OUTPUT
          // Detailed log for debugging (Serial Monitor users)
          Serial.print("Amb: "); Serial.print(avgAmb, 1);
          Serial.print("C | Raw: "); Serial.print(avgObj, 1);
-         Serial.print("C | Offset: +"); Serial.print(offset, 1);
+         Serial.print("C | Bias: +"); Serial.print(CALIBRATION_BIAS, 1);
+         Serial.print(" | Offset: +"); Serial.print(offset, 2);
          
          // Check Validity & FEVER STATUS
          if (bodyTemp < HUMAN_MIN_VALID_TEMP) {

@@ -48,7 +48,9 @@ export default function Sharing() {
       try {
         const response = await getShareStatsFiltered({});
         if (response && response.success && response.stats) {
-          if ((response.stats.paper_remaining ?? 100) <= 0) {
+          // Check against 35 paper limit
+          const printed = response.stats.receipt_printed_count || 0;
+          if (printed >= 35) {
             setIsPaperEmpty(true);
           }
         }
@@ -408,7 +410,9 @@ export default function Sharing() {
             {userData.riskLevel !== undefined && (
               <div className="receipt-row" style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Risk Level:</span>
-                <strong>{userData.riskCategory} ({userData.riskLevel}%)</strong>
+                <strong>
+                  {userData.riskCategory === 'Normal' ? 'Low Risk' : userData.riskCategory} ({userData.riskLevel}%)
+                </strong>
               </div>
             )}
 

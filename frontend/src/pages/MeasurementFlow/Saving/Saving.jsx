@@ -74,7 +74,10 @@ export default function Saving() {
           height: data.height,
           bmi: data.bmi,
           risk_level: data.riskLevel,
-          risk_category: data.riskCategory,
+          // Force 'Normal' to 'Low Risk' to ensure database consistency
+          risk_category: (data.riskCategory === 'Normal' || data.riskCategory === 'Low')
+            ? 'Low Risk'
+            : data.riskCategory,
           suggestions: data.suggestions,
           preventions: data.preventions,
           wellnessTips: data.wellnessTips,

@@ -32,7 +32,11 @@ const NotificationBell = ({
 
     const hasUserAlerts = isAdmin && pendingCount > 0;
     const hasPrinterError = isAdmin && printerStatus.status !== 'ready' && printerStatus.status !== 'checking';
-    const hasLowPaper = isAdmin && shareStats.paperRemaining <= 20;
+    const printCount = shareStats.printCount || 0;
+    // 1 - 20 Good
+    // 21 - 30 Moderate
+    // 30 - 35 Critical
+    const hasLowPaper = isAdmin && printCount > 20;
 
     // Total alerts count
     let alertCount = 0;
@@ -42,6 +46,15 @@ const NotificationBell = ({
     alertCount += notifications.length;
 
     const hasAlerts = alertCount > 0;
+
+    // Paper Status Helper
+    const getPaperStatus = (count) => {
+        if (count >= 35) return { label: 'Empty', color: '#ef4444', bg: '#fef2f2' };
+        if (count >= 30) return { label: 'Critical', color: '#ef4444', bg: '#fef2f2' };
+        if (count > 20) return { label: 'Moderate', color: '#f97316', bg: '#fff7ed' };
+        return { label: 'Good', color: '#16a34a', bg: '#f0fdf4' };
+    };
+    const paperStatus = getPaperStatus(printCount);
 
     return (
         <div ref={dropdownRef} style={{ position: 'relative', zIndex: 1000 }}>
@@ -145,19 +158,22 @@ const NotificationBell = ({
                                 </div>
                             )}
 
-                            {/* Paper Status - Admin Only */}
+                            {/* Paper Status - Updated Logic */}
                             {isAdmin && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: shareStats.paperRemaining <= 20 ? '#fffbeb' : '#f0f9ff', color: shareStats.paperRemaining <= 20 ? '#d97706' : '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: paperStatus.bg, color: paperStatus.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <Dashboard fontSize="small" />
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#334155' }}>Paper Roll</h4>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#334155' }}>Paper Roll</h4>
+                                            <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: paperStatus.color }}>{paperStatus.label}</span>
+                                        </div>
                                         <div style={{ width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '2px', marginTop: '4px' }}>
-                                            <div style={{ width: `${shareStats.paperRemaining}%`, height: '100%', borderRadius: '2px', background: shareStats.paperRemaining <= 20 ? '#d97706' : '#0ea5e9' }}></div>
+                                            <div style={{ width: `${shareStats.paperRemaining}%`, height: '100%', borderRadius: '2px', background: paperStatus.color }}></div>
                                         </div>
                                         <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                                            {shareStats.paperRemaining}% remaining
+                                            {printCount}/35 printed ({shareStats.paperRemaining}% left)
                                         </p>
                                     </div>
                                 </div>

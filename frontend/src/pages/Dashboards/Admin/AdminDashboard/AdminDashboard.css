@@ -785,7 +785,8 @@
 /* Metrics Grid */
 .metrics-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    /* Increased min-width to prevent squishing */
     gap: 1.5rem;
 }
 
@@ -793,9 +794,9 @@
     background: white;
     border-radius: 16px;
     padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    /* display: flex;  -- Removed flex to handle internal layout explicitly via metric-content */
+    /* align-items: center; */
+    /* justify-content: space-between; */
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
     border: 1px solid #f1f5f9;
     position: relative;
@@ -824,6 +825,7 @@
 .metric-content {
     display: flex;
     flex-direction: column;
+    width: 100%;
 }
 
 .metric-label {
@@ -877,6 +879,53 @@
         box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
     }
 }
+
+/* Printer Card Specific Styles */
+.printer-details-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    gap: 1.5rem;
+}
+
+.printer-info-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.printer-horizontal-divider {
+    display: none;
+    /* Hidden on desktop */
+}
+
+.printer-paper-right {
+    flex: 1;
+    min-width: 160px;
+    /* Ensure paper bar has space */
+}
+
+@media (max-width: 480px) {
+    .printer-details-layout {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .printer-horizontal-divider {
+        display: block;
+        width: 100%;
+        height: 1px;
+        background: #e2e8f0;
+    }
+
+    .printer-paper-right {
+        width: 100%;
+        min-width: unset;
+    }
+}
+
 
 /* Analytics Grid Layout */
 .analytics-grid {
@@ -1536,7 +1585,7 @@
     }
 
     .metrics-grid {
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
     }
 
     .analytics-grid {
@@ -1597,268 +1646,5 @@
 @media (min-width: 1025px) {
     .hide-desktop {
         display: none !important;
-    }
-}
-
-/* Show only on specific breakpoints */
-.show-mobile-only {
-    display: none !important;
-}
-
-@media (max-width: 480px) {
-    .show-mobile-only {
-        display: block !important;
-    }
-}
-
-.show-tablet-only {
-    display: none !important;
-}
-
-@media (min-width: 481px) and (max-width: 1024px) {
-    .show-tablet-only {
-        display: block !important;
-    }
-}
-
-.show-desktop-only {
-    display: none !important;
-}
-
-@media (min-width: 1025px) {
-    .show-desktop-only {
-        display: block !important;
-    }
-}
-
-/* Responsive Flex/Grid Helpers */
-.responsive-stack {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-}
-
-@media (max-width: 480px) {
-    .responsive-stack {
-        flex-direction: column;
-    }
-}
-
-.responsive-grid {
-    display: grid;
-    gap: 1rem;
-}
-
-@media (max-width: 480px) {
-    .responsive-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (min-width: 481px) and (max-width: 768px) {
-    .responsive-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (min-width: 769px) {
-    .responsive-grid {
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    }
-}
-
-/* Touch-Friendly Sizing */
-@media (hover: none) and (pointer: coarse) {
-
-    .action-btn,
-    .icon-btn,
-    .nav-item,
-    button {
-        min-height: 44px;
-        min-width: 44px;
-    }
-
-    .search-bar input {
-        min-height: 44px;
-    }
-
-    .role-select {
-        min-height: 44px;
-    }
-}
-
-/* Smooth Transitions for Layout Changes */
-.summary-cards,
-.metrics-grid,
-.analytics-grid,
-.user-cards-grid,
-.table-header,
-.table-actions {
-    transition: all 0.3s ease;
-}
-
-/* --- Kiosk / Large Screen Enhancements --- */
-/* Force 3-column layout for metrics on screens wide enough (Landscape Kiosk, Desktop) */
-@media (min-width: 1024px) {
-    .metrics-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-    }
-
-    .analytics-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
-}
-
-/* Portrait Mode Optimizations (Vertical Kiosk) */
-@media (orientation: portrait) and (min-width: 768px) {
-    .metrics-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
-
-    /* Make the 3rd metric card span full width for better layout balance */
-    .metrics-grid>div:nth-child(3) {
-        grid-column: span 2;
-    }
-
-    /* Allow charts to be side-by-side in Portrait Kiosk (since 1080px is wide enough) */
-    .analytics-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
-
-    .chart-wrapper {
-        min-height: 350px;
-        /* Taller charts for portrait viewing */
-    }
-}
-
-/* Printer Card Responsive Layout */
-.printer-details-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-top: 12px;
-}
-
-.printer-info-left {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-@media (min-width: 1200px) {
-    .printer-details-layout {
-        flex-direction: row;
-        gap: 16px;
-    }
-
-    .printer-info-left {
-        flex: 1;
-        min-width: 120px;
-        border-right: 1px solid #f1f5f9;
-        padding-right: 12px;
-        justify-content: center;
-    }
-
-    .printer-paper-right {
-        flex: 1.5;
-    }
-
-    .printer-horizontal-divider {
-        display: none;
-    }
-}
-
-@keyframes pulse {
-    0% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.5;
-    }
-
-    100% {
-        opacity: 1;
-    }
-}
-
-/* Kiosk Mode Optimization (768px Portrait) */
-@media (max-width: 768px) {
-    .user-cards-grid {
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
-        gap: 1rem !important;
-        padding: 0.5rem !important;
-    }
-
-    .user-card-item {
-        padding: 1.5rem !important;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05) !important;
-    }
-
-    .search-bar {
-        width: auto !important;
-        flex: 1 1 250px;
-        min-width: 200px;
-        margin-bottom: 0;
-    }
-
-    .role-filter-wrapper {
-        flex-direction: row;
-        flex-wrap: wrap;
-        width: auto;
-        flex: 1;
-        gap: 0.5rem;
-    }
-
-    .role-select {
-        width: 100%;
-    }
-
-    .status-modal-content {
-        width: 90% !important;
-        max-width: 90% !important;
-    }
-}
-
-/* Enhanced Kiosk Header Layout */
-@media (max-width: 768px) {
-    .table-header {
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
-        align-items: center !important;
-        gap: 12px !important;
-    }
-
-    .table-header h3 {
-        width: 100%;
-        margin-bottom: 8px;
-    }
-
-    .table-actions {
-        width: 100%;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-    }
-
-    .table-actions>* {
-        flex-shrink: 0;
-    }
-
-    .search-bar {
-        flex-shrink: 1;
-        /* Allow search bar to shrink if needed */
-        min-width: 200px;
-        flex: 1 1 auto;
-    }
-}
-
-/* Force 2-column grid for Kiosk/Tablet (Portrait) */
-@media (min-width: 500px) and (max-width: 768px) {
-    .user-cards-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 1rem !important;
     }
 }
