@@ -938,7 +938,10 @@ const AdminDashboard = () => {
                                 zIndex: 0
                             }} />
                         </motion.div>
+                    </div>
 
+                    {/* Printer Status & Distribution Row */}
+                    <div className="metrics-grid" style={{ marginTop: '1.5rem' }}>
                         {/* Printer Status Card */}
                         <motion.div className="metric-card" whileHover={{ y: -5 }}>
                             <div className="metric-content">
@@ -1105,12 +1108,8 @@ const AdminDashboard = () => {
                                     border: '10px solid'
                                 }}></div>
                         </motion.div>
-                    </div>
 
-                    {/* 2. Main Analytics Grid */}
-                    <div className="analytics-grid">
-
-                        {/* Distribution Chart */}
+                        {/* Distribution Chart - Moved Beside Printer */}
                         <motion.div
                             className="analytics-card distribution-card"
                             initial={{ opacity: 0, x: -20 }}
@@ -1129,10 +1128,15 @@ const AdminDashboard = () => {
                                 )}
                             </div>
                         </motion.div>
+                    </div>
+
+                    {/* 2. Main Analytics Grid */}
+                    <div className="analytics-grid">
 
                         {/* Activity Line Chart */}
                         <motion.div
                             className="analytics-card trends-card"
+                            style={{ gridColumn: '1 / -1' }}
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                             whileHover={{ scale: 1.01, boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.1)' }}

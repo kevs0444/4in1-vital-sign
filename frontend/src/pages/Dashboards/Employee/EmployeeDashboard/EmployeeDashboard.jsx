@@ -234,7 +234,14 @@ const EmployeeDashboard = () => {
             lastUpdated={lastUpdated}
             onRefresh={refetchAllData}
             isConnected={isConnected}
-            notificationProps={{ userRole: 'employee', onNavigate: (tab) => setActiveTab(tab) }}
+            notificationProps={{
+                userRole: 'employee',
+                onNavigate: (tab) => setActiveTab(tab),
+                notifications: [
+                    { title: 'Profile Status', message: 'Your account is verified', type: 'success', icon: <Check fontSize="small" /> },
+                    { title: 'Welcome', message: `Welcome back, ${currentUser.firstname || 'Employee'}`, type: 'info', icon: <Person fontSize="small" /> }
+                ]
+            }}
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
 

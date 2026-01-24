@@ -172,7 +172,7 @@ export default function Result() {
       diastolic: parseFloat(userData.diastolic || 0),
       rr: parseFloat(userData.respiratoryRate || 0),
       risk_score: riskLevel,
-      risk_label: riskCategory,
+      risk_label: (riskCategory === 'Normal' || riskCategory === 'Low') ? 'Low Risk' : riskCategory,
 
       // Legacy/UI specific fields
       bloodPressure: userData.systolic && userData.diastolic ?

@@ -7,7 +7,8 @@ const NotificationBell = ({
     printerStatus = { status: 'checking' },
     shareStats = { paperRemaining: 100, emailCount: 0 },
     onNavigate,
-    userRole = 'admin' // 'admin', 'doctor', 'nurse', 'student', 'employee'
+    userRole = 'admin', // 'admin', 'doctor', 'nurse', 'student', 'employee'
+    notifications = []
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -30,14 +31,15 @@ const NotificationBell = ({
     const isKioskRole = ['student', 'employee', 'doctor', 'nurse'].includes(userRole);
 
     const hasUserAlerts = isAdmin && pendingCount > 0;
-    const hasPrinterError = printerStatus.status !== 'ready' && printerStatus.status !== 'checking';
-    const hasLowPaper = shareStats.paperRemaining <= 20;
+    const hasPrinterError = isAdmin && printerStatus.status !== 'ready' && printerStatus.status !== 'checking';
+    const hasLowPaper = isAdmin && shareStats.paperRemaining <= 20;
 
     // Total alerts count
     let alertCount = 0;
     if (hasUserAlerts) alertCount++;
     if (hasPrinterError) alertCount++;
     if (hasLowPaper) alertCount++;
+    alertCount += notifications.length;
 
     const hasAlerts = alertCount > 0;
 
@@ -125,37 +127,41 @@ const NotificationBell = ({
                                 </div>
                             )}
 
-                            {/* Printer Status (Everyone sees this if system connected) */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: printerStatus.status === 'ready' ? '#f0fdf4' : '#fef2f2', color: printerStatus.status === 'ready' ? '#16a34a' : '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Print fontSize="small" />
+                            {/* Printer Status (Admin Only) */}
+                            {isAdmin && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: printerStatus.status === 'ready' ? '#f0fdf4' : '#fef2f2', color: printerStatus.status === 'ready' ? '#16a34a' : '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Print fontSize="small" />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#334155' }}>Printer System</h4>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: printerStatus.status === 'ready' ? '#16a34a' : '#ef4444' }}></span>
+                                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
+                                                {printerStatus.status === 'ready' ? 'Online' : 'Offline/Error'}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#334155' }}>Printer System</h4>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: printerStatus.status === 'ready' ? '#16a34a' : '#ef4444' }}></span>
-                                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
-                                            {printerStatus.status === 'ready' ? 'Online' : 'Offline/Error'}
+                            )}
+
+                            {/* Paper Status - Admin Only */}
+                            {isAdmin && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: shareStats.paperRemaining <= 20 ? '#fffbeb' : '#f0f9ff', color: shareStats.paperRemaining <= 20 ? '#d97706' : '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Dashboard fontSize="small" />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#334155' }}>Paper Roll</h4>
+                                        <div style={{ width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '2px', marginTop: '4px' }}>
+                                            <div style={{ width: `${shareStats.paperRemaining}%`, height: '100%', borderRadius: '2px', background: shareStats.paperRemaining <= 20 ? '#d97706' : '#0ea5e9' }}></div>
+                                        </div>
+                                        <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                                            {shareStats.paperRemaining}% remaining
                                         </p>
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* Paper Status */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: shareStats.paperRemaining <= 20 ? '#fffbeb' : '#f0f9ff', color: shareStats.paperRemaining <= 20 ? '#d97706' : '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Dashboard fontSize="small" />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#334155' }}>Paper Roll</h4>
-                                    <div style={{ width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '2px', marginTop: '4px' }}>
-                                        <div style={{ width: `${shareStats.paperRemaining}%`, height: '100%', borderRadius: '2px', background: shareStats.paperRemaining <= 20 ? '#d97706' : '#0ea5e9' }}></div>
-                                    </div>
-                                    <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                                        {shareStats.paperRemaining}% remaining
-                                    </p>
-                                </div>
-                            </div>
+                            )}
 
                             {/* Email Status (Admin Only usually, but stats are nice for everyone if public?) -> Let's show for Admin only for now to keep it clean, or everyone? User said "component for notifications in ALL roles".
                                 Email stats are less "notification" worthy unless failed.
@@ -175,12 +181,31 @@ const NotificationBell = ({
                                 </div>
                             )}
 
-                            {!hasAlerts && !isAdmin && (
+                            {/* Custom/Generic Notifications (All Roles) */}
+                            {notifications.length > 0 && notifications.map((note, index) => (
+                                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 0' }}>
+                                    <div style={{
+                                        width: '36px', height: '36px', borderRadius: '8px',
+                                        background: note.type === 'success' ? '#f0fdf4' : note.type === 'warning' ? '#fffbeb' : '#f1f5f9',
+                                        color: note.type === 'success' ? '#16a34a' : note.type === 'warning' ? '#d97706' : '#64748b',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        {note.icon || <Notifications fontSize="small" />}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#334155' }}>{note.title}</h4>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
+                                            {note.message}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {!hasAlerts && notifications.length === 0 && !isAdmin && (
                                 <div style={{ textAlign: 'center', padding: '10px', color: '#94a3b8', fontSize: '0.85rem' }}>
                                     No new notifications
                                 </div>
                             )}
-
                         </div>
                     </motion.div>
                 )}

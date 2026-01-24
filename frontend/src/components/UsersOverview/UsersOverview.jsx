@@ -139,16 +139,7 @@ const UsersOverview = ({
 
                 <div className="uo-table-actions">
 
-                    {/* Search - Exactly like PatientList */}
-                    <div className="uo-search-bar">
-                        <Search style={{ color: '#94a3b8', marginRight: '8px' }} />
-                        <input
-                            type="text"
-                            placeholder="Search users..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+
 
                     {/* Kiosk Scroll Container - Exactly like PatientList */}
                     <div className="uo-kiosk-scroll-container">
@@ -169,7 +160,7 @@ const UsersOverview = ({
                             ]}
                             onToggle={toggleRole}
                             allLabel="All Roles"
-                            compact={true}
+                            compact={false}
                         />
 
                         <MultiSelectDropdown
@@ -183,7 +174,7 @@ const UsersOverview = ({
                             ]}
                             onToggle={toggleStatus}
                             allLabel="All Status"
-                            compact={true}
+                            compact={false}
                         />
 
                         <TimePeriodFilter
@@ -192,7 +183,7 @@ const UsersOverview = ({
                             customDateRange={customDateRange}
                             setCustomDateRange={setCustomDateRange}
                             variant="dropdown"
-                            compact={true}
+                            compact={false}
                         />
 
                         {/* Export - Kiosk Logic */}

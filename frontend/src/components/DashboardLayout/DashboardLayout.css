@@ -568,6 +568,13 @@
     height: 36px !important;
 }
 
+/* Force Notification Bell visibility in Kiosk Mode (even on small screens) */
+.kiosk-mode .desktop-notification-bell {
+    display: block !important;
+    top: 16px !important;
+    right: 24px !important;
+}
+
 /* =================================================================== */
 /* KIOSK 768x1366 PORTRAIT TOUCHSCREEN - COMPLETE REWRITE             */
 /* Optimized for vertical touchscreen with no overlapping elements    */

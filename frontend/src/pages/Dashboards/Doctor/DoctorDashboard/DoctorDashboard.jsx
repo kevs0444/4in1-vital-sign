@@ -244,7 +244,14 @@ const DoctorDashboard = () => {
             lastUpdated={lastUpdated}
             onRefresh={refetchAllData}
             isConnected={isConnected}
-            notificationProps={{ userRole: 'doctor', onNavigate: (tab) => setActiveTab(tab) }}
+            notificationProps={{
+                userRole: 'doctor',
+                onNavigate: (tab) => setActiveTab(tab),
+                notifications: [
+                    { title: 'System Online', message: 'Vital Sign System is active', type: 'success', icon: <Check fontSize="small" /> },
+                    { title: 'Data Sync', message: 'Real-time updates enabled', type: 'info', icon: <History fontSize="small" /> }
+                ]
+            }}
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
 
@@ -304,7 +311,7 @@ const DoctorDashboard = () => {
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                            maxWidth: '900px', width: '95%', maxHeight: '85vh',
+                            maxWidth: '1200px', width: '95%', maxHeight: '85vh',
                             display: 'flex', flexDirection: 'column',
                             background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(20px)',
                             border: '1px solid rgba(255, 255, 255, 0.5)',

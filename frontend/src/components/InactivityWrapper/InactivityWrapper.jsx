@@ -80,6 +80,8 @@ const InactivityWrapper = ({ children }) => {
         // Set warning timer (Dynamic)
         warningTimerRef.current = setTimeout(() => {
             setShowWarning(true);
+            // Close any open dropdowns when warning appears
+            window.dispatchEvent(new Event('closeAllDropdowns'));
         }, timeoutConfig.warning);
 
         // Set final timer (Dynamic)
@@ -190,6 +192,8 @@ const InactivityWrapper = ({ children }) => {
                     console.warn("🚨 Illegal BP Press Detected!");
                     lastIllegalTimeRef.current = data.timestamp;
                     setShowIllegalAlert(true);
+                    // Close any open dropdowns when alert appears
+                    window.dispatchEvent(new Event('closeAllDropdowns'));
 
                     // Voice Warning (Re-init to ensure sound)
                     reinitSpeech(true);

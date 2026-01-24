@@ -109,17 +109,7 @@ const PatientList = ({ users, loading, onViewHistory, title = "Assigned Patients
                 <h3>{title} ({filteredUsers.length} records)</h3>
 
                 <div className="table-controls-wrapper" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {/* Search */}
-                    <div className="search-bar" style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', width: 'auto', flex: '1 1 200px' }}>
-                        <Search style={{ color: '#94a3b8', marginRight: '8px' }} />
-                        <input
-                            type="text"
-                            placeholder="Search patients..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem' }}
-                        />
-                    </div>
+
 
                     {/* Controls Row (Scrollable on mobile/kiosk) */}
                     <div className="kiosk-scroll-container" style={{

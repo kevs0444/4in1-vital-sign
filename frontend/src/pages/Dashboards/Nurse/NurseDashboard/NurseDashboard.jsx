@@ -304,7 +304,7 @@ const NurseDashboard = () => {
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                            maxWidth: '900px', width: '95%', maxHeight: '85vh',
+                            maxWidth: '1200px', width: '95%', maxHeight: '85vh',
                             display: 'flex', flexDirection: 'column',
                             background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(20px)',
                             border: '1px solid rgba(255, 255, 255, 0.5)',
