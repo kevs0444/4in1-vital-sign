@@ -57,12 +57,18 @@ def update_user_profile(user_id):
         if not data:
             return jsonify({'success': False, 'message': 'No JSON data provided'}), 400
 
+        with open('backend_debug.log', 'a') as f:
+            f.write(f"\n--- Update User Profile: {user_id} ---\n")
+            f.write(f"Data: {data}\n")
+        
         user = session.query(User).filter(User.user_id == user_id).first()
         if not user:
+            with open('backend_debug.log', 'a') as f:
+                f.write(f"User not found: {user_id}\n")
             return jsonify({'success': False, 'message': 'User not found'}), 404
 
-        # Update allowed fields
-        updatable_fields = ['firstname', 'middlename', 'lastname', 'suffix', 'email', 'school_number', 'age']
+        # Update allowed fields (including 'role' for admin updates)
+        updatable_fields = ['firstname', 'middlename', 'lastname', 'suffix', 'email', 'school_number', 'age', 'role']
         
         for field in updatable_fields:
             if field in data and data[field] is not None:
@@ -78,9 +84,42 @@ def update_user_profile(user_id):
                     if existing:
                         return jsonify({'success': False, 'message': 'School number already in use'}), 400
                 
-                setattr(user, field, data[field])
+                print(f"🔄 Field update: {field} = {data[field]}")
+                if field == 'role':
+                    try:
+                        from app.models.user_model import RoleEnum
+                        # Support both the string value and the Enum name
+                        if isinstance(data[field], str):
+                            # Try it as a literal string value first
+                            try:
+                                setattr(user, field, RoleEnum(data[field]))
+                            except ValueError:
+                                # Fallback to looking up by name
+                                setattr(user, field, RoleEnum[data[field]])
+                        else:
+                            setattr(user, field, data[field])
+                    except Exception as enum_err:
+                        print(f"⚠️ Enum conversion error for role: {enum_err}")
+                        with open('backend_debug.log', 'a') as f:
+                            f.write(f"Enum conversion error for role: {enum_err}\n")
+                        setattr(user, field, data[field]) # Fallback to raw value
+                else:
+                    setattr(user, field, data[field])
 
+        print(f"💾 Attempting to commit profile updates for user {user_id}...")
         session.commit()
+        print(f"✅ Commit successful for user {user_id}")
+        # Broadcast the update via WebSocket
+        try:
+            from app.websocket_events import broadcast_stats_update, broadcast_to_all
+            # If role was changed, broadcast stats update to admins
+            if 'role' in data:
+                broadcast_stats_update()
+            
+            # Notify the specific user of profile update
+            broadcast_to_all('profile_update', {'user_id': user_id, 'updated_fields': list(data.keys())})
+        except Exception as ws_err:
+            print(f"⚠️ WebSocket broadcast failed: {ws_err}")
 
         return jsonify({
             'success': True,
@@ -93,11 +132,12 @@ def update_user_profile(user_id):
                 'suffix': user.suffix,
                 'email': user.email,
                 'school_number': user.school_number,
-                'age': user.age
+                'age': user.age,
+                'role': user.role.value if hasattr(user.role, 'value') else str(user.role)
             }
         })
     except Exception as e:
-        print(f"Error updating user profile: {e}")
+        print(f"❌ Error updating user profile: {e}")
         session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:

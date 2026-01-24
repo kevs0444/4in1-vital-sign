@@ -167,3 +167,59 @@ export const SPEECH_MESSAGES = {
         FINGER_REMOVED: "Finger removed."
     }
 };
+
+// ============================================================================
+// NOTIFICATION SOUND (Web Audio API)
+// ============================================================================
+let audioContext = null;
+
+/**
+ * Plays a simple notification sound using the Web Audio API.
+ * This creates a soft "ping" tone that's pleasant but attention-grabbing.
+ * @param {string} type - 'info', 'warning', 'error' (affects tone pitch)
+ */
+export const playNotificationSound = (type = 'info') => {
+    try {
+        // Create or reuse AudioContext
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // Resume context if suspended (browser autoplay policy)
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+
+        // Create oscillator for the tone
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        // Set frequency based on notification type
+        let frequency = 440; // Default A4 note
+        if (type === 'warning') frequency = 523; // C5
+        if (type === 'error') frequency = 659; // E5 (higher for urgency)
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+
+        // Second tone for "ding-dong" effect
+        oscillator.frequency.setValueAtTime(frequency * 1.25, audioContext.currentTime + 0.1);
+
+        // Envelope: quick attack, medium sustain, smooth decay
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.02); // Attack
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3); // Decay
+
+        // Connect nodes
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Play
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+
+        console.log('🔔 Notification sound played:', type);
+    } catch (e) {
+        console.warn('Could not play notification sound:', e);
+    }
+};

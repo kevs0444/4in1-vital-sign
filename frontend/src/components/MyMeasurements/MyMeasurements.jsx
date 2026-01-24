@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { GridView, TableRows } from '@mui/icons-material';
 import './MyMeasurements.css';
 import { TimePeriodFilter, filterHistoryByTimePeriod, MultiSelectDropdown } from '../DashboardAnalytics/DashboardAnalytics';
 import ExportButton from '../ExportButton/ExportButton';
 import { exportToCSV, exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import NoDataFound from '../NoDataFound/NoDataFound';
+import { isLocalhost } from '../../utils/kioskUtils';
+import {
+    getBloodPressureStatus,
+    getHeartRateStatus,
+    getSPO2Status,
+    getTemperatureStatus,
+    getBMICategory
+} from '../../utils/healthStatus';
 
 const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -20,7 +28,7 @@ const formatDate = (dateString) => {
     });
 };
 
-const MyMeasurements = ({ history, loading, onSelectMeasurement }) => {
+const MyMeasurements = ({ history, loading, onSelectMeasurement, user }) => {
     // State management for filters and view
     const [timePeriod, setTimePeriod] = useState('weekly');
     const [customDateRange, setCustomDateRange] = useState(null);
@@ -131,15 +139,18 @@ const MyMeasurements = ({ history, loading, onSelectMeasurement }) => {
     const getRiskClass = (category) => {
         if (!category) return '';
         const lower = category.toLowerCase();
-        if (lower.includes('normal')) return 'mm-risk-normal';
-        if (lower.includes('elevated')) return 'mm-risk-elevated';
+        if (lower.includes('normal') || lower.includes('low')) return 'mm-risk-normal';
+        if (lower.includes('elevated') || lower.includes('moderate')) return 'mm-risk-elevated';
         if (lower.includes('high')) return 'mm-risk-high';
         if (lower.includes('critical')) return 'mm-risk-critical';
         return 'mm-risk-high';
     };
 
-    // Kiosk/Localhost check for View Toggle logic (only hide button, logic stays same)
-    const showViewToggle = !(window.innerWidth <= 768 && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
+    // Kiosk detection: uses ONLY isLocalhost() - NOT screen size
+    // Screen size check: separate concern for mobile responsiveness
+    const isKioskMode = isLocalhost();
+    const isMobileScreen = window.innerWidth <= 768;
+    const showViewToggle = !isKioskMode && !isMobileScreen;
 
     return (
         <motion.div
@@ -221,7 +232,7 @@ const MyMeasurements = ({ history, loading, onSelectMeasurement }) => {
                             style={window.innerWidth <= 768 ? { flex: 1, minWidth: 0 } : {}}
                         />
 
-                        {!(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                        {!isKioskMode && (
                             <ExportButton
                                 onExportCSV={() => handleExportHistory('csv')}
                                 onExportExcel={() => handleExportHistory('excel')}
@@ -323,22 +334,40 @@ const MyMeasurements = ({ history, loading, onSelectMeasurement }) => {
                                     <div className="mm-card-grid">
                                         <div className="mm-metric">
                                             <span className="mm-label">BP (mmHg)</span>
-                                            <span className="mm-value">{m.systolic ? `${m.systolic}/${m.diastolic}` : '-'}</span>
+                                            <span className="mm-value" style={{ color: getBloodPressureStatus(m.systolic, m.diastolic).color }}>
+                                                {m.systolic ? `${m.systolic}/${m.diastolic}` : '-'}
+                                            </span>
                                         </div>
                                         <div className="mm-metric">
                                             <span className="mm-label">Heart Rate</span>
-                                            <span className="mm-value">{m.heart_rate ? `${m.heart_rate} bpm` : '-'}</span>
+                                            <span className="mm-value" style={{ color: getHeartRateStatus(m.heart_rate).color }}>
+                                                {m.heart_rate ? `${m.heart_rate} bpm` : '-'}
+                                            </span>
                                         </div>
                                         <div className="mm-metric">
                                             <span className="mm-label">SpO2</span>
-                                            <span className="mm-value">{m.spo2 ? `${m.spo2}%` : '-'}</span>
+                                            <span className="mm-value" style={{ color: getSPO2Status(m.spo2).color }}>
+                                                {m.spo2 ? `${m.spo2}%` : '-'}
+                                            </span>
                                         </div>
                                         <div className="mm-metric">
                                             <span className="mm-label">Temp</span>
-                                            <span className="mm-value">{m.temperature ? `${m.temperature}°C` : '-'}</span>
+                                            <span className="mm-value" style={{ color: getTemperatureStatus(m.temperature).color }}>
+                                                {m.temperature ? `${m.temperature}°C` : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="mm-metric">
+                                            <span className="mm-label">BMI</span>
+                                            <span className="mm-value" style={{ color: getBMICategory(m.bmi).color }}>
+                                                {m.bmi ? m.bmi : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="mm-metric">
+                                            <span className="mm-label">Age</span>
+                                            <span className="mm-value">{user?.age ? `${user.age} yrs` : '-'}</span>
                                         </div>
                                     </div>
-                                    <button className="mm-action-btn" style={{ marginTop: '12px', width: '100%', justifyContent: 'center' }}>
+                                    <button className="mm-action-btn" style={{ marginTop: 'auto', width: '100%', justifyContent: 'center' }}>
                                         View Details
                                     </button>
                                 </div>

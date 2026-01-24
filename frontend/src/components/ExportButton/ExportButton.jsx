@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, ArrowDropDown } from '@mui/icons-material';
 import './ExportButton.css';
 
 const ExportButton = ({ onExportCSV, onExportExcel, onExportPDF }) => {
     const [isOpen, setIsOpen] = useState(false);
     const buttonRef = React.useRef(null);
+    const dropdownRef = React.useRef(null);
     const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
 
     const toggleDropdown = () => {
         if (!isOpen && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
-            // Position it below the button, aligned to the right edge or left edge depending on space
-            // Defaulting to left alignment or keeping it consistent with relative flow visual
-            // Let's use left alignment if possible, relative to the button
+            // Position it below the button, aligned to the left
             setDropdownPos({
                 top: rect.bottom + 4, // 4px gap
                 left: rect.left
@@ -33,9 +33,9 @@ const ExportButton = ({ onExportCSV, onExportExcel, onExportPDF }) => {
     // Close on click outside
     React.useEffect(() => {
         const handleClickOutside = (event) => {
-            if (buttonRef.current && !buttonRef.current.contains(event.target) && !event.target.closest('.export-dropdown-menu')) {
-                setIsOpen(false);
-            }
+            if (buttonRef.current && buttonRef.current.contains(event.target)) return;
+            if (dropdownRef.current && dropdownRef.current.contains(event.target)) return;
+            setIsOpen(false);
         };
 
         if (isOpen) {
@@ -47,7 +47,7 @@ const ExportButton = ({ onExportCSV, onExportExcel, onExportPDF }) => {
     }, [isOpen]);
 
     return (
-        <div className="export-button-container" onMouseLeave={() => setIsOpen(false)}>
+        <div className="export-button-container">
             <button
                 ref={buttonRef}
                 className="export-btn-main"
@@ -58,8 +58,9 @@ const ExportButton = ({ onExportCSV, onExportExcel, onExportPDF }) => {
                 <ArrowDropDown fontSize="small" />
             </button>
 
-            {isOpen && (
+            {isOpen && createPortal(
                 <div
+                    ref={dropdownRef}
                     className="export-dropdown-menu"
                     style={{
                         position: 'fixed',
@@ -78,7 +79,8 @@ const ExportButton = ({ onExportCSV, onExportExcel, onExportPDF }) => {
                     <button onClick={() => handleAction('pdf')}>
                         <span className="file-icon pdf">PDF</span> PDF
                     </button>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

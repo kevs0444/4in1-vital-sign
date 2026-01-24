@@ -57,8 +57,8 @@ const HealthOverview = ({
                     boxShadow: '0 10px 25px -5px rgba(220, 38, 38, 0.4)'
                 }}>
                     <h3 style={{ margin: '0 0 10px 0', fontSize: '1.1rem', opacity: 0.9, fontWeight: 500 }}>Total Checkups</h3>
-                    <div className="summary-value" style={{ fontSize: '2.5rem', fontWeight: 700, margin: '10px 0' }}>{history.length}</div>
-                    <div className="summary-label" style={{ fontSize: '0.9rem', opacity: 0.8 }}>Measurements Taken</div>
+                    <div className="summary-value" style={{ fontSize: '2.5rem', fontWeight: 700, margin: '10px 0', color: 'inherit' }}>{history.length}</div>
+                    <div className="summary-label" style={{ fontSize: '0.9rem', opacity: 0.8, color: 'inherit' }}>Measurements Taken</div>
                 </div>
 
                 <div className="summary-card" style={{

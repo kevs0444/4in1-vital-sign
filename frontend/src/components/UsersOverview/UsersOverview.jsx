@@ -8,7 +8,8 @@ import NoDataFound from '../NoDataFound/NoDataFound';
 import { exportToCSV, exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import RoleDropdown from './RoleDropdown';
 import StatusDropdown from './StatusDropdown';
-import './UsersOverview.css';
+import { isLocalhost } from '../../utils/kioskUtils';
+import './UsersOverview.css'; // Ensure this matches PatientList.css styles essentially
 
 const UsersOverview = ({
     users = [],
@@ -16,7 +17,7 @@ const UsersOverview = ({
     onUserClick,
     onRoleUpdate,
     onStatusUpdate,
-    stats = {} // For roles distribution in dropdown
+    stats = {}
 }) => {
     // Local State
     const [searchTerm, setSearchTerm] = useState('');
@@ -39,7 +40,7 @@ const UsersOverview = ({
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Reset Page on Filter Change
+    // Reset Page
     useEffect(() => {
         setPage(1);
     }, [searchTerm, timePeriod, customDateRange, roleFilter, statusFilter]);
@@ -70,13 +71,12 @@ const UsersOverview = ({
     // Filter Logic
     const filteredUsers = useMemo(() => {
         if (!users || !Array.isArray(users)) return [];
-
         let result = users.map(u => ({ ...u, created_at: u.created_at || u.registered_at }));
 
-        // 1. Time Filter
+        // Time
         result = filterHistoryByTimePeriod(result, timePeriod, customDateRange);
 
-        // 2. Search Filter
+        // Search
         if (searchTerm) {
             const lowerTerm = searchTerm.toLowerCase();
             result = result.filter(u =>
@@ -87,12 +87,12 @@ const UsersOverview = ({
             );
         }
 
-        // 3. Role Filter
+        // Role
         if (roleFilter.length > 0 && !roleFilter.includes('All')) {
             result = result.filter(u => roleFilter.includes(u.role));
         }
 
-        // 4. Status Filter
+        // Status
         if (statusFilter.length > 0 && !statusFilter.includes('All')) {
             result = result.filter(u => statusFilter.includes(u.approval_status || 'pending'));
         }
@@ -123,63 +123,68 @@ const UsersOverview = ({
         if (format === 'pdf') exportToPDF(data, filename, "Registered Users");
     };
 
+    // Kiosk Check
+    const isKioskMode = isLocalhost();
+
     return (
         <motion.div
-            className="users-overview-container"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
+            className="users-overview-container" // Matching container class concept
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
         >
+            {/* Header / Controls - MATCHING PatientList Structure */}
             <div className="uo-table-header">
                 <h3>Registered Users Database ({filteredUsers.length} records)</h3>
 
-                {/* DESKTOP LAYOUT */}
-                {window.innerWidth > 768 && (
-                    <div className="uo-table-actions">
-                        <div className="uo-search-bar">
-                            <Search style={{ color: '#94a3b8', marginRight: '8px' }} />
-                            <input
-                                type="text"
-                                placeholder="Search users..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div className="role-filter-wrapper" style={{ display: 'flex', gap: '8px' }}>
-                            <MultiSelectDropdown
-                                label="Select Roles"
-                                selectedItems={roleFilter}
-                                options={[
-                                    { id: 'All', label: 'All Roles' },
-                                    ...(Object.keys(stats.roles_distribution || {}).length > 0
-                                        ? Object.keys(stats.roles_distribution)
-                                        : ['Admin', 'Doctor', 'Nurse', 'Employee', 'Student']
-                                    ).map(role => ({ id: role, label: role }))
-                                ]}
-                                onToggle={toggleRole}
-                                allLabel="All Roles"
-                            />
-                            <MultiSelectDropdown
-                                label="Select Status"
-                                selectedItems={statusFilter}
-                                options={[
-                                    { id: 'All', label: 'All Status' },
-                                    { id: 'approved', label: 'Approved' },
-                                    { id: 'pending', label: 'Pending' },
-                                    { id: 'rejected', label: 'Rejected' }
-                                ]}
-                                onToggle={toggleStatus}
-                                allLabel="All Status"
-                            />
-                        </div>
+                <div className="uo-table-actions">
 
-                        {!(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-                            <ExportButton
-                                onExportCSV={() => handleExport('csv')}
-                                onExportExcel={() => handleExport('excel')}
-                                onExportPDF={() => handleExport('pdf')}
-                            />
-                        )}
+                    {/* Search - Exactly like PatientList */}
+                    <div className="uo-search-bar">
+                        <Search style={{ color: '#94a3b8', marginRight: '8px' }} />
+                        <input
+                            type="text"
+                            placeholder="Search users..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Kiosk Scroll Container - Exactly like PatientList */}
+                    <div className="uo-kiosk-scroll-container">
+                        <style>{`
+                            .uo-kiosk-scroll-container::-webkit-scrollbar { display: none; }
+                            .uo-kiosk-scroll-container { -ms-overflow-style: none; scrollbar-width: none; }
+                        `}</style>
+
+                        <MultiSelectDropdown
+                            label="Select Roles"
+                            selectedItems={roleFilter}
+                            options={[
+                                { id: 'All', label: 'All Roles' },
+                                ...(Object.keys(stats.roles_distribution || {}).length > 0
+                                    ? Object.keys(stats.roles_distribution)
+                                    : ['Admin', 'Doctor', 'Nurse', 'Employee', 'Student']
+                                ).map(role => ({ id: role, label: role }))
+                            ]}
+                            onToggle={toggleRole}
+                            allLabel="All Roles"
+                            compact={true}
+                        />
+
+                        <MultiSelectDropdown
+                            label="Select Status"
+                            selectedItems={statusFilter}
+                            options={[
+                                { id: 'All', label: 'All Status' },
+                                { id: 'approved', label: 'Approved' },
+                                { id: 'pending', label: 'Pending' },
+                                { id: 'rejected', label: 'Rejected' }
+                            ]}
+                            onToggle={toggleStatus}
+                            allLabel="All Status"
+                            compact={true}
+                        />
 
                         <TimePeriodFilter
                             timePeriod={timePeriod}
@@ -187,223 +192,177 @@ const UsersOverview = ({
                             customDateRange={customDateRange}
                             setCustomDateRange={setCustomDateRange}
                             variant="dropdown"
+                            compact={true}
                         />
 
-                        <div className="view-toggle" style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-                            <button
-                                onClick={() => setViewMode('table')}
-                                style={{ padding: '8px', background: viewMode === 'table' ? '#fef2f2' : 'white', color: viewMode === 'table' ? '#dc2626' : '#64748b', border: 'none', cursor: 'pointer' }}
-                            >
-                                <TableRows fontSize="small" />
-                            </button>
-                            <button
-                                onClick={() => setViewMode('card')}
-                                style={{ padding: '8px', background: viewMode === 'card' ? '#fef2f2' : 'white', color: viewMode === 'card' ? '#dc2626' : '#64748b', border: 'none', cursor: 'pointer' }}
-                            >
-                                <GridView fontSize="small" />
-                            </button>
-                        </div>
+                        {/* Export - Kiosk Logic */}
+                        {!isKioskMode && (
+                            <ExportButton
+                                onExportCSV={() => handleExport('csv')}
+                                onExportExcel={() => handleExport('excel')}
+                                onExportPDF={() => handleExport('pdf')}
+                            />
+                        )}
+
+                        {/* View Toggle - Kiosk Logic */}
+                        {!isKioskMode && (
+                            <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                                <button
+                                    onClick={() => window.innerWidth > 768 && setViewMode('table')}
+                                    style={{
+                                        padding: '8px',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        background: viewMode === 'table' ? '#dc2626' : 'transparent',
+                                        color: viewMode === 'table' ? 'white' : '#64748b',
+                                        cursor: window.innerWidth <= 768 ? 'not-allowed' : 'pointer',
+                                        opacity: window.innerWidth <= 768 ? 0.5 : 1
+                                    }}
+                                >
+                                    <TableRows />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('card')}
+                                    style={{
+                                        padding: '8px',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        background: viewMode === 'card' ? '#dc2626' : 'transparent',
+                                        color: viewMode === 'card' ? 'white' : '#64748b',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <GridView />
+                                </button>
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
+            </div>
 
-                {/* KIOSK LAYOUT */}
-                {window.innerWidth <= 768 && (
-                    <div className="uo-table-actions" style={{ flexDirection: 'column', width: '100%', alignItems: 'stretch' }}>
-                        <div className="uo-search-bar" style={{ width: '100%', maxWidth: 'none' }}>
-                            <Search style={{ color: '#94a3b8', marginRight: '8px' }} />
-                            <input
-                                type="text"
-                                placeholder="Search users..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+            {/* List Content */}
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                {viewMode === 'table' ? (
+                    <div className="table-container-wrapper">
+                        <table className="uo-users-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>School ID</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading...</td></tr>
+                                ) : currentUsers.length > 0 ? (
+                                    currentUsers.map((u) => (
+                                        <tr key={u.user_id || u.id} className="user-row">
+                                            <td onClick={() => onUserClick && onUserClick(u)} style={{ cursor: onUserClick ? 'pointer' : 'default' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <div className="uo-card-avatar" style={{
+                                                        width: '40px', height: '40px', fontSize: '1rem',
+                                                        background: u.role === 'Student' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'linear-gradient(135deg, #ef4444, #dc2626)'
+                                                    }}>
+                                                        {u.firstname?.[0]}{u.lastname?.[0]}
+                                                    </div>
+                                                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{u.firstname} {u.lastname}</div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <RoleDropdown
+                                                    currentRole={u.role || 'Student'}
+                                                    onRoleChange={(newRole) => onRoleUpdate(u.user_id || u.id, newRole)}
+                                                />
+                                            </td>
+                                            <td style={{ color: '#475569' }}>{u.school_number || 'N/A'}</td>
+                                            <td style={{ color: '#475569' }}>{u.email}</td>
+                                            <td>
+                                                <StatusDropdown
+                                                    currentStatus={u.approval_status || 'pending'}
+                                                    onStatusChange={(newStatus) => onStatusUpdate(u.user_id || u.id, newStatus)}
+                                                />
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan="5"><NoDataFound type="users" searchTerm={searchTerm} /></td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    /* Modern Card Grid */
+                    <div className="uo-user-cards-grid">
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding: '2rem', gridColumn: '1/-1' }}>Loading Users...</div>
+                        ) : currentUsers.length > 0 ? (
+                            currentUsers.map((u) => (
+                                <motion.div
+                                    key={u.user_id || u.id}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="uo-modern-card"
+                                    onClick={() => onUserClick && onUserClick(u)}
+                                >
+                                    <div className="uo-card-header">
+                                        <div className="uo-card-avatar" style={{
+                                            background: u.role === 'Student' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'linear-gradient(135deg, #ef4444, #dc2626)'
+                                        }}>
+                                            {u.firstname?.[0]}{u.lastname?.[0]}
+                                        </div>
+                                        <div className="uo-card-identity">
+                                            <div className="uo-card-name">
+                                                {u.firstname} {u.lastname}
+                                            </div>
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <RoleDropdown
+                                                    currentRole={u.role || 'Student'}
+                                                    onRoleChange={(newRole) => onRoleUpdate(u.user_id || u.id, newRole)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        <div className="uo-kiosk-scroll-container">
-                            <MultiSelectDropdown
-                                label="Select Roles"
-                                selectedItems={roleFilter}
-                                options={[
-                                    { id: 'All', label: 'All Roles' },
-                                    ...(Object.keys(stats.roles_distribution || {}).length > 0
-                                        ? Object.keys(stats.roles_distribution)
-                                        : ['Admin', 'Doctor', 'Nurse', 'Employee', 'Student']
-                                    ).map(role => ({ id: role, label: role }))
-                                ]}
-                                onToggle={toggleRole}
-                                allLabel="All Roles"
-                                compact={true}
-                                style={{ flex: 1, minWidth: 0 }}
-                                className="kiosk-filter-item"
-                            />
-                            <MultiSelectDropdown
-                                label="Select Status"
-                                selectedItems={statusFilter}
-                                options={[
-                                    { id: 'All', label: 'All Status' },
-                                    { id: 'approved', label: 'Approved' },
-                                    { id: 'pending', label: 'Pending' },
-                                    { id: 'rejected', label: 'Rejected' }
-                                ]}
-                                onToggle={toggleStatus}
-                                allLabel="All Status"
-                                compact={true}
-                                style={{ flex: 1, minWidth: 0 }}
-                                className="kiosk-filter-item"
-                            />
-                            <TimePeriodFilter
-                                timePeriod={timePeriod}
-                                setTimePeriod={setTimePeriod}
-                                customDateRange={customDateRange}
-                                setCustomDateRange={setCustomDateRange}
-                                variant="dropdown"
-                                compact={true}
-                                style={{ flex: 1, minWidth: 0 }}
-                                className="kiosk-filter-item"
-                            />
+                                    <div className="uo-card-body">
+                                        <div className="uo-info-row">
+                                            <span className="uo-info-label">ID:</span>
+                                            <span className="uo-info-value">{u.school_number || 'N/A'}</span>
+                                        </div>
+                                        <div className="uo-info-row">
+                                            <span className="uo-info-label">Joined:</span>
+                                            <span className="uo-info-value">{u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</span>
+                                        </div>
+                                        <div className="uo-info-row">
+                                            <span className="uo-info-label">Email:</span>
+                                            <span className="uo-info-value">{u.email}</span>
+                                        </div>
+                                    </div>
 
-                            {!(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-                                <div style={{ flex: '0 0 auto' }}>
-                                    <ExportButton
-                                        onExportCSV={() => handleExport('csv')}
-                                        onExportExcel={() => handleExport('excel')}
-                                        onExportPDF={() => handleExport('pdf')}
-                                    />
-                                </div>
-                            )}
-                        </div>
+                                    <div className="uo-card-footer" onClick={(e) => e.stopPropagation()}>
+                                        <StatusDropdown
+                                            currentStatus={u.approval_status || 'pending'}
+                                            onStatusChange={(newStatus) => onStatusUpdate(u.user_id || u.id, newStatus)}
+                                        />
+                                    </div>
+                                </motion.div>
+                            ))
+                        ) : (
+                            <div style={{ gridColumn: '1 / -1' }}><NoDataFound type="users" searchTerm={searchTerm} /></div>
+                        )}
                     </div>
                 )}
             </div>
-
-            {/* Content List */}
-            {viewMode === 'table' ? (
-                <div className="table-container-wrapper" style={{ overflowX: 'auto', flex: 1 }}>
-                    <table className="uo-users-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Role</th>
-                                <th>School ID</th>
-                                <th>Email</th>
-                                <th>Registered Date</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>Loading...</td></tr>
-                            ) : currentUsers.length > 0 ? (
-                                currentUsers.map((u) => (
-                                    <tr key={u.user_id}>
-                                        <td onClick={() => onUserClick(u)} style={{ cursor: 'pointer' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                <div style={{
-                                                    width: '40px', height: '40px', borderRadius: '50%',
-                                                    background: `linear-gradient(135deg, ${u.role === 'Student' ? '#3b82f6' : '#ef4444'}, ${u.role === 'Student' ? '#2563eb' : '#dc2626'})`,
-                                                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
-                                                }}>
-                                                    {u.firstname?.[0]}{u.lastname?.[0]}
-                                                </div>
-                                                <div style={{ fontWeight: 600, color: '#1e293b' }}>{u.firstname} {u.lastname}</div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <RoleDropdown
-                                                currentRole={u.role || 'Student'}
-                                                onRoleChange={(newRole) => onRoleUpdate(u.user_id, newRole)}
-                                            />
-                                        </td>
-                                        <td>{u.school_number || 'N/A'}</td>
-                                        <td>{u.email}</td>
-                                        <td>{u.created_at || 'N/A'}</td>
-                                        <td>
-                                            <StatusDropdown
-                                                currentStatus={u.approval_status || 'pending'}
-                                                onStatusChange={(newStatus) => onStatusUpdate(u.user_id, newStatus)}
-                                            />
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr><td colSpan="6"><NoDataFound type="users" searchTerm={searchTerm} /></td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            ) : (
-                <div className="uo-user-cards-grid">
-                    {loading ? (
-                        <div>Loading...</div>
-                    ) : currentUsers.length > 0 ? (
-                        currentUsers.map((u) => (
-                            <motion.div
-                                key={u.user_id}
-                                className="user-card-item"
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}
-                                onClick={() => onUserClick(u)}
-                                style={{
-                                    background: 'white', borderRadius: '12px', padding: '16px',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9',
-                                    display: 'flex', flexDirection: 'column', gap: '12px', cursor: 'pointer', height: 'auto'
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{
-                                        width: '48px', height: '48px', borderRadius: '50%',
-                                        background: `linear-gradient(135deg, ${u.role === 'Student' ? '#3b82f6' : '#ef4444'}, ${u.role === 'Student' ? '#2563eb' : '#dc2626'})`,
-                                        color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0
-                                    }}>
-                                        {u.firstname?.[0]}{u.lastname?.[0]}
-                                    </div>
-                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
-                                        <div style={{ fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {u.firstname} {u.lastname}
-                                        </div>
-                                        <div onClick={(e) => e.stopPropagation()}>
-                                            <RoleDropdown
-                                                currentRole={u.role || 'Student'}
-                                                onRoleChange={(newRole) => onRoleUpdate(u.user_id, newRole)}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', color: '#64748b' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>ID:</span> <span style={{ color: '#1e293b', fontWeight: 500 }}>{u.school_number || 'N/A'}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>Joined:</span> <span style={{ color: '#1e293b', fontWeight: 500 }}>{u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>Email:</span> <span style={{ color: '#1e293b', fontWeight: 500, maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
-                                    </div>
-                                </div>
-
-                                <div style={{ marginTop: 'auto', width: '100%' }} onClick={(e) => e.stopPropagation()}>
-                                    <StatusDropdown
-                                        currentStatus={u.approval_status || 'pending'}
-                                        onStatusChange={(newStatus) => onStatusUpdate(u.user_id, newStatus)}
-                                    />
-                                </div>
-                            </motion.div>
-                        ))
-                    ) : (
-                        <div style={{ gridColumn: '1 / -1' }}><NoDataFound type="users" searchTerm={searchTerm} /></div>
-                    )}
-                </div>
-            )}
 
             <Pagination
                 currentPage={page}
                 totalPages={totalPages}
                 onPageChange={setPage}
             />
-        </motion.div>
+        </motion.div >
     );
 };
 

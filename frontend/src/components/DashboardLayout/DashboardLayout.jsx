@@ -25,6 +25,9 @@ const DashboardLayout = ({
     const [isCollapsed, setIsCollapsed] = useState(false); // Desktop collapsed state
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); // Logout confirmation modal state
 
+    // Detect kiosk mode for touch-friendly styling
+    const isKiosk = isLocalDevice();
+
     // Session Protection: Prevent Back Button Logout
     useEffect(() => {
         // Push a state so that the back button logic has something to pop
@@ -94,13 +97,19 @@ const DashboardLayout = ({
         }
     }, [isSidebarOpen]);
 
-    // Load collapsed state from localStorage
+    // Load collapsed state from localStorage (or force collapsed in kiosk mode)
     useEffect(() => {
+        // In kiosk mode, always start collapsed for touch optimization
+        if (isKiosk) {
+            setIsCollapsed(true);
+            return;
+        }
+        // For non-kiosk, use saved preference
         const savedState = localStorage.getItem('sidebar-collapsed');
         if (savedState === 'true') {
             setIsCollapsed(true);
         }
-    }, []);
+    }, [isKiosk]);
 
     // Save collapsed state to localStorage and close all dropdowns
     const toggleCollapse = () => {
@@ -151,7 +160,7 @@ const DashboardLayout = ({
     const statusText = isConnected ? 'Live' : 'Connecting...';
 
     return (
-        <div className={`dashboard-layout ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+        <div className={`dashboard-layout ${isCollapsed ? 'sidebar-collapsed' : ''} ${isKiosk ? 'kiosk-mode' : ''}`}>
             {/* Mobile Overlay */}
             <div
                 className={`mobile-overlay ${isSidebarOpen ? 'open' : ''}`}
@@ -173,13 +182,15 @@ const DashboardLayout = ({
                             <p>{subtitle}</p>
                         </div>
                     )}
-                    {/* Close button for mobile within sidebar */}
-                    <button
-                        className="menu-toggle mobile-close-btn"
-                        onClick={() => setIsSidebarOpen(false)}
-                    >
-                        <Close />
-                    </button>
+                    {/* Close button for mobile within sidebar - hidden in kiosk mode */}
+                    {!isKiosk && (
+                        <button
+                            className="menu-toggle mobile-close-btn"
+                            onClick={() => setIsSidebarOpen(false)}
+                        >
+                            <Close />
+                        </button>
+                    )}
                 </div>
 
                 <nav className="sidebar-nav">
@@ -289,8 +300,11 @@ const DashboardLayout = ({
                             {title}
                         </div>
                     </div>
-                    <div className="user-avatar" style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}>
-                        {getUserInitials()}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        {notificationProps && <NotificationBell {...notificationProps} />}
+                        <div className="user-avatar" style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}>
+                            {getUserInitials()}
+                        </div>
                     </div>
                 </header>
 
@@ -299,9 +313,9 @@ const DashboardLayout = ({
                 </div>
             </main>
 
-            {/* Global Notification Bell (Desktop & Mobile) */}
+            {/* Global Notification Bell (Desktop Only) */}
             {notificationProps && (
-                <div style={{ position: 'fixed', top: '20px', right: '30px', zIndex: 1000 }}>
+                <div className="desktop-notification-bell" style={{ position: 'fixed', top: '20px', right: '30px', zIndex: 1000 }}>
                     <NotificationBell {...notificationProps} />
                 </div>
             )}

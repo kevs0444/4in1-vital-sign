@@ -50,6 +50,7 @@ import MyMeasurements from '../../../../components/MyMeasurements/MyMeasurements
 import UsersOverview from '../../../../components/UsersOverview/UsersOverview';
 import HealthOverview from '../../../../components/HealthOverview/HealthOverview';
 import MeasurementDetailsModal from '../../../../components/MeasurementDetailsModal/MeasurementDetailsModal';
+import AdminUserDetails from '../../../../components/AdminUserDetails/AdminUserDetails';
 
 // StatusToast Component (Local Definition)
 const StatusToast = ({ toast, onClose }) => {
@@ -221,9 +222,9 @@ const AdminDashboard = () => {
     // User Management Time Period
     // Removed unused usersTimePeriod
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const [statsData, usersData] = await Promise.all([
                 getAdminStats(),
                 getAdminUsers()
@@ -245,7 +246,7 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -360,6 +361,70 @@ const AdminDashboard = () => {
         }
     };
 
+    // Handle Role Update from UsersOverview dropdown
+    const handleRoleUpdate = React.useCallback(async (userId, newRole) => {
+        try {
+            let oldRole = '';
+            // Optimistic update
+            setUsersList(prev => prev.map(u => {
+                const uId = String(u.user_id || u.id || '');
+                const targetId = String(userId || '');
+                if (uId === targetId) {
+                    oldRole = u.role;
+                    return { ...u, role: newRole };
+                }
+                return u;
+            }));
+
+            // Stats update
+            if (oldRole) {
+                setStats(prev => {
+                    const newRolesDist = { ...(prev.roles_distribution || {}) };
+                    if (newRolesDist[oldRole]) {
+                        newRolesDist[oldRole] = Math.max(0, newRolesDist[oldRole] - 1);
+                    }
+                    newRolesDist[newRole] = (newRolesDist[newRole] || 0) + 1;
+                    return { ...prev, roles_distribution: newRolesDist };
+                });
+            }
+
+            const response = await updateUserProfile(userId, { role: newRole });
+            if (response.success) {
+                setToast({ type: 'success', title: 'Role Updated', message: `User role changed to ${newRole}`, id: Date.now() });
+            } else {
+                fetchDashboardData(true);
+                throw new Error(response.message || 'Role update failed');
+            }
+        } catch (error) {
+            console.error('Error updating role:', error);
+            setToast({ type: 'error', title: 'Update Failed', message: error.message || 'Could not update user role', id: Date.now() });
+            fetchDashboardData(true);
+        }
+    }, [usersList]);
+
+    // Handle Status Update from UsersOverview dropdown
+    const handleStatusUpdate = React.useCallback(async (userId, newStatus) => {
+        try {
+            // Optimistic update
+            setUsersList(prev => prev.map(u => {
+                const uId = String(u.user_id || u.id || '');
+                const targetId = String(userId || '');
+                return uId === targetId ? { ...u, approval_status: newStatus } : u;
+            }));
+
+            const response = await updateUserStatus(userId, newStatus);
+            if (response.success) {
+                setToast({ type: 'success', title: 'Status Updated', message: `User status changed to ${newStatus}`, id: Date.now() });
+            } else {
+                fetchDashboardData(true);
+                throw new Error(response.message || 'Status update failed');
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            setToast({ type: 'error', title: 'Update Failed', message: error.message || 'Could not update user status', id: Date.now() });
+            fetchDashboardData(true);
+        }
+    }, []);
 
 
     useEffect(() => {
@@ -394,7 +459,7 @@ const AdminDashboard = () => {
         setEmailStatus('idle'); // Clear sending status when we get new data (transmission done)
         // Parallel fetch for maximum speed
         await Promise.all([
-            fetchDashboardData(),
+            fetchDashboardData(true), // Background update (silent)
             checkPrinterStatus(),
             fetchShareStats(),
             user ? fetchMyHistory(user.userId || user.user_id || user.id) : Promise.resolve()
@@ -555,47 +620,6 @@ const AdminDashboard = () => {
         navigate('/login');
     };
 
-    const handleStatusUpdate = async (userId, newStatus) => {
-        try {
-            // Optimistic update
-            const updatedList = usersList.map(u =>
-                u.user_id === userId ? { ...u, approval_status: newStatus } : u
-            );
-            setUsersList(updatedList);
-
-            await updateUserStatus(userId, newStatus);
-            // Re-fetch to confirm
-            const usersData = await getAdminUsers();
-            const usersArray = (usersData && usersData.users) ? usersData.users : [];
-            setUsersList(Array.isArray(usersArray) ? usersArray : []);
-        } catch (error) {
-            console.error("Failed to update status", error);
-            // Revert on error would be ideal, but simply refetching works
-            fetchDashboardData();
-        }
-    };
-
-    const handleRoleUpdate = async (userId, newRole) => {
-        try {
-            // Optimistic update
-            const updatedList = usersList.map(u =>
-                u.user_id === userId ? { ...u, role: newRole } : u
-            );
-            setUsersList(updatedList);
-
-            await updateUserProfile(userId, { role: newRole });
-
-            // Re-fetch to confirm and update stats
-            fetchDashboardData();
-            setToast({ type: 'success', title: 'Role Updated', message: `User role updated to ${newRole}`, id: Date.now() });
-
-        } catch (error) {
-            console.error("Failed to update role", error);
-            setToast({ type: 'error', title: 'Update Failed', message: 'Failed to update user role.', id: Date.now() });
-            fetchDashboardData(); // Revert
-        }
-    };
-
     // --- Chart Data Preparation ---
     // Define Role Colors (Red & Gray Theme)
     const roleColors = {
@@ -707,6 +731,11 @@ const AdminDashboard = () => {
         { id: 'profile', label: 'Settings', icon: <Settings /> }
     ];
 
+    const getPendingCount = () => {
+        if (!usersList) return 0;
+        return usersList.filter(u => u.approval_status === 'pending').length;
+    };
+
     return (
         <DashboardLayout
             title={tabs.find(t => t.id === activeTab)?.label || 'Dashboard'}
@@ -719,105 +748,15 @@ const AdminDashboard = () => {
             lastUpdated={lastUpdated}
             onRefresh={refetchAllData}
             isConnected={isConnected}
+            notificationProps={{
+                pendingCount: getPendingCount(),
+                printerStatus,
+                shareStats,
+                onNavigate: setActiveTab,
+                userRole: user?.role?.toLowerCase() || 'admin'
+            }}
         >
             <StatusToast toast={toast} onClose={() => setToast(null)} />
-
-
-
-            {/* --- Enhanced Glassmorphism Notifications (Centered) --- */}
-            <div className="notification-center-container" style={{
-                position: 'fixed',
-                top: '20px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 9999,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                width: '90%',
-                maxWidth: '450px',
-                pointerEvents: 'none' // Allow clicks to pass through container
-            }}>
-                <AnimatePresence mode="popLayout">
-                    {notifications.map(n => (
-                        <motion.div
-                            key={n.id}
-                            layout
-                            initial={{ opacity: 0, y: -50, scale: 0.9 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                            style={{
-                                pointerEvents: 'auto',
-                                background: 'rgba(255, 255, 255, 0.85)',
-                                backdropFilter: 'blur(12px)',
-                                WebkitBackdropFilter: 'blur(12px)',
-                                border: '1px solid rgba(255, 255, 255, 0.5)',
-                                borderRadius: '16px',
-                                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
-                                padding: '16px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '15px',
-                                width: '100%',
-                                borderLeft: `6px solid ${n.type === 'printer' || n.type === 'error' || n.type === 'critical' ? '#dc2626' : // Red
-                                    n.type === 'warning' || n.type === 'pending' || n.type === 'paper' ? '#94a3b8' : // Gray (or maybe Orange/Slate per theme) - User asked for Red/White/Gray. Let's use Gray for warnings to fit theme? Or keep status colors?
-                                        '#475569' // Dark Gray for others
-                                    }`,
-                                position: 'relative',
-                                overflow: 'hidden'
-                            }}
-                        >
-                            {/* Icon Box */}
-                            <div style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '12px',
-                                background: n.type === 'printer' || n.type === 'error' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(71, 85, 105, 0.1)',
-                                color: n.type === 'printer' || n.type === 'error' ? '#dc2626' : '#475569',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                {n.type === 'pending' ? <Person /> :
-                                    n.type === 'printer' ? <Print /> :
-                                        n.type === 'paper' ? <Dashboard /> : // Use generic icon or specific if available
-                                            n.type === 'email' ? <Email /> :
-                                                <Notifications />}
-                            </div>
-
-                            {/* Content */}
-                            <div style={{ flex: 1 }}>
-                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: '#1e293b' }}>{n.title}</h4>
-                                <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>{n.message}</p>
-                            </div>
-
-                            {/* Close Button */}
-                            <button
-                                onClick={() => setNotifications(prev => prev.filter(item => item.id !== n.id))}
-                                style={{
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: '#94a3b8',
-                                    cursor: 'pointer',
-                                    padding: '4px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    borderRadius: '50%',
-                                    transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.color = '#dc2626'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
-                            >
-                                <Close fontSize="small" />
-                            </button>
-
-                            {/* Self-Destruct Timer for this specific notification */}
-                            <NotificationTimer id={n.id} onClose={(id) => setNotifications(prev => prev.filter(i => i.id !== id))} />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
 
             {/* Personal Info Tab */}
             {activeTab === 'profile' && user && (
@@ -1230,7 +1169,7 @@ const AdminDashboard = () => {
                 <UsersOverview
                     users={usersList} // Pass the full list, component handles filtering
                     loading={loading}
-                    onUserClick={handleUserClick}
+                    // onUserClick removed as requested
                     onRoleUpdate={handleRoleUpdate}
                     onStatusUpdate={handleStatusUpdate}
                     stats={stats}
@@ -1379,11 +1318,7 @@ const AdminDashboard = () => {
                             </button>
                         </div>
 
-                        <MyMeasurements
-                            history={userHistory}
-                            loading={userHistoryLoading}
-                            onSelectMeasurement={setSelectedMeasurement}
-                        />
+                        <AdminUserDetails user={selectedUser} />
                     </motion.div>
                 </div>
             )}

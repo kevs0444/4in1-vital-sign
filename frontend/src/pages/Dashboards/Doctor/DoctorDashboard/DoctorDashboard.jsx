@@ -108,7 +108,7 @@ const DoctorDashboard = () => {
     const [loading, setLoading] = useState(true); // Users loading
 
     // UI State
-    const [activeTab, setActiveTab] = useState('patients');
+    const [activeTab, setActiveTab] = useState('analytics'); // Default to Population Analytics
     const [toast, setToast] = useState(null);
 
     // Modal State
@@ -222,8 +222,8 @@ const DoctorDashboard = () => {
     };
 
     const tabs = [
-        { id: 'patients', label: 'Patients Overview', icon: <LocalHospital /> },
         { id: 'analytics', label: 'Population Analytics', icon: <Assessment /> },
+        { id: 'patients', label: 'Patients Overview', icon: <LocalHospital /> },
         { type: 'spacer' },
         { id: 'myoverview', label: 'My Health Overview', icon: <Dashboard /> },
         { id: 'personal', label: 'My Measurements', icon: <History /> },
@@ -339,6 +339,7 @@ const DoctorDashboard = () => {
                             <MyMeasurements
                                 history={userHistory}
                                 loading={historyLoading}
+                                user={selectedUser}
                                 onSelectMeasurement={(m) => {
                                     // Hack: MyMeasurements calls this on select. 
                                     // We want to open detailed view ON TOP of this modal?

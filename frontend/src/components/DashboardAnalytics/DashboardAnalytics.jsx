@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
     Favorite,
@@ -58,54 +59,48 @@ export const MultiSelectDropdown = ({
     className = ''
 }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = React.useRef(null);
     const dropdownId = React.useRef(`dropdown-${Math.random().toString(36).substr(2, 9)}`);
 
-    // Comprehensive close handlers for all scenarios
+    // Comprehensive close handlers
     useEffect(() => {
         const handleCloseDropdowns = (e) => {
-            // If specific dropdown ID provided, only close if not this one
-            if (e.detail && e.detail.except === dropdownId.current) {
-                return;
-            }
+            if (e.detail && e.detail.except === dropdownId.current) return;
             setIsOpen(false);
         };
 
         const handleResize = () => {
-            // Close dropdown when resizing to mobile breakpoint
-            if (window.innerWidth <= 1024) {
-                setIsOpen(false);
-            }
+            if (window.innerWidth <= 1024) setIsOpen(false);
         };
 
-        const handleKeyDown = (e) => {
-            // Close on ESC key press
-            if (e.key === 'Escape') {
-                setIsOpen(false);
-            }
-        };
-
-        const handleScroll = () => {
-            // Close dropdown when user scrolls the page
+        const handleClickOutside = (event) => {
+            if (buttonRef.current && buttonRef.current.contains(event.target)) return;
+            if (dropdownRef.current && dropdownRef.current.contains(event.target)) return;
             setIsOpen(false);
         };
 
-        // Listen for all close events
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') setIsOpen(false);
+        };
+
+        const handleScroll = () => {
+            setIsOpen(false);
+        };
+
         window.addEventListener('closeAllDropdowns', handleCloseDropdowns);
         window.addEventListener('resize', handleResize);
+        document.addEventListener('mousedown', handleClickOutside);
         window.addEventListener('keydown', handleKeyDown);
-        // Add scroll listener to the dashboard content wrapper
+
         const contentWrapper = document.querySelector('.dashboard-content-wrapper');
-        if (contentWrapper) {
-            contentWrapper.addEventListener('scroll', handleScroll);
-        }
+        if (contentWrapper) contentWrapper.addEventListener('scroll', handleScroll);
 
         return () => {
             window.removeEventListener('closeAllDropdowns', handleCloseDropdowns);
             window.removeEventListener('resize', handleResize);
+            document.removeEventListener('mousedown', handleClickOutside);
             window.removeEventListener('keydown', handleKeyDown);
-            if (contentWrapper) {
-                contentWrapper.removeEventListener('scroll', handleScroll);
-            }
+            if (contentWrapper) contentWrapper.removeEventListener('scroll', handleScroll);
         };
     }, []);
 
@@ -148,6 +143,8 @@ export const MultiSelectDropdown = ({
 
     const displayLabel = getDisplayLabel();
 
+
+
     return (
         <div style={{ position: 'relative', display: 'inline-block', ...style }} className={className}>
             <button
@@ -185,22 +182,22 @@ export const MultiSelectDropdown = ({
                 }}>▼</span>
             </button>
 
-            {isOpen && (
+            {isOpen && createPortal(
                 <motion.div
+                    ref={dropdownRef}
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     style={{
-                        position: 'fixed',
-                        top: dropdownPos.top,
+                        position: 'fixed', // Fixed to viewport since we calculated rect
+                        top: dropdownPos.top + 4, // Add slight offset
                         left: dropdownPos.left,
-                        zIndex: 1000,
+                        zIndex: 9999, // High z-index to be safe above modals
                         background: 'white',
                         border: '1px solid #e2e8f0',
                         borderRadius: '12px',
-                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
                         width: '220px',
                         padding: '6px',
-                        marginTop: '8px',
                         maxHeight: '300px',
                         overflowY: 'auto'
                     }}
@@ -236,13 +233,6 @@ export const MultiSelectDropdown = ({
                                 <div style={{
                                     width: '18px',
                                     height: '18px',
-                                    borderRadius: '50%', // Round for single select/radio feel? Or keep square?
-                                    // User wants "same ui". Square is fine, but maybe round if single?
-                                    // I'll stick to square (radius 4px) to match others exactly unless I change logic.
-                                    // The user said "not same ui".
-                                    // Assuming they want consistency.
-                                    // I'll use 4px radius as before but maybe different if singleSelect?
-                                    // Stick to 4px for now.
                                     borderRadius: singleSelect ? '50%' : '4px',
                                     border: `2px solid ${isSelected ? '#dc2626' : '#cbd5e1'}`,
                                     background: isSelected ? '#dc2626' : 'transparent',
@@ -266,23 +256,19 @@ export const MultiSelectDropdown = ({
                             </div>
                         );
                     })}
-                </motion.div>
+                </motion.div>,
+                document.body
             )}
 
-            {/* Click outside to close */}
-            {isOpen && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 999
-                    }}
-                    onClick={() => setIsOpen(false)}
-                />
-            )}
+            {/* Click outside logic is handled by global listeners in useEffect above, 
+                but we might need a transparent overlay if logic is flaky? 
+                Actually the global click listener is NOT in the useEffect I see above.
+                It relies on 'closeAllDropdowns' and specific events.
+                Wait, line 60-110 only closes on specialized events.
+                It seems I might be missing a generic click-outside listener.
+                But the component had one in line 273-284 overlay.
+            */}
+
         </div>
     );
 };
@@ -295,15 +281,14 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
     const [showDropdown, setShowDropdown] = useState(false);
     const [tempStartDate, setTempStartDate] = useState(customDateRange?.start || '');
     const [tempEndDate, setTempEndDate] = useState(customDateRange?.end || '');
+    const dropdownRef = React.useRef(null);
+    const datePickerRef = React.useRef(null);
     const dropdownId = React.useRef(`timeperiod-${Math.random().toString(36).substr(2, 9)}`);
 
-    // Comprehensive close handlers for all scenarios
+    // Comprehensive close handlers
     useEffect(() => {
         const handleCloseDropdowns = (e) => {
-            // If specific dropdown ID provided, only close if not this one
-            if (e.detail && e.detail.except === dropdownId.current) {
-                return;
-            }
+            if (e.detail && e.detail.except === dropdownId.current) return;
             setShowDropdown(false);
             setShowDatePicker(false);
         };
@@ -315,8 +300,21 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
             }
         };
 
+        const handleClickOutside = (event) => {
+            if (buttonRef.current && buttonRef.current.contains(event.target)) return;
+            if (dropdownRef.current && dropdownRef.current.contains(event.target)) return;
+            if (datePickerRef.current && datePickerRef.current.contains(event.target)) return;
+
+            setShowDropdown(false);
+            if (!datePickerRef.current || !datePickerRef.current.contains(event.target)) {
+                // Only close date picker if click is completely outside
+                // But wait, if I clicked outside button and outside dropdown, I might have clicked IN datepicker
+                // so logic: if not in button, not in dropdown, not in datepicker -> close all
+                setShowDatePicker(false);
+            }
+        };
+
         const handleKeyDown = (e) => {
-            // Close on ESC key press
             if (e.key === 'Escape') {
                 setShowDropdown(false);
                 setShowDatePicker(false);
@@ -324,28 +322,24 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
         };
 
         const handleScroll = () => {
-            // Close dropdown when user scrolls the page
             setShowDropdown(false);
             setShowDatePicker(false);
         };
 
-        // Listen for all close events
         window.addEventListener('closeAllDropdowns', handleCloseDropdowns);
         window.addEventListener('resize', handleResize);
+        document.addEventListener('mousedown', handleClickOutside);
         window.addEventListener('keydown', handleKeyDown);
-        // Add scroll listener to the dashboard content wrapper
+
         const contentWrapper = document.querySelector('.dashboard-content-wrapper');
-        if (contentWrapper) {
-            contentWrapper.addEventListener('scroll', handleScroll);
-        }
+        if (contentWrapper) contentWrapper.addEventListener('scroll', handleScroll);
 
         return () => {
             window.removeEventListener('closeAllDropdowns', handleCloseDropdowns);
             window.removeEventListener('resize', handleResize);
+            document.removeEventListener('mousedown', handleClickOutside);
             window.removeEventListener('keydown', handleKeyDown);
-            if (contentWrapper) {
-                contentWrapper.removeEventListener('scroll', handleScroll);
-            }
+            if (contentWrapper) contentWrapper.removeEventListener('scroll', handleScroll);
         };
     }, []);
 
@@ -429,15 +423,16 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
                     <span style={{ fontSize: '0.7rem', color: '#64748b', transform: showDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
                 </button>
 
-                {showDropdown && (
+                {showDropdown && createPortal(
                     <motion.div
+                        ref={dropdownRef}
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         style={{
                             position: 'fixed',
                             top: dropdownPos.top,
                             left: dropdownPos.left,
-                            zIndex: 1000,
+                            zIndex: 9999,
                             background: 'white',
                             border: '1px solid #e2e8f0',
                             borderRadius: '12px',
@@ -512,23 +507,30 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
                                 </div>
                             </>
                         )}
-                    </motion.div>
+                    </motion.div>,
+                    document.body
                 )}
 
-                {showDatePicker && (
+                {showDatePicker && createPortal(
                     <motion.div
+                        ref={datePickerRef}
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         style={{
-                            position: 'absolute',
-                            top: '100%',
-                            right: 0,
+                            position: 'fixed', // Use fixed since we want to position relative to viewport or anchor
+                            // Calculate position based on dropdownPos or button, but since dropdown is closed, use button pos?
+                            // Actually, let's overlap it slightly or center it if on mobile? 
+                            // For simplicity let's use the same anchor as dropdown
+                            top: dropdownPos.top,
+                            left: dropdownPos.left,
+                            // Adjust if we want it to check for edge collision, but fixed is simple for now
+
                             marginTop: '12px',
                             background: 'white',
                             borderRadius: '16px',
                             boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
                             padding: '24px',
-                            zIndex: 1100,
+                            zIndex: 9999,
                             minWidth: '320px',
                             border: '1px solid #fee2e2'
                         }}
@@ -611,7 +613,8 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
                                 )}
                             </div>
                         </div>
-                    </motion.div>
+                    </motion.div>,
+                    document.body
                 )}
             </div>
         );

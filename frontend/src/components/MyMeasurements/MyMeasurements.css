@@ -48,7 +48,13 @@
 }
 
 .mm-kiosk-scroll-container::-webkit-scrollbar {
-    display: none;
+    display: block;
+    height: 4px;
+}
+
+.mm-kiosk-scroll-container::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 2px;
 }
 
 .mm-kiosk-scroll-container {
@@ -117,7 +123,8 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    height: auto;
+    height: 100%;
+    /* Force full height */
     position: relative;
     overflow: hidden;
 }
@@ -261,10 +268,10 @@
 
     .mm-kiosk-scroll-container {
         width: 100%;
-        padding-bottom: 0;
+        padding-bottom: 4px;
         gap: 8px;
-        flex-wrap: wrap;
-        overflow-x: visible;
+        flex-wrap: nowrap;
+        overflow-x: auto;
     }
 
     .mm-container {

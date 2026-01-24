@@ -112,6 +112,15 @@ const MeasurementDetailsModal = ({ measurement, onClose }) => {
                         </div>
                     )}
 
+                    {measurement.recommendation?.provider_guidance && (
+                        <div className="rec-section" style={{ marginBottom: '16px' }}>
+                            <h4 style={{ fontSize: '0.95rem', color: '#3b82f6', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6' }}></span> Provider Guidance
+                            </h4>
+                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: '#334155' }}>{measurement.recommendation.provider_guidance}</p>
+                        </div>
+                    )}
+
                     {!measurement.recommendation && (
                         <div className="rec-section" style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', color: '#64748b', fontSize: '0.95rem', fontStyle: 'italic', textAlign: 'center' }}>
                             No specific AI recommendations available for this record.

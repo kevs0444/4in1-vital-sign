@@ -411,6 +411,10 @@
     .mobile-overlay.open {
         display: block;
     }
+
+    .desktop-notification-bell {
+        display: none !important;
+    }
 }
 
 /* --- REAL-TIME PULSE ANIMATION --- */
@@ -437,4 +441,294 @@
 
 .realtime-status:hover {
     background: rgba(16, 185, 129, 0.15) !important;
+}
+
+/* =================================================================== */
+/* KIOSK MODE - Touch-Friendly Styling (Larger Touch Targets)          */
+/* Sidebar is collapsed by default, with larger touch targets          */
+/* =================================================================== */
+
+/* Force sidebar to be visible in kiosk mode (uses collapsed width by default) */
+.kiosk-mode .dashboard-sidebar {
+    transform: translateX(0) !important;
+    position: fixed !important;
+    display: flex !important;
+}
+
+/* Hide mobile header in kiosk mode - sidebar is always visible */
+.kiosk-mode .mobile-header {
+    display: none !important;
+}
+
+/* Hide mobile close button in kiosk mode */
+.kiosk-mode .mobile-close-btn {
+    display: none !important;
+}
+
+/* Kiosk COLLAPSED state - icons only with larger touch targets */
+.kiosk-mode .dashboard-sidebar.collapsed {
+    width: 80px !important;
+}
+
+.kiosk-mode .dashboard-sidebar.collapsed .nav-item {
+    min-height: 56px;
+    padding: 1rem;
+    justify-content: center;
+}
+
+.kiosk-mode .dashboard-sidebar.collapsed .nav-item-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.kiosk-mode .dashboard-sidebar.collapsed .nav-item-icon svg {
+    font-size: 1.6rem;
+}
+
+.kiosk-mode .dashboard-main.expanded {
+    margin-left: 80px !important;
+    width: calc(100% - 80px) !important;
+}
+
+/* Kiosk EXPANDED state - larger touch-friendly options */
+.kiosk-mode .dashboard-sidebar:not(.collapsed) {
+    width: 320px !important;
+}
+
+.kiosk-mode .dashboard-sidebar:not(.collapsed) .nav-item {
+    min-height: 60px;
+    padding: 1.1rem 1.5rem;
+    font-size: 1.1rem;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.kiosk-mode .dashboard-sidebar:not(.collapsed) .nav-item-icon {
+    width: 30px;
+    height: 30px;
+}
+
+.kiosk-mode .dashboard-sidebar:not(.collapsed) .nav-item-icon svg {
+    font-size: 1.5rem;
+}
+
+.kiosk-mode .dashboard-main:not(.expanded) {
+    margin-left: 320px !important;
+    width: calc(100% - 320px) !important;
+}
+
+/* Kiosk sidebar header - larger logo */
+.kiosk-mode .sidebar-logo {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+}
+
+.kiosk-mode .sidebar-header {
+    padding: 1.5rem;
+}
+
+.kiosk-mode .sidebar-title h1 {
+    font-size: 1.2rem;
+}
+
+.kiosk-mode .sidebar-title p {
+    font-size: 0.85rem;
+}
+
+/* Kiosk footer - larger touch targets */
+.kiosk-mode .sidebar-footer {
+    padding: 1.5rem;
+}
+
+.kiosk-mode .logout-btn {
+    min-height: 52px;
+    font-size: 1rem;
+    padding: 0.875rem 1.25rem;
+}
+
+.kiosk-mode .user-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 1.1rem;
+}
+
+.kiosk-mode .user-name {
+    font-size: 1rem;
+}
+
+.kiosk-mode .user-role {
+    font-size: 0.85rem;
+}
+
+/* Show collapse toggle button in kiosk mode */
+.kiosk-mode .collapse-toggle {
+    display: flex !important;
+    width: 36px !important;
+    height: 36px !important;
+}
+
+/* =================================================================== */
+/* KIOSK 768x1366 PORTRAIT TOUCHSCREEN - COMPLETE REWRITE             */
+/* Optimized for vertical touchscreen with no overlapping elements    */
+/* =================================================================== */
+@media screen and (max-width: 800px) {
+
+    /* ========== KIOSK COLLAPSED SIDEBAR (DEFAULT) ========== */
+    .kiosk-mode .dashboard-sidebar.collapsed {
+        width: 70px !important;
+        padding: 0 !important;
+    }
+
+    /* Header - centered logo only */
+    .kiosk-mode .dashboard-sidebar.collapsed .sidebar-header {
+        padding: 20px 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .kiosk-mode .sidebar-logo {
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+    }
+
+    /* Navigation items - centered icons */
+    .kiosk-mode .dashboard-sidebar.collapsed .sidebar-nav {
+        padding: 16px 0;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .kiosk-mode .dashboard-sidebar.collapsed .nav-item {
+        min-height: 54px !important;
+        height: 54px;
+        width: 54px;
+        margin: 0 auto 10px auto !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 14px;
+    }
+
+    .kiosk-mode .dashboard-sidebar.collapsed .nav-item-icon {
+        width: 28px !important;
+        height: 28px !important;
+        margin: 0 !important;
+    }
+
+    .kiosk-mode .dashboard-sidebar.collapsed .nav-item-icon svg {
+        font-size: 1.5rem !important;
+    }
+
+    /* Active nav item styling */
+    .kiosk-mode .dashboard-sidebar.collapsed .nav-item.active {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        color: white;
+    }
+
+    /* Footer - vertically stacked */
+    .kiosk-mode .dashboard-sidebar.collapsed .sidebar-footer {
+        padding: 16px 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 12px !important;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .kiosk-mode .dashboard-sidebar.collapsed .user-profile {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .kiosk-mode .dashboard-sidebar.collapsed .user-avatar {
+        width: 42px !important;
+        height: 42px !important;
+        font-size: 0.95rem !important;
+        margin: 0 !important;
+    }
+
+    .kiosk-mode .dashboard-sidebar.collapsed .logout-btn {
+        width: 50px !important;
+        height: 50px !important;
+        min-height: 50px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 12px;
+        margin: 0 !important;
+    }
+
+    /* Hide text elements in collapsed state */
+    .kiosk-mode .dashboard-sidebar.collapsed .sidebar-title,
+    .kiosk-mode .dashboard-sidebar.collapsed .user-info,
+    .kiosk-mode .dashboard-sidebar.collapsed .logout-btn>span:last-child {
+        display: none !important;
+    }
+
+    /* Collapse toggle - positioned in the middle vertically */
+    .kiosk-mode .collapse-toggle {
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        right: -18px !important;
+        z-index: 100 !important;
+    }
+
+    /* Main content when sidebar collapsed */
+    .kiosk-mode .dashboard-main.expanded {
+        margin-left: 70px !important;
+        width: calc(100% - 70px) !important;
+    }
+
+    /* ========== KIOSK EXPANDED SIDEBAR ========== */
+    .kiosk-mode .dashboard-sidebar:not(.collapsed) {
+        width: 250px !important;
+    }
+
+    .kiosk-mode .dashboard-sidebar:not(.collapsed) .sidebar-header {
+        padding: 20px 16px;
+    }
+
+    .kiosk-mode .dashboard-sidebar:not(.collapsed) .nav-item {
+        min-height: 50px;
+        padding: 12px 16px;
+        font-size: 0.95rem;
+        gap: 12px;
+        margin: 0 12px 8px 12px;
+        border-radius: 12px;
+    }
+
+    .kiosk-mode .dashboard-sidebar:not(.collapsed) .nav-item-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .kiosk-mode .dashboard-sidebar:not(.collapsed) .nav-item-icon svg {
+        font-size: 1.3rem;
+    }
+
+    .kiosk-mode .dashboard-sidebar:not(.collapsed) .logout-btn {
+        min-height: 48px;
+        font-size: 0.95rem;
+    }
+
+    .kiosk-mode .dashboard-main:not(.expanded) {
+        margin-left: 250px !important;
+        width: calc(100% - 250px) !important;
+    }
+
+    /* ========== CONTENT AREA ========== */
+    .kiosk-mode .dashboard-content-wrapper {
+        padding: 1rem !important;
+        gap: 1rem !important;
+    }
 }

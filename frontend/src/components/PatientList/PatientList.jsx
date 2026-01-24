@@ -6,6 +6,7 @@ import ExportButton from '../ExportButton/ExportButton';
 import Pagination from '../Pagination/Pagination';
 import NoDataFound from '../NoDataFound/NoDataFound';
 import { exportToCSV, exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { isLocalhost } from '../../utils/kioskUtils';
 import './PatientList.css'; // You'll need to create this or reuse existing styles
 
 const PatientList = ({ users, loading, onViewHistory, title = "Assigned Patients" }) => {
@@ -141,7 +142,8 @@ const PatientList = ({ users, loading, onViewHistory, title = "Assigned Patients
                             variant="dropdown"
                         />
 
-                        {!(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                        {/* Export Button - Only on local kiosk */}
+                        {!isLocalhost() && (
                             <ExportButton
                                 onExportCSV={() => handleExport('csv')}
                                 onExportExcel={() => handleExport('excel')}
@@ -149,9 +151,8 @@ const PatientList = ({ users, loading, onViewHistory, title = "Assigned Patients
                             />
                         )}
 
-                        {/* View Toggle (Hidden on Kiosk if localhost logic applies, 
-                           but here we just use screen width check for general Kiosk mode) */}
-                        {!(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                        {/* View Toggle - Hidden on Localhost Kiosk */}
+                        {!isLocalhost() && (
                             <div className="view-mode-toggle" style={{ display: 'flex', gap: '4px', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
                                 <button
                                     onClick={() => window.innerWidth > 768 && setViewMode('table')}

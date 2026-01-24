@@ -100,8 +100,26 @@ def update_user_status(user_id):
         if not user:
             return jsonify({'success': False, 'message': 'User not found'}), 404
 
+        print(f"🔄 Updating status for user {user_id}: {user.approval_status} -> {new_status}")
+        with open('backend_debug.log', 'a') as f:
+            f.write(f"\n--- Update User Status: {user_id} ---\n")
+            f.write(f"Status: {user.approval_status} -> {new_status}\n")
+        
         user.approval_status = new_status
+        
+        print(f"💾 Attempting to commit status update for user {user_id}...")
         session.commit()
+        print(f"✅ Status commit successful for user {user_id}")
+        with open('backend_debug.log', 'a') as f:
+            f.write(f"Commit successful for user {user_id}\n")
+
+        # Broadcast the update via WebSocket
+        try:
+            from app.websocket_events import broadcast_user_status_update, broadcast_stats_update
+            broadcast_user_status_update(user_id, new_status)
+            broadcast_stats_update() # Trigger stats refetch for all admins
+        except Exception as ws_err:
+            print(f"⚠️ WebSocket broadcast failed: {ws_err}")
 
         return jsonify({
             'success': True,
