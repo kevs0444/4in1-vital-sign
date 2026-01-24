@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Logout, Menu, Close, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { isLocalDevice } from '../../utils/network';
+import NotificationBell from '../NotificationBell/NotificationBell';
 import './DashboardLayout.css';
 
 
@@ -15,8 +16,9 @@ const DashboardLayout = ({
     onTabChange,
     onLogout,
     lastUpdated,
-    onRefresh,
+
     isConnected = false,
+    notificationProps = null, // { pendingCount, printerStatus, shareStats, onNavigate }
     children
 }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile drawer open state
@@ -296,6 +298,13 @@ const DashboardLayout = ({
                     {children}
                 </div>
             </main>
+
+            {/* Global Notification Bell (Desktop & Mobile) */}
+            {notificationProps && (
+                <div style={{ position: 'fixed', top: '20px', right: '30px', zIndex: 1000 }}>
+                    <NotificationBell {...notificationProps} />
+                </div>
+            )}
 
             {/* Logout Confirmation Modal for Back Button Protection */}
             <AnimatePresence>

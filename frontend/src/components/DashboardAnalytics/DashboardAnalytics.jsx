@@ -51,7 +51,11 @@ export const MultiSelectDropdown = ({
     onToggle,
     allLabel = 'All',
     icon = null,
-    minWidth = '160px'
+    minWidth = '160px',
+    singleSelect = false,
+    compact = false,
+    style = {},
+    className = ''
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownId = React.useRef(`dropdown-${Math.random().toString(36).substr(2, 9)}`);
@@ -128,33 +132,45 @@ export const MultiSelectDropdown = ({
         setIsOpen(!isOpen);
     };
 
-    const displayLabel = selectedItems.includes('All') || selectedItems.includes('all')
-        ? allLabel
-        : selectedItems.length > 0
-            ? `${selectedItems.length} Selected`
-            : label;
+    const getDisplayLabel = () => {
+        if (selectedItems.includes('All') || selectedItems.includes('all')) return allLabel;
+
+        if (selectedItems.length > 0) {
+            if (singleSelect) {
+                const selectedId = selectedItems[0];
+                const option = options.find(o => (typeof o === 'object' ? o.id === selectedId : o === selectedId));
+                return typeof option === 'object' ? option.label : option;
+            }
+            return `${selectedItems.length} Selected`;
+        }
+        return label;
+    };
+
+    const displayLabel = getDisplayLabel();
 
     return (
-        <div style={{ position: 'relative', display: 'inline-block' }}>
+        <div style={{ position: 'relative', display: 'inline-block', ...style }} className={className}>
             <button
                 ref={buttonRef}
                 onClick={handleToggle}
                 style={{
-                    padding: '10px 16px',
+                    padding: compact ? '6px 10px' : '10px 16px',
                     borderRadius: '8px',
                     border: '1px solid #e2e8f0',
                     background: 'white',
                     color: '#1e293b',
                     fontWeight: '600',
-                    fontSize: '0.9rem',
+                    fontSize: compact ? '0.8rem' : '0.9rem',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    minWidth: minWidth,
+                    gap: compact ? '4px' : '8px',
+                    minWidth: compact ? 'auto' : minWidth,
                     justifyContent: 'space-between',
                     boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    height: compact ? '32px' : 'auto',
+                    width: '100%'
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -199,7 +215,9 @@ export const MultiSelectDropdown = ({
                                 key={optionId}
                                 onClick={() => {
                                     onToggle(optionId);
-                                    // Don't close dropdown on multi-select
+                                    if (singleSelect) {
+                                        setIsOpen(false);
+                                    }
                                 }}
                                 style={{
                                     padding: '10px 12px',
@@ -218,7 +236,14 @@ export const MultiSelectDropdown = ({
                                 <div style={{
                                     width: '18px',
                                     height: '18px',
-                                    borderRadius: '4px',
+                                    borderRadius: '50%', // Round for single select/radio feel? Or keep square?
+                                    // User wants "same ui". Square is fine, but maybe round if single?
+                                    // I'll stick to square (radius 4px) to match others exactly unless I change logic.
+                                    // The user said "not same ui".
+                                    // Assuming they want consistency.
+                                    // I'll use 4px radius as before but maybe different if singleSelect?
+                                    // Stick to 4px for now.
+                                    borderRadius: singleSelect ? '50%' : '4px',
                                     border: `2px solid ${isSelected ? '#dc2626' : '#cbd5e1'}`,
                                     background: isSelected ? '#dc2626' : 'transparent',
                                     display: 'flex',
@@ -228,9 +253,13 @@ export const MultiSelectDropdown = ({
                                     transition: 'all 0.15s ease'
                                 }}>
                                     {isSelected && (
-                                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                            <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
+                                        singleSelect ? (
+                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />
+                                        ) : (
+                                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                                <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        )
                                     )}
                                 </div>
                                 {optionLabel}
@@ -261,7 +290,7 @@ export const MultiSelectDropdown = ({
 
 // Shared Time Period Filter Component - can be used anywhere
 // Handles: ESC key, scroll, resize, sidebar, tab changes, click outside
-export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, setCustomDateRange, showCustom = true, variant = 'pills' }) => {
+export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, setCustomDateRange, showCustom = true, variant = 'pills', compact = false, style = {}, className = '' }) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [tempStartDate, setTempStartDate] = useState(customDateRange?.start || '');
@@ -370,25 +399,27 @@ export const TimePeriodFilter = ({ timePeriod, setTimePeriod, customDateRange, s
 
     if (variant === 'dropdown') {
         return (
-            <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div style={{ position: 'relative', display: 'inline-block', ...style }} className={className}>
                 <button
                     ref={buttonRef}
                     onClick={handleToggle}
                     style={{
-                        padding: '10px 16px',
+                        padding: compact ? '6px 10px' : '10px 16px',
                         borderRadius: '8px',
                         border: '1px solid #e2e8f0',
                         background: 'white',
                         color: '#1e293b',
                         fontWeight: '600',
-                        fontSize: '0.9rem',
+                        fontSize: compact ? '0.8rem' : '0.9rem',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        minWidth: '160px',
+                        gap: compact ? '4px' : '8px',
+                        minWidth: compact ? 'auto' : '160px',
                         justifyContent: 'space-between',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                        height: compact ? '32px' : 'auto',
+                        width: '100%'
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

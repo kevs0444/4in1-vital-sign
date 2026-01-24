@@ -1,0 +1,134 @@
+/* UsersOverview.css */
+.users-overview-container {
+    background: white;
+    border-radius: 15px;
+    border: 1px solid #edf2f7;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 800px;
+}
+
+.uo-table-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    background: #fff;
+}
+
+.uo-table-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.uo-table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.uo-search-bar {
+    display: flex;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 0.6rem 1rem;
+    border-radius: 10px;
+    min-width: 180px;
+    max-width: 300px;
+    flex: 1 1 auto;
+    transition: all 0.2s;
+}
+
+.uo-search-bar input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    font-size: 0.95rem;
+    color: #334155;
+    outline: none;
+}
+
+.uo-kiosk-scroll-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+}
+
+.uo-users-table {
+    width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+}
+
+.uo-users-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.5rem;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.uo-users-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 0.95rem;
+    vertical-align: middle;
+}
+
+.uo-users-table tr:hover td {
+    background: #fef2f2;
+}
+
+.uo-user-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Kiosk Maximization */
+@media (max-width: 768px) {
+    .users-overview-container {
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+        border-top: 1px solid #f1f5f9;
+        height: 100%;
+    }
+
+    .uo-table-header {
+        padding: 1rem;
+    }
+
+    .uo-user-cards-grid {
+        padding: 1rem;
+    }
+
+    .uo-search-bar {
+        width: 100%;
+        max-width: none;
+    }
+}

@@ -748,6 +748,30 @@
     .role-select {
         width: 100%;
     }
+
+    /* Kiosk Maximization */
+    .table-section {
+        border-radius: 0;
+        border: none;
+        border-top: 1px solid #f1f5f9;
+        box-shadow: none;
+    }
+
+    .admin-content {
+        padding: 0 !important;
+        /* Full width */
+        gap: 0;
+    }
+
+    .table-header {
+        padding: 1rem 0;
+        /* Vertical padding only */
+    }
+
+    .user-cards-grid {
+        padding: 0;
+        gap: 16px;
+    }
 }
 
 /* --- Modern Analytics Dashboard Styles --- */

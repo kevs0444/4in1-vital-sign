@@ -335,12 +335,13 @@
         grid-template-columns: 1fr;
     }
 }
+
 /* Kiosk Mode Optimization (768px Portrait) */
 @media (max-width: 768px) {
     .dashboard-container {
         padding-bottom: 80px;
     }
-    
+
     /* Ensure table container scrolls */
     .table-container-wrapper {
         width: 100% !important;
@@ -356,7 +357,8 @@
     }
 
     /* Make history table font smaller or adjust padding */
-    .history-table th, .history-table td {
+    .history-table th,
+    .history-table td {
         padding: 0.75rem 0.5rem !important;
         font-size: 0.85rem !important;
     }
@@ -369,23 +371,61 @@
         align-items: flex-start !important;
         gap: 12px !important;
     }
+
     .table-header h3 {
         width: 100%;
         margin-bottom: 8px;
     }
-    .table-header > div:not(h3) {
+
+    .table-header>div:not(h3) {
         width: 100%;
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
     }
 }
-/* Measurement Card CSS */
-.measurement-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;}
-.measurement-card { background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
-.m-card-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem; }
-.m-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-.m-metric { display: flex; flexDirection: column; }
-.m-label { font-size: 0.7rem; color: #64748b; }
-.m-value { font-weight: 600; color: #1e293b; }
 
+/* Measurement Card CSS */
+.measurement-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.measurement-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.m-card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 0.5rem;
+}
+
+.m-card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.m-metric {
+    display: flex;
+    flex-direction: column;
+}
+
+.m-label {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.m-value {
+    font-weight: 600;
+    color: #1e293b;
+}
