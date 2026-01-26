@@ -355,8 +355,8 @@ const StandbyRemote = () => {
                             </div>
                             <div className="footer-contact-col">
                                 <h4>Contact</h4>
-                                <span>(02) 8123-4567</span>
-                                <span>care@4injuan.com</span>
+                                <span>0952-4702-284</span>
+                                <span>fin.vitalsigns@gmail.com</span>
                             </div>
                         </div>
                         <div className="footer-copyright">

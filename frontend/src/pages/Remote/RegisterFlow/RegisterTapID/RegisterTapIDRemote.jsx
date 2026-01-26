@@ -74,7 +74,14 @@ const RegisterTapIDRemote = () => {
     };
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+
+        // Enforce max length of 10 for password inputs
+        if ((name === 'password' || name === 'confirmPassword') && value.length > 10) {
+            return;
+        }
+
+        setFormData({ ...formData, [name]: value });
         setError("");
     };
 
@@ -85,8 +92,8 @@ const RegisterTapIDRemote = () => {
             return false;
         }
         // Basic format check
-        if (!/^[0-9-]+$/.test(formData.idNumber)) {
-            setError("Only numbers and hyphens are allowed.");
+        if (!/^[a-zA-Z0-9-]+$/.test(formData.idNumber)) {
+            setError("Only alphanumeric characters and hyphens are allowed.");
             return false;
         }
 
@@ -123,8 +130,8 @@ const RegisterTapIDRemote = () => {
             setError(emailValidation.error);
             return false;
         }
-        if (!formData.password || formData.password.length < 6) {
-            setError("Password must be at least 6 characters.");
+        if (!formData.password || formData.password.length < 6 || formData.password.length > 10) {
+            setError("Password must be 6-10 characters.");
             return false;
         }
         if (formData.password !== formData.confirmPassword) {
@@ -164,8 +171,14 @@ const RegisterTapIDRemote = () => {
     });
 
     useEffect(() => {
-        stateRef.current = { currentStep, isScanning: isLoading };
-    }, [currentStep, isLoading]);
+        stateRef.current = {
+            currentStep,
+            isScanning: isLoading,
+            formData,
+            personalInfo,
+            userRole
+        };
+    }, [currentStep, isLoading, formData, personalInfo, userRole]);
 
     const handleGlobalKeyDown = useCallback((e) => {
         const currentState = stateRef.current;
@@ -209,7 +222,7 @@ const RegisterTapIDRemote = () => {
 
         try {
             // Check for duplicate RFID
-            const checkResponse = await fetch(`/api/register/check-rfid/${encodeURIComponent(scannedCode)}`);
+            const checkResponse = await fetch(`/api/login/check-rfid/${encodeURIComponent(scannedCode)}`);
             const checkResult = await checkResponse.json();
 
             if (checkResult.exists) {
@@ -245,21 +258,26 @@ const RegisterTapIDRemote = () => {
         setError("");
 
         try {
+            // Get latest state from ref to avoid stale closures in event listeners
+            const currentFormData = stateRef.current.formData;
+            const currentPersonalInfo = stateRef.current.personalInfo;
+            const currentUserRole = stateRef.current.userRole;
+
             // Prepare Data for RegisterDataSaved Page to handle
             // Normalize userType for backend
-            let normalizedUserType = userRole;
-            if (userRole === 'rtu-employees') normalizedUserType = 'employee';
-            if (userRole === 'rtu-students') normalizedUserType = 'student';
+            let normalizedUserType = currentUserRole;
+            if (currentUserRole === 'rtu-employees') normalizedUserType = 'employee';
+            if (currentUserRole === 'rtu-students') normalizedUserType = 'student';
 
             // Ensure rfidCode is explicitly null if event or other obj passed
             const finalRfid = (typeof rfidCode === 'string') ? rfidCode : null;
 
             const completeRegistrationData = {
                 userType: normalizedUserType,
-                personalInfo: personalInfo,
-                idNumber: formData.idNumber, // Passed as 'idNumber'
-                password: formData.password,
-                email: formData.email,
+                personalInfo: currentPersonalInfo,
+                idNumber: currentFormData.idNumber, // Passed as 'idNumber'
+                password: currentFormData.password,
+                email: currentFormData.email,
                 rfidCode: finalRfid,
                 registrationDate: new Date().toISOString()
             };

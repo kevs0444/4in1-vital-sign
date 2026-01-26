@@ -109,7 +109,7 @@ export default function RegisterTapID() {
           securityNote: "Your ID or license number will be used for professional verification.",
           hint: "Numbers and hyphens only",
           duplicateTitle: "ID Number Already Registered",
-          duplicateMessage: "This ID number is already registered. Please use a different number."
+          duplicateMessage: "This ID number is already registered. Please use a different number or contact support."
         };
       case 'rtu-employees':
         return {
@@ -120,10 +120,10 @@ export default function RegisterTapID() {
           ),
           subtitle: "Your official RTU employee identification number",
           label: "Employee Number",
-          placeholder: "e.g., 2023-001",
+          placeholder: "e.g., 2023-001 or A2023-001",
           shortLabel: "Emp ID",
           securityNote: "Your employee number will be used for official identification and record keeping.",
-          hint: "Numbers and hyphens only (e.g., 2023-001)",
+          hint: "Alphanumeric (e.g., 2023-001 or A2023-001)",
           duplicateTitle: "Employee Number Already Registered",
           duplicateMessage: "This employee number is already registered. Please use a different number or contact support."
         };
@@ -431,8 +431,9 @@ export default function RegisterTapID() {
     setErrorMessage("");
 
     if (currentStep === 0) {
-      if (!validateIDNumber(formData.idNumber)) {
-        setErrorMessage(`Please enter a valid ${getIdNumberLabel()} (numbers and hyphens only)`);
+      // Basic validation handled by regex input, but double check length
+      if (formData.idNumber.length < 3) {
+        setErrorMessage(`Please enter a valid ${getIdNumberLabel()}`);
         return;
       }
 
@@ -615,9 +616,10 @@ export default function RegisterTapID() {
       }
     } else {
       if (activeInput === "idNumber") {
-        // Only allow numbers and hyphens for ID number
-        if (/^[0-9-]$/.test(key)) {
-          setFormData(prev => ({ ...prev, idNumber: prev.idNumber + key }));
+        // Allow alphanumeric and hyphens for Everyone now, or specifically employees
+        // Regex: Letters, Numbers, Hyphens
+        if (/^[a-zA-Z0-9-]$/.test(key)) {
+          setFormData(prev => ({ ...prev, idNumber: prev.idNumber + applyFormatting("", key) }));
         }
       } else if (activeInput === "password") {
         // Only allow input if password is less than 10 characters

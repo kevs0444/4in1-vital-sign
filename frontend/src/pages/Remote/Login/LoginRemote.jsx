@@ -67,6 +67,7 @@ const LoginRemote = () => {
 
             if (!schoolNumber.trim()) throw new Error('Please enter your School Number or Email');
             if (!password.trim()) throw new Error('Please enter your password');
+            if (password.length > 10) throw new Error('Password cannot be more than 10 characters');
 
             const response = await loginWithCredentials(schoolNumber, password);
             if (response.success) {
@@ -245,6 +246,7 @@ const LoginRemote = () => {
                                     className="form-input"
                                     placeholder="Enter your password"
                                     style={{ paddingRight: '48px' }}
+                                    maxLength={10}
                                 />
                                 <button
                                     type="button"
