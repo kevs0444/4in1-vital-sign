@@ -119,11 +119,15 @@ const InactivityWrapper = ({ children }) => {
         startTimers();
     }, [showWarning, startTimers]);
 
-    // NEW: Function for components to signal activity (e.g., finger detected on sensor)
+    // NEW: Function for components to signal activity (e.g., finger detected on sensor, YOLO person detection)
     const signalActivity = useCallback(() => {
         console.log('[InactivityWrapper] External activity signal received');
+        // Auto-close any visible inactivity warning when AI detects user presence
+        if (showWarning) {
+            setShowWarning(false);
+        }
         handleActivity();
-    }, [handleActivity]);
+    }, [handleActivity, showWarning]);
 
     useEffect(() => {
         // Activity events to listen for

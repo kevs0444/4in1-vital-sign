@@ -1,5 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+    getBloodPressureStatus,
+    getHeartRateStatus,
+    getSPO2Status,
+    getTemperatureStatus,
+    getBMICategory,
+    getRespiratoryStatus
+} from '../../utils/healthStatus';
 
 // Helper for date formatting
 const formatDate = (isoString) => {
@@ -21,8 +29,40 @@ const getRiskColor = (category) => {
     return '#64748b';
 };
 
+// Reusable vital sign detail row
+const VitalRow = ({ label, value, statusObj }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+        <div>
+            <strong style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px', letterSpacing: '0.03em' }}>{label}</strong>
+            <span style={{ color: '#1e293b', fontWeight: 600, fontSize: '1.05rem' }}>{value || 'N/A'}</span>
+        </div>
+        {statusObj && statusObj.label !== 'Not Measured' && statusObj.label !== 'Invalid' && (
+            <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: statusObj.color,
+                background: `${statusObj.color}15`,
+                padding: '3px 10px',
+                borderRadius: '6px',
+                border: `1px solid ${statusObj.color}30`,
+                whiteSpace: 'nowrap'
+            }}>
+                {statusObj.label}
+            </span>
+        )}
+    </div>
+);
+
 const MeasurementDetailsModal = ({ measurement, onClose }) => {
     if (!measurement) return null;
+
+    const m = measurement;
+    const bpStatus = getBloodPressureStatus(m.systolic, m.diastolic);
+    const hrStatus = getHeartRateStatus(m.heart_rate);
+    const spo2Status = getSPO2Status(m.spo2);
+    const tempStatus = getTemperatureStatus(m.temperature);
+    const bmiStatus = getBMICategory(m.bmi);
+    const rrStatus = getRespiratoryStatus(m.respiratory_rate);
 
     return (
         <div
@@ -58,13 +98,69 @@ const MeasurementDetailsModal = ({ measurement, onClose }) => {
                 </div>
 
                 <div style={{ marginBottom: '24px', maxHeight: '60vh', overflowY: 'auto' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                        <div><strong style={{ color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Date</strong> <span style={{ color: '#1e293b', fontWeight: 600 }}>{formatDate(measurement.created_at)}</span></div>
-                        <div><strong style={{ color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>BP</strong> <span style={{ color: '#1e293b', fontWeight: 600 }}>{measurement.systolic ? `${measurement.systolic}/${measurement.diastolic}` : 'N/A'}</span></div>
-                        <div><strong style={{ color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Heart Rate</strong> <span style={{ color: '#1e293b', fontWeight: 600 }}>{measurement.heart_rate ? `${measurement.heart_rate} bpm` : 'N/A'}</span></div>
-                        <div><strong style={{ color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>SpO2</strong> <span style={{ color: '#1e293b', fontWeight: 600 }}>{measurement.spo2 ? `${measurement.spo2}%` : 'N/A'}</span></div>
-                        <div><strong style={{ color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Temp</strong> <span style={{ color: '#1e293b', fontWeight: 600 }}>{measurement.temperature ? `${measurement.temperature}°C` : 'N/A'}</span></div>
-                        <div><strong style={{ color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>BMI</strong> <span style={{ color: '#1e293b', fontWeight: 600 }}>{measurement.bmi && Number(measurement.bmi) > 0 ? Number(measurement.bmi).toFixed(1) : 'N/A'}</span></div>
+                    {/* Date & Age Overview */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                        <div>
+                            <span style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 600 }}>Date</span>
+                            <div style={{ color: '#1e293b', fontWeight: 600, fontSize: '0.95rem' }}>{formatDate(m.created_at)}</div>
+                        </div>
+                        {m.age && (
+                            <div style={{ textAlign: 'right' }}>
+                                <span style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 600 }}>Age</span>
+                                <div style={{ color: '#1e293b', fontWeight: 600, fontSize: '0.95rem' }}>{m.age} yrs</div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Vital Signs with Status Labels */}
+                    <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+                        <VitalRow
+                            label="Blood Pressure"
+                            value={m.systolic ? `${m.systolic}/${m.diastolic} mmHg` : null}
+                            statusObj={m.systolic > 0 ? bpStatus : null}
+                        />
+                        <VitalRow
+                            label="Heart Rate"
+                            value={m.heart_rate ? `${m.heart_rate} bpm` : null}
+                            statusObj={m.heart_rate > 0 ? hrStatus : null}
+                        />
+                        <VitalRow
+                            label="SpO2"
+                            value={m.spo2 ? `${m.spo2}%` : null}
+                            statusObj={m.spo2 > 0 ? spo2Status : null}
+                        />
+                        <VitalRow
+                            label="Respiratory Rate"
+                            value={m.respiratory_rate ? `${m.respiratory_rate} bpm` : null}
+                            statusObj={m.respiratory_rate > 0 ? rrStatus : null}
+                        />
+                        <VitalRow
+                            label="Body Temperature"
+                            value={m.temperature ? `${m.temperature}\u00b0C` : null}
+                            statusObj={m.temperature > 0 ? tempStatus : null}
+                        />
+                        <VitalRow
+                            label="BMI"
+                            value={m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : null}
+                            statusObj={m.bmi > 0 ? bmiStatus : null}
+                        />
+                        {/* Weight & Height sub-row */}
+                        {(m.weight > 0 || m.height > 0) && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                                {m.weight > 0 && (
+                                    <div>
+                                        <strong style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Weight</strong>
+                                        <span style={{ color: '#1e293b', fontWeight: 600 }}>{m.weight} kg</span>
+                                    </div>
+                                )}
+                                {m.height > 0 && (
+                                    <div style={{ textAlign: m.weight > 0 ? 'right' : 'left' }}>
+                                        <strong style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Height</strong>
+                                        <span style={{ color: '#1e293b', fontWeight: 600 }}>{m.height} cm</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <h3 style={{ fontSize: '1.1rem', color: '#1e293b', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '16px' }}>
@@ -74,54 +170,54 @@ const MeasurementDetailsModal = ({ measurement, onClose }) => {
                     <div className="rec-section" style={{ marginBottom: '20px' }}>
                         <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', marginBottom: '6px' }}>Risk Status</div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
-                            <p style={{ fontWeight: 'bold', margin: 0, color: getRiskColor(measurement.risk_category), fontSize: '1.1rem' }}>
-                                {measurement.risk_category || 'Unknown'}
+                            <p style={{ fontWeight: 'bold', margin: 0, color: getRiskColor(m.risk_category), fontSize: '1.1rem' }}>
+                                {m.risk_category || 'Unknown'}
                             </p>
-                            {measurement.risk_score && (
+                            {m.risk_score && (
                                 <span style={{ fontSize: '0.85rem', color: '#64748b', background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
-                                    Score: {measurement.risk_score.toFixed(1)}%
+                                    Score: {m.risk_score.toFixed(1)}%
                                 </span>
                             )}
                         </div>
                     </div>
 
-                    {measurement.recommendation?.medical_action && (
+                    {m.recommendation?.medical_action && (
                         <div className="rec-section" style={{ marginBottom: '16px' }}>
                             <h4 style={{ fontSize: '0.95rem', color: '#ef4444', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }}></span> Suggested Action
                             </h4>
-                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: '#334155' }}>{measurement.recommendation.medical_action}</p>
+                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: '#334155' }}>{m.recommendation.medical_action}</p>
                         </div>
                     )}
 
-                    {measurement.recommendation?.preventive_strategy && (
+                    {m.recommendation?.preventive_strategy && (
                         <div className="rec-section" style={{ marginBottom: '16px' }}>
                             <h4 style={{ fontSize: '0.95rem', color: '#f59e0b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }}></span> Strategy
                             </h4>
-                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: '#334155' }}>{measurement.recommendation.preventive_strategy}</p>
+                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: '#334155' }}>{m.recommendation.preventive_strategy}</p>
                         </div>
                     )}
 
-                    {measurement.recommendation?.wellness_tips && (
+                    {m.recommendation?.wellness_tips && (
                         <div className="rec-section" style={{ marginBottom: '16px' }}>
                             <h4 style={{ fontSize: '0.95rem', color: '#10b981', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span> Wellness Tip
                             </h4>
-                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: '#334155' }}>{measurement.recommendation.wellness_tips}</p>
+                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: '#334155' }}>{m.recommendation.wellness_tips}</p>
                         </div>
                     )}
 
-                    {measurement.recommendation?.provider_guidance && (
+                    {m.recommendation?.provider_guidance && (
                         <div className="rec-section" style={{ marginBottom: '16px' }}>
                             <h4 style={{ fontSize: '0.95rem', color: '#3b82f6', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6' }}></span> Provider Guidance
                             </h4>
-                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: '#334155' }}>{measurement.recommendation.provider_guidance}</p>
+                            <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: '#334155' }}>{m.recommendation.provider_guidance}</p>
                         </div>
                     )}
 
-                    {!measurement.recommendation && (
+                    {!m.recommendation && (
                         <div className="rec-section" style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', color: '#64748b', fontSize: '0.95rem', fontStyle: 'italic', textAlign: 'center' }}>
                             No specific AI recommendations available for this record.
                         </div>

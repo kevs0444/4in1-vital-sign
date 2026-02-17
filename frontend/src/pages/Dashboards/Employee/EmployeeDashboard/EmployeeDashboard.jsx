@@ -275,6 +275,7 @@ const EmployeeDashboard = () => {
                     history={history}
                     loading={loading}
                     onSelectMeasurement={setSelectedMeasurement}
+                    user={currentUser}
                 />
             )}
 

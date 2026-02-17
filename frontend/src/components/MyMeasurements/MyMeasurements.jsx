@@ -12,7 +12,8 @@ import {
     getHeartRateStatus,
     getSPO2Status,
     getTemperatureStatus,
-    getBMICategory
+    getBMICategory,
+    getRespiratoryStatus
 } from '../../utils/healthStatus';
 
 const formatDate = (dateString) => {
@@ -337,34 +338,42 @@ const MyMeasurements = ({ history, loading, onSelectMeasurement, user }) => {
                                             <span className="mm-value" style={{ color: getBloodPressureStatus(m.systolic, m.diastolic).color }}>
                                                 {m.systolic ? `${m.systolic}/${m.diastolic}` : '-'}
                                             </span>
+                                            {m.systolic > 0 && <span className="mm-status-tag" style={{ color: getBloodPressureStatus(m.systolic, m.diastolic).color }}>{getBloodPressureStatus(m.systolic, m.diastolic).label}</span>}
                                         </div>
                                         <div className="mm-metric">
                                             <span className="mm-label">Heart Rate</span>
                                             <span className="mm-value" style={{ color: getHeartRateStatus(m.heart_rate).color }}>
                                                 {m.heart_rate ? `${m.heart_rate} bpm` : '-'}
                                             </span>
+                                            {m.heart_rate > 0 && <span className="mm-status-tag" style={{ color: getHeartRateStatus(m.heart_rate).color }}>{getHeartRateStatus(m.heart_rate).label}</span>}
                                         </div>
                                         <div className="mm-metric">
                                             <span className="mm-label">SpO2</span>
                                             <span className="mm-value" style={{ color: getSPO2Status(m.spo2).color }}>
                                                 {m.spo2 ? `${m.spo2}%` : '-'}
                                             </span>
+                                            {m.spo2 > 0 && <span className="mm-status-tag" style={{ color: getSPO2Status(m.spo2).color }}>{getSPO2Status(m.spo2).label}</span>}
                                         </div>
                                         <div className="mm-metric">
                                             <span className="mm-label">Temp</span>
                                             <span className="mm-value" style={{ color: getTemperatureStatus(m.temperature).color }}>
                                                 {m.temperature ? `${m.temperature}°C` : '-'}
                                             </span>
+                                            {m.temperature > 0 && <span className="mm-status-tag" style={{ color: getTemperatureStatus(m.temperature).color }}>{getTemperatureStatus(m.temperature).label}</span>}
                                         </div>
                                         <div className="mm-metric">
                                             <span className="mm-label">BMI</span>
                                             <span className="mm-value" style={{ color: getBMICategory(m.bmi).color }}>
                                                 {m.bmi ? m.bmi : '-'}
                                             </span>
+                                            {m.bmi > 0 && <span className="mm-status-tag" style={{ color: getBMICategory(m.bmi).color }}>{getBMICategory(m.bmi).label}</span>}
                                         </div>
                                         <div className="mm-metric">
-                                            <span className="mm-label">Age</span>
-                                            <span className="mm-value">{user?.age ? `${user.age} yrs` : '-'}</span>
+                                            <span className="mm-label">RR</span>
+                                            <span className="mm-value" style={{ color: getRespiratoryStatus(m.respiratory_rate).color }}>
+                                                {m.respiratory_rate ? `${m.respiratory_rate} bpm` : '-'}
+                                            </span>
+                                            {m.respiratory_rate > 0 && <span className="mm-status-tag" style={{ color: getRespiratoryStatus(m.respiratory_rate).color }}>{getRespiratoryStatus(m.respiratory_rate).label}</span>}
                                         </div>
                                     </div>
                                     <button className="mm-action-btn" style={{ marginTop: 'auto', width: '100%', justifyContent: 'center' }}>

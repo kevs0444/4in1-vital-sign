@@ -254,6 +254,14 @@
     color: #475569;
 }
 
+.mm-status-tag {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-top: 1px;
+    opacity: 0.85;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .mm-table-header {

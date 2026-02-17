@@ -1251,6 +1251,7 @@ const AdminDashboard = () => {
                         history={myHistory}
                         loading={loading}
                         onSelectMeasurement={setSelectedMeasurement}
+                        user={user}
                     />
                 </div>
             )}

@@ -292,6 +292,7 @@ const NurseDashboard = () => {
                     history={myHistory}
                     loading={loading}
                     onSelectMeasurement={setSelectedMeasurement}
+                    user={currentUser}
                 />
             )}
 

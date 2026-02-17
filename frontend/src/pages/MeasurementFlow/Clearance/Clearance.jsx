@@ -11,7 +11,7 @@ const API_BASE = '/api';
 export default function Clearance() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { setIsInactivityEnabled } = useInactivity();
+    const { setIsInactivityEnabled, signalActivity } = useInactivity();
 
     const [feedUrl, setFeedUrl] = useState(null);
     const [isReady, setIsReady] = useState(false);
@@ -107,6 +107,16 @@ export default function Clearance() {
             const stageData = currentStage === 'feet' ? data.feet : data.body;
             const message = stageData?.message || "Initializing...";
             const compliant = stageData?.is_compliant || false;
+
+            // SIGNAL ACTIVITY: Whenever YOLO detects anything (feet, person, violations),
+            // reset the inactivity timer so the popup doesn't appear during active use.
+            const hasDetection = compliant ||
+                (stageData?.violations && stageData.violations.length > 0) ||
+                (stageData?.person_detected) ||  // yolo11n person detection
+                (message && !message.includes("Initializing") && !message.includes("STAND ON SCALE"));
+            if (hasDetection) {
+                signalActivity();
+            }
 
             if (!isMountedRef.current) return;
 

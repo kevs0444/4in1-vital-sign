@@ -33,11 +33,12 @@ class ClearanceManager:
         # Models - loaded ONCE
         self.feet_model = None
         self.body_model = None
+        self.person_model = None  # yolo11n.pt for user/person detection
         self._models_loaded = False
 
         # Status
         self.feet_status = {"message": "Initializing...", "is_compliant": False, "violations": []}
-        self.body_status = {"message": "Waiting...", "is_compliant": False, "violations": []}
+        self.body_status = {"message": "Waiting...", "is_compliant": False, "violations": [], "person_detected": False}
         
         # Debug counter
         self.start_count = 0
@@ -61,6 +62,14 @@ class ClearanceManager:
             if os.path.exists(body_path):
                 self.body_model = YOLO(body_path)
                 logger.info(f"✅ Loaded Body Model")
+            
+            # Person detection model (yolo11n.pt) - used to confirm user is present
+            person_path = os.path.join(base_dir, 'ai_camera', 'models', 'yolo11n.pt')
+            if os.path.exists(person_path):
+                self.person_model = YOLO(person_path)
+                logger.info(f"✅ Loaded Person Detection Model (yolo11n.pt)")
+            else:
+                logger.warning(f"⚠️ Person model not found at {person_path}")
             
             self._models_loaded = True
         except Exception as e:
@@ -118,7 +127,7 @@ class ClearanceManager:
         self.is_active = True
         self.current_stage = 'feet'
         self.feet_status = {"message": "Initializing...", "is_compliant": False, "violations": []}
-        self.body_status = {"message": "Waiting...", "is_compliant": False, "violations": []}
+        self.body_status = {"message": "Waiting...", "is_compliant": False, "violations": [], "person_detected": False}
         self.feet_frame = None
         self.body_frame = None
         
@@ -321,11 +330,35 @@ class ClearanceManager:
                 frame = self._apply_square_crop(frame)
                 frame = cv2.resize(frame, (480, 480))
                 
+                # Run wearables detection
                 frame, is_compliant, msg, violations = self._run_detection(self.body_model, frame, "BODY")
+                
+                # Run person detection using yolo11n.pt to confirm user is present
+                person_detected = False
+                if self.person_model is not None:
+                    try:
+                        person_results = self.person_model(frame, verbose=False, conf=0.4)
+                        for box in person_results[0].boxes:
+                            cls_id = int(box.cls[0])
+                            label = person_results[0].names.get(cls_id, '').lower()
+                            if label == 'person':
+                                person_detected = True
+                                # Draw bounding box around detected person
+                                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                                conf = float(box.conf[0])
+                                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                                # Label background
+                                text = f"USER {conf:.0%}"
+                                (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+                                cv2.rectangle(frame, (x1, y1 - th - 10), (x1 + tw + 6, y1), (0, 255, 0), -1)
+                                cv2.putText(frame, text, (x1 + 3, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+                                break
+                    except Exception as e:
+                        logger.warning(f"Person detection error: {e}")
                 
                 cv2.putText(frame, "STEP 2: BODY SCAN", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
                 
-                self.body_status = {"message": msg, "is_compliant": is_compliant, "violations": violations}
+                self.body_status = {"message": msg, "is_compliant": is_compliant, "violations": violations, "person_detected": person_detected}
                 self.body_frame = frame
                 
                 time.sleep(0.03)

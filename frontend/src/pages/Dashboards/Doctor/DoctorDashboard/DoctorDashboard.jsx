@@ -299,6 +299,7 @@ const DoctorDashboard = () => {
                     history={myHistory}
                     loading={loading} // Uses loading from fetchUsers? No, myHistory fetch isn't creating distinct loading state here, but that's fine.
                     onSelectMeasurement={setSelectedMeasurement}
+                    user={currentUser}
                 />
             )}
 
