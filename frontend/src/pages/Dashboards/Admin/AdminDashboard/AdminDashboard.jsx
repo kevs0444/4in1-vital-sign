@@ -1271,6 +1271,7 @@ const AdminDashboard = () => {
             <MeasurementDetailsModal
                 measurement={selectedMeasurement}
                 onClose={() => setSelectedMeasurement(null)}
+                user={user}
             />
 
             {/* Paper Roll Reset Confirmation Modal */}

@@ -159,10 +159,10 @@ const PopulationAnalytics = () => {
     };
 
     const riskColors = {
-        'Normal': '#10b981',
         'Low Risk': '#10b981',
+        'Mild Risk': '#a3e635',
         'Moderate Risk': '#f59e0b',
-        'High Risk': '#ef4444',
+        'High Risk': '#f97316',
         'Critical Risk': '#dc2626',
         'Unknown': '#cbd5e1'
     };
@@ -435,7 +435,7 @@ const PopulationAnalytics = () => {
                             />
                             <InsightItem
                                 icon={<Assessment />}
-                                text={<span><b>{Math.round((data?.risk_distribution['Normal'] || 0) / (data?.averages.total || 1) * 100)}%</b> of users are in the healthy range.</span>}
+                                text={<span><b>{Math.round((data?.risk_distribution['Low Risk'] || 0) / (data?.averages.total || 1) * 100)}%</b> of users are in the healthy range.</span>}
                             />
                             <InsightItem
                                 icon={<InfoOutlined />}

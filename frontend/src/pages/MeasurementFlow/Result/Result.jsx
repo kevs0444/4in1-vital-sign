@@ -29,15 +29,17 @@ export default function Result() {
 
   const getRiskGradient = (level) => {
     if (level < 20) return "linear-gradient(135deg, #10b981 0%, #34d399 100%)"; // Green (Normal)
-    if (level < 50) return "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)"; // Orange/Yellow (Moderate)
-    if (level < 75) return "linear-gradient(135deg, #f97316 0%, #fb923c 100%)"; // Dark Orange (High)
+    if (level < 40) return "linear-gradient(135deg, #a3e635 0%, #bef264 100%)"; // Lime (Mild Risk)
+    if (level < 60) return "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)"; // Orange/Yellow (Moderate)
+    if (level < 80) return "linear-gradient(135deg, #f97316 0%, #fb923c 100%)"; // Dark Orange (High)
     return "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"; // Red (Critical)
   };
 
   const getRiskGlow = (level) => {
     if (level < 20) return "0 0 40px rgba(16, 185, 129, 0.4)";
-    if (level < 50) return "0 0 40px rgba(245, 158, 11, 0.4)";
-    if (level < 75) return "0 0 40px rgba(249, 115, 22, 0.4)";
+    if (level < 40) return "0 0 40px rgba(163, 230, 53, 0.4)";
+    if (level < 60) return "0 0 40px rgba(245, 158, 11, 0.4)";
+    if (level < 80) return "0 0 40px rgba(249, 115, 22, 0.4)";
     return "0 0 50px rgba(220, 38, 38, 0.6)";
   };
 
@@ -170,9 +172,7 @@ export default function Result() {
       diastolic: parseFloat(userData.diastolic || 0),
       rr: parseFloat(userData.respiratoryRate || 0),
       risk_score: riskLevel,
-      // Ensure "Normal" is saved as "Low Risk" per requirement
-      risk_label: (riskCategory === 'Normal' || riskCategory === 'Low') ? 'Low Risk' : riskCategory,
-      riskCategory: (riskCategory === 'Normal' || riskCategory === 'Low') ? 'Low Risk' : riskCategory,
+      risk_label: riskCategory,
 
       // Legacy/UI specific fields
       bloodPressure: userData.systolic && userData.diastolic ?
@@ -298,43 +298,22 @@ export default function Result() {
           {/* Risk Ranges Subtitle */}
           <div className="text-center">
             <h3 className="h5 fw-bold text-muted mb-3">Risk Level Interpretation</h3>
-            <div className="row g-2 justify-content-center">
-              <div className="col-6 col-md-3">
-                <div className="p-2 rounded bg-light border d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="d-inline-block rounded-circle" style={{ width: 12, height: 12, background: '#10b981' }}></span>
-                    <span className="small fw-bold">Low</span>
+            <div className="d-flex flex-wrap justify-content-center gap-2 mx-auto">
+              {[
+                { label: 'Low', range: '0-19%', color: '#10b981' },
+                { label: 'Mild', range: '20-39%', color: '#a3e635' },
+                { label: 'Moderate', range: '40-59%', color: '#f59e0b' },
+                { label: 'High', range: '60-79%', color: '#f97316' },
+                { label: 'Critical', range: '80-100%', color: '#dc2626' },
+              ].map((tier) => (
+                <div key={tier.label} className="d-flex align-items-center px-3 py-2 rounded bg-light border gap-2">
+                  <span className="d-inline-block rounded-circle" style={{ width: 10, height: 10, background: tier.color }}></span>
+                  <div className="d-flex align-items-center gap-1">
+                    <span className="fw-bold text-dark small">{tier.label}</span>
+                    <span className="text-muted small" style={{ fontSize: '0.75rem' }}>{tier.range}</span>
                   </div>
-                  <span className="small text-muted">0-19%</span>
                 </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="p-2 rounded bg-light border d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="d-inline-block rounded-circle" style={{ width: 12, height: 12, background: '#f59e0b' }}></span>
-                    <span className="small fw-bold">Moderate</span>
-                  </div>
-                  <span className="small text-muted">20-49%</span>
-                </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="p-2 rounded bg-light border d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="d-inline-block rounded-circle" style={{ width: 12, height: 12, background: '#ef4444' }}></span>
-                    <span className="small fw-bold">High</span>
-                  </div>
-                  <span className="small text-muted">50-74%</span>
-                </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="p-2 rounded bg-light border d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="d-inline-block rounded-circle" style={{ width: 12, height: 12, background: '#dc2626' }}></span>
-                    <span className="small fw-bold">Critical</span>
-                  </div>
-                  <span className="small text-muted">75-100%</span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>

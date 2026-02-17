@@ -141,64 +141,9 @@ def predict_risk():
             risk_score = (probs[0] * 10) + (probs[1] * 30) + (probs[2] * 50) + (probs[3] * 70) + (probs[4] * 90)
             risk_score = int(round(risk_score))  # Convert to whole number integer
 
-            # --- POST-PROCESSING: KEY VITALS RISK BOOSTER (SELECTIVE) ---
-            # ONLY apply boosters for fields that were actually measured (not imputed).
-            
-            # BP Booster
-            if "BP" not in imputed_fields:
-                if (systolic >= 180 or diastolic >= 120):
-                    risk_score = max(risk_score, 40.0) # Hypertensive Crisis
-                elif (systolic >= 140 or diastolic >= 90):
-                    risk_score = max(risk_score, 30.0) # Stage 2
-                elif (systolic >= 130 or diastolic >= 80):
-                    risk_score = max(risk_score, 20.0) # Stage 1
-                elif (systolic >= 120 and diastolic < 80):
-                    risk_score = max(risk_score, 15.0) # Elevated
-                elif (systolic < 90 or diastolic < 60):
-                    risk_score = max(risk_score, 15.0) # Hypotension
-
-            # SpO2 Booster
-            if "SpO2" not in imputed_fields:
-                if (spo2 <= 89):
-                    risk_score = max(risk_score, 40.0) # Critical
-                elif (spo2 <= 94):
-                    risk_score = max(risk_score, 15.0) # Low
-
-            # Heart Rate Booster
-            if "HR" not in imputed_fields:
-                if (hr > 120):
-                     risk_score = max(risk_score, 40.0) # Critical
-                elif (hr > 100 or hr < 60):
-                     risk_score = max(risk_score, 15.0) # Low/Elevated
-
-            # Temp Booster
-            if "Temp" not in imputed_fields:
-                if (temp > 38.0):
-                     risk_score = max(risk_score, 40.0) # Critical
-                elif (temp >= 37.3):
-                     risk_score = max(risk_score, 15.0) # Slight Fever
-                elif (temp < 35.0):
-                     risk_score = max(risk_score, 40.0) # Hypothermia
-
-            # RR Booster (Only if RR provided explicitly)
-            # RR is typically part of SpO2/HR sensors or manual
-            if data.get('respiratoryRate') not in [0, None, "", "N/A"]:
-                if (rr > 24):
-                    risk_score = max(risk_score, 40.0)
-                elif (rr >= 21 or rr < 12):
-                    risk_score = max(risk_score, 15.0)
-
-            # BMI Booster (Asian Standard)
-            if "BMI" not in imputed_fields:
-                if (bmi >= 25):  # Asian Obese
-                    risk_score = max(risk_score, 40.0) 
-                elif (bmi >= 23 or bmi < 18.5): # Asian Overweight or Underweight
-                    risk_score = max(risk_score, 15.0) 
-
-            # Age & Gender Factors (Always applicable as Profile Data)
-            if age >= 60: risk_score += 5
-            if age_group == 3: risk_score += 5 
-            if gender_numeric == 0: risk_score += 2
+            # --- POST-PROCESSING: REMOVED MANUAL BOOSTERS ---
+            # User requested to rely ONLY on the AI Model's prediction.
+            # No manual if/else overrides here.
 
 
             # Validate Risk Score limits
@@ -251,9 +196,10 @@ def predict_risk():
         print(f"📊 Confidence Metrics: {confidence_metrics}")
 
         # Map Score to Risk Level Class (4 Tiers)
-        if risk_score < 20: risk_level = "Normal"
-        elif risk_score < 50: risk_level = "Moderate Risk"
-        elif risk_score < 75: risk_level = "High Risk"
+        if risk_score < 20: risk_level = "Low Risk"
+        elif risk_score < 40: risk_level = "Mild Risk"
+        elif risk_score < 60: risk_level = "Moderate Risk"
+        elif risk_score < 80: risk_level = "High Risk"
         else: risk_level = "Critical Risk"
         
         print(f"✅ Juan AI Prediction Complete!")

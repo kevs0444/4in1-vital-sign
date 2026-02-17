@@ -283,6 +283,7 @@ const EmployeeDashboard = () => {
             <MeasurementDetailsModal
                 measurement={selectedMeasurement}
                 onClose={() => setSelectedMeasurement(null)}
+                user={currentUser}
             />
 
         </DashboardLayout >

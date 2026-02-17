@@ -119,7 +119,7 @@ def generate_health_data(num_samples=50000):
         elif systolic >= 140 or diastolic >= 90: bp_score = 30 # Stage 2
         elif (130 <= systolic <= 139) or (80 <= diastolic <= 89): bp_score = 20 # Stage 1
         elif (120 <= systolic <= 129) and diastolic < 80: bp_score = 15 # Elevated
-        elif systolic < 90 and diastolic < 60: bp_score = 15 # Hypotension (Low)
+        elif systolic < 90 or diastolic < 60: bp_score = 25 # Hypotension (Force Mild Risk)
         
         current_risk_score += bp_score
 

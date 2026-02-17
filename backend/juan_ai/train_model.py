@@ -56,7 +56,7 @@ print("🔍 Evaluating Model...")
 predictions = model.predict(X_test)
 accuracy = accuracy_score(y_test, predictions)
 print(f"🏆 Model Accuracy: {accuracy * 100:.2f}%")
-print(classification_report(y_test, predictions, target_names=['Normal', 'Mild Risk', 'Moderate Risk', 'High Risk', 'Critical Risk']))
+print(classification_report(y_test, predictions, target_names=['Low Risk', 'Mild Risk', 'Moderate Risk', 'High Risk', 'Critical Risk']))
 
 # 5. Save
 print("💾 Saving all AI assets...")

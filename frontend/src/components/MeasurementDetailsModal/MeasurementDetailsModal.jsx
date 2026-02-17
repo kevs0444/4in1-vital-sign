@@ -29,23 +29,19 @@ const getRiskColor = (category) => {
     return '#64748b';
 };
 
-// Reusable vital sign detail row
-const VitalRow = ({ label, value, statusObj }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
-        <div>
-            <strong style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px', letterSpacing: '0.03em' }}>{label}</strong>
-            <span style={{ color: '#1e293b', fontWeight: 600, fontSize: '1.05rem' }}>{value || 'N/A'}</span>
-        </div>
+// Metric cell with status label
+const MetricCell = ({ label, value, statusObj }) => (
+    <div>
+        <strong style={{ color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>{label}</strong>
+        <span style={{ color: statusObj?.color || '#1e293b', fontWeight: 600 }}>{value || 'N/A'}</span>
         {statusObj && statusObj.label !== 'Not Measured' && statusObj.label !== 'Invalid' && (
             <span style={{
-                fontSize: '0.75rem',
+                display: 'block',
+                fontSize: '0.7rem',
                 fontWeight: 600,
                 color: statusObj.color,
-                background: `${statusObj.color}15`,
-                padding: '3px 10px',
-                borderRadius: '6px',
-                border: `1px solid ${statusObj.color}30`,
-                whiteSpace: 'nowrap'
+                marginTop: '2px',
+                opacity: 0.85
             }}>
                 {statusObj.label}
             </span>
@@ -53,7 +49,7 @@ const VitalRow = ({ label, value, statusObj }) => (
     </div>
 );
 
-const MeasurementDetailsModal = ({ measurement, onClose }) => {
+const MeasurementDetailsModal = ({ measurement, onClose, user }) => {
     if (!measurement) return null;
 
     const m = measurement;
@@ -63,6 +59,10 @@ const MeasurementDetailsModal = ({ measurement, onClose }) => {
     const tempStatus = getTemperatureStatus(m.temperature);
     const bmiStatus = getBMICategory(m.bmi);
     const rrStatus = getRespiratoryStatus(m.respiratory_rate);
+
+    // Age & Gender from user prop or measurement data
+    const age = m.age || user?.age;
+    const gender = m.sex || user?.sex;
 
     return (
         <div
@@ -98,68 +98,46 @@ const MeasurementDetailsModal = ({ measurement, onClose }) => {
                 </div>
 
                 <div style={{ marginBottom: '24px', maxHeight: '60vh', overflowY: 'auto' }}>
-                    {/* Date & Age Overview */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                        <div>
-                            <span style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 600 }}>Date</span>
-                            <div style={{ color: '#1e293b', fontWeight: 600, fontSize: '0.95rem' }}>{formatDate(m.created_at)}</div>
-                        </div>
-                        {m.age && (
-                            <div style={{ textAlign: 'right' }}>
-                                <span style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 600 }}>Age</span>
-                                <div style={{ color: '#1e293b', fontWeight: 600, fontSize: '0.95rem' }}>{m.age} yrs</div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Vital Signs with Status Labels */}
-                    <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
-                        <VitalRow
-                            label="Blood Pressure"
-                            value={m.systolic ? `${m.systolic}/${m.diastolic} mmHg` : null}
+                    {/* Vitals Grid - 2 columns with status labels */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                        <MetricCell label="Date" value={formatDate(m.created_at)} />
+                        <MetricCell
+                            label="BP"
+                            value={m.systolic ? `${m.systolic}/${m.diastolic}` : null}
                             statusObj={m.systolic > 0 ? bpStatus : null}
                         />
-                        <VitalRow
+                        <MetricCell
                             label="Heart Rate"
                             value={m.heart_rate ? `${m.heart_rate} bpm` : null}
                             statusObj={m.heart_rate > 0 ? hrStatus : null}
                         />
-                        <VitalRow
+                        <MetricCell
                             label="SpO2"
                             value={m.spo2 ? `${m.spo2}%` : null}
                             statusObj={m.spo2 > 0 ? spo2Status : null}
                         />
-                        <VitalRow
-                            label="Respiratory Rate"
+                        <MetricCell
+                            label="RR"
                             value={m.respiratory_rate ? `${m.respiratory_rate} bpm` : null}
                             statusObj={m.respiratory_rate > 0 ? rrStatus : null}
                         />
-                        <VitalRow
-                            label="Body Temperature"
+                        <MetricCell
+                            label="Temp"
                             value={m.temperature ? `${m.temperature}\u00b0C` : null}
                             statusObj={m.temperature > 0 ? tempStatus : null}
                         />
-                        <VitalRow
+                        <MetricCell
                             label="BMI"
                             value={m.bmi && Number(m.bmi) > 0 ? Number(m.bmi).toFixed(1) : null}
                             statusObj={m.bmi > 0 ? bmiStatus : null}
                         />
-                        {/* Weight & Height sub-row */}
-                        {(m.weight > 0 || m.height > 0) && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
-                                {m.weight > 0 && (
-                                    <div>
-                                        <strong style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Weight</strong>
-                                        <span style={{ color: '#1e293b', fontWeight: 600 }}>{m.weight} kg</span>
-                                    </div>
-                                )}
-                                {m.height > 0 && (
-                                    <div style={{ textAlign: m.weight > 0 ? 'right' : 'left' }}>
-                                        <strong style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Height</strong>
-                                        <span style={{ color: '#1e293b', fontWeight: 600 }}>{m.height} cm</span>
-                                    </div>
-                                )}
-                            </div>
+                        <MetricCell label="Age" value={age ? `${age} yrs` : 'N/A'} />
+                        <MetricCell label="Gender" value={gender || 'N/A'} />
+                        {m.weight > 0 && (
+                            <MetricCell label="Weight" value={`${m.weight} kg`} />
+                        )}
+                        {m.height > 0 && (
+                            <MetricCell label="Height" value={`${m.height} cm`} />
                         )}
                     </div>
 

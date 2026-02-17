@@ -616,10 +616,11 @@ export default function RegisterTapID() {
       }
     } else {
       if (activeInput === "idNumber") {
-        // Allow alphanumeric and hyphens for Everyone now, or specifically employees
-        // Regex: Letters, Numbers, Hyphens
-        if (/^[a-zA-Z0-9-]$/.test(key)) {
-          setFormData(prev => ({ ...prev, idNumber: prev.idNumber + applyFormatting("", key) }));
+        // Students: numbers and hyphens only; Others: alphanumeric and hyphens
+        const isStudent = userType === 'rtu-students';
+        const allowedPattern = isStudent ? /^[0-9-]$/ : /^[a-zA-Z0-9-]$/;
+        if (allowedPattern.test(key)) {
+          setFormData(prev => ({ ...prev, idNumber: prev.idNumber + (isStudent ? key : applyFormatting("", key)) }));
         }
       } else if (activeInput === "password") {
         // Only allow input if password is less than 10 characters
@@ -643,7 +644,7 @@ export default function RegisterTapID() {
   const isStepValid = () => {
     switch (currentStep) {
       case 0:
-        return validateIDNumber(formData.idNumber);
+        return validateIDNumber(formData.idNumber, userType);
       case 1:
         return validateEmail(formData.email).isValid && validatePassword(formData.password);
       case 2:
@@ -776,7 +777,7 @@ export default function RegisterTapID() {
                       }}
                       autoComplete="off"
                       readOnly={isLocalDevice()}
-                      inputMode={isLocalDevice() ? "none" : "numeric"}
+                      inputMode={isLocalDevice() ? "none" : "text"}
                     />
                     <div className="input-hint">
                       {roleSettings.hint}

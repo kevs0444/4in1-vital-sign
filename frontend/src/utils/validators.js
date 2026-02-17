@@ -46,10 +46,14 @@ export const validateEmail = (email) => {
  * @param {string} id 
  * @returns {boolean}
  */
-export const validateIDNumber = (id) => {
-    // Allow only numbers and hyphens, minimum 1 character
-    const idRegex = /^[0-9-]+$/;
-    return idRegex.test(id) && id.trim().length >= 1;
+export const validateIDNumber = (id, role) => {
+    if (!id || id.trim().length < 1) return false;
+    // Students: numbers and hyphens only
+    if (role === 'student' || role === 'rtu-students') {
+        return /^[0-9-]+$/.test(id);
+    }
+    // Employee, Doctor, Nurse: letters, numbers, and hyphens
+    return /^[a-zA-Z0-9-]+$/.test(id);
 };
 
 /**

@@ -411,7 +411,7 @@ export default function Sharing() {
               <div className="receipt-row" style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Risk Level:</span>
                 <strong>
-                  {userData.riskCategory === 'Normal' ? 'Low Risk' : userData.riskCategory} ({userData.riskLevel}%)
+                  {userData.riskCategory} ({userData.riskLevel}%)
                 </strong>
               </div>
             )}

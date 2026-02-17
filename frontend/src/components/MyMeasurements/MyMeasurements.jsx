@@ -141,7 +141,8 @@ const MyMeasurements = ({ history, loading, onSelectMeasurement, user }) => {
         if (!category) return '';
         const lower = category.toLowerCase();
         if (lower.includes('normal') || lower.includes('low')) return 'mm-risk-normal';
-        if (lower.includes('elevated') || lower.includes('moderate')) return 'mm-risk-elevated';
+        if (lower.includes('mild')) return 'mm-risk-mild';
+        if (lower.includes('moderate')) return 'mm-risk-elevated';
         if (lower.includes('high')) return 'mm-risk-high';
         if (lower.includes('critical')) return 'mm-risk-critical';
         return 'mm-risk-high';
@@ -208,7 +209,8 @@ const MyMeasurements = ({ history, loading, onSelectMeasurement, user }) => {
                             selectedItems={riskFilter}
                             options={[
                                 { id: 'all', label: 'All Risks' },
-                                { id: 'low', label: 'Low Risk', color: '#10b981' }, // Green
+                                { id: 'normal', label: 'Low Risk', color: '#10b981' }, // Green
+                                { id: 'mild', label: 'Mild Risk', color: '#a3e635' }, // Lime
                                 { id: 'moderate', label: 'Moderate Risk', color: '#f59e0b' }, // Orange
                                 { id: 'high', label: 'High Risk', color: '#ef4444' }, // Red
                                 { id: 'critical', label: 'Critical Risk', color: '#991b1b' } // Dark Red
@@ -355,11 +357,11 @@ const MyMeasurements = ({ history, loading, onSelectMeasurement, user }) => {
                                             {m.spo2 > 0 && <span className="mm-status-tag" style={{ color: getSPO2Status(m.spo2).color }}>{getSPO2Status(m.spo2).label}</span>}
                                         </div>
                                         <div className="mm-metric">
-                                            <span className="mm-label">Temp</span>
-                                            <span className="mm-value" style={{ color: getTemperatureStatus(m.temperature).color }}>
-                                                {m.temperature ? `${m.temperature}°C` : '-'}
+                                            <span className="mm-label">RR</span>
+                                            <span className="mm-value" style={{ color: getRespiratoryStatus(m.respiratory_rate).color }}>
+                                                {m.respiratory_rate ? `${m.respiratory_rate} bpm` : '-'}
                                             </span>
-                                            {m.temperature > 0 && <span className="mm-status-tag" style={{ color: getTemperatureStatus(m.temperature).color }}>{getTemperatureStatus(m.temperature).label}</span>}
+                                            {m.respiratory_rate > 0 && <span className="mm-status-tag" style={{ color: getRespiratoryStatus(m.respiratory_rate).color }}>{getRespiratoryStatus(m.respiratory_rate).label}</span>}
                                         </div>
                                         <div className="mm-metric">
                                             <span className="mm-label">BMI</span>
@@ -369,11 +371,11 @@ const MyMeasurements = ({ history, loading, onSelectMeasurement, user }) => {
                                             {m.bmi > 0 && <span className="mm-status-tag" style={{ color: getBMICategory(m.bmi).color }}>{getBMICategory(m.bmi).label}</span>}
                                         </div>
                                         <div className="mm-metric">
-                                            <span className="mm-label">RR</span>
-                                            <span className="mm-value" style={{ color: getRespiratoryStatus(m.respiratory_rate).color }}>
-                                                {m.respiratory_rate ? `${m.respiratory_rate} bpm` : '-'}
+                                            <span className="mm-label">Temp</span>
+                                            <span className="mm-value" style={{ color: getTemperatureStatus(m.temperature).color }}>
+                                                {m.temperature ? `${m.temperature}°C` : '-'}
                                             </span>
-                                            {m.respiratory_rate > 0 && <span className="mm-status-tag" style={{ color: getRespiratoryStatus(m.respiratory_rate).color }}>{getRespiratoryStatus(m.respiratory_rate).label}</span>}
+                                            {m.temperature > 0 && <span className="mm-status-tag" style={{ color: getTemperatureStatus(m.temperature).color }}>{getTemperatureStatus(m.temperature).label}</span>}
                                         </div>
                                     </div>
                                     <button className="mm-action-btn" style={{ marginTop: 'auto', width: '100%', justifyContent: 'center' }}>

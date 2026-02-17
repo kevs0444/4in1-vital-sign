@@ -249,11 +249,12 @@ export default function AILoading() {
     if (riskScore > 99) riskScore = 99;
     if (riskScore < 5) riskScore = 5;
 
-    // Define Level
+    // Define Level (5 Tiers - Matches Training Data)
     let level = "Low Risk";
-    if (riskScore >= 75) level = "Critical High Risk";
-    else if (riskScore >= 50) level = "High Risk";
-    else if (riskScore >= 20) level = "Moderate Risk";
+    if (riskScore >= 80) level = "Critical Risk";
+    else if (riskScore >= 60) level = "High Risk";
+    else if (riskScore >= 40) level = "Moderate Risk";
+    else if (riskScore >= 20) level = "Mild Risk";
 
     return {
       riskLevel: riskScore,

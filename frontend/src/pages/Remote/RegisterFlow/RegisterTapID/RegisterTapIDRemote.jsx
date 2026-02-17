@@ -49,13 +49,13 @@ const RegisterTapIDRemote = () => {
                 return {
                     label: "License Number",
                     placeholder: "e.g., 1234-5678",
-                    hint: "Numbers and hyphens only"
+                    hint: "Letters, numbers, and hyphens"
                 };
             case 'rtu-employees':
                 return {
                     label: "Employee Number",
-                    placeholder: "e.g., 2023-001",
-                    hint: "Numbers and hyphens only"
+                    placeholder: "e.g., 2023-001 or A2023-001",
+                    hint: "Letters, numbers, and hyphens"
                 };
             case 'rtu-students':
             default:
@@ -91,9 +91,13 @@ const RegisterTapIDRemote = () => {
             setError(`Please enter your ${roleSettings.label}.`);
             return false;
         }
-        // Basic format check
-        if (!/^[a-zA-Z0-9-]+$/.test(formData.idNumber)) {
-            setError("Only alphanumeric characters and hyphens are allowed.");
+        // Role-aware format check
+        const isStudent = userRole === 'rtu-students';
+        const formatRegex = isStudent ? /^[0-9-]+$/ : /^[a-zA-Z0-9-]+$/;
+        if (!formatRegex.test(formData.idNumber)) {
+            setError(isStudent
+                ? "Only numbers and hyphens are allowed for student numbers."
+                : "Only alphanumeric characters and hyphens are allowed.");
             return false;
         }
 

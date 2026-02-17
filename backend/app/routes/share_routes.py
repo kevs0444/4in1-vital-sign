@@ -265,7 +265,7 @@ def get_health_report_template(user_data):
             return clean if clean else None
         return [str(items)]
 
-    risk_cat = user_data.get('riskCategory', 'Normal')
+    risk_cat = user_data.get('riskCategory', 'Low Risk')
     risk_level = user_data.get('riskLevel', '0')
     
     suggestions = format_list(user_data.get('suggestions'))

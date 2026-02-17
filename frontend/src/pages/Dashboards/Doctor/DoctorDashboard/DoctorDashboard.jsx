@@ -364,6 +364,7 @@ const DoctorDashboard = () => {
             <MeasurementDetailsModal
                 measurement={selectedMeasurement}
                 onClose={() => setSelectedMeasurement(null)}
+                user={currentUser}
             />
 
         </DashboardLayout>

@@ -294,6 +294,7 @@ const StudentDashboard = () => {
             <MeasurementDetailsModal
                 measurement={selectedMeasurement}
                 onClose={() => setSelectedMeasurement(null)}
+                user={currentUser}
             />
 
         </DashboardLayout >
