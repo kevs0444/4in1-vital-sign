@@ -32,7 +32,7 @@ export const getBloodPressureStatus = (systolic, diastolic) => {
         };
     }
 
-    // 1. Hypertensive Crisis
+    // 1. Hypertensive Crisis (>180 / >120) - Keep as top priority safety check
     if (sys > 180 || dia > 120) {
         return {
             label: "Hypertensive Crisis",
@@ -41,7 +41,7 @@ export const getBloodPressureStatus = (systolic, diastolic) => {
         };
     }
 
-    // 2. Hypertension Stage 2
+    // 2. Hypertension Stage 2 (>=140 OR >=90)
     if (sys >= 140 || dia >= 90) {
         return {
             label: "Hypertension Stage 2",
@@ -50,7 +50,7 @@ export const getBloodPressureStatus = (systolic, diastolic) => {
         };
     }
 
-    // 3. Hypertension Stage 1
+    // 3. Hypertension Stage 1 (130-139 OR 80-89)
     if ((sys >= 130 && sys <= 139) || (dia >= 80 && dia <= 89)) {
         return {
             label: "Hypertension Stage 1",
@@ -59,7 +59,7 @@ export const getBloodPressureStatus = (systolic, diastolic) => {
         };
     }
 
-    // 4. Elevated
+    // 4. Elevated (120-129 AND <80)
     if (sys >= 120 && sys <= 129 && dia < 80) {
         return {
             label: "Elevated",
@@ -68,7 +68,7 @@ export const getBloodPressureStatus = (systolic, diastolic) => {
         };
     }
 
-    // 5. Hypotension (Low)
+    // 5. Hypotension (Low) (<90 / <60)
     if (sys < 90 || dia < 60) {
         return {
             label: "Hypotension",
@@ -77,7 +77,7 @@ export const getBloodPressureStatus = (systolic, diastolic) => {
         };
     }
 
-    // 6. Normal
+    // 6. Normal (<120 AND <80)
     if (sys < 120 && dia < 80) {
         return {
             label: "Normal",
@@ -86,11 +86,11 @@ export const getBloodPressureStatus = (systolic, diastolic) => {
         };
     }
 
-    // Default Fallback
+    // Default Fallback (likely overlapping ranges or edge cases, treat as elevated/check)
     return {
-        label: "Normal",
-        color: "#10b981",
-        description: "Normal Blood Pressure"
+        label: "Check",
+        color: "#f59e0b",
+        description: "Re-measure"
     };
 };
 
@@ -98,7 +98,7 @@ export const getBloodPressureStatus = (systolic, diastolic) => {
 // BODY MASS INDEX (BMI)
 // ============================================================================
 /**
- * Classifies BMI based on WHO standards.
+ * Classifies BMI based on Asian standards.
  * @param {number|string} bmiValue 
  * @returns {object} { label, color, description, range }
  */
@@ -108,6 +108,12 @@ export const getBMICategory = (bmiValue) => {
     const bmi = parseFloat(bmiValue);
     if (isNaN(bmi)) return { label: 'Invalid', color: '#6b7280', description: 'Invalid', range: 'N/A' };
 
+    // Asian Standard
+    // Underweight: < 18.5
+    // Normal: 18.5 - 22.9
+    // Overweight: 23.0 - 24.9
+    // Obese: >= 25.0
+
     if (bmi < 18.5) {
         return {
             label: 'Underweight',
@@ -116,28 +122,28 @@ export const getBMICategory = (bmiValue) => {
             range: '< 18.5'
         };
     }
-    if (bmi >= 18.5 && bmi <= 24.9) {
+    if (bmi >= 18.5 && bmi <= 22.9) {
         return {
             label: 'Normal',
             color: '#10b981', // Green
-            description: 'Measure 18.5 - 24.9',
-            range: '18.5 - 24.9'
+            description: 'Measure 18.5 - 22.9',
+            range: '18.5 - 22.9'
         };
     }
-    if (bmi >= 25.0 && bmi <= 29.9) {
+    if (bmi >= 23.0 && bmi <= 24.9) {
         return {
             label: 'Overweight',
             color: '#f59e0b', // Orange/Yellow
-            description: 'Measure 25.0 - 29.9',
-            range: '25.0 - 29.9'
+            description: 'Measure 23.0 - 24.9',
+            range: '23.0 - 24.9'
         };
     }
-    // >= 30.0
+    // >= 25.0
     return {
         label: 'Obese',
         color: '#ef4444', // Red
-        description: 'Measure ≥ 30.0',
-        range: '≥ 30.0'
+        description: 'Measure ≥ 25.0',
+        range: '≥ 25.0'
     };
 };
 

@@ -188,12 +188,12 @@ def predict_risk():
                 elif (rr >= 21 or rr < 12):
                     risk_score = max(risk_score, 15.0)
 
-            # BMI Booster
+            # BMI Booster (Asian Standard)
             if "BMI" not in imputed_fields:
-                if (bmi >= 30):
-                    risk_score = max(risk_score, 40.0) # Obese
-                elif (bmi >= 25 or bmi < 18.5):
-                    risk_score = max(risk_score, 15.0) # Overweight / Underweight
+                if (bmi >= 25):  # Asian Obese
+                    risk_score = max(risk_score, 40.0) 
+                elif (bmi >= 23 or bmi < 18.5): # Asian Overweight or Underweight
+                    risk_score = max(risk_score, 15.0) 
 
             # Age & Gender Factors (Always applicable as Profile Data)
             if age >= 60: risk_score += 5
@@ -442,16 +442,15 @@ def generate_offline_advice(age, gender, risk_level, score, vitals):
         actions.append("Mild fever detected.")
         strategies.append("Monitor for other symptoms.")
 
-    # E. Obesity / Weight
-    if bmi >= 30:
+    # E. Obesity / Weight (Asian Standard)
+    if bmi >= 25:
         actions.append("Consult a nutritionist for weight management.")
         strategies.append("Aim for a 5-10% weight reduction.")
         tips.append("Prioritize whole foods over processed ones.")
-        guide.append(f"Obese Class (BMI {bmi}).")
-    elif 25 <= bmi < 30:
+        guide.append(f"Obese Class (Asian Std, BMI {bmi}).")
+    elif 23 <= bmi < 25:
         tips.append("Increase daily physical activity to 30 mins.")
-        # F. Respiratory Rate (RR)
-    if rr > 24:
+        guide.append(f"Overweight (Asian Std, BMI {bmi}).")
         actions.append("Respiratory rate is critically high.")
         guide.append(f"Tachypnea ({int(rr)}/min).")
     elif rr < 12 and rr > 0:

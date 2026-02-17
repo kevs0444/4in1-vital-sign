@@ -6,7 +6,8 @@ import {
   getHeartRateStatus as getHeartRateStatusUtil,
   getSPO2Status as getSPO2StatusUtil,
   getRespiratoryStatus as getRespiratoryStatusUtil,
-  getBloodPressureStatus as getBloodPressureStatusUtil
+  getBloodPressureStatus as getBloodPressureStatusUtil,
+  getBMICategory as getBMICategoryUtil
 } from "../../../utils/healthStatus";
 
 export default function Result() {
@@ -43,11 +44,8 @@ export default function Result() {
   // --- UPDATED VITAL SIGN STATUS HELPERS (Strict User Thresholds) ---
 
   const getBMICategory = (bmi) => {
-    if (!bmi) return { status: 'Not Measured', color: '#6b7280', range: 'N/A' };
-    if (bmi < 18.5) return { status: 'Underweight', color: '#3b82f6', range: '< 18.5' };
-    if (bmi < 25) return { status: 'Normal', color: '#10b981', range: '18.5 - 24.9' };
-    if (bmi < 30) return { status: 'Overweight', color: '#f59e0b', range: '25.0 - 29.9' };
-    return { status: 'Obese', color: '#dc2626', range: '≥ 30.0' };
+    const s = getBMICategoryUtil(bmi);
+    return { status: s.label, color: s.color, range: s.range };
   };
 
   const getTemperatureStatus = (temp) => {
@@ -373,7 +371,15 @@ export default function Result() {
                   </div>
                   <div className="d-flex align-items-center justify-content-between">
                     <span className="fw-bold" style={{ color: bmiData.color }}>{bmiData.status}</span>
-                    <span className="small text-muted">Range: 18.5 - 24.9</span>
+                    <span className="small text-muted">Range: {bmiData.range}</span>
+                  </div>
+                  <div className="d-flex align-items-center justify-content-between mt-2 pt-2 border-top border-light">
+                    <span className="small text-secondary" style={{ fontSize: '0.85rem' }}>
+                      Weight: <strong>{userData.weight ?? '--'} kg</strong>
+                    </span>
+                    <span className="small text-secondary" style={{ fontSize: '0.85rem' }}>
+                      Height: <strong>{userData.height ?? '--'} cm</strong>
+                    </span>
                   </div>
                 </div>
               )}
@@ -397,7 +403,7 @@ export default function Result() {
                   <div className="fw-bold mb-1" style={{ color: tempData.color }}>
                     {tempData.status}
                   </div>
-                  <div className="small text-muted">Normal: 36.0 - 37.5°C</div>
+                  <div className="small text-muted">Normal: 35.0 - 37.2°C</div>
                 </div>
               </div>
             )}

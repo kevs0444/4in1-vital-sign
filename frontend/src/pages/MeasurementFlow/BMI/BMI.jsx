@@ -670,8 +670,13 @@ export default function BMI() {
               <div style={{ fontSize: '0.9rem', color: '#6c757d', marginTop: '-5px', marginBottom: '10px' }}>
                 {formattedHeight !== "--.--" ? (() => {
                   const cm = parseFloat(formattedHeight);
-                  const feet = Math.floor(cm * 0.0328084);
-                  const inches = Math.round((cm * 0.0328084 - feet) * 12);
+                  const totalInches = cm * 0.393701;
+                  const feet = Math.floor(totalInches / 12);
+                  const inches = Math.round(totalInches % 12);
+
+                  if (inches === 12) {
+                    return `${feet + 1}' 0"`;
+                  }
                   return `${feet}' ${inches}"`;
                 })() : "--' --\""}
               </div>
