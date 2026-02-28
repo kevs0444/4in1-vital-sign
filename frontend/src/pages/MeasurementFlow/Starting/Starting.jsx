@@ -284,7 +284,7 @@ export default function Starting() {
                 className="exit-modal-button primary"
                 onClick={confirmExit}
               >
-                Yes, Exit
+                Log Out
               </button>
             </div>
           </motion.div>

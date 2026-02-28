@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Logout, Menu, Close, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { isLocalDevice } from '../../utils/network';
 import NotificationBell from '../NotificationBell/NotificationBell';
+import { useNavigate } from 'react-router-dom';
 import './DashboardLayout.css';
 
 
@@ -21,6 +22,7 @@ const DashboardLayout = ({
     notificationProps = null, // { pendingCount, printerStatus, shareStats, onNavigate }
     children
 }) => {
+    const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile drawer open state
     const [isCollapsed, setIsCollapsed] = useState(false); // Desktop collapsed state
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); // Logout confirmation modal state
@@ -276,7 +278,7 @@ const DashboardLayout = ({
                             }} title={statusText} />
                         </div>
                     )}
-                    <button className="logout-btn" onClick={onLogout} title={isCollapsed ? 'Sign Out' : undefined}>
+                    <button className="logout-btn" onClick={() => setShowLogoutConfirm(true)} title={isCollapsed ? 'Sign Out' : undefined}>
                         <Logout style={{ fontSize: '1.2rem' }} />
                         {!isCollapsed && <span>Sign Out</span>}
                     </button>
@@ -344,17 +346,20 @@ const DashboardLayout = ({
                             }}
                             onClick={e => e.stopPropagation()}
                         >
-                            <h3 style={{ margin: '0 0 16px', color: '#1e293b', fontSize: '1.25rem', fontWeight: 600 }}>End Session?</h3>
-                            <p style={{ color: '#64748b', marginBottom: '24px', lineHeight: '1.5' }}>
-                                Going back will end your current session. Are you sure you want to log out?
+                            <div className="inactivity-icon-container" style={{ margin: '0 auto 16px', width: '64px', height: '64px', background: '#ffe4e6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '2rem' }}>⚠️</span>
+                            </div>
+                            <h3 style={{ margin: '0 0 16px', color: '#1e293b', fontSize: '1.5rem', fontWeight: 700 }}>End Session?</h3>
+                            <p style={{ color: '#64748b', marginBottom: '24px', lineHeight: '1.5', fontSize: '1.1rem' }}>
+                                Are you sure you want to log out?
                             </p>
-                            <div style={{ display: 'flex', gap: '12px' }}>
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
                                 <button
                                     onClick={() => setShowLogoutConfirm(false)}
                                     style={{
                                         flex: 1, padding: '12px', background: '#f1f5f9',
                                         border: 'none', borderRadius: '8px', color: '#64748b', fontWeight: 'bold',
-                                        cursor: 'pointer', transition: 'background 0.2s'
+                                        cursor: 'pointer', transition: 'background 0.2s', minWidth: '100px'
                                     }}
                                 >
                                     Cancel
@@ -368,11 +373,26 @@ const DashboardLayout = ({
                                         flex: 1, padding: '12px', background: '#ef4444',
                                         border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold',
                                         cursor: 'pointer', transition: 'background 0.2s',
-                                        boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.3)'
+                                        boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.3)', minWidth: '100px'
                                     }}
                                 >
                                     Log Out
                                 </button>
+                                {isKiosk && user && (
+                                    <button
+                                        onClick={() => {
+                                            setShowLogoutConfirm(false);
+                                            navigate('/measure/starting', { state: user });
+                                        }}
+                                        style={{
+                                            flex: '1 1 100%', padding: '12px', background: '#10b981',
+                                            border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold',
+                                            cursor: 'pointer', transition: 'background 0.2s', marginTop: '4px'
+                                        }}
+                                    >
+                                        Continue Measurement
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     </div>

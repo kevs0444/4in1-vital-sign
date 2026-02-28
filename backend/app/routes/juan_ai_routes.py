@@ -99,7 +99,7 @@ def predict_risk():
             print("✅ [Full Data Mode] All vital signs valid.")
 
         # Feature Engineering: Age Group
-        if 18 <= age <= 24: age_group = 0
+        if 16 <= age <= 24: age_group = 0
         elif 25 <= age <= 39: age_group = 1
         elif 40 <= age <= 59: age_group = 2
         else: age_group = 3 # Senior
@@ -131,15 +131,9 @@ def predict_risk():
             # Scale the data
             input_scaled = scaler.transform(input_data)
             
-            # Predict Probabilities (returns array like [[0.8, 0.15, 0.05]])
-            # Predict Probabilities (returns array like [[0.8, 0.15, ...]])
-            # Class 0=Normal, 1=Mild, 2=Moderate, 3=High, 4=Critical
-            probs = risk_model.predict_proba(input_scaled)[0]
-            
-            # Calculate a blended "Score" from 0-100 based on probabilities
-            # Weighted average centers: Normal(10), Mild(30), Mod(50), High(70), Critical(90)
-            risk_score = (probs[0] * 10) + (probs[1] * 30) + (probs[2] * 50) + (probs[3] * 70) + (probs[4] * 90)
-            risk_score = int(round(risk_score))  # Convert to whole number integer
+            # Direct Continuous Prediction (returns an array like [54.2])
+            raw_prediction = risk_model.predict(input_scaled)[0]
+            risk_score = int(round(raw_prediction))  # Convert to whole number integer
 
             # --- POST-PROCESSING: REMOVED MANUAL BOOSTERS ---
             # User requested to rely ONLY on the AI Model's prediction.

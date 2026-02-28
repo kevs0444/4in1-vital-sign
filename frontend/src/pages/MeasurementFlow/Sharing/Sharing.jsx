@@ -31,6 +31,7 @@ export default function Sharing() {
   const [emailSent, setEmailSent] = useState(false);
   const [printSent, setPrintSent] = useState(false);
   const [autoRedirectTimer, setAutoRedirectTimer] = useState(30);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Modal Configuration
   const [modalConfig, setModalConfig] = useState({
@@ -42,6 +43,42 @@ export default function Sharing() {
 
   const [showSkipModal, setShowSkipModal] = useState(false);
   const [isPaperEmpty, setIsPaperEmpty] = useState(false);
+
+  // Real internet connectivity check
+  useEffect(() => {
+    const checkInternet = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(`${API_BASE}/system-check`, {
+          method: 'GET',
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+        clearTimeout(timeoutId);
+        setIsOnline(res.ok);
+      } catch {
+        setIsOnline(false);
+      }
+    };
+
+    checkInternet();
+
+    // Listen for browser online/offline events and re-check
+    const handleOnline = () => checkInternet();
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Re-check every 10 seconds
+    const interval = setInterval(checkInternet, 10000);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     const checkPaper = async () => {
@@ -188,6 +225,17 @@ export default function Sharing() {
   };
 
   const handleSendEmail = async () => {
+    // Check internet first
+    if (!isOnline) {
+      setModalConfig({
+        show: true,
+        type: 'error',
+        title: 'No Internet Connection',
+        message: 'Cannot send email without an internet connection. Please check your network and try again.'
+      });
+      return;
+    }
+
     // Rely solely on user_id or ID if available
     const userId = userData?.user_id || userData?.userId || userData?.id;
 
@@ -512,16 +560,22 @@ export default function Sharing() {
         <div className="sharing-options-grid">
           {/* Email Option */}
           <button
-            className={`action-card ${emailSent ? 'success' : ''}`}
+            className={`action-card ${emailSent ? 'success' : !isOnline ? 'no-internet' : ''}`}
             onClick={handleSendEmail}
             disabled={emailSent || isSending}
+            title={!isOnline ? "No internet connection" : ""}
+            style={!isOnline && !emailSent ? { opacity: 0.6, cursor: 'not-allowed', borderColor: '#ef4444' } : {}}
           >
             <div className="action-icon">
-              {emailSent ? '✓' : '📧'}
+              {emailSent ? '✓' : !isOnline ? '🚫' : '📧'}
             </div>
             <div className="action-details">
-              <span className="action-title">{emailSent ? 'Email Sent' : 'Email Results'}</span>
-              <span className="action-desc">Send to registered email</span>
+              <span className="action-title" style={!isOnline && !emailSent ? { color: '#ef4444' } : {}}>
+                {emailSent ? 'Email Sent' : !isOnline ? 'No Internet' : 'Email Results'}
+              </span>
+              <span className="action-desc" style={!isOnline && !emailSent ? { color: '#ef4444' } : {}}>
+                {!isOnline && !emailSent ? "Connection required" : "Send to registered email"}
+              </span>
             </div>
             {isSending && !isPrinting && <div className="card-spinner"></div>}
           </button>

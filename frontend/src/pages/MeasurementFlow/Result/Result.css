@@ -373,14 +373,21 @@
 }
 
 .vital-signs-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  /* Allows wrapping if items exceed container width */
+  justify-content: center;
+  /* Centers the items horizontally */
   gap: 15px;
   width: 100%;
   box-sizing: border-box;
 }
 
 .vital-sign-card {
+  flex: 1 1 calc(25% - 15px);
+  /* Allows cards to share available space, taking up to 25% for 4 items */
+  min-width: 160px;
+  /* Ensures minimum width so they don't get too squeezed */
   background: white;
   padding: 20px 15px;
   border-radius: 12px;

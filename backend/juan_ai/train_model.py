@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 import xgboost as xgb
 import joblib
 import numpy as np
@@ -26,7 +26,7 @@ joblib.dump(le, 'juan_ai_gender_encoder.pkl')
 # Updated Feature List including Age Group
 feature_columns = ['age', 'age_group', 'gender', 'bmi', 'temp', 'spo2', 'hr', 'systolic', 'diastolic', 'rr']
 X = df[feature_columns]
-y = df['risk_label']
+y = df['risk_score']
 
 print(f"🔹 Features used ({len(feature_columns)}): {feature_columns}")
 
@@ -40,9 +40,8 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, 
 
 # 3. Train
 print("🧠 Training XGBoost Model...")
-model = xgb.XGBClassifier(
-    objective='multi:softprob',
-    num_class=5,
+model = xgb.XGBRegressor(
+    objective='reg:squarederror',
     n_estimators=100,
     learning_rate=0.1,
     max_depth=6, # Slightly deeper to learn age groups
@@ -54,9 +53,10 @@ model.fit(X_train, y_train)
 # 4. Evaluate
 print("🔍 Evaluating Model...")
 predictions = model.predict(X_test)
-accuracy = accuracy_score(y_test, predictions)
-print(f"🏆 Model Accuracy: {accuracy * 100:.2f}%")
-print(classification_report(y_test, predictions, target_names=['Low Risk', 'Mild Risk', 'Moderate Risk', 'High Risk', 'Critical Risk']))
+mae = mean_absolute_error(y_test, predictions)
+rmse = np.sqrt(mean_squared_error(y_test, predictions))
+print(f"📉 Model MAE: {mae:.2f} points (Average Error)")
+print(f"📉 Model RMSE: {rmse:.2f} points")
 
 # 5. Save
 print("💾 Saving all AI assets...")
