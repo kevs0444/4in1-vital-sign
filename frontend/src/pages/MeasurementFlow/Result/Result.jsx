@@ -259,7 +259,7 @@ export default function Result() {
           <div className="card border-0 text-white mb-4 risk-score-card" style={{ background: getRiskGradient(riskLevel) }}>
             <div className="card-body p-4 text-center">
 
-              <h2 className="display-1 fw-bold mb-0 risk-score-value">{riskLevel}%</h2>
+              <h2 className="display-1 fw-bold mb-0 risk-score-value">{Math.round(riskLevel)}%</h2>
               <h3 className="h2 mb-3 risk-score-label">{riskCategory}</h3>
 
               {/* Active Parameters Count */}
@@ -298,7 +298,7 @@ export default function Result() {
           {/* Risk Ranges Subtitle */}
           <div className="text-center">
             <h3 className="h5 fw-bold text-muted mb-3">Risk Level Interpretation</h3>
-            <div className="d-flex flex-wrap justify-content-center gap-2 mx-auto">
+            <div className="d-flex flex-nowrap justify-content-center gap-2 mx-auto">
               {[
                 { label: 'Low', range: '0-19%', color: '#10b981' },
                 { label: 'Mild', range: '20-39%', color: '#a3e635' },
@@ -306,11 +306,11 @@ export default function Result() {
                 { label: 'High', range: '60-79%', color: '#f97316' },
                 { label: 'Critical', range: '80-100%', color: '#dc2626' },
               ].map((tier) => (
-                <div key={tier.label} className="d-flex align-items-center px-3 py-2 rounded bg-light border gap-2">
+                <div key={tier.label} className="d-flex align-items-center justify-content-center px-3 py-2 rounded bg-light border gap-2" style={{ flex: 1, minWidth: 0 }}>
                   <span className="d-inline-block rounded-circle" style={{ width: 10, height: 10, background: tier.color }}></span>
-                  <div className="d-flex align-items-center gap-1">
+                  <div className="d-flex flex-column align-items-start">
                     <span className="fw-bold text-dark small">{tier.label}</span>
-                    <span className="text-muted small" style={{ fontSize: '0.75rem' }}>{tier.range}</span>
+                    <span className="text-muted" style={{ fontSize: '0.7rem' }}>{tier.range}</span>
                   </div>
                 </div>
               ))}
@@ -420,7 +420,10 @@ export default function Result() {
 
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <span className="fw-bold" style={{ color: respData.color }}>{respData.status}</span>
-                    <span className="badge bg-white border text-dark">SpO2: {userData.spo2 ?? '--'}%</span>
+                    <div className="d-flex flex-column align-items-end">
+                      <span className="badge bg-white border text-dark">SpO2: {userData.spo2 ?? '--'}%</span>
+                      <span className="fw-bold" style={{ fontSize: '0.7rem', color: getSPO2Status(userData.spo2).color }}>{getSPO2Status(userData.spo2).status}</span>
+                    </div>
                   </div>
                   <div className="small text-muted">Normal: 12 - 20 BPM</div>
                 </div>

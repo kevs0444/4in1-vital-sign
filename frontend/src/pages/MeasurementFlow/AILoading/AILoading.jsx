@@ -413,8 +413,8 @@ export default function AILoading() {
         <div className="ai-processing-notice-768 d-flex align-items-center justify-content-center gap-2 mt-4 opacity-75">
           <div className="ai-processing-icon-768 fs-5">🤖</div>
           <div className="ai-processing-text-768 d-flex flex-column text-start small text-secondary">
-            <strong className="text-dark">Juan AI Neural Network</strong>
-            <span>Advanced pattern recognition in progress</span>
+            <strong className="text-dark">Juan AI XGBoost Engine</strong>
+            <span>Advanced vital sign analysis in progress</span>
           </div>
         </div>
 
