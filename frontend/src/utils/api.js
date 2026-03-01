@@ -1243,3 +1243,16 @@ export const getShareStatsFiltered = async (params = {}) => {
     return { success: false, message: error.message };
   }
 };
+
+// Get activity trends (daily active users + measurements) filtered by date range
+export const getActivityTrends = async (params = {}) => {
+  try {
+    const paramsWithCache = { ...params, _t: Date.now() };
+    const query = new URLSearchParams(paramsWithCache).toString();
+    console.log(`📊 Fetching activity trends: ${query}`);
+    return await fetchWithTimeout(`${API_URL}/admin/activity-trends?${query}`, {}, TIMEOUTS.SHORT);
+  } catch (error) {
+    console.error('Error fetching activity trends:', error);
+    return { success: false, message: error.message };
+  }
+};

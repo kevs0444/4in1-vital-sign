@@ -189,7 +189,7 @@ def predict_risk():
         
         print(f"📊 Confidence Metrics: {confidence_metrics}")
 
-        # Map Score to Risk Level Class (4 Tiers)
+        # Map Score to Risk Level Class (5 Tiers)
         if risk_score < 20: risk_level = "Low Risk"
         elif risk_score < 40: risk_level = "Mild Risk"
         elif risk_score < 60: risk_level = "Moderate Risk"
@@ -310,141 +310,189 @@ def generate_dynamic_advice(age, gender, age_group, risk_level, score, vitals):
 
 def generate_offline_advice(age, gender, risk_level, score, vitals):
     """
-    ENHANCED OFFLINE BRAIN (SMART DYNAMIC ENGINE)
-    Uses complex rule-based logic to simulate an intelligent medical assistant.
-    Generates varied, context-aware advice without external AI.
+    SMART OFFLINE MEDICAL ADVICE ENGINE (v3 - Knowledge Base Powered)
+    
+    Uses a comprehensive medical knowledge base with hundreds of varied,
+    contextual templates — similar to what Gemini API would produce.
+    
+    How it works:
+    1. Analyzes each vital sign's deviation from normal
+    2. Selects the correct severity category from the knowledge base
+    3. Randomly picks from pools of varied advice (never the same twice)
+    4. Detects dangerous combinations and adds combo-specific advice
+    5. Adds age/gender-specific recommendations
+    6. Sorts everything by clinical severity (most critical first)
     """
     import random
-    
-    # --- 1. PARSE & NORMALIZE ---
+    from app.utils.medical_knowledge_base import (
+        BP_ADVICE, HR_ADVICE, SPO2_ADVICE, TEMP_ADVICE, BMI_ADVICE, RR_ADVICE,
+        COMBO_ADVICE, HEALTHY_ADVICE, AGE_GENDER_ADVICE, select_advice
+    )
+
+    # --- 1. PARSE VITALS ---
     try:
-        sys = float(vitals.get('systolic', 0)); dia = float(vitals.get('diastolic', 0))
+        sys_bp = float(vitals.get('systolic', 0)); dia_bp = float(vitals.get('diastolic', 0))
         spo2 = float(vitals.get('spo2', 0)); hr = float(vitals.get('heartRate', 0))
         temp = float(vitals.get('temperature', 0)); bmi = float(vitals.get('bmi', 0))
         rr = float(vitals.get('respiratoryRate', 0))
     except:
-        sys=0; dia=0; spo2=0; hr=0; temp=0; bmi=0; rr=0
+        sys_bp=0; dia_bp=0; spo2=0; hr=0; temp=0; bmi=0; rr=0
 
-    # Lists to populate
-    actions = []; strategies = []; tips = []; guide = []
+    # Template data for formatting
+    fmt = {'sys': int(sys_bp), 'dia': int(dia_bp), 'spo2': int(spo2), 'hr': int(hr),
+           'temp': temp, 'bmi': bmi, 'rr': int(rr), 'age': age, 'gender': gender}
 
-    # --- 2. INTELLIGENT RULE ENGINE ---
+    # Collect all findings as (severity_score, category, actions, strategies, tips, guidance)
+    findings = []
 
-    # A. Hypertension Logic
-    if sys >= 140 or dia >= 90:
-        actions.append(random.choice([
-            "Consult a doctor immediately regarding high blood pressure.",
-            "Urgent medical evaluation for hypertension is recommended.",
-            "Schedule an appointment to manage your blood pressure."
-        ]))
-        strategies.append(random.choice([
-            "Measure BP daily at the same time.",
-            "Keep a 7-day blood pressure log.",
-            "Avoid caffeine and stress before measuring."
-        ]))
-        tips.append("Reduce sodium intake to <2300mg/day.")
-        guide.append(f"Pt presents with Stage 2 HTN ({int(sys)}/{int(dia)}).")
-    
-    elif sys >= 120 or dia >= 80:
-        actions.append("Monitor blood pressure regularly.")
-        strategies.append("Check BP twice a week.")
-        tips.append("Limit alcohol and salty foods.")
-        guide.append("Pt shows elevated BP/Stage 1 signs.")
+    # --- 2. ANALYZE EACH VITAL AGAINST KNOWLEDGE BASE ---
 
-    # B. Tachycardia / Bradycardia
-    if hr > 100:
-        actions.append("Heart rate is unusually high (Tachycardia).")
-        strategies.append("Monitor pulse after resting for 15 mins.")
-        tips.append("Reduce caffeine and stay hydrated.")
-        guide.append(f"Tachycardia detected ({int(hr)} bpm).")
-    elif 0 < hr < 60:
-        if "athlete" not in str(vitals).lower(): # Simple check
-            actions.append("Heart rate is lower than normal.")
-            guide.append(f"Bradycardia detected ({int(hr)} bpm).")
+    # Blood Pressure
+    if sys_bp > 0 or dia_bp > 0:
+        bp_cat = None; sev = 0
+        if sys_bp > 180 or dia_bp > 120: bp_cat = 'crisis'; sev = 95
+        elif sys_bp >= 140 or dia_bp >= 90: bp_cat = 'stage2'; sev = 65
+        elif sys_bp >= 130 or dia_bp >= 80: bp_cat = 'stage1'; sev = 40
+        elif sys_bp >= 120: bp_cat = 'elevated'; sev = 20
+        elif sys_bp < 90 or dia_bp < 60: bp_cat = 'low'; sev = 50
+        if bp_cat:
+            kb = BP_ADVICE[bp_cat]
+            findings.append((sev, 'bp',
+                select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+                select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
 
-    # C. Hypoxia (SpO2)
-    if 0 < spo2 < 95:
-        actions.append(random.choice([
-            "Seek medical attention for low oxygen saturation.",
-            "SpO2 levels indicate potential hypoxia.",
-            "Consult a pulmonologist if shortness of breath occurs."
-        ]))
-        strategies.append("Practice deep breathing exercises.")
-        guide.append(f"Hypoxia concern (SpO2: {int(spo2)}%).")
+    # Heart Rate
+    if hr > 0:
+        hr_cat = None; sev = 0
+        if hr > 120: hr_cat = 'severe_tachy'; sev = 75
+        elif hr > 100: hr_cat = 'mild_tachy'; sev = 40
+        elif hr < 50: hr_cat = 'severe_brady'; sev = 55
+        elif hr < 60: hr_cat = 'mild_brady'; sev = 20
+        if hr_cat:
+            kb = HR_ADVICE[hr_cat]
+            findings.append((sev, 'hr',
+                select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+                select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
 
-    # D. Fever
-    if temp > 38.0:
-        actions.append("High fever detected. Seek medical care.")
-        strategies.append("Monitor temp every 4 hours.")
-        tips.append("Stay hydrated and rest.")
-        guide.append(f"Febrile ({temp}C). Rule out infection.")
-    elif temp > 37.5:
-        actions.append("Mild fever detected.")
-        strategies.append("Monitor for other symptoms.")
+    # SpO2
+    if spo2 > 0:
+        spo2_cat = None; sev = 0
+        if spo2 < 90: spo2_cat = 'severe'; sev = 90
+        elif spo2 < 95: spo2_cat = 'moderate'; sev = 55
+        if spo2_cat:
+            kb = SPO2_ADVICE[spo2_cat]
+            findings.append((sev, 'spo2',
+                select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+                select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
 
-    # E. Obesity / Weight (Asian Standard)
-    if bmi >= 25:
-        actions.append("Consult a nutritionist for weight management.")
-        strategies.append("Aim for a 5-10% weight reduction.")
-        tips.append("Prioritize whole foods over processed ones.")
-        guide.append(f"Obese Class (Asian Std, BMI {bmi}).")
-    elif 23 <= bmi < 25:
-        tips.append("Increase daily physical activity to 30 mins.")
-        guide.append(f"Overweight (Asian Std, BMI {bmi}).")
-        actions.append("Respiratory rate is critically high.")
-        guide.append(f"Tachypnea ({int(rr)}/min).")
-    elif rr < 12 and rr > 0:
-        actions.append("Respiratory rate is low.")
-        guide.append(f"Bradypnea ({int(rr)}/min).")
+    # Temperature
+    if temp > 0:
+        temp_cat = None; sev = 0
+        if temp >= 39.0: temp_cat = 'high_fever'; sev = 80
+        elif temp > 38.0: temp_cat = 'moderate_fever'; sev = 50
+        elif temp > 37.3: temp_cat = 'low_grade'; sev = 25
+        elif temp < 35.0: temp_cat = 'hypothermia'; sev = 60
+        if temp_cat:
+            kb = TEMP_ADVICE[temp_cat]
+            findings.append((sev, 'temp',
+                select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+                select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
 
-    # G. Age & Gender Context
-    if age > 60:
-        strategies.append("Ensure fall-prevention measures at home.")
-        if sys < 110: tips.append("Stand up slowly to prevent dizziness.")
-    
+    # BMI
+    if bmi > 0:
+        bmi_cat = None; sev = 0
+        if bmi >= 30: bmi_cat = 'obese_II'; sev = 60
+        elif bmi >= 25: bmi_cat = 'obese_I'; sev = 40
+        elif bmi >= 23: bmi_cat = 'overweight'; sev = 20
+        elif bmi < 18.5: bmi_cat = 'underweight'; sev = 30
+        if bmi_cat:
+            kb = BMI_ADVICE[bmi_cat]
+            findings.append((sev, 'bmi',
+                select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+                select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
+
+    # Respiratory Rate
+    if rr > 0:
+        rr_cat = None; sev = 0
+        if rr > 24: rr_cat = 'tachypnea'; sev = 60
+        elif rr > 20: rr_cat = 'elevated'; sev = 30
+        elif rr < 12: rr_cat = 'bradypnea'; sev = 30
+        if rr_cat:
+            kb = RR_ADVICE[rr_cat]
+            findings.append((sev, 'rr',
+                select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+                select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
+
+    # --- 3. DANGEROUS COMBINATIONS ---
+    active_cats = [f[1] for f in findings]
+
+    if 'temp' in active_cats and 'hr' in active_cats and temp > 37.5 and hr > 100:
+        kb = COMBO_ADVICE['sirs']
+        findings.append((85, 'combo',
+            select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+            select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
+
+    if 'spo2' in active_cats and 'rr' in active_cats and spo2 < 95 and rr > 20:
+        kb = COMBO_ADVICE['respiratory_distress']
+        findings.append((90, 'combo',
+            select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+            select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
+
+    if 'bp' in active_cats and 'bmi' in active_cats and (sys_bp >= 130 or dia_bp >= 80) and bmi >= 25:
+        kb = COMBO_ADVICE['metabolic_syndrome']
+        findings.append((70, 'combo',
+            select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+            select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
+
+    if 'bp' in active_cats and 'hr' in active_cats and sys_bp >= 140 and hr > 100:
+        kb = COMBO_ADVICE['cv_strain']
+        findings.append((88, 'combo',
+            select_advice(kb['actions'], fmt, 1), select_advice(kb['strategies'], fmt, 1),
+            select_advice(kb['tips'], fmt, 1), select_advice(kb['guidance'], fmt, 1)))
+
+    # --- 4. AGE & GENDER ---
+    if age > 60 and findings:
+        ag = AGE_GENDER_ADVICE['senior']
+        findings.append((15, 'age', [],
+            select_advice(ag['strategies'], fmt, 1), select_advice(ag['tips'], fmt, 1), []))
+
     if gender.lower() == 'female' and age > 50:
-        tips.append("Consider calcium-rich foods for bone health.")
-    
-    guide.append(f"Patient is a {age}-year-old {gender.lower()}.")
+        ag = AGE_GENDER_ADVICE['female_postmenopausal']
+        findings.append((10, 'gender', [],
+            select_advice(ag['strategies'], fmt, 1), select_advice(ag['tips'], fmt, 1), []))
 
-    # --- 3. COMBINATORIAL LOGIC (THE "SMART" PART) ---
-    
-    # High BP + Obese
-    if (sys >= 130 or dia >= 80) and bmi >= 30:
-        strategies.append("Weight loss may significantly lower your BP.")
-        tips.append("DASH diet is recommended for hypertension.")
-        guide.append("Co-morbid: HTN + Obesity.")
+    if age <= 24:
+        ag = AGE_GENDER_ADVICE['young_adult']
+        findings.append((5, 'age', [], [], select_advice(ag['tips'], fmt, 1), []))
 
-    # Fever + High HR
-    if temp > 37.5 and hr > 100:
-        actions.append("Combination of Fever and High HR requires attention.")
-        guide.append("SIRS criteria potential (Fever + Tach).")
+    # --- 5. SORT BY SEVERITY & ASSEMBLE ---
+    findings.sort(key=lambda x: x[0], reverse=True)
 
-    # --- 4. FALLBACKS & CLEANUP ---
-    
-    # If healthy (Normal Fallbacks)
-    if not actions:
-        actions.append(random.choice([
-            "Maintain current healthy lifestyle.",
-            "No immediate medical actions needed.",
-            "Vital signs are within normal limits."
-        ]))
-        guide.append("Vitals WNL. Routine screening.")
+    actions = []; strategies = []; tips = []; guide = []
+    for sev, cat, a_list, s_list, t_list, g_list in findings:
+        for a in a_list:
+            if a not in actions: actions.append(a)
+        for s in s_list:
+            if s not in strategies: strategies.append(s)
+        for t in t_list:
+            if t not in tips: tips.append(t)
+        for g in g_list:
+            if g not in guide: guide.append(g)
 
-    if not strategies:
-        strategies.append("Continue annual health check-ups.")
-    
-    if not tips:
-        tips.append("Drink 8 glasses of water daily.")
-        tips.append("Aim for 7-8 hours of sleep.")
-
-    # Shuffle and Limit (Dynamic feel)
-    random.shuffle(strategies)
-    random.shuffle(tips)
+    # --- 6. HEALTHY FALLBACK ---
+    if not findings:
+        h_cat = 'excellent' if score < 5 else 'good' if score < 15 else 'borderline'
+        kb = HEALTHY_ADVICE[h_cat]
+        actions = select_advice(kb['actions'], fmt, 1)
+        strategies = select_advice(kb['strategies'], fmt, 1)
+        tips = select_advice(kb['tips'], fmt, 2)
+        guide = select_advice(kb['guidance'], fmt, 1)
 
     return {
-        "medical_actions": actions[:3],
-        "preventive_strategies": strategies[:3],
-        "wellness_tips": tips[:3],
-        "provider_guidance": guide[:5]
+        "medical_actions": actions[:4],
+        "preventive_strategies": strategies[:4],
+        "wellness_tips": tips[:4],
+        "provider_guidance": guide[:6]
     }
+
+

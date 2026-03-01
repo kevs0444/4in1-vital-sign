@@ -5,20 +5,22 @@ def generate_health_data(num_samples=50000):
     """
     Generates synthetic health data for training Juan AI.
     
-    STRATIFIED GENERATION: Produces ~20% per risk tier (Low, Mild, Moderate, High, Critical).
+    SCORE-LEVEL BALANCED GENERATION:
+      - Targets every integer score from 0 to 100 (~495 samples each).
+      - Ensures the model can predict ANY score, not just tier averages.
     DOCTOR-LEVEL SCORING: Proportional penalties, combinatorial risk, age-adjusted.
     RRL-ALIGNED: All thresholds match healthStatus.js (Asian BMI, AHA/PHA BP).
     """
     
-    print(f"Generating {num_samples} patient records (Balanced 5-Tier + Doctor-Level Scoring)...")
+    print(f"Generating {num_samples} patient records (Score-Level Balanced 0-100)...")
 
     headers = ['age', 'age_group', 'gender', 'bmi', 'temp', 'spo2', 'hr', 'systolic', 'diastolic', 'rr', 'risk_score', 'risk_label']
     
     data = []
-    per_tier = num_samples // 5  # 10,000 per tier
+    per_score = num_samples // 101  # ~495 per score value
 
     # ===================================================================
-    # HELPER: Generate a vital sign value that is either normal or abnormal
+    # HELPER: Generate vital sign values at different severity levels
     # ===================================================================
     def normal_bmi(): return round(random.uniform(18.5, 22.9), 1)
     def abnormal_bmi(): return round(random.choice([random.uniform(14.0, 18.4), random.uniform(23.0, 24.9), random.uniform(25.0, 40.0)]), 1)
@@ -120,25 +122,88 @@ def generate_health_data(num_samples=50000):
         elif age_group == 2:
             if abnormal_count >= 2: age_mod = 3
 
-        raw = base_score + combo + age_mod + random.uniform(-2.0, 2.0)
-        return int(round(min(100, max(0, raw))))
+        raw = base_score + combo + age_mod
+        return raw
 
     # ===================================================================
-    # STRATIFIED GENERATION: Generate patients targeting each risk tier
-    # ===================================================================
-    # Tier 0 (Low 0-19): ALL vitals normal
-    # Tier 1 (Mild 20-39): 1 vital mildly abnormal
-    # Tier 2 (Moderate 40-59): 2 vitals abnormal OR 1 critical
-    # Tier 3 (High 60-79): 3 vitals abnormal, mix mild+critical
-    # Tier 4 (Critical 80-100): 4+ vitals critical
+    # GENERATION STRATEGY:
+    # For each target score 0-100, generate vitals, compute the raw
+    # medical score, then adjust with noise to hit the target exactly.
+    # This ensures every score from 0 to 100 is balanced in the dataset.
     # ===================================================================
 
-    for target_tier in range(5):
+    vitals_options = ['bmi', 'temp', 'hr', 'spo2', 'rr', 'bp']
+
+    def generate_vitals_for_tier(target_score):
+        """Generate vitals appropriate for a target score range."""
+        if target_score < 20:
+            # Mostly normal, maybe tiny deviations
+            bmi = normal_bmi()
+            temp = normal_temp()
+            hr = normal_hr()
+            spo2 = normal_spo2()
+            rr = normal_rr()
+            systolic, diastolic = normal_bp()
+        elif target_score < 40:
+            # 1 vital mildly off
+            bmi = normal_bmi(); temp = normal_temp(); hr = normal_hr()
+            spo2 = normal_spo2(); rr = normal_rr(); systolic, diastolic = normal_bp()
+            pick = random.choice(vitals_options)
+            if pick == 'bmi': bmi = abnormal_bmi()
+            elif pick == 'temp': temp = mild_temp()
+            elif pick == 'hr': hr = mild_hr()
+            elif pick == 'spo2': spo2 = mild_spo2()
+            elif pick == 'rr': rr = mild_rr()
+            elif pick == 'bp': systolic, diastolic = mild_bp()
+        elif target_score < 60:
+            # 2 vitals off
+            bmi = normal_bmi(); temp = normal_temp(); hr = normal_hr()
+            spo2 = normal_spo2(); rr = normal_rr(); systolic, diastolic = normal_bp()
+            picks = random.sample(vitals_options, 2)
+            for pick in picks:
+                severity = random.choice(['mild', 'critical'])
+                if pick == 'bmi': bmi = abnormal_bmi()
+                elif pick == 'temp': temp = mild_temp() if severity == 'mild' else critical_temp()
+                elif pick == 'hr': hr = mild_hr() if severity == 'mild' else critical_hr()
+                elif pick == 'spo2': spo2 = mild_spo2() if severity == 'mild' else critical_spo2()
+                elif pick == 'rr': rr = mild_rr() if severity == 'mild' else critical_rr()
+                elif pick == 'bp': systolic, diastolic = mild_bp() if severity == 'mild' else critical_bp()
+        elif target_score < 80:
+            # 3 vitals off, bias critical
+            bmi = normal_bmi(); temp = normal_temp(); hr = normal_hr()
+            spo2 = normal_spo2(); rr = normal_rr(); systolic, diastolic = normal_bp()
+            picks = random.sample(vitals_options, 3)
+            for pick in picks:
+                severity = random.choice(['mild', 'critical', 'critical'])
+                if pick == 'bmi': bmi = abnormal_bmi()
+                elif pick == 'temp': temp = mild_temp() if severity == 'mild' else critical_temp()
+                elif pick == 'hr': hr = mild_hr() if severity == 'mild' else critical_hr()
+                elif pick == 'spo2': spo2 = mild_spo2() if severity == 'mild' else critical_spo2()
+                elif pick == 'rr': rr = mild_rr() if severity == 'mild' else critical_rr()
+                elif pick == 'bp': systolic, diastolic = mild_bp() if severity == 'mild' else critical_bp()
+        else:
+            # 4+ vitals critical
+            bmi = normal_bmi(); temp = normal_temp(); hr = normal_hr()
+            spo2 = normal_spo2(); rr = normal_rr(); systolic, diastolic = normal_bp()
+            num_bad = random.choice([4, 5, 6])
+            picks = random.sample(vitals_options, min(num_bad, 6))
+            for pick in picks:
+                if pick == 'bmi': bmi = abnormal_bmi()
+                elif pick == 'temp': temp = critical_temp()
+                elif pick == 'hr': hr = critical_hr()
+                elif pick == 'spo2': spo2 = critical_spo2()
+                elif pick == 'rr': rr = critical_rr()
+                elif pick == 'bp': systolic, diastolic = critical_bp()
+
+        return bmi, temp, spo2, hr, rr, systolic, diastolic
+
+    # Generate data targeting each score 0..100
+    for target_score in range(101):
         generated = 0
         attempts = 0
-        max_attempts = per_tier * 20  # Safety valve
+        max_attempts = per_score * 200  # Safety valve (generous for hard scores)
 
-        while generated < per_tier and attempts < max_attempts:
+        while generated < per_score and attempts < max_attempts:
             attempts += 1
 
             age = random.randint(16, 90)
@@ -148,107 +213,30 @@ def generate_health_data(num_samples=50000):
             elif 40 <= age <= 59: age_group = 2
             else: age_group = 3
 
-            # Generate vitals based on target tier
-            if target_tier == 0:  # LOW RISK: All normal
-                bmi = normal_bmi()
-                temp = normal_temp()
-                hr = normal_hr()
-                spo2 = normal_spo2()
-                rr = normal_rr()
-                systolic, diastolic = normal_bp()
+            bmi, temp, spo2, hr, rr, systolic, diastolic = generate_vitals_for_tier(target_score)
 
-            elif target_tier == 1:  # MILD RISK: 1 vital mildly off
-                bmi = normal_bmi()
-                temp = normal_temp()
-                hr = normal_hr()
-                spo2 = normal_spo2()
-                rr = normal_rr()
-                systolic, diastolic = normal_bp()
+            # Get the raw medical score
+            raw_score = score_patient(age, age_group, bmi, temp, spo2, hr, rr, systolic, diastolic)
+            
+            # Add small noise (wider window to hit more targets)
+            noisy_score = raw_score + random.uniform(-5.0, 5.0)
+            final_score = int(round(min(100, max(0, noisy_score))))
 
-                # Pick 1 random vital to make abnormal
-                pick = random.choice(['bmi', 'temp', 'hr', 'spo2', 'rr', 'bp'])
-                if pick == 'bmi': bmi = abnormal_bmi()
-                elif pick == 'temp': temp = mild_temp()
-                elif pick == 'hr': hr = mild_hr()
-                elif pick == 'spo2': spo2 = mild_spo2()
-                elif pick == 'rr': rr = mild_rr()
-                elif pick == 'bp': systolic, diastolic = mild_bp()
-
-            elif target_tier == 2:  # MODERATE RISK: 2 vitals off or 1 critical
-                bmi = normal_bmi()
-                temp = normal_temp()
-                hr = normal_hr()
-                spo2 = normal_spo2()
-                rr = normal_rr()
-                systolic, diastolic = normal_bp()
-
-                picks = random.sample(['bmi', 'temp', 'hr', 'spo2', 'rr', 'bp'], 2)
-                for pick in picks:
-                    severity = random.choice(['mild', 'critical'])
-                    if pick == 'bmi': bmi = abnormal_bmi()
-                    elif pick == 'temp': temp = mild_temp() if severity == 'mild' else critical_temp()
-                    elif pick == 'hr': hr = mild_hr() if severity == 'mild' else critical_hr()
-                    elif pick == 'spo2': spo2 = mild_spo2() if severity == 'mild' else critical_spo2()
-                    elif pick == 'rr': rr = mild_rr() if severity == 'mild' else critical_rr()
-                    elif pick == 'bp': systolic, diastolic = mild_bp() if severity == 'mild' else critical_bp()
-
-            elif target_tier == 3:  # HIGH RISK: 3 vitals off
-                bmi = normal_bmi()
-                temp = normal_temp()
-                hr = normal_hr()
-                spo2 = normal_spo2()
-                rr = normal_rr()
-                systolic, diastolic = normal_bp()
-
-                picks = random.sample(['bmi', 'temp', 'hr', 'spo2', 'rr', 'bp'], 3)
-                for pick in picks:
-                    severity = random.choice(['mild', 'critical', 'critical'])  # bias critical
-                    if pick == 'bmi': bmi = abnormal_bmi()
-                    elif pick == 'temp': temp = mild_temp() if severity == 'mild' else critical_temp()
-                    elif pick == 'hr': hr = mild_hr() if severity == 'mild' else critical_hr()
-                    elif pick == 'spo2': spo2 = mild_spo2() if severity == 'mild' else critical_spo2()
-                    elif pick == 'rr': rr = mild_rr() if severity == 'mild' else critical_rr()
-                    elif pick == 'bp': systolic, diastolic = mild_bp() if severity == 'mild' else critical_bp()
-
-            else:  # CRITICAL RISK: 4+ vitals critical
-                bmi = normal_bmi()
-                temp = normal_temp()
-                hr = normal_hr()
-                spo2 = normal_spo2()
-                rr = normal_rr()
-                systolic, diastolic = normal_bp()
-
-                num_bad = random.choice([4, 5, 6])
-                picks = random.sample(['bmi', 'temp', 'hr', 'spo2', 'rr', 'bp'], min(num_bad, 6))
-                for pick in picks:
-                    if pick == 'bmi': bmi = abnormal_bmi()
-                    elif pick == 'temp': temp = critical_temp()
-                    elif pick == 'hr': hr = critical_hr()
-                    elif pick == 'spo2': spo2 = critical_spo2()
-                    elif pick == 'rr': rr = critical_rr()
-                    elif pick == 'bp': systolic, diastolic = critical_bp()
-
-            # Score the patient
-            risk_score = score_patient(age, age_group, bmi, temp, spo2, hr, rr, systolic, diastolic)
-
-            # Check if score falls in target tier range
-            tier_ranges = [(0, 19), (20, 39), (40, 59), (60, 79), (80, 100)]
-            low, high = tier_ranges[target_tier]
-
-            if low <= risk_score <= high:
-                # Assign label
-                if risk_score < 20: risk_label = 0
-                elif risk_score < 40: risk_label = 1
-                elif risk_score < 60: risk_label = 2
-                elif risk_score < 80: risk_label = 3
+            # Accept if it matches target score exactly
+            if final_score == target_score:
+                # Assign risk label
+                if final_score < 20: risk_label = 0
+                elif final_score < 40: risk_label = 1
+                elif final_score < 60: risk_label = 2
+                elif final_score < 80: risk_label = 3
                 else: risk_label = 4
 
-                data.append([age, age_group, gender, bmi, temp, spo2, hr, systolic, diastolic, rr, risk_score, risk_label])
+                data.append([age, age_group, gender, bmi, temp, spo2, hr, systolic, diastolic, rr, final_score, risk_label])
                 generated += 1
 
-        print(f"  Tier {target_tier} ({['Low','Mild','Moderate','High','Critical'][target_tier]}): {generated} records")
+        print(f"  Score {target_score:3d}%: {generated} records (took {attempts} attempts)")
 
-    # Shuffle so tiers aren't in order
+    # Shuffle so scores aren't in order
     random.shuffle(data)
 
     # Save to CSV
@@ -259,9 +247,12 @@ def generate_health_data(num_samples=50000):
             writer.writerow(headers)
             writer.writerows(data)
         
-        print(f"✅ Successfully generated {output_file} with BALANCED 5-Tier distribution.")
+        total = len(data)
+        print(f"\nGenerated {total} total records.")
+        print(f"Score coverage: {len(set(row[10] for row in data))} unique scores out of 101 possible.")
+        print(f"Successfully saved to {output_file}!")
     except Exception as e:
-        print(f"❌ Error writing file: {e}")
+        print(f"Error writing file: {e}")
 
 if __name__ == "__main__":
     generate_health_data(50000)

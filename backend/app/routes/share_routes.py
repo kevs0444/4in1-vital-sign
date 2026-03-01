@@ -28,7 +28,7 @@ def send_email_func(to_email, subject, body):
 
         msg.attach(MIMEText(body, 'html'))
 
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=30)
         server.ehlo()
         server.starttls()
         server.ehlo()

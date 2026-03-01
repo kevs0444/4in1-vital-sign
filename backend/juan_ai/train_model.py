@@ -42,9 +42,12 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, 
 print("🧠 Training XGBoost Model...")
 model = xgb.XGBRegressor(
     objective='reg:squarederror',
-    n_estimators=100,
-    learning_rate=0.1,
-    max_depth=6, # Slightly deeper to learn age groups
+    n_estimators=500,          # More trees = finer predictions
+    learning_rate=0.05,        # Lower LR = more precise learning
+    max_depth=8,               # Deeper = distinguishes subtle differences (e.g. 6% vs 15%) 
+    subsample=0.8,             # Prevents overfitting
+    colsample_bytree=0.8,     # Prevents overfitting
+    min_child_weight=3,        # Smooths out noisy predictions
     random_state=42
 )
 

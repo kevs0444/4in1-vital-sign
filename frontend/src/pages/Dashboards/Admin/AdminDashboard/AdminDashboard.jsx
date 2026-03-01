@@ -36,7 +36,7 @@ import {
 import { Line, Pie } from 'react-chartjs-2';
 import './AdminDashboard.css';
 import '../../../../components/PatientList/PatientList.css'; // Shared styles for User Cards
-import { getAdminStats, getAdminUsers, updateUserStatus, updateUserProfile, getMeasurementHistory, printerAPI, getShareStatsFiltered, resetPaperRoll } from '../../../../utils/api';
+import { getAdminStats, getAdminUsers, updateUserStatus, updateUserProfile, getMeasurementHistory, printerAPI, getShareStatsFiltered, resetPaperRoll, getActivityTrends } from '../../../../utils/api';
 import Maintenance from '../Maintenance/Maintenance'; // Import Maintenance component
 import PersonalInfo from '../../../../components/PersonalInfo/PersonalInfo';
 import DashboardAnalytics, { TimePeriodFilter, filterHistoryByTimePeriod, MultiSelectDropdown } from '../../../../components/DashboardAnalytics/DashboardAnalytics';
@@ -201,9 +201,16 @@ const AdminDashboard = () => {
         printCount: 0,
         paperRemaining: 100
     });
+    // Printer paper stats - always ALL TIME (not affected by time filter)
+    const [printerPaperStats, setPrinterPaperStats] = useState({
+        printCount: 0,
+        paperRemaining: 100
+    });
     const [showResetModal, setShowResetModal] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
     const [emailTimePeriod, setEmailTimePeriod] = useState('weekly');
+    // Activity Trends data (filtered by time period)
+    const [activityTrends, setActivityTrends] = useState([]);
     const [emailCustomDateRange, setEmailCustomDateRange] = useState(null);
     const [emailStatus, setEmailStatus] = useState('idle'); // 'idle' or 'sending'
 
@@ -288,74 +295,105 @@ const AdminDashboard = () => {
         }
     };
 
+    // Helper for local time ISO string (matches DB naive datetime)
+    const toLocalISOString = React.useCallback((date) => {
+        const tzOffset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - tzOffset).toISOString().slice(0, -1);
+    }, []);
+
+    // Calculate date params based on time period
+    const getDateParams = React.useCallback((period, customRange) => {
+        let dateParams = {};
+        const end = new Date();
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+
+        if (period === 'custom' && customRange?.start && customRange?.end) {
+            dateParams = { start_date: customRange.start, end_date: customRange.end };
+        } else {
+            switch (period) {
+                case 'daily':
+                    dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
+                    break;
+                case 'weekly':
+                    start.setDate(start.getDate() - 7);
+                    dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
+                    break;
+                case 'monthly':
+                    start.setMonth(start.getMonth() - 1);
+                    dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
+                    break;
+                case 'annually':
+                    start.setFullYear(start.getFullYear() - 1);
+                    dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
+                    break;
+                default:
+                    dateParams = {}; // All time
+            }
+        }
+        return dateParams;
+    }, [toLocalISOString]);
+
     const fetchShareStats = React.useCallback(async () => {
         try {
-            // Calculate Date Range
-            let dateParams = {};
-            const end = new Date();
-            const start = new Date();
-            start.setHours(0, 0, 0, 0);
-
-            // Helper for local time ISO string (matches DB naive datetime)
-            const toLocalISOString = (date) => {
-                const tzOffset = date.getTimezoneOffset() * 60000;
-                return new Date(date.getTime() - tzOffset).toISOString().slice(0, -1);
-            };
-
-            if (emailTimePeriod === 'custom' && emailCustomDateRange?.start && emailCustomDateRange?.end) {
-                dateParams = { start_date: emailCustomDateRange.start, end_date: emailCustomDateRange.end };
-            } else {
-                switch (emailTimePeriod) {
-                    case 'daily':
-                        dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
-                        break;
-                    case 'weekly':
-                        start.setDate(start.getDate() - 7);
-                        dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
-                        break;
-                    case 'monthly':
-                        start.setMonth(start.getMonth() - 1);
-                        dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
-                        break;
-                    case 'annually':
-                        start.setFullYear(start.getFullYear() - 1);
-                        dateParams = { start_date: toLocalISOString(start), end_date: toLocalISOString(end) };
-                        break;
-                    default:
-                        dateParams = {}; // All time
-                }
-            }
+            const dateParams = getDateParams(emailTimePeriod, emailCustomDateRange);
 
             console.log('📧 Fetching share stats with params:', dateParams);
             const response = await getShareStatsFiltered(dateParams);
             console.log('📧 Share stats response:', response);
             if (response && response.success && response.stats) {
                 console.log('📧 Setting shareStats:', response.stats);
-                const printed = response.stats.receipt_printed_count || 0;
-                const MAX_PAPER = 35; // Total papers per user request
-                // Calculate percentage based on 35 papers
-                // 0 printed = 100%
-                // 35 printed = 0%
-                const remainingCount = Math.max(0, MAX_PAPER - printed);
-                const paperPercentage = Math.round((remainingCount / MAX_PAPER) * 100);
-
                 setShareStats({
                     emailCount: response.stats.email_sent_count || 0,
-                    printCount: printed,
-                    paperRemaining: paperPercentage
+                    printCount: response.stats.receipt_printed_count || 0,
+                    paperRemaining: response.stats.paper_remaining || 0
                 });
             }
         } catch (error) {
             console.error("Error fetching share stats:", error);
         }
-    }, [emailTimePeriod, emailCustomDateRange]);
+    }, [emailTimePeriod, emailCustomDateRange, getDateParams]);
+
+    // Fetch printer paper stats - ALWAYS all-time (not affected by time filter)
+    const fetchPrinterPaperStats = React.useCallback(async () => {
+        try {
+            // No date params = all-time
+            const response = await getShareStatsFiltered({});
+            if (response && response.success && response.stats) {
+                const printed = response.stats.receipt_printed_count || 0;
+                const MAX_PAPER = 35;
+                const remainingCount = Math.max(0, MAX_PAPER - printed);
+                const paperPercentage = Math.round((remainingCount / MAX_PAPER) * 100);
+                setPrinterPaperStats({
+                    printCount: printed,
+                    paperRemaining: paperPercentage
+                });
+            }
+        } catch (error) {
+            console.error("Error fetching printer paper stats:", error);
+        }
+    }, []);
+
+    // Fetch activity trends - filtered by emailTimePeriod
+    const fetchActivityTrends = React.useCallback(async () => {
+        try {
+            const dateParams = getDateParams(emailTimePeriod, emailCustomDateRange);
+            console.log('📊 Fetching activity trends with params:', dateParams);
+            const response = await getActivityTrends(dateParams);
+            if (response && response.success && response.trends) {
+                setActivityTrends(response.trends);
+            }
+        } catch (error) {
+            console.error("Error fetching activity trends:", error);
+        }
+    }, [emailTimePeriod, emailCustomDateRange, getDateParams]);
 
     const handleResetPaperRoll = async () => {
         setIsResetting(true);
         try {
             const response = await resetPaperRoll();
             if (response && response.success) {
-                setShareStats(prev => ({ ...prev, printCount: 0, paperRemaining: 100 }));
+                setPrinterPaperStats({ printCount: 0, paperRemaining: 100 });
                 setToast({ type: 'success', title: 'Paper Roll Reset', message: 'Receipt counter has been reset for the new roll.', id: Date.now() });
             } else {
                 throw new Error(response?.message || 'Reset failed');
@@ -456,11 +494,19 @@ const AdminDashboard = () => {
         fetchShareStats();
         const shareStatsInterval = setInterval(fetchShareStats, 2000);
 
+        // Fetch printer paper stats (all-time, independent of time filter)
+        fetchPrinterPaperStats();
+        const printerPaperInterval = setInterval(fetchPrinterPaperStats, 5000);
+
+        // Fetch activity trends
+        fetchActivityTrends();
+
         return () => {
             clearInterval(printerInterval);
             clearInterval(shareStatsInterval);
+            clearInterval(printerPaperInterval);
         };
-    }, [navigate, location, fetchShareStats]);
+    }, [navigate, location, fetchShareStats, fetchPrinterPaperStats, fetchActivityTrends]);
 
     // Real-time WebSocket updates - instant push notifications
     const refetchAllData = React.useCallback(async () => {
@@ -470,9 +516,11 @@ const AdminDashboard = () => {
             fetchDashboardData(true), // Background update (silent)
             checkPrinterStatus(),
             fetchShareStats(),
+            fetchPrinterPaperStats(),
+            fetchActivityTrends(),
             user ? fetchMyHistory(user.userId || user.user_id || user.id) : Promise.resolve()
         ]);
-    }, [user, fetchShareStats]); // Added dependencies for share stats
+    }, [user, fetchShareStats, fetchPrinterPaperStats, fetchActivityTrends]); // Added dependencies
 
     const { isConnected, lastUpdated } = useRealtimeUpdates({
         role: 'Admin',
@@ -580,7 +628,7 @@ const AdminDashboard = () => {
         // 1 - 20 print Good
         // 21 - 30 print Moderate
         // 30 - 35 Critical
-        const printed = shareStats.printCount;
+        const printed = printerPaperStats.printCount;
         let currentStatus = 'ok';
 
         if (printed >= 35) currentStatus = 'empty'; // Reached limit
@@ -621,7 +669,7 @@ const AdminDashboard = () => {
             });
         }
         prevPaperStatus.current = currentStatus;
-    }, [shareStats.printCount]);
+    }, [printerPaperStats.printCount]);
 
 
 
@@ -655,12 +703,43 @@ const AdminDashboard = () => {
         }]
     };
 
+    // Format date label for the chart
+    // Handles both hourly labels ("6 AM") and date labels ("2026-03-01")
+    const formatTrendLabel = (dateStr) => {
+        // If it already has AM/PM, it's an hourly label from the backend - use as-is
+        if (dateStr && (dateStr.includes('AM') || dateStr.includes('PM'))) {
+            return dateStr;
+        }
+        try {
+            const d = new Date(dateStr + 'T00:00:00');
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } catch {
+            return dateStr;
+        }
+    };
+
+    // Get human-readable period label for the badge
+    const getPeriodLabel = () => {
+        switch (emailTimePeriod) {
+            case 'daily': return 'Today';
+            case 'weekly': return 'Last 7 Days';
+            case 'monthly': return 'Last 30 Days';
+            case 'annually': return 'Last Year';
+            case 'custom': return 'Custom Range';
+            default: return 'All Time';
+        }
+    };
+
     const trafficData = {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: activityTrends.length > 0
+            ? activityTrends.map(t => formatTrendLabel(t.date))
+            : ['No Data'],
         datasets: [
             {
                 label: 'Active Users',
-                data: stats.users_trend?.length ? stats.users_trend : [12, 19, 3, 5, 2, 3, 15],
+                data: activityTrends.length > 0
+                    ? activityTrends.map(t => t.active_users)
+                    : [0],
                 borderColor: '#dc2626',
                 tension: 0.4,
                 fill: true,
@@ -668,7 +747,9 @@ const AdminDashboard = () => {
             },
             {
                 label: 'Measurements',
-                data: stats.measurements_trend?.length ? stats.measurements_trend : [5, 12, 15, 8, 10, 14, 9],
+                data: activityTrends.length > 0
+                    ? activityTrends.map(t => t.measurements)
+                    : [0],
                 borderColor: '#64748b',
                 tension: 0.4,
                 fill: true,
@@ -1019,12 +1100,12 @@ const AdminDashboard = () => {
                                                 🧻 Paper
                                             </span>
                                             <span style={{
-                                                color: shareStats.printCount >= 30 ? '#ef4444' :
-                                                    shareStats.printCount > 20 ? '#f59e0b' : '#10b981',
+                                                color: printerPaperStats.printCount >= 30 ? '#ef4444' :
+                                                    printerPaperStats.printCount > 20 ? '#f59e0b' : '#10b981',
                                                 fontWeight: '800',
                                                 fontSize: '0.85rem'
                                             }}>
-                                                {shareStats.printCount}/35
+                                                {printerPaperStats.printCount}/35
                                             </span>
                                         </div>
 
@@ -1042,9 +1123,9 @@ const AdminDashboard = () => {
                                             {/* Fill */}
                                             <div style={{
                                                 height: '100%',
-                                                width: `${Math.max(0, Math.min(100, shareStats.paperRemaining))}%`,
-                                                background: shareStats.printCount >= 30 ? 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)' :
-                                                    shareStats.printCount > 20 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)' :
+                                                width: `${Math.max(0, Math.min(100, printerPaperStats.paperRemaining))}%`,
+                                                background: printerPaperStats.printCount >= 30 ? 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)' :
+                                                    printerPaperStats.printCount > 20 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)' :
                                                         'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
                                                 borderRadius: '3px',
                                                 transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -1055,13 +1136,13 @@ const AdminDashboard = () => {
                                                 position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 fontSize: '0.7rem', fontWeight: '700',
-                                                color: shareStats.paperRemaining <= 40 ? '#fff' : '#1e293b',
-                                                textShadow: shareStats.paperRemaining <= 40 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
+                                                color: printerPaperStats.paperRemaining <= 40 ? '#fff' : '#1e293b',
+                                                textShadow: printerPaperStats.paperRemaining <= 40 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
                                                 pointerEvents: 'none'
                                             }}>
-                                                {shareStats.printCount >= 35 ? 'EMPTY' :
-                                                    shareStats.printCount >= 30 ? 'CRITICAL' :
-                                                        shareStats.printCount > 20 ? 'MODERATE' : 'GOOD'}
+                                                {printerPaperStats.printCount >= 35 ? 'EMPTY' :
+                                                    printerPaperStats.printCount >= 30 ? 'CRITICAL' :
+                                                        printerPaperStats.printCount > 20 ? 'MODERATE' : 'GOOD'}
                                             </div>
 
                                             {/* Segments Overlay */}
@@ -1081,7 +1162,7 @@ const AdminDashboard = () => {
 
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', gap: '12px' }}>
                                             <span style={{ fontSize: '0.7rem', color: '#64748b', whiteSpace: 'nowrap' }}>
-                                                {shareStats.printCount} printed
+                                                {printerPaperStats.printCount} printed
                                             </span>
                                             <button
                                                 onClick={() => setShowResetModal(true)}
@@ -1156,7 +1237,7 @@ const AdminDashboard = () => {
                         >
                             <div className="card-header">
                                 <h3>Activity Trends</h3>
-                                <span className="period-badge">Last 7 Days</span>
+                                <span className="period-badge">{getPeriodLabel()}</span>
                             </div>
                             <div className="chart-wrapper line-wrapper">
                                 <Line data={trafficData} options={{
