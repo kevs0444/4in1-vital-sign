@@ -291,7 +291,7 @@ export default function Result() {
                   style={{
                     width: `${riskLevel}%`,
                     borderRadius: '15px',
-                    transition: 'width 1s ease-out'
+                    transition: 'width 3s cubic-bezier(0.25, 1, 0.5, 1)'
                   }}
                 ></div>
               </div>
