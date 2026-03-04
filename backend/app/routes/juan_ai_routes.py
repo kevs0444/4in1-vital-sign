@@ -86,13 +86,15 @@ def predict_risk():
         diastolic = get_val('diastolic', np.nan)
         rr = get_val('respiratoryRate', np.nan)
 
-        # Identify imputed fields for logging
+        # Identify imputed fields for logging and metrics
         imputed_fields = []
         if data.get('bmi') in [0, None, "", "N/A"]: imputed_fields.append("BMI")
         if data.get('temperature') in [0, None, "", "N/A"]: imputed_fields.append("Temp")
         if data.get('spo2') in [0, None, "", "N/A"]: imputed_fields.append("SpO2")
         if data.get('heartRate') in [0, None, "", "N/A"]: imputed_fields.append("HR")
-        if data.get('systolic') in [0, None, "", "N/A"]: imputed_fields.append("BP")
+        if data.get('systolic') in [0, None, "", "N/A"]: imputed_fields.append("Systolic BP")
+        if data.get('diastolic') in [0, None, "", "N/A"]: imputed_fields.append("Diastolic BP")
+        if data.get('respiratoryRate') in [0, None, "", "N/A"]: imputed_fields.append("RR")
 
         if imputed_fields:
             print(f"ℹ️  [Partial Data Mode] Using Healthy Defaults for: {', '.join(imputed_fields)}")
@@ -169,16 +171,15 @@ def predict_risk():
         # 5. Temp (Sensor)
         # 6. SpO2 (Sensor)
         # 7. HR (Sensor)
-        # 8. Systolic BP (Sensor - counts as "BP")
-        # 9. Diastolic BP (Sensor - counts as "BP")
+        # 8. Systolic BP (Sensor)
+        # 9. Diastolic BP (Sensor)
         # 10. RR (Sensor)
         
         # Profile parameters are ALWAYS included (3)
         profile_params_count = 3  # Age, Age Group, Gender
         
-        # Sensor categories: BMI, Temp, SpO2, HR, BP (sys+dia=1), RR
-        # Note: RR is derived from MAX30102, same as SpO2/HR
-        total_sensor_categories = 5  # BMI, Temp, SpO2/HR/RR (MAX30102), BP
+        # Sensor categories: BMI, Temp, SpO2, HR, Systolic, Diastolic, RR
+        total_sensor_categories = 7
         
         # Count how many sensor categories were measured (not imputed)
         measured_sensors = total_sensor_categories - len(imputed_fields)
@@ -186,8 +187,8 @@ def predict_risk():
         # Total parameters used = Profile (3) + Measured Sensors
         total_parameters_used = profile_params_count + measured_sensors
         
-        # Max possible parameters = Profile (3) + All Sensors (5)
-        max_parameters = profile_params_count + total_sensor_categories
+        # Max possible parameters is always exactly 10
+        max_parameters = 10
         
         data_quality_score = round((total_parameters_used / max_parameters) * 100, 1)
         
@@ -195,11 +196,11 @@ def predict_risk():
             'is_partial_data': len(imputed_fields) > 0,
             'data_quality_score': data_quality_score,
             'imputed_fields': imputed_fields,
-            'active_sensors_count': measured_sensors,  # Legacy: Just the sensor count
-            'total_parameters_used': total_parameters_used,  # New: Profile + Sensors
-            'max_parameters': max_parameters,  # New: Maximum possible
-            'profile_params': ['Age', 'Age Group', 'Gender'],  # Always included
-            'measured_sensors': [s for s in ['BMI', 'Temp', 'SpO2', 'HR', 'BP'] if s not in imputed_fields]
+            'active_sensors_count': measured_sensors,  # Legacy
+            'total_parameters_used': total_parameters_used,  # New thesis count
+            'max_parameters': max_parameters,
+            'profile_params': ['Age', 'Age Group', 'Gender'],
+            'measured_sensors': [s for s in ['BMI', 'Temp', 'SpO2', 'HR', 'Systolic BP', 'Diastolic BP', 'RR'] if s not in imputed_fields]
         }
         
         print(f"📊 Confidence Metrics: {confidence_metrics}")
@@ -478,13 +479,17 @@ def generate_offline_advice(age, gender, score, vitals):
         for g in g_list:
             if g not in guide: guide.append(g)
 
-    # --- 6. HEALTHY FALLBACK ---
-    if not findings:
-        h_cat = 'excellent' if score < 5 else 'good' if score < 15 else 'borderline'
-        kb = HEALTHY_ADVICE[h_cat]
+    # --- 6. HEALTHY FALLBACK (Fill missing sections) ---
+    h_cat = 'excellent' if score < 5 else 'good' if score < 15 else 'borderline'
+    kb = HEALTHY_ADVICE[h_cat]
+    
+    if len(actions) == 0:
         actions = select_advice(kb['actions'], fmt, 1)
+    if len(strategies) == 0:
         strategies = select_advice(kb['strategies'], fmt, 1)
+    if len(tips) == 0:
         tips = select_advice(kb['tips'], fmt, 2)
+    if len(guide) == 0:
         guide = select_advice(kb['guidance'], fmt, 1)
 
     return {
