@@ -3,7 +3,12 @@ import joblib
 import pandas as pd
 import numpy as np
 import os
-import google.generativeai as genai 
+import google.generativeai as genai
+
+# Import the new modular guardrails
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+from juan_ai.guardrails import apply_clinical_guardrails 
 # from app.utils.helpers import format_response
 
 # Create the Blueprint
@@ -17,11 +22,9 @@ if GEMINI_API_KEY:
 
 # --- LAZY LOAD THE "MATH BRAIN" (XGBoost) ---
 MODEL_PATH = os.path.join(os.path.dirname(__file__), '../../juan_ai/juan_ai_model.pkl')
-SCALER_PATH = os.path.join(os.path.dirname(__file__), '../../juan_ai/juan_ai_scaler.pkl')
 ENCODER_PATH = os.path.join(os.path.dirname(__file__), '../../juan_ai/juan_ai_gender_encoder.pkl')
 
 risk_model = None
-scaler = None
 gender_encoder = None
 MODEL_LOADED = False
 
@@ -33,7 +36,6 @@ def load_models_if_needed():
     print("🧠 Loading Juan AI Models (Lazy Load)...")
     try:
         risk_model = joblib.load(MODEL_PATH)
-        scaler = joblib.load(SCALER_PATH)
         gender_encoder = joblib.load(ENCODER_PATH)
         print("✅ Juan AI 'Math Brain' Loaded Successfully!")
         MODEL_LOADED = True
@@ -72,18 +74,17 @@ def predict_risk():
         age = int(data.get('age', 30))
         gender_str = data.get('sex', 'Male')
         
-        # --- PARTIAL DATA IMPUTATION LOGIC ---
-        # We assume Healthy Defaults for any sensor NOT measured.
-        # This isolates the risk prediction to ONLY the measured values.
-        # No need to retrain; the model sees "Perfect Health + High Fever" -> "High Risk".
+        # --- MISSING DATA IMPUTATION LOGIC ---
+        # Instead of Healthy Defaults, XGBoost handles NaNs naturally.
+        # We pass np.nan for unmeasured sensors so the tree splits correctly.
         
-        bmi = get_val('bmi', HEALTHY_DEFAULTS['bmi'])
-        temp = get_val('temperature', HEALTHY_DEFAULTS['temp'])
-        spo2 = get_val('spo2', HEALTHY_DEFAULTS['spo2'])
-        hr = get_val('heartRate', HEALTHY_DEFAULTS['hr'])
-        systolic = get_val('systolic', HEALTHY_DEFAULTS['sys'])
-        diastolic = get_val('diastolic', HEALTHY_DEFAULTS['dia'])
-        rr = get_val('respiratoryRate', HEALTHY_DEFAULTS['rr'])
+        bmi = get_val('bmi', np.nan)
+        temp = get_val('temperature', np.nan)
+        spo2 = get_val('spo2', np.nan)
+        hr = get_val('heartRate', np.nan)
+        systolic = get_val('systolic', np.nan)
+        diastolic = get_val('diastolic', np.nan)
+        rr = get_val('respiratoryRate', np.nan)
 
         # Identify imputed fields for logging
         imputed_fields = []
@@ -122,26 +123,40 @@ def predict_risk():
 
         # --- STEP 1: CALCULATE RISK (MATH BRAIN) ---
         risk_score = 0
-        risk_level = "Unknown"
         
         if not MODEL_LOADED:
             load_models_if_needed()
 
         if MODEL_LOADED:
-            # Scale the data
-            input_scaled = scaler.transform(input_data)
-            
             # Direct Continuous Prediction (returns an array like [54.2])
-            raw_prediction = risk_model.predict(input_scaled)[0]
+            raw_prediction = risk_model.predict(input_data)[0]
             risk_score = int(round(raw_prediction))  # Convert to whole number integer
 
-            # --- POST-PROCESSING: REMOVED MANUAL BOOSTERS ---
-            # User requested to rely ONLY on the AI Model's prediction.
-            # No manual if/else overrides here.
+        # --- STEP 1.5: CLINICAL GUARDRAIL (MODULAR) ---
+        # The penalty-based guardrail logic has been moved to backend/juan_ai/guardrails.py
+        original_score = risk_score
+        
+        vital_signs_dict = {
+            'bmi': bmi,
+            'temp': temp,
+            'spo2': spo2,
+            'hr': hr,
+            'systolic': systolic,
+            'diastolic': diastolic,
+            'rr': rr
+        }
+        
+        risk_score, penalties, total_penalty, multiplier = apply_clinical_guardrails(original_score, vital_signs_dict)
 
-
-            # Validate Risk Score limits
-        risk_score = min(100, max(0, risk_score))
+        # ── LOG ──
+        if total_penalty > 0:
+            print(f"🛡️ GUARDRAIL PENALTIES APPLIED ({multiplier:.1f}x multiplier):")
+            print(f"   🧠 AI Base Score: {original_score}%")
+            for p in penalties:
+                print(f"   ⚠️ {p}")
+            print(f"   ─────────────────────────────────")
+            print(f"   📊 Total Penalty: +{total_penalty}%")
+            print(f"   📊 Final Score: {original_score}% + {total_penalty}% = {risk_score}%")
         
         # --- DATA QUALITY METRICS (THESIS VALIDATION) ---
         # Calculate how "complete" the assessment is.
@@ -189,24 +204,17 @@ def predict_risk():
         
         print(f"📊 Confidence Metrics: {confidence_metrics}")
 
-        # Map Score to Risk Level Class (5 Tiers)
-        if risk_score < 20: risk_level = "Low Risk"
-        elif risk_score < 40: risk_level = "Mild Risk"
-        elif risk_score < 60: risk_level = "Moderate Risk"
-        elif risk_score < 80: risk_level = "High Risk"
-        else: risk_level = "Critical Risk"
+        # Remove the backend arbitrary Risk Level text mapping entirely
         
         print(f"✅ Juan AI Prediction Complete!")
         print(f"   📊 Risk Score: {risk_score}%")
-        print(f"   🏷️ Risk Level: {risk_level}")
 
         # --- STEP 2: GENERATE ADVICE (LANGUAGE BRAIN) ---
-        recommendations = generate_dynamic_advice(age, gender_str, age_group, risk_level, risk_score, data)
+        recommendations = generate_dynamic_advice(age, gender_str, age_group, risk_score, data)
 
         return jsonify({
             'success': True,
             'risk_score': risk_score,
-            'risk_level': risk_level,
             'confidence_metrics': confidence_metrics, # New thesis-grade metadata
             'recommendations': recommendations
         })
@@ -218,97 +226,88 @@ def predict_risk():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-def generate_dynamic_advice(age, gender, age_group, risk_level, score, vitals):
+def generate_dynamic_advice(age, gender, age_group, score, vitals):
     """
-    HYBRID AI ENGINE
-    1. Tries to use Google Gemini for high-quality, personalized text.
-    2. Falls back to Expert System (Rules) if internet/API fails.
+    LOCAL HYBRID AI ENGINE
+    1. Tries to connect to LM Studio Local Server (http://127.0.0.1:1234/v1) for purely local AI processing.
+    2. Falls back to Expert System (Rules) if LM Studio isn't running or times out.
+    """
+    import requests
+    import json
+
+    # Map age_group to text
+    age_group_map = {0: "Young Adult (18-24)", 1: "Adult (25-39)", 2: "Middle-Aged (40-59)", 3: "Senior (60+)"}
+    age_group_str = age_group_map.get(age_group, "Unknown")
+
+    # Construct a rich prompt
+    prompt = f"""
+    You are "Juan AI", an advanced medical assistant.
+    Patient: {age} year old {gender}.
+    Age Group: {age_group_str}
+    
+    Current Vitals:
+    - BMI: {vitals.get('bmi', 'N/A')}
+    - Temp: {vitals.get('temperature', 'N/A')} C
+    - SpO2: {vitals.get('spo2', 'N/A')}%
+    - Heart Rate: {vitals.get('heartRate', 'N/A')} bpm
+    - BP: {vitals.get('systolic', 'N/A')}/{vitals.get('diastolic', 'N/A')} mmHg
+    - Respiratory Rate: {vitals.get('respiratoryRate', 'N/A')} bpm
+    
+    Risk Assessment: (Score: {score}/100)
+    
+    Task: Provide 4 short, empathetic, professional sections of advice.
+    Output must be VALID JSON with these exact keys:
+    "medical_actions", "preventive_strategies", "wellness_tips", "provider_guidance"
+    
+    Content Guidelines (CRITICAL: KEEP IT SHORT):
+    - medical_actions: List of immediate actions. MAX 6 WORDS per item.
+    - preventive_strategies: What to do this week. MAX 6 WORDS per item.
+    - wellness_tips: Diet/Lifestyle. MAX 6 WORDS per item.
+    - provider_guidance: Points for doctor. MAX 10 WORDS.
+    
+    Return ONLY RAW JSON. No markdown blocks, no conversational text.
     """
     
-    # --- 1. TRY ONLINE AI (GEMINI) ---
-    if GEMINI_API_KEY:
-        try:
-            # --- SMART MODEL DISCOVERY ---
-            # Instead of guessing names, let's ask the API what is available for this Key.
-            available_models = []
-            try:
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        available_models.append(m.name)
-            except Exception as e:
-                print(f"⚠️ Juan AI: Could not list models ({e}).")
-
-            print(f"🧠 Juan AI: Accessed Models -> {available_models}")
-
-            # Priority List: Try to find the best one from the available list
-            # We prefer Flash (fastest/free-est), then Pro.
-            selected_model_name = None
+    try:
+        if not GEMINI_API_KEY:
+            print("⚠️ No GEMINI_API_KEY found, falling back to offline engine.")
+            return generate_offline_advice(age, gender, score, vitals)
             
-            # Helper to find a partial match
-            def find_model(substring):
-                for m_name in available_models:
-                    if substring in m_name: return m_name
-                return None
+        print("🧠 Juan AI: Connecting to Gemini API...")
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.2,
+                response_mime_type="application/json"
+            )
+        )
+        
+        content = response.text
+        
+        # Clean up content in case AI hallucinates markdown formatting
+        content = content.replace("```json", "").replace("```", "").strip()
+        
+        advice = json.loads(content)
+        
+        # Additional validation to ensure all keys exist
+        required_keys = ["medical_actions", "preventive_strategies", "wellness_tips", "provider_guidance"]
+        for key in required_keys:
+            if key not in advice:
+                advice[key] = ["See medical professional."]
 
-            if find_model('flash'): selected_model_name = find_model('flash')
-            elif find_model('pro'): selected_model_name = find_model('pro')
-            elif available_models: selected_model_name = available_models[0] # Pick ANYTHING
+        print("✅ Juan AI: Received Dynamic Advice from Gemini API!")
+        return advice
+            
+    except Exception as e:
+        print(f"⚠️ Juan AI Gemini Error: {e}. Falling back to offline engine.")
 
-            if selected_model_name:
-                print(f"🧠 Juan AI: Auto-Selected Model -> '{selected_model_name}'")
-                model = genai.GenerativeModel(selected_model_name)
-            else:
-                # If list failed or was empty, Fallback to 'gemini-1.5-flash' blindly
-                print("⚠️ Juan AI: No models listed. Trying default 'gemini-1.5-flash'...")
-                model = genai.GenerativeModel('gemini-1.5-flash')
-
-            # Map age_group to text
-            age_group_map = {0: "Young Adult (18-24)", 1: "Adult (25-39)", 2: "Middle-Aged (40-59)", 3: "Senior (60+)"}
-            age_group_str = age_group_map.get(age_group, "Unknown")
-
-            # Construct a rich prompt
-            prompt = f"""
-            You are "Juan AI", an advanced medical assistant.
-            Patient: {age} year old {gender}.
-            Age Group: {age_group_str}
-            
-            Current Vitals:
-            - BMI: {vitals.get('bmi', 'N/A')}
-            - Temp: {vitals.get('temperature', 'N/A')} C
-            - SpO2: {vitals.get('spo2', 'N/A')}%
-            - Heart Rate: {vitals.get('heartRate', 'N/A')} bpm
-            - BP: {vitals.get('systolic', 'N/A')}/{vitals.get('diastolic', 'N/A')} mmHg
-            - Respiratory Rate: {vitals.get('respiratoryRate', 'N/A')} bpm
-            
-            Risk Assessment: {risk_level} (Score: {score}/100)
-            
-            Task: Provide 4 short, empathetic, professional sections of advice.
-            Output must be VALID JSON with these exact keys:
-            "medical_actions", "preventive_strategies", "wellness_tips", "provider_guidance"
-            
-            Content Guidelines (CRITICAL: KEEP IT SHORT):
-            - medical_actions: List of immediate actions. MAX 6 WORDS per item. (e.g. "Consult cardiologist immediately", "Monitor BP daily").
-            - preventive_strategies: What to do this week. MAX 6 WORDS per item.
-            - wellness_tips: Diet/Lifestyle. MAX 6 WORDS per item.
-            - provider_guidance: Points for doctor. MAX 10 WORDS.
-            """
-            
-            # Call API
-            response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
-            
-            # Parse Response
-            import json
-            advice = json.loads(response.text)
-            print("✅ Juan AI: Received Dynamic Advice from Google!")
-            return advice
-
-        except Exception as e:
-            print(f"⚠️ Juan AI Online Failed ({e}). Switching to Offline Brain.")
     
     # --- 2. FALLBACK TO OFFLINE EXPERT SYSTEM ---
-    return generate_offline_advice(age, gender, risk_level, score, vitals)
+    return generate_offline_advice(age, gender, score, vitals)
 
-def generate_offline_advice(age, gender, risk_level, score, vitals):
+def generate_offline_advice(age, gender, score, vitals):
     """
     SMART OFFLINE MEDICAL ADVICE ENGINE (v3 - Knowledge Base Powered)
     

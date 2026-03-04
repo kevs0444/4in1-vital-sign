@@ -105,9 +105,21 @@ export default function Result() {
       console.log("📊 Result Page Received Data:", data);
       setUserData(data);
 
-      // Extract AI Results
-      if (data.riskLevel !== undefined) setRiskLevel(data.riskLevel);
-      if (data.riskCategory) setRiskCategory(data.riskCategory);
+      if (data.riskLevel !== undefined) {
+        setRiskLevel(data.riskLevel);
+
+        // Map Score to Risk Level Class (5 Tiers) based on data.riskLevel value
+        let derivedCategory = "Unknown";
+        if (data.riskLevel < 20) derivedCategory = "Low Risk";
+        else if (data.riskLevel < 40) derivedCategory = "Mild Risk";
+        else if (data.riskLevel < 60) derivedCategory = "Moderate Risk";
+        else if (data.riskLevel < 80) derivedCategory = "High Risk";
+        else derivedCategory = "Critical Risk";
+
+        setRiskCategory(derivedCategory);
+      } else if (data.riskCategory) {
+        setRiskCategory(data.riskCategory);
+      }
 
       // Extract Recommendations (if present from AI)
       if (data.resultRecommendations) {
@@ -259,8 +271,8 @@ export default function Result() {
           <div className="card border-0 text-white mb-4 risk-score-card" style={{ background: getRiskGradient(riskLevel) }}>
             <div className="card-body p-4 text-center">
 
-              <h2 className="display-1 fw-bold mb-0 risk-score-value">{Math.round(riskLevel)}%</h2>
-              <h3 className="h2 mb-3 risk-score-label">{riskCategory}</h3>
+              <h2 className="display-2 fw-bold mb-1 risk-score-label text-white" style={{ letterSpacing: '1px', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>{riskCategory}</h2>
+              <h3 className="display-5 fw-bold mb-3 risk-score-value text-white" style={{ opacity: 0.85 }}>{Math.round(riskLevel)}%</h3>
 
               {/* Active Parameters Count */}
               {userData.aiAnalysis?.confidence_metrics && (
@@ -268,9 +280,7 @@ export default function Result() {
                   <small>
                     Analysis based on {userData.aiAnalysis.confidence_metrics.total_parameters_used ||
                       (userData.aiAnalysis.confidence_metrics.active_sensors_count + 3)} parameters
-                    {userData.aiAnalysis.confidence_metrics.max_parameters &&
-                      ` of ${userData.aiAnalysis.confidence_metrics.max_parameters}`
-                    }
+                    {' of 10'}
                   </small>
                 </div>
               )}

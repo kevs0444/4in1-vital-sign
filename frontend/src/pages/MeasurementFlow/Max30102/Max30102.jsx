@@ -134,6 +134,10 @@ export default function Max30102() {
       try {
         const response = await sensorAPI.getMax30102Status();
 
+        // 🛡️ CRITICAL DUAL-CHECK: If the 30-sec timer finished while we were waiting for the API, abort immediately.
+        // This prevents lagging responses from overwriting the final calculated averages on the screen.
+        if (stepRef.current === 4 || measurementCompleteRef.current) return;
+
         // DEBUG LOGGING - Essential for debugging "Why is it not reacting?"
         console.log("Max30102 Poll:", response);
 

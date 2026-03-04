@@ -99,9 +99,10 @@ export default function AILoading() {
       // --- REAL API CALL TO JUAN AI (With 5s Timeout & Offline Fallback) ---
       console.log("📤 Sending data to Juan AI Brain:", location.state);
 
-      // 1. Define Timeout Promise (10 Seconds)
+      // 1. Define Timeout Promise (30 Seconds)
+      // Increased from 10s to ensure Gemini has plenty of time to generate dynamic advice
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("AI_TIMEOUT")), 10000)
+        setTimeout(() => reject(new Error("AI_TIMEOUT")), 30000)
       );
 
       // 2. Define API Call Promise
@@ -158,7 +159,6 @@ export default function AILoading() {
         const finalResultState = {
           ...location.state,
           riskLevel: aiResult.risk_score,
-          riskCategory: aiResult.risk_level,
           resultRecommendations: aiResult.recommendations,
           aiAnalysis: aiResult
         };
@@ -172,100 +172,14 @@ export default function AILoading() {
       }
 
     } catch (error) {
-      console.warn("⚠️ AI Unavailable or Timeout. Generating Offline Analysis...");
+      console.error("❌ Juan AI Failed or Timed Out:", error);
       clearInterval(stepInterval);
-      setStatusMessage("Analysis complete!");
-
-      // --- OFFLINE FALLBACK GENERATION ---
-      const offlineData = generateOfflineAnalysis(location.state);
 
       setIsAnalyzing(false);
-      setAnalysisComplete(true);
-      setCurrentStep(analysisSteps.length - 1);
-
-      speak("Analysis complete. Your health report is now ready.");
-
-      setTimeout(() => {
-        navigate("/measure/result", {
-          state: {
-            ...location.state,
-            ...offlineData
-          }
-        });
-      }, 2000);
+      setAnalysisComplete(false);
+      setStatusMessage("AI Analysis Failed. Please verify backend connection.");
+      speak("Sorry, the A.I. analysis failed. Please check your backend connection and try again.");
     }
-  };
-
-  // --- OFFLINE ANALYSIS HELPER ---
-  const generateOfflineAnalysis = (data) => {
-    let riskScore = 15; // Base risk
-    const suggestions = [];
-    const preventions = [];
-
-    // Simple Rule-Based Logic
-    // 1. BP
-    if (data.systolic >= 140 || data.diastolic >= 90) {
-      riskScore += 30;
-      suggestions.push("Consult a doctor regarding high blood pressure.");
-      preventions.push("Reduce sodium intake and monitor BP daily.");
-    } else if (data.systolic >= 120) {
-      riskScore += 10;
-      suggestions.push("Monitor blood pressure regularly.");
-    }
-
-    // 2. BMI
-    if (data.weight && data.height) {
-      const h = data.height / 100;
-      const bmi = data.weight / (h * h);
-      if (bmi >= 30) {
-        riskScore += 20;
-        suggestions.push("Consider a weight management program.");
-        preventions.push("Adopt a balanced diet and regular exercise.");
-      } else if (bmi >= 25) {
-        riskScore += 5;
-        preventions.push("Maintain a healthy diet to prevent weight gain.");
-      }
-    }
-
-    // 3. SpO2
-    if (data.spo2 && data.spo2 < 95) {
-      riskScore += 25;
-      suggestions.push("Oxygen levels are low. Seek medical attention if breathing is difficult.");
-    }
-
-    // 4. Heart Rate
-    if (data.heartRate > 100) {
-      riskScore += 15;
-      suggestions.push("Heart rate is elevated. Rest and re-measure.");
-    }
-
-    // 5. Temp
-    if (data.temperature > 37.5) {
-      riskScore += 20;
-      suggestions.push("Indication of fever. Stay hydrated and rest.");
-    }
-
-    // Cap Score
-    if (riskScore > 99) riskScore = 99;
-    if (riskScore < 5) riskScore = 5;
-
-    // Define Level (5 Tiers - Matches Training Data)
-    let level = "Low Risk";
-    if (riskScore >= 80) level = "Critical Risk";
-    else if (riskScore >= 60) level = "High Risk";
-    else if (riskScore >= 40) level = "Moderate Risk";
-    else if (riskScore >= 20) level = "Mild Risk";
-
-    return {
-      riskLevel: riskScore,
-      riskCategory: level,
-      resultRecommendations: {
-        medical_actions: suggestions.length > 0 ? suggestions : ["Maintain regular check-ups."],
-        preventive_strategies: preventions.length > 0 ? preventions : ["Maintain a healthy lifestyle."],
-        wellness_tips: ["Drink 8 glasses of water daily.", "Sleep 7-8 hours per night."],
-        provider_guidance: ["Provisional Result: Interpretation based on standard vital sign ranges. Please consult a specialist."]
-      }
-    };
   };
 
   // Manual navigation function in case auto-navigation fails
@@ -285,7 +199,16 @@ export default function AILoading() {
         {/* Header with larger centered AI icon */}
         <div className="ai-loading-header-768 text-center mb-3">
           <div className="ai-loading-icon-768 d-flex justify-content-center mb-4">
-            <img src={aiLoadingIcon} alt="Juan AI Logo" className="img-fluid rounded-circle p-3" style={{ width: '160px', height: '160px', objectFit: 'contain' }} />
+            <img src={aiLoadingIcon} alt="Juan AI Logo" className="img-fluid rounded-circle p-3" style={{
+              width: '160px', height: '160px', objectFit: 'contain',
+              animation: 'aiLogoFloat 2.5s ease-in-out infinite',
+            }} />
+            <style>{`
+              @keyframes aiLogoFloat {
+                0%, 100% { transform: translateY(0px) scale(1); }
+                50% { transform: translateY(-15px) scale(1.05); }
+              }
+            `}</style>
           </div>
           <h1 className="ai-loading-title-768 display-5 fw-bold mb-2">
             {isAnalyzing ? "Juan AI is Thinking" : analysisComplete ? "Analysis Complete!" : "Juan AI Initializing"}
@@ -428,10 +351,10 @@ export default function AILoading() {
         {!isAnalyzing && !analysisComplete && (
           <div className="ai-manual-nav-768 text-center mt-3">
             <button
-              onClick={handleManualNavigate}
-              className="btn btn-outline-secondary"
+              onClick={() => navigate("/")}
+              className="btn btn-outline-danger"
             >
-              Manual Navigate to Results
+              Return to Homepage
             </button>
           </div>
         )}

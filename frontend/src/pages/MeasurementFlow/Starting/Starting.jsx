@@ -18,7 +18,8 @@ export default function Starting() {
     sex: "",
     role: "",
     user_id: "",
-    email: ""
+    email: "",
+    ageGroup: ""
   });
 
   // Add viewport meta tag to prevent zooming
@@ -59,10 +60,24 @@ export default function Starting() {
   }, [navigate, userData]);
 
   useEffect(() => {
-    // Get user data from location state (passed from MeasurementWelcome)
     if (location.state) {
       console.log("📥 Received user data in Starting:", location.state);
-      setUserData(location.state);
+
+      // Auto-calculate age group if age is present but age_group is not
+      let updatedData = { ...location.state };
+      if (updatedData.age && updatedData.ageGroup === undefined) {
+        const a = parseInt(updatedData.age);
+        let ag = null;
+        if (a >= 60) ag = "Senior (60+)";
+        else if (a >= 40) ag = "Middle-Aged (40-59)";
+        else if (a >= 25) ag = "Adult (25-39)";
+        else if (a >= 16) ag = "Young Adult (16-24)";
+        else if (a > 0) ag = "Minor (<16)";
+
+        updatedData.ageGroup = ag;
+      }
+
+      setUserData(updatedData);
     } else {
       // If no data passed, try to get from localStorage
       try {
@@ -74,6 +89,16 @@ export default function Starting() {
             firstName: user.firstName || "",
             lastName: user.lastName || "",
             age: user.age || "",
+            ageGroup: user.ageGroup || (() => {
+              if (!user.age) return "";
+              const a = parseInt(user.age);
+              if (a >= 60) return "Senior (60+)";
+              if (a >= 40) return "Middle-Aged (40-59)";
+              if (a >= 25) return "Adult (25-39)";
+              if (a >= 16) return "Young Adult (16-24)";
+              if (a > 0) return "Minor (<16)";
+              return "";
+            })(),
             sex: user.sex || "",
             role: user.role || "",
             user_id: user.user_id || user.id || "",
@@ -206,6 +231,12 @@ export default function Starting() {
               <span className="info-label">Age</span>
               <span className="info-value">{getAgeDisplay()}</span>
             </div>
+            {userData.ageGroup && (
+              <div className="info-item-clean">
+                <span className="info-label">Age Group</span>
+                <span className="info-value text-secondary" style={{ fontSize: '0.9rem' }}>{userData.ageGroup}</span>
+              </div>
+            )}
             <div className="info-item-clean">
               <span className="info-label">Sex</span>
               <span className="info-value">{getSexDisplay()}</span>

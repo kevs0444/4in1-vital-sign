@@ -1,6 +1,6 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.model_selection import KFold
+from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import xgboost as xgb
 import joblib
@@ -30,40 +30,54 @@ y = df['risk_score']
 
 print(f"🔹 Features used ({len(feature_columns)}): {feature_columns}")
 
-# Scale features
-print("⚖️ Scaling data...")
-scaler = MinMaxScaler()
-X_scaled = scaler.fit_transform(X)
+# Removed scaling step, XGBoost natively handles mixed ranges.
+# Also passing numpy arrays directly instead of scaled arrays.
+X_np = X.values
+y_np = y.values
 
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+# 3. Train using K-Fold Validation
+print("🧠 Training XGBoost Model with K-Fold Validation...")
 
-# 3. Train
-print("🧠 Training XGBoost Model...")
-model = xgb.XGBRegressor(
-    objective='reg:squarederror',
-    n_estimators=500,          # More trees = finer predictions
-    learning_rate=0.05,        # Lower LR = more precise learning
-    max_depth=8,               # Deeper = distinguishes subtle differences (e.g. 6% vs 15%) 
-    subsample=0.8,             # Prevents overfitting
-    colsample_bytree=0.8,     # Prevents overfitting
-    min_child_weight=3,        # Smooths out noisy predictions
-    random_state=42
-)
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+rmse_scores = []
+mae_scores = []
 
-model.fit(X_train, y_train)
+model = None # Persist the last model trained
 
-# 4. Evaluate
-print("🔍 Evaluating Model...")
-predictions = model.predict(X_test)
-mae = mean_absolute_error(y_test, predictions)
-rmse = np.sqrt(mean_squared_error(y_test, predictions))
-print(f"📉 Model MAE: {mae:.2f} points (Average Error)")
-print(f"📉 Model RMSE: {rmse:.2f} points")
+for fold, (train_idx, test_idx) in enumerate(kf.split(X_np)):
+    X_train, X_test = X_np[train_idx], X_np[test_idx]
+    y_train, y_test = y_np[train_idx], y_np[test_idx]
+    
+    model = xgb.XGBRegressor(
+        objective='reg:squarederror',
+        n_estimators=500,          # More trees = finer predictions
+        learning_rate=0.05,        # Lower LR = more precise learning
+        max_depth=8,               # Deeper = distinguishes subtle differences (e.g. 6% vs 15%) 
+        subsample=0.8,             # Prevents overfitting
+        colsample_bytree=0.8,      # Prevents overfitting
+        min_child_weight=3,        # Smooths out noisy predictions
+        random_state=42
+    )
+
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+    mae = mean_absolute_error(y_test, predictions)
+    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+    
+    print(f"  --> Fold {fold + 1} | MAE: {mae:.2f} | RMSE: {rmse:.2f}")
+    
+    mae_scores.append(mae)
+    rmse_scores.append(rmse)
+
+# 4. Evaluate Average
+print("\n🔍 Final Evaluation (Average across 5 folds):")
+print(f"📉 Average MAE: {np.mean(mae_scores):.2f} points (Average Error)")
+print(f"📉 Average RMSE: {np.mean(rmse_scores):.2f} points")
 
 # 5. Save
 print("💾 Saving all AI assets...")
 joblib.dump(model, 'juan_ai_model.pkl')
-joblib.dump(scaler, 'juan_ai_scaler.pkl')
+# scaler is removed
 
 print("✅ Juan AI Brain successfully created in /backend/juan_ai/")
