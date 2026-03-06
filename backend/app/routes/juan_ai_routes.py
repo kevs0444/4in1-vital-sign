@@ -71,8 +71,16 @@ def predict_risk():
                 return float(val)
             except: return default
 
-        age = int(data.get('age', 30))
-        gender_str = data.get('sex', 'Male')
+        # Safely parse age
+        age_raw = data.get('age', 30)
+        try:
+            age = int(age_raw)
+        except (ValueError, TypeError):
+            age = 30
+            
+        # Safely parse gender
+        gender_raw = data.get('sex', 'Male')
+        gender_str = str(gender_raw) if gender_raw else 'Male'
         
         # --- MISSING DATA IMPUTATION LOGIC ---
         # Instead of Healthy Defaults, XGBoost handles NaNs naturally.
@@ -277,15 +285,39 @@ def generate_dynamic_advice(age, gender, age_group, score, vitals):
         print("🧠 Juan AI: Connecting to Gemini API...")
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.2,
-                response_mime_type="application/json"
-            )
-        )
+        import threading
         
-        content = response.text
+        result_container = []
+        def call_gemini():
+            try:
+                res = model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.2,
+                        response_mime_type="application/json"
+                    )
+                )
+                result_container.append(res)
+            except Exception as e:
+                result_container.append(e)
+                
+        t = threading.Thread(target=call_gemini)
+        t.start()
+        t.join(10.0) # 10 second strict timeout
+        
+        if t.is_alive():
+            print("⚠️ Juan AI Gemini Error: API timed out after 10s. Falling back to offline engine.")
+            return generate_offline_advice(age, gender, score, vitals)
+            
+        if not result_container:
+            print("⚠️ Juan AI Gemini Error: Unknown error during generation. Falling back to offline engine.")
+            return generate_offline_advice(age, gender, score, vitals)
+            
+        response_result = result_container[0]
+        if isinstance(response_result, Exception):
+            raise response_result
+            
+        content = response_result.text
         
         # Clean up content in case AI hallucinates markdown formatting
         content = content.replace("```json", "").replace("```", "").strip()

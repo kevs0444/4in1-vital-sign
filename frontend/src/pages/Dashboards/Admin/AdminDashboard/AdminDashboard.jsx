@@ -846,7 +846,11 @@ const AdminDashboard = () => {
             notificationProps={{
                 pendingCount: getPendingCount(),
                 printerStatus,
-                shareStats,
+                shareStats: {
+                    ...shareStats,
+                    printCount: printerPaperStats.printCount,
+                    paperRemaining: printerPaperStats.paperRemaining
+                },
                 onNavigate: setActiveTab,
                 userRole: user?.role?.toLowerCase() || 'admin'
             }}

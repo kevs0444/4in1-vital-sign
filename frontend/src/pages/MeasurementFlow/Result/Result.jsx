@@ -124,10 +124,11 @@ export default function Result() {
       // Extract Recommendations (if present from AI)
       if (data.resultRecommendations) {
         const recs = data.resultRecommendations;
-        if (recs.medical_actions) setSuggestions(recs.medical_actions);
-        if (recs.preventive_strategies) setPreventions(recs.preventive_strategies);
-        if (recs.wellness_tips) setWellnessTips(recs.wellness_tips);
-        if (recs.provider_guidance) setProviderGuidance(recs.provider_guidance);
+        const ensureArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
+        if (recs.medical_actions) setSuggestions(ensureArray(recs.medical_actions));
+        if (recs.preventive_strategies) setPreventions(ensureArray(recs.preventive_strategies));
+        if (recs.wellness_tips) setWellnessTips(ensureArray(recs.wellness_tips));
+        if (recs.provider_guidance) setProviderGuidance(ensureArray(recs.provider_guidance));
       }
 
       speak("Here are your health assessment results.");

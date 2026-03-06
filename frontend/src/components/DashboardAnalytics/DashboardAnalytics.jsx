@@ -1021,11 +1021,6 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                             {filteredHistory.length > 0 ? (filteredHistory[filteredHistory.length - 1].risk_category || 'NORMAL') : '--'}
                         </span>
                     </div>
-                    <div style={{ width: '1px', height: '40px', background: 'rgba(255,255,255,0.1)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                        <span style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase' }}>Wellness Score</span>
-                        <span style={{ fontSize: '1.2rem', fontWeight: '800', color: '#fff' }}>94/100</span>
-                    </div>
                 </div>
             </motion.div>
 
@@ -1143,7 +1138,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                             {heartStatus.status}
                         </h4>
                         <p style={{ fontSize: '0.9rem', color: '#64748b', margin: 0 }}>
-                            Avg Heart Rate: <strong style={{ color: '#1e293b' }}>{analyticsData?.heartRate.avg ? `${analyticsData.heartRate.avg} bpm` : 'Not Measured'}</strong>
+                            Avg Heart Rate: <strong style={{ color: '#1e293b' }}>{analyticsData?.heartRate.avg ? `${analyticsData.heartRate.avg} bpm` : 'No measurement history'}</strong>
                         </p>
                     </div>
                 </motion.div>
@@ -1174,7 +1169,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                     <div style={{ marginBottom: '12px' }}>
                         <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '2px' }}>Average</p>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                            <span style={{ fontSize: '1.8rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.heartRate.avg || 'N/A'}</span>
+                            <span style={{ fontSize: '1.8rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.heartRate.avg || '--'}</span>
                             {analyticsData?.heartRate.avg && <span style={{ fontSize: '0.9rem', color: '#64748b' }}>bpm</span>}
                         </div>
                         {populationAverages?.heart_rate && analyticsData?.heartRate.avg && (
@@ -1185,7 +1180,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                                     marginLeft: '8px',
                                     color: analyticsData.heartRate.avg > populationAverages.heart_rate ? '#dc2626' : '#94a3b8'
                                 }}>
-                                    ({analyticsData.heartRate.avg > populationAverages.heart_rate ? '+' : ''}{analyticsData.heartRate.avg - populationAverages.heart_rate})
+                                    ({analyticsData.heartRate.avg > populationAverages.heart_rate ? '+' : ''}{(analyticsData.heartRate.avg - populationAverages.heart_rate).toFixed(1)})
                                 </span>
                             </div>
                         )}
@@ -1196,6 +1191,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                                 data={{
                                     labels: analyticsData.heartRate.labels,
                                     datasets: [{
+                                        label: 'Heart Rate',
                                         data: analyticsData.heartRate.data,
                                         borderColor: '#dc2626',
                                         borderWidth: 2,
@@ -1248,14 +1244,14 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                         <div>
                             <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px' }}>Avg Systolic</p>
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                                <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.bloodPressure.avgSystolic || 'N/A'}</span>
+                                <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.bloodPressure.avgSystolic || '--'}</span>
                                 {analyticsData?.bloodPressure.avgSystolic && <span style={{ fontSize: '0.8rem', color: '#64748b' }}>mmHg</span>}
                             </div>
                         </div>
                         <div>
                             <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '2px' }}>Avg Diastolic</p>
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                                <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#b91c1c' }}>{analyticsData?.bloodPressure.avgDiastolic || 'N/A'}</span>
+                                <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#b91c1c' }}>{analyticsData?.bloodPressure.avgDiastolic || '--'}</span>
                                 {analyticsData?.bloodPressure.avgDiastolic && <span style={{ fontSize: '0.8rem', color: '#64748b' }}>mmHg</span>}
                             </div>
                         </div>
@@ -1313,10 +1309,10 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                         <span style={{ fontWeight: '700', color: '#1e293b' }}>Blood Oxygen (SpO2)</span>
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.spo2.avg || 'N/A'}</span>
+                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.spo2.avg || '--'}</span>
                         {analyticsData?.spo2.avg && <span style={{ fontSize: '1.2rem', color: '#64748b', marginLeft: '4px' }}>%</span>}
                     </div>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>{analyticsData?.spo2.avg ? 'Average Oxygen Saturation' : 'Not Measured'}</p>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>{analyticsData?.spo2.avg ? 'Average Oxygen Saturation' : 'No measurement history'}</p>
                     <div style={{ marginTop: '12px', height: '8px', background: '#fee2e2', borderRadius: '4px', overflow: 'hidden' }}>
                         <div style={{
                             width: `${Math.min((analyticsData?.spo2.avg || 0), 100)}%`,
@@ -1351,10 +1347,10 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                         <span style={{ fontWeight: '700', color: '#1e293b' }}>Body Temperature</span>
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.temperature.avg || 'N/A'}</span>
+                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.temperature.avg || '--'}</span>
                         {analyticsData?.temperature.avg && <span style={{ fontSize: '1.2rem', color: '#64748b', marginLeft: '4px' }}>°C</span>}
                     </div>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>{analyticsData?.temperature.avg ? 'Average Temperature' : 'Not Measured'}</p>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>{analyticsData?.temperature.avg ? 'Average Temperature' : 'No measurement history'}</p>
                 </motion.div>
 
                 {/* Weight Card */}
@@ -1398,8 +1394,8 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                             }}
                         />
                         <div style={{ position: 'absolute', bottom: '0', left: '50%', transform: 'translateX(-50%)', textAlign: 'center' }}>
-                            <span style={{ fontSize: '1.3rem', fontWeight: '800', color: '#dc2626', lineHeight: 1 }}>{analyticsData?.weight.avg || 'N/A'}</span>
-                            <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b' }}>{analyticsData?.weight.avg ? 'kg (avg)' : 'Not Measured'}</span>
+                            <span style={{ fontSize: '1.3rem', fontWeight: '800', color: '#dc2626', lineHeight: 1 }}>{analyticsData?.weight.avg || '--'}</span>
+                            <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b' }}>{analyticsData?.weight.avg ? 'kg (avg)' : 'No measurement history'}</span>
                         </div>
                     </div>
                 </motion.div>
@@ -1427,7 +1423,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                         <span style={{ fontWeight: '700', color: '#1e293b' }}>BMI</span>
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.bmi.avg || 'N/A'}</span>
+                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.bmi.avg || '--'}</span>
                     </div>
                     <p style={{
                         fontSize: '0.8rem',
@@ -1439,7 +1435,7 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                     }}>
                         {analyticsData?.bmi.avg
                             ? (analyticsData.bmi.avg < 18.5 ? 'Underweight' : analyticsData.bmi.avg < 25 ? 'Normal' : analyticsData.bmi.avg < 30 ? 'Overweight' : 'Obese')
-                            : 'Not Measured'}
+                            : 'No measurement history'}
                     </p>
                 </motion.div>
 
@@ -1465,10 +1461,10 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                         <span style={{ fontWeight: '700', color: '#1e293b' }}>Height</span>
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.height.avg || 'N/A'}</span>
+                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.height.avg || '--'}</span>
                         {analyticsData?.height.avg && <span style={{ fontSize: '1.2rem', color: '#64748b', marginLeft: '4px' }}>cm</span>}
                     </div>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>{analyticsData?.height.avg ? 'Average Height' : 'Not Measured'}</p>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>{analyticsData?.height.avg ? 'Average Height' : 'No measurement history'}</p>
                 </motion.div>
 
                 {/* Respiratory Rate Card */}
@@ -1493,10 +1489,10 @@ const DashboardAnalytics = ({ user, history, timePeriod: externalTimePeriod, cus
                         <span style={{ fontWeight: '700', color: '#1e293b' }}>Respiratory Rate</span>
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.respiratoryRate.avg || 'N/A'}</span>
+                        <span style={{ fontSize: '2.5rem', fontWeight: '800', color: '#dc2626' }}>{analyticsData?.respiratoryRate.avg || '--'}</span>
                         {analyticsData?.respiratoryRate.avg && <span style={{ fontSize: '1.2rem', color: '#64748b', marginLeft: '4px' }}>bpm</span>}
                     </div>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>{analyticsData?.respiratoryRate.avg ? 'Average Breaths/Min' : 'Not Measured'}</p>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>{analyticsData?.respiratoryRate.avg ? 'Average Breaths/Min' : 'No measurement history'}</p>
                 </motion.div>
 
             </div>
